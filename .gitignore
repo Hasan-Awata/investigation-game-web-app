@@ -15,6 +15,7 @@ Thumbs.db
 /vendor/
 
 /node_modules/
+/Assessts/
 
 .env 
 

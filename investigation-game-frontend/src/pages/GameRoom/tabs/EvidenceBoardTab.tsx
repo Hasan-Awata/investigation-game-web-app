@@ -1,15 +1,12 @@
 import { useState } from 'react';
 import type { Evidence } from '../../../types';
+import { useRoomContext } from '../../../context/RoomContext';
 import EvidenceCard from './EvidenceCard';
-import EvidenceModal from './EvidenceModal'; // <-- Import the modal
+import EvidenceModal from './EvidenceModal'; 
 import './EvidenceBoard.css';
 
-interface EvidenceBoardTabProps {
-  evidences: Evidence[];
-}
-
-export default function EvidenceBoardTab({ evidences }: EvidenceBoardTabProps) {
-  // Add state to track the clicked item
+export default function EvidenceBoardTab() {
+  const { accumulatedEvidences } = useRoomContext();
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
 
   return (
@@ -20,23 +17,22 @@ export default function EvidenceBoardTab({ evidences }: EvidenceBoardTabProps) {
       </header>
       
       <div className="acrylic-workspace">
-        {evidences.length === 0 ? (
+        {accumulatedEvidences.length === 0 ? (
           <div className="terminal-text">No evidence recovered for this phase.</div>
         ) : (
           <div className="evidence-scatter-grid">
-            {evidences.map((evidence, index) => (
+            {accumulatedEvidences.map((evidence, index) => (
               <EvidenceCard 
                 key={evidence.id} 
                 evidence={evidence} 
                 index={index} 
-                onInspect={setInspectedEvidence} // <-- Pass the state setter
+                onInspect={setInspectedEvidence} 
               />
             ))}
           </div>
         )}
       </div>
 
-      {/* Render the modal outside the workspace flow */}
       <EvidenceModal 
         evidence={inspectedEvidence} 
         onClose={() => setInspectedEvidence(null)} 

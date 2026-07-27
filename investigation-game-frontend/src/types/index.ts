@@ -2,7 +2,9 @@ export interface User {
   id: number;
   username: string;
   name: string;
+  email: string;
   XP: number;
+  is_admin?: boolean;
 }
 
 export interface RoomUser {

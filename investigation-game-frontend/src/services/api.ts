@@ -1,13 +1,13 @@
 import { type Result, success, failure } from '../utils/Result';
 import type { GameCase, GameRoom } from '../types';
-import { getToken, logout } from './auth'; // Note the added 'logout' import
+import { getToken, logout } from './auth';
 
 const API_BASE_URL = 'http://localhost:8000/api';
 
-// Centralized helper to clear storage and boot the user back to the login screen
+// 1. Decoupled helper: Clears the token and emits a native event
 const handleUnauthorized = () => {
   logout();
-  window.location.href = '/'; 
+  window.dispatchEvent(new CustomEvent('auth:unauthorized')); 
 };
 
 export const fetchCases = async (): Promise<Result<GameCase[]>> => {
@@ -116,8 +116,6 @@ export const fetchRoomState = async (roomId: number): Promise<Result<GameRoom>> 
   }
 };
 
-// Add to src/services/api.ts
-
 export const lockVote = async (roomId: number, questionId: number, choiceId: number): Promise<Result<any>> => {
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/questions/${questionId}/vote`, {
@@ -177,7 +175,7 @@ export const triggerPersonaHint = async (roomId: number): Promise<Result<{ hint:
       return failure('Failed to retrieve Persona analysis.');
     }
     const data = await response.json();
-    return success(data.data); // The backend wraps it in a 'data' object
+    return success(data.data); 
   } catch (error) {
     return failure(error instanceof Error ? error.message : 'Network error');
   }

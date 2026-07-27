@@ -1,22 +1,28 @@
 import { useState } from 'react';
-import type { Level, Choice } from '../../../types';
-import { lockVote, submitAssessment, triggerPersonaHint } from '../../../services/api';
+import { useRoomContext } from '../../../context/RoomContext';
+import { useInvestigationPhase } from '../../../hooks/useInvestigationPhase';
 import './Tabs.css';
 
-interface CampaignTabProps {
-  levels: Level[];
-  currentLevelId: number;
-  roomId: number;
-  roomStatus: string; // <-- 1. Add the new prop
-  onLevelCleared: () => void;
-}
-
-export default function CampaignTab({ levels, currentLevelId, roomId, roomStatus, onLevelCleared }: CampaignTabProps) {
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+export default function CampaignTab() {
+  const { room, refreshRoomData } = useRoomContext();
   
-  const [votes, setVotes] = useState<Record<number, number>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const levels = room.game_case?.levels || [];
+  const currentLevelId = room.current_level_id;
+  const roomId = room.id;
+  const roomStatus = room.status;
+
+  // 1. Consume the business logic from the custom hook
+  const {
+    votes,
+    isSubmitting,
+    feedback,
+    handleSelectChoice,
+    handleSubmitTheory,
+    clearFeedback
+  } = useInvestigationPhase(roomId, refreshRoomData);
+
+  // 2. Local UI State (accordion drawer)
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const sortedLevels = [...levels].sort((a, b) => a.order_index - b.order_index);
   const currentLevelIndex = sortedLevels.find(l => l.id === currentLevelId)?.order_index || 0;
@@ -24,43 +30,6 @@ export default function CampaignTab({ levels, currentLevelId, roomId, roomStatus
   const toggleExpand = (levelId: number, status: string) => {
     if (status === 'locked') return; 
     setExpandedId(expandedId === levelId ? null : levelId);
-  };
-
-  const handleSelectChoice = async (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => {
-    e.stopPropagation(); 
-    if (status !== 'active') return; 
-
-    setVotes(prev => ({ ...prev, [questionId]: choice.id }));
-    await lockVote(roomId, questionId, choice.id);
-  };
-
-  const handleSubmitTheory = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsSubmitting(true);
-    
-    const result = await submitAssessment(roomId);
-    
-    if (result.isSuccess) {
-      if (result.value.status === 'success') {
-        setFeedback({ type: 'success', message: 'Verdict accepted. Advancing to the next phase.' });
-        setTimeout(() => {
-          setFeedback(null);
-          setVotes({}); 
-          onLevelCleared(); 
-        }, 2000);
-      } else {
-        const hintResult = await triggerPersonaHint(roomId);
-        if (hintResult.isSuccess) {
-          setFeedback({ type: 'error', message: hintResult.value.hint });
-        } else {
-          setFeedback({ type: 'error', message: 'The logic is flawed. Review the evidence.' });
-        }
-      }
-    } else {
-      setFeedback({ type: 'error', message: result.errorMessage });
-    }
-    
-    setIsSubmitting(false);
   };
 
   return (
@@ -75,7 +44,7 @@ export default function CampaignTab({ levels, currentLevelId, roomId, roomStatus
             </h3>
             <p className="feedback-message">{feedback.message}</p>
             {feedback.type === 'error' && (
-              <button className="btn-secondary mt-1" onClick={(e) => { e.stopPropagation(); setFeedback(null); }}>
+              <button className="btn-secondary mt-1" onClick={clearFeedback}>
                 Reassess Evidence
               </button>
             )}
@@ -85,11 +54,9 @@ export default function CampaignTab({ levels, currentLevelId, roomId, roomStatus
 
       <div className="roadmap-timeline">
         {sortedLevels.map((level, index) => {
-          
-          // 2. Safely override the status if the room is globally solved
           let status = 'locked';
           if (roomStatus === 'solved') {
-            status = 'completed'; // If the case is closed, all unlocked levels are completed
+            status = 'completed'; 
           } else {
             if (level.order_index < currentLevelIndex) status = 'completed';
             if (level.id === currentLevelId) status = 'active';
@@ -103,7 +70,6 @@ export default function CampaignTab({ levels, currentLevelId, roomId, roomStatus
 
           return (
             <div key={level.id} className={`roadmap-node ${status}`}>
-              {/* ... Rest of your node rendering remains exactly the same ... */}
               <div className="timeline-connector">
                 <div className="node-indicator">
                   {status === 'completed' && '✓'}
