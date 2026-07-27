@@ -1,0 +1,35 @@
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# IDE & Editor Files (VS Code, PhpStorm, etc.)
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Root-level environment or log files if any
+.env
+*.log
+
+/vendor/
+
+/node_modules/
+
+.env 
+
+/storage/*.key
+
+/public/hot
+
+/public/storage
+
+auth.json
+
+/node_modules/
+
+/build/ or /dist/
+
+/.env
+/.env.local 
+/.env.production

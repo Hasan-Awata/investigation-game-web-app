@@ -1,0 +1,180 @@
+.game-room-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  height: 100vh;
+  background-color: var(--bg-dark);
+  overflow: hidden;
+}
+
+/* --- Left Sidebar --- */
+.sidebar-panel {
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(20, 20, 20, 0.8);
+  backdrop-filter: blur(10px);
+  padding: 2rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+}
+
+.sidebar-heading {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.invite-code-display {
+  font-family: var(--font-mono);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  text-align: center;
+  letter-spacing: 0.2em;
+  background: rgba(0, 229, 255, 0.05);
+  padding: 1rem;
+  border-radius: 4px;
+  border: 1px dashed rgba(0, 229, 255, 0.3);
+}
+
+.agent-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.agent-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-family: var(--font-primary);
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.agent-role {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+}
+
+.agent-role.host {
+  background: var(--accent-amber);
+  box-shadow: 0 0 8px rgba(255, 179, 0, 0.5);
+}
+
+.agent-role.participant {
+  background: var(--accent-cyan);
+}
+
+/* --- Main Workspace & Tabs --- */
+.workspace-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.workspace-header {
+  background: rgba(30, 30, 30, 0.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 0 2rem;
+}
+
+.tab-navigation {
+  display: flex;
+  gap: 2rem;
+}
+
+.tab-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  padding: 1.5rem 0;
+  cursor: pointer;
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+}
+
+.tab-btn.active {
+  color: var(--accent-cyan);
+}
+
+.tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: var(--accent-cyan);
+  box-shadow: 0 -2px 10px rgba(0, 229, 255, 0.5);
+}
+
+.tab-content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+/* --- Victory Overlay --- */
+.victory-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 18, 18, 0.95);
+  backdrop-filter: blur(12px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+.victory-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.victory-title {
+  font-size: 4rem;
+  margin: 0;
+  color: var(--accent-cyan);
+  letter-spacing: 0.2em;
+  text-shadow: 0 0 30px rgba(0, 229, 255, 0.4);
+}
+
+.victory-subtitle {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+  margin-bottom: 2rem;
+}
+
+.forensic-icon.pulse {
+  font-size: 3rem;
+  color: var(--accent-cyan);
+  animation: pulse-icon 2s infinite;
+}
+
+@keyframes pulse-icon {
+  0% { text-shadow: 0 0 0 rgba(0, 229, 255, 0.8); }
+  70% { text-shadow: 0 0 40px rgba(0, 229, 255, 0); }
+  100% { text-shadow: 0 0 0 rgba(0, 229, 255, 0); }
+}

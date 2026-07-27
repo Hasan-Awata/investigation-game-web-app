@@ -1,0 +1,438 @@
+.case-details-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* The Blurred Landscape Hero */
+.case-hero-header {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.case-hero-background {
+  position: absolute;
+  inset: -10px; /* Slight overflow to prevent blurred edges from showing background */
+  background-size: cover;
+  background-position: center;
+  filter: blur(6px);
+  transform: scale(1.05); /* Counteract the inset */
+}
+
+.case-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to bottom,
+    rgba(18, 18, 18, 0.3) 0%,
+    rgba(18, 18, 18, 0.85) 100%
+  );
+  display: flex;
+  align-items: flex-end;
+  padding: 2.5rem;
+}
+
+.case-hero-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.case-hero-title {
+  margin: 0;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-shadow: 0 4px 12px rgba(0,0,0,0.8);
+  letter-spacing: -0.02em;
+}
+
+.case-hero-badges {
+  display: flex;
+  gap: 1rem;
+}
+
+/* Official Briefing Typography */
+.section-title {
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  border-left: 3px solid var(--accent-cyan);
+  padding-left: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.story-text-block {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.story-text-block p {
+  margin-bottom: 1.5rem;
+}
+
+/* --- Campaign Roadmap --- */
+.campaign-roadmap-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.roadmap-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 2rem;
+  padding-left: 1rem;
+}
+
+.roadmap-node {
+  display: flex;
+  gap: 2rem;
+  min-height: 160px;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.roadmap-node.locked {
+  opacity: 0.5;
+  filter: grayscale(100%);
+  pointer-events: none;
+}
+
+/* Vertical Timeline Line & Indicators */
+.timeline-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 40px;
+}
+
+.node-indicator {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-panel);
+  border: 2px solid var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  z-index: 2;
+  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+}
+
+.roadmap-node.active .node-indicator {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.1);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+}
+
+.roadmap-node.completed .node-indicator {
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+}
+
+.node-line {
+  width: 2px;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  margin-top: -5px; /* Tuck under the circle */
+  margin-bottom: -5px;
+  z-index: 1;
+}
+
+.node-line.active-line {
+  background: var(--accent-amber);
+  box-shadow: 0 0 10px rgba(255, 179, 0, 0.5);
+}
+
+/* Roadmap Content Cards */
+.node-content {
+  flex: 1;
+  display: flex;
+  background: rgba(30, 30, 30, 0.6);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 2.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.roadmap-node.active .node-content {
+  border-color: rgba(0, 229, 255, 0.3);
+  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05);
+}
+
+.node-image {
+  width: 200px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.node-image-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(18,18,18,0.1), rgba(30,30,30,1));
+}
+
+.node-details {
+  flex: 1;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.node-phase {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+}
+
+.node-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+.node-desc {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.active-badge {
+  margin-top: 1rem;
+  align-self: flex-start;
+  background: rgba(0, 229, 255, 0.1);
+  color: var(--accent-cyan);
+  border: 1px solid var(--accent-cyan);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(0, 229, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); }
+}
+
+/* --- Expandable Drawer Additions --- */
+.node-content.clickable {
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.node-content.clickable:hover {
+  border-color: rgba(0, 229, 255, 0.4);
+}
+
+.node-content {
+  flex-direction: column; /* Changed to allow vertical stacking of the drawer */
+}
+
+.node-main-card {
+  display: flex;
+  width: 100%;
+}
+
+.node-questions-drawer {
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  background: rgba(18, 18, 18, 0.6);
+  padding: 1.5rem;
+  animation: slideDown 0.3s ease-out forwards;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.drawer-title {
+  margin: 0 0 1rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-amber);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.question-item {
+  display: flex;
+  gap: 1rem;
+}
+
+.question-number {
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.question-text {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.choices-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.choice-pill {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  color: var(--text-secondary);
+}
+
+/* --- Interactive Choice Pills --- */
+.choice-pill {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 0.85rem;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.choice-pill.interactable {
+  cursor: pointer;
+}
+
+.choice-pill.interactable:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.choice-pill.selected {
+  background: rgba(0, 229, 255, 0.15);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+}
+
+/* For looking back at old levels */
+.choice-pill.historical-correct {
+  background: rgba(0, 255, 128, 0.1);
+  border-color: #00FF80;
+  color: #00FF80;
+}
+
+/* --- Submit Theory Button --- */
+.submit-theory-container {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.submit-theory-btn {
+  width: auto;
+  padding: 1rem 2rem;
+}
+
+.submit-theory-btn:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* --- Feedback Overlay Modal (Persona Screen) --- */
+.feedback-modal-overlay {
+  position: absolute; /* Absolute to the tab content area */
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(18, 18, 18, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.feedback-modal-content {
+  background: var(--bg-panel);
+  padding: 3rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+  max-width: 500px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+}
+
+.feedback-modal-content.error {
+  border-color: rgba(255, 51, 102, 0.4);
+  box-shadow: inset 0 0 30px rgba(255, 51, 102, 0.1), 0 20px 40px rgba(0, 0, 0, 0.8);
+}
+
+.feedback-modal-content.success {
+  border-color: rgba(0, 229, 255, 0.4);
+  box-shadow: inset 0 0 30px rgba(0, 229, 255, 0.1), 0 20px 40px rgba(0, 0, 0, 0.8);
+}
+
+.feedback-title {
+  margin: 0 0 1rem 0;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.feedback-modal-content.error .feedback-title { color: #FF3366; }
+.feedback-modal-content.success .feedback-title { color: var(--accent-cyan); }
+
+.feedback-message {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin: 0 0 1.5rem 0;
+}
+
+.mt-1 {
+  margin-top: 1rem;
+}

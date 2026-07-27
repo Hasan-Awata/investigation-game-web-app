@@ -1,0 +1,32 @@
+:root {
+  --bg-dark: #121212;
+  --bg-panel: #1E1E1E;
+  --text-primary: #F5F5F5;
+  --text-secondary: #A0A0A0;
+  --accent-cyan: #00E5FF;
+  --accent-amber: #FFB300;
+  
+  /* Typography */
+  --font-primary: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+.terminal-text {
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+  padding: 2rem;
+  text-align: center;
+}
+
+.terminal-text.error {
+  color: #FF3366; /* Crimson for failures */
+}

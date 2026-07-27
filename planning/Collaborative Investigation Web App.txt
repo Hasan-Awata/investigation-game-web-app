@@ -1,0 +1,66 @@
+Collaborative Investigation Web Application: Product Requirements & Game Flow
+Executive Summary
+This project is a collaborative, web-based detective game where players team up to solve structured, multi-level investigation cases. Administrated by system owners who input pre-defined cases, players act as investigators sifting through evidence and building a consensus to crack the mystery. The system tracks completion, flagging cases as SOLVED for any user who participated in a successful session, whether collaboratively or solo.
+
+1. Session Initialization & Role Management
+The game relies on a room-based multiplayer architecture to manage shared instances of a case.
+
+Session Creation (The Host): The first user to initiate a specific case becomes the Host. The system generates a unique invite code for this session.
+
+Joining: The Host shares this code with friends, allowing them to join the active session.
+
+Voting Weights: To prevent deadlocks and reward session creation, the Host's vote carries a weight of 2, while all other players' votes carry a weight of 1.
+
+Hint Authority: The Host is the only player authorized to interact with the Persona/Hint system.
+
+2. The Core Gameplay Loop (Case Structure)
+A single Case is divided into sequential phases called Levels. Players must successfully clear the current Level before the system advances them to the next. Players have initial set of evidences that can be increased when they complete case levels.
+
+A. Level Phase
+Evidence Review: Upon entering a Level, players are presented with a specific set of evidence (documents, timelines, testimonies, forensic reports). In each level, the players acquire new evidences that will be added to the set of evidences.
+
+Verdicts (The Assessment): The Level culminates in a series of "Verdicts," represented structurally as Multiple Choice Questions (MCQs).
+
+Visual Variety: While the underlying database schema for Verdicts remains strictly MCQ-based, the frontend presentation varies to prevent fatigue (e.g., placing evidence on a timeline, selecting the contradictory document, standard Q&A).
+
+B. Collaborative Voting & Consensus
+Players discuss the evidence and vote on the correct answer for each Verdict.
+
+The system tallies the votes in real-time, factoring in the Host's double-vote weight.
+
+Once all users lock in their choices for all Verdicts in the Level, the team submits their final theory as a single batch.
+
+3. Resolution, Feedback, & Hint Mechanics
+To maintain tension, the system does not provide immediate feedback on individual MCQ selections. Feedback is deferred until the final batch submission for the Level.
+
+Success (Correct Submission): If the consensus answers for all Verdicts are correct, the system automatically transitions the room to the next Level, unlocking new evidence.
+
+Failure (Incorrect Submission): If one or more Verdicts are incorrect, the system rejects the submission. It does not explicitly reveal which specific question was wrong.
+
+The Persona (Safety Net): Upon a failed submission, the Persona Hint System unlocks.
+
+The Host can trigger the Persona.
+
+The Persona provides a narrative clue indicating where the team's logic is flawed (e.g., "Take another look at the coroner's timeline"), guiding them back to the evidence to adjust their votes.
+
+Case Completion
+Players repeat the Level Phase loop until they reach the final Level. Upon successfully submitting the correct answers for the final Verdicts, the system displays the case closure narrative and permanently flags the case as SOLVED in the database for all participating users' accounts.
+
+4. Core Entities & Data Architecture
+To ensure clean development and prevent AI hallucination during implementation, the system strictly relies on the following relational structure:
+
+User: Tracks player accounts and their associated SOLVED case records.
+
+Room/Session: Manages the active game state, storing the generated invite code, the assigned Host ID, and connected player IDs.
+
+Case: The parent entity created by the Admin. Contains basic metadata (Title, Difficulty, Description).
+
+Level: A sequential child of the Case. Contains a LevelOrder integer to dictate progression.
+
+Evidence: Associated with a specific Level. Contains the asset data (text, image URLs) players review.
+
+Verdict (MCQ): Associated with a specific Level. Represents the question or puzzle to be solved.
+
+VerdictOption: The available choices for a specific Verdict. Contains a boolean IsCorrect flag.
+
+RoomVote: A transactional table tracking live user selections per Verdict within an active Room to calculate consensus and validate against the IsCorrect flag upon submission.

@@ -1,0 +1,184 @@
+import { type Result, success, failure } from '../utils/Result';
+import type { GameCase, GameRoom } from '../types';
+import { getToken, logout } from './auth'; // Note the added 'logout' import
+
+const API_BASE_URL = 'http://localhost:8000/api';
+
+// Centralized helper to clear storage and boot the user back to the login screen
+const handleUnauthorized = () => {
+  logout();
+  window.location.href = '/'; 
+};
+
+export const fetchCases = async (): Promise<Result<GameCase[]>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/cases`, {
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        handleUnauthorized();
+        return failure('Session expired.');
+      }
+      return failure(`Server responded with status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return success(data.cases);
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
+
+export const createRoom = async (caseId: number): Promise<Result<GameRoom>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ case_id: caseId }),
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        handleUnauthorized();
+        return failure('Session expired.');
+      }
+      const data = await response.json();
+      return failure(data.message || 'Failed to create session.');
+    }
+    
+    const data = await response.json();
+    return success(data.room);
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
+
+export const joinRoom = async (inviteCode: string): Promise<Result<GameRoom>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/join`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ invite_code: inviteCode }),
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        handleUnauthorized();
+        return failure('Session expired.');
+      }
+      const data = await response.json();
+      return failure(data.message || 'Failed to join session.');
+    }
+    
+    const data = await response.json();
+    return success(data.room);
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
+
+export const fetchRoomState = async (roomId: number): Promise<Result<GameRoom>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        handleUnauthorized();
+        return failure('Session expired.');
+      }
+      const data = await response.json();
+      return failure(data.message || 'Failed to fetch room state.');
+    }
+    
+    const data = await response.json();
+    return success(data.room);
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
+
+// Add to src/services/api.ts
+
+export const lockVote = async (roomId: number, questionId: number, choiceId: number): Promise<Result<any>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/questions/${questionId}/vote`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ choice_id: choiceId }),
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) handleUnauthorized();
+      return failure('Failed to lock vote.');
+    }
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
+
+export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string }>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) handleUnauthorized();
+      return failure('Failed to submit theory.');
+    }
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
+
+export const triggerPersonaHint = async (roomId: number): Promise<Result<{ hint: string }>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/hint`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) handleUnauthorized();
+      return failure('Failed to retrieve Persona analysis.');
+    }
+    const data = await response.json();
+    return success(data.data); // The backend wraps it in a 'data' object
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
