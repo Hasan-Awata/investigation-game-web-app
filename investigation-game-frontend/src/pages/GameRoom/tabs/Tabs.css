@@ -436,3 +436,58 @@
 .mt-1 {
   margin-top: 1rem;
 }
+
+/* --- Tactical Toast Notification --- */
+.system-toast-notification {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  background: rgba(15, 15, 20, 0.95);
+  border: 1px solid var(--accent-amber);
+  border-left: 4px solid var(--accent-amber);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 170, 0, 0.15);
+  padding: 1rem 1.5rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  z-index: 9999;
+  animation: slide-in-toast 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.toast-icon {
+  font-size: 1.5rem;
+  color: var(--accent-amber);
+}
+
+.toast-text-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.toast-header {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-amber);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+}
+
+.toast-message {
+  font-family: var(--font-primary);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+@keyframes slide-in-toast {
+  0% {
+    opacity: 0;
+    transform: translateX(50px) translateY(10px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) translateY(0);
+  }
+}

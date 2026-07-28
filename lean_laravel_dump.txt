@@ -788,6 +788,260 @@ class VoteController extends Controller
 
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminCaseController.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\GameCase;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Storage;
+
+class AdminCaseController extends Controller
+{
+    /**
+     * Store a newly created case with an optional cover image.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'story' => 'required|string',
+            'min_player_XP' => 'required|integer|min:0',
+            'XP_on_solve' => 'required|integer|min:0',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096', // Max 4MB
+        ]);
+
+        // Note: We don't store the image path in the `cases` table currently, 
+        // but you can save it to the filesystem for the frontend to consume.
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            // Stores the file in storage/app/public/cases and returns the path
+            $imagePath = $request->file('image')->store('cases', 'public');
+        }
+
+        $case = GameCase::create([
+            'title' => $validated['title'],
+            'story' => $validated['story'],
+            'min_player_XP' => $validated['min_player_XP'],
+            'XP_on_solve' => $validated['XP_on_solve'],
+        ]);
+
+        return response()->json([
+            'message' => 'Case created successfully.',
+            'case' => $case,
+            'image_url' => $imagePath ? asset('storage/' . $imagePath) : null
+        ], 201);
+    }
+
+    /**
+     * Fetch all cases and their associated levels for admin dropdowns.
+     */
+    public function index(): JsonResponse
+    {
+        $cases = GameCase::with(['levels' => function ($query) {
+            $query->select('id', 'case_id', 'title', 'order_index')->orderBy('order_index', 'asc');
+        }])
+        ->select('id', 'title')
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+        return response()->json([
+            'cases' => $cases
+        ], 200);
+    }
+
+}
+
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminEvidenceController.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Evidence;
+use App\Enums\EvidenceType;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rules\Enum;
+
+class AdminEvidenceController extends Controller
+{
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'level_id' => 'required|exists:levels,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'evidence_type' => ['required', new Enum(EvidenceType::class)],
+            'paragraph' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', // Max 10MB
+        ]);
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('evidence/images', 'public');
+        }
+
+        $audioPath = null;
+        if ($request->hasFile('audio')) {
+            $audioPath = $request->file('audio')->store('evidence/audio', 'public');
+        }
+
+        $evidence = Evidence::create([
+            'level_id' => $validated['level_id'],
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'evidence_type' => $validated['evidence_type'],
+            'paragraph' => $validated['paragraph'],
+            'img_url' => $imagePath ? asset('storage/' . $imagePath) : null,
+            'audio_url' => $audioPath ? asset('storage/' . $audioPath) : null,
+        ]);
+
+        return response()->json([
+            'message' => 'Evidence added successfully.',
+            'evidence' => $evidence
+        ], 201);
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminLevelController.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Level;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class AdminLevelController extends Controller
+{
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'case_id' => 'required|exists:cases,id',
+            'title' => 'required|string|max:255',
+            'details' => 'required|string',
+            'order_index' => 'required|integer|min:1',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+        ]);
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $imagePath = $request->file('image')->store('levels', 'public');
+        }
+
+        $level = Level::create([
+            'case_id' => $validated['case_id'],
+            'title' => $validated['title'],
+            'details' => $validated['details'],
+            'order_index' => $validated['order_index'],
+            'img_url' => $imagePath ? asset('storage/' . $imagePath) : null,
+        ]);
+
+        return response()->json([
+            'message' => 'Level created successfully.',
+            'level' => $level
+        ], 201);
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminQuestionController.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Question;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+
+class AdminQuestionController extends Controller
+{
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'level_id' => 'required|exists:levels,id',
+            'text' => 'required|string',
+            'msg_when_wrong' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'choices' => 'required|array|min:2',
+            'choices.*.text' => 'required|string|max:255',
+            'choices.*.is_correct' => 'required|boolean',
+        ]);
+
+        return DB::transaction(function () use ($request, $validated) {
+            $imagePath = null;
+            if ($request->hasFile('image')) {
+                $imagePath = $request->file('image')->store('questions', 'public');
+            }
+
+            // 1. Create the Question
+            $question = Question::create([
+                'level_id' => $validated['level_id'],
+                'text' => $validated['text'],
+                'msg_when_wrong' => $validated['msg_when_wrong'],
+                'img_url' => $imagePath ? asset('storage/' . $imagePath) : null,
+            ]);
+
+            // 2. Create the associated Choices
+            $choicesData = array_map(function ($choice) use ($question) {
+                return [
+                    'question_id' => $question->id,
+                    'text' => $choice['text'],
+                    'is_correct' => $choice['is_correct'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }, $validated['choices']);
+
+            $question->choices()->insert($choicesData);
+
+            return response()->json([
+                'message' => 'Question and choices created successfully.',
+                'question' => $question->load('choices')
+            ], 201);
+        });
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Middleware\IsAdmin.php
+----------------------------------------
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+class IsAdmin
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        if (!$request->user() || !$request->user()->is_admin) {
+            return response()->json(['error' => 'Unauthorized. Admin access required.'], 403);
+        }
+
+        return $next($request);
+    }
+}
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\Choice.php
 ----------------------------------------
 <?php
@@ -911,9 +1165,9 @@ class GameCase extends Model
     /**
      * Users who have played or solved this case, tracked via the case_user pivot table.
      */
-    public function users(): BelongsToMany
+public function users(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'case_user')
+        return $this->belongsToMany(User::class, 'case_user', 'case_id', 'user_id')
             ->withPivot('status', 'completed_at')
             ->withTimestamps();
     }
@@ -3732,6 +3986,29 @@ return new class extends Migration {
 };
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_27_185851_add_is_admin_to_users_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('users', function (Blueprint $table) {
+            $table->boolean('is_admin')->default(false)->after('XP');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('is_admin');
+        });
+    }
+};
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\DatabaseSeeder.php
 ----------------------------------------
 <?php
@@ -3746,13 +4023,24 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create a couple of test users
+        // 1. Create the Master Admin Account
+        User::create([
+            'username' => 'MasterAdmin',
+            'name' => 'System Administrator',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
+            'XP' => 0,
+            'is_admin' => true, 
+        ]);
+
+        // 2. Create a couple of standard test users
         User::create([
             'username' => 'HostPlayer',
             'name' => 'Host User',
             'email' => 'host@example.com',
             'password' => Hash::make('password'),
             'XP' => 0,
+            'is_admin' => false,
         ]);
 
         User::create([
@@ -3761,15 +4049,15 @@ class DatabaseSeeder extends Seeder
             'email' => 'guest@example.com',
             'password' => Hash::make('password'),
             'XP' => 0,
+            'is_admin' => false,
         ]);
 
-        // Run the Game Case seeder
+        // 3. Run the Game Case seeder
         $this->call([
             GameCaseSeeder::class,
         ]);
     }
 }
-
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\GameCaseSeeder.php
@@ -3795,34 +4083,34 @@ class GameCaseSeeder extends Seeder
     {
         // 1. Create the Parent Case
         $case = GameCase::create([
-            'title' => 'The Midnight Syndicate',
-            'story' => "A prominent local businessman was found unconscious in his office. You must piece together the timeline and identify the culprit before they strike again.\n\nThe investigation requires absolute discretion. Review the initial reports from the scene, determine the point of entry, and analyze the financial records to identify who had the most to gain.",
+            'title' => 'The Midnight Broadcast',
+            'story' => "Late-night radio host Julian Vance was found dead in his soundproof studio booth during a live midnight broadcast. The studio door was bolted from the inside, the mixing board was still looping his final track, and the authorities initially ruled it a sudden medical emergency. But a closer look at the station's logs reveals someone altered the audio automation timer minutes before he died.",
             'min_player_XP' => 0,
-            'XP_on_solve' => 150,
+            'XP_on_solve' => 250,
         ]);
 
         // 2. Create Level 1: The Scene of the Crime
         $level1 = Level::create([
             'case_id' => $case->id,
-            'title' => 'Phase 1: Office Investigation',
-            'details' => 'Review the initial reports from the scene and determine the point of entry.',
+            'title' => 'Phase 1: The Locked Booth',
+            'details' => 'Establish how the intruder accessed the sealed studio and determine the exact time of death.',
             'order_index' => 1,
         ]);
 
         $level2 = Level::create([
             'case_id' => $case->id,
-            'title' => 'Phase 2: Accident Reconstruction',
-            'details' => 'Review the initial reports from the scene and determine the point of entry.',
+            'title' => 'Phase 2: The Digital Loop',
+            'details' => 'Unmask the accomplice who manipulated the broadcast automation system to cover up the timing of the murder.',
             'order_index' => 2,
         ]);
 
         // EVIDENCE 1: Document Variant
         Evidence::create([
             'level_id' => $level1->id,
-            'title' => 'Police Report #102',
-            'description' => 'First responder notes indicating a shattered window and a knocked-over filing cabinet.',
+            'title' => 'Station Floor Plan & Keycard Access #102',
+            'description' => 'Key card logs',
             'evidence_type' => EvidenceType::Document,
-            'paragraph' => 'The window facing the alleyway was broken from the outside. Glass shards were found scattered exclusively on the interior rug.',
+            'paragraph' => 'wide-angle view of the master studio. The main access door is deadbolted from the inside. A half-empty coffee mug sits on the mixing desk, and the emergency studio exit window facing the alley is cracked open three inches.',
         ]);
 
         // EVIDENCE 2: Testimony Variant
@@ -3846,41 +4134,56 @@ class GameCaseSeeder extends Seeder
         // EVIDENCE 4: Image Variant
         Evidence::create([
             'level_id' => $level1->id,
-            'title' => 'Office Door Latch',
-            'description' => 'Crime scene photo showing forced entry marks.',
+            'title' => 'Studio Overview',
+            'description' => 'A wide-angle view of the master studio. The main access door is deadbolted from the inside. A half-empty coffee mug sits on the mixing desk, and the emergency studio exit window facing the alley is cracked open three inches.',
             'evidence_type' => EvidenceType::Image,
-            'img_url' => '/assets/cases/latch-detail.jpg', // Feel free to point this to a real image later
+            'img_url' => '/assets/cases/latch-detail.jpg',
         ]);
 
         // EVIDENCE 5: Forensic Variant
         Evidence::create([
             'level_id' => $level1->id,
-            'title' => 'Toxicology Summary',
-            'description' => 'Preliminary lab results from the victim.',
+            'title' => 'Coroner\'s Preliminary Log',
+            'description' => 'The preliminary coroner\'s report on the victim\'s body.',
             'evidence_type' => EvidenceType::Forensic,
-            'paragraph' => 'High concentrations of synthetic sedatives found in the bloodstream, administered approximately 1 hour before discovery.',
+            'paragraph' => 'The coroner\'s report indicates that the victim died from an acute potassium chloride injection, with a puncture wound found on his left wrist, obscured by a heavy wristwatch.',
         ]);
 
         // 3. Create the Assessment/Puzzle for Level 1
         $question1 = Question::create([
             'level_id' => $level1->id,
-            'text' => 'Based on the initial evidence, how did the perpetrator enter the building?',
-            'msg_when_wrong' => 'Take a closer look at the physical distribution of the glass and the janitor\'s timeline.',
+            'text' => 'Given that the door was bolted from the inside and no keycards were logged after 11:00 PM, how did the perpetrator exit or enter the room without leaving an electronic footprint?',
+            'msg_when_wrong' => 'Check the physical state of the room relative to the keycard logs. Is there another physical entry point?',
         ]);
 
-        Choice::create(['question_id' => $question1->id, 'text' => 'Through the front lobby.', 'is_correct' => false]);
-        Choice::create(['question_id' => $question1->id, 'text' => 'Through the alleyway window.', 'is_correct' => true]);
-        Choice::create(['question_id' => $question1->id, 'text' => 'They hid in the office before closing.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question1->id, 'text' => 'They used a cloned administrator master keycard at the main door', 'is_correct' => false]);
+        Choice::create(['question_id' => $question1->id, 'text' => 'They slipped through the cracked emergency alley window after tampering with the latch.', 'is_correct' => true]);
+        Choice::create(['question_id' => $question1->id, 'text' => 'They hid inside the soundproofing panels until the morning shift arrived.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question1->id, 'text' => 'They poisoned Julian remotely through the building\'s central air ventilation system.', 'is_correct' => false]);
 
         $question2 = Question::create([
             'level_id' => $level1->id,
-            'text' => 'What was the time of the victim\'s last known communication?',
-            'msg_when_wrong' => 'Check the voicemail transcript for the exact time.',
+            'text' => 'According to the coroner\'s report, what physical detail contradicts the idea that Julian died of natural causes while alone?',
+            'msg_when_wrong' => 'Look closer at the physical body inspection details rather than the room surroundings.',
         ]);
 
-        Choice::create(['question_id' => $question2->id, 'text' => '11:47 PM.', 'is_correct' => true]);
-        Choice::create(['question_id' => $question2->id, 'text' => '11:30 PM.', 'is_correct' => false]);
-        Choice::create(['question_id' => $question2->id, 'text' => '12:00 AM.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question2->id, 'text' => 'A hidden needle puncture wound on his left wrist beneath his heavy watch.', 'is_correct' => true]);
+        Choice::create(['question_id' => $question2->id, 'text' => 'The cold temperature inside the soundproof booth.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question2->id, 'text' => 'The fact that his coffee mug contained traces of a rare sedative.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question2->id, 'text' => 'The broken glass found scattered underneath the mixing board desk.', 'is_correct' => false]);
+
+
+        // 3. Create the Assessment/Puzzle for Level 2
+        $question3 = Question::create([
+            'level_id' => $level2->id,
+            'text' => 'Terminal B was used to override the broadcast at 11:58 PM. Which staff member\'s alibi falls apart when cross-referenced with the building\'s physical timeline and terminal location?',
+            'msg_when_wrong' => 'Examine the timing of Sarah\'s trip to the store versus when Terminal B was accessed.',
+        ]);
+
+        Choice::create(['question_id' => $question3->id, 'text' => 'Mark, because payroll accounts can only be accessed from home via a secure VPN.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question3->id, 'text' => 'David, because security guards are required to stay near the main entrance monitors.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question3->id, 'text' => 'Sarah, because her claim of being out of the building during the midnight override contradicts the active terminal timestamp.', 'is_correct' => true]);
+        Choice::create(['question_id' => $question3->id, 'text' => 'None of them, as all electronic timestamps match their physical statements perfectly.', 'is_correct' => false]);
     }
 }
 
@@ -3896,6 +4199,11 @@ use App\Http\Controllers\GameRoomController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\PersonaController;
+use App\Http\Controllers\Admin\AdminCaseController;
+use App\Http\Controllers\Admin\AdminLevelController;
+use App\Http\Controllers\Admin\AdminEvidenceController;
+use App\Http\Controllers\Admin\AdminQuestionController;
+use App\Http\Middleware\IsAdmin; 
 
 // Public Authentication Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -3921,6 +4229,13 @@ Route::middleware('auth:sanctum')->group(function () {
     // Persona Hint System
     Route::post('/rooms/{room}/hint', [PersonaController::class, 'store']);
     
+Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
+    Route::get('/cases', [AdminCaseController::class, 'index']); 
+    Route::post('/cases', [AdminCaseController::class, 'store']);
+    Route::post('/levels', [AdminLevelController::class, 'store']);
+    Route::post('/evidences', [AdminEvidenceController::class, 'store']);
+    Route::post('/questions', [AdminQuestionController::class, 'store']);
+});
 });
 
 

@@ -11,6 +11,7 @@ class Choice extends Model
         'question_id',
         'text',
         'is_correct',
+        'unlocks_evidence_id', 
     ];
 
     protected $casts = [

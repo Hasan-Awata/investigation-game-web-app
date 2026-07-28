@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
 Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
     Route::get('/cases', [AdminCaseController::class, 'index']); 
     Route::post('/cases', [AdminCaseController::class, 'store']);
+    Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']); 
     Route::post('/levels', [AdminLevelController::class, 'store']);
     Route::post('/evidences', [AdminEvidenceController::class, 'store']);
     Route::post('/questions', [AdminQuestionController::class, 'store']);

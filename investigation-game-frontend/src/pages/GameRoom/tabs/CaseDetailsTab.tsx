@@ -9,10 +9,11 @@ export default function CaseDetailsTab() {
     title: "Case Data Missing",
     story: "The case metadata was not eager-loaded by the server.",
     min_player_XP: 0,
-    XP_on_solve: 0
+    XP_on_solve: 0,
+    img_url: null
   };
 
-  const heroImageUrl = `/assets/cases/case-${gameCase.id}.jpg`; 
+  const heroImageUrl = gameCase.img_url || '/placeholder-crime-scene.jpg'; 
 
   return (
     <div className="case-details-tab">

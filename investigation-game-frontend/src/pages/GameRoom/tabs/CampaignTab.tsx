@@ -11,17 +11,16 @@ export default function CampaignTab() {
   const roomId = room.id;
   const roomStatus = room.status;
 
-  // 1. Consume the business logic from the custom hook
   const {
     votes,
     isSubmitting,
     feedback,
+    toastMessage, 
     handleSelectChoice,
     handleSubmitTheory,
     clearFeedback
   } = useInvestigationPhase(roomId, refreshRoomData);
 
-  // 2. Local UI State (accordion drawer)
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const sortedLevels = [...levels].sort((a, b) => a.order_index - b.order_index);
@@ -52,6 +51,17 @@ export default function CampaignTab() {
         </div>
       )}
 
+      {/* FIXED: The Toast Notification must be outside the feedback overlay block */}
+      {toastMessage && (
+        <div className="system-toast-notification">
+          <span className="toast-icon pulse-icon">📄</span>
+          <div className="toast-text-block">
+            <span className="toast-header">INTEL ACQUIRED</span>
+            <p className="toast-message">{toastMessage}</p>
+          </div>
+        </div>
+      )}
+
       <div className="roadmap-timeline">
         {sortedLevels.map((level, index) => {
           let status = 'locked';
@@ -66,7 +76,9 @@ export default function CampaignTab() {
           const lineStatus = level.order_index < currentLevelIndex ? 'active-line' : '';
           const isExpanded = expandedId === level.id;
           
-          const allQuestionsAnswered = level.questions?.every(q => votes[q.id] !== undefined);
+          // Strictly evaluate mandatory questions to enable the submit button
+          const mandatoryQuestions = level.questions?.filter(q => q.is_mandatory) || [];
+          const allMandatoryAnswered = mandatoryQuestions.every(q => votes[q.id] !== undefined);
 
           return (
             <div key={level.id} className={`roadmap-node ${status}`}>
@@ -103,7 +115,26 @@ export default function CampaignTab() {
                     <div className="questions-list">
                       {level.questions.map((q, qIdx) => (
                         <div key={q.id} className="question-item">
-                          <span className="question-number">Q{qIdx + 1}</span>
+                          
+                          {/* Optional narrative marker */}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <span className="question-number">Q{qIdx + 1}</span>
+                            {!q.is_mandatory && (
+                              <span 
+                                title="This question provides additional evidence in some contexts." 
+                                style={{ 
+                                  color: 'var(--accent-amber)', 
+                                  marginTop: '0.35rem', 
+                                  fontSize: '1.1rem', 
+                                  cursor: 'help', 
+                                  animation: 'pulse-icon 2s infinite' 
+                                }}
+                              >
+                                📄
+                              </span>
+                            )}
+                          </div>
+
                           <div className="question-body">
                             <p className="question-text">{q.text}</p>
                             <div className="choices-preview">
@@ -136,7 +167,7 @@ export default function CampaignTab() {
                       <div className="submit-theory-container">
                         <button 
                           className="btn-primary submit-theory-btn"
-                          disabled={!allQuestionsAnswered || isSubmitting}
+                          disabled={!allMandatoryAnswered || isSubmitting}
                           onClick={handleSubmitTheory}
                         >
                           {isSubmitting ? 'Evaluating...' : 'Submit Theory'}

@@ -6,6 +6,9 @@ import { lockVote, submitAssessment, triggerPersonaHint } from '@/services/api';
 export function useInvestigationPhase(roomId: number, refreshRoomData: () => void) {
   const [votes, setVotes] = useState<Record<number, number>>({});
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  
+  // Dedicated state for non-blocking notifications
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // Mutation for voting
   const voteMutation = useMutation({
@@ -25,11 +28,24 @@ export function useInvestigationPhase(roomId: number, refreshRoomData: () => voi
     },
     onSuccess: async (data) => {
       if (data.status === 'success') {
+        // 1. Show the success modal immediately
         setFeedback({ type: 'success', message: 'Verdict accepted. Advancing to the next phase.' });
+        
         setTimeout(() => {
+          // 2. Clear the modal and advance the level
           setFeedback(null);
           setVotes({}); 
           refreshRoomData(); 
+          
+          // 3. Trigger the TOAST notification instead of a modal
+          if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
+            setTimeout(() => {
+              setToastMessage('SYSTEM ALERT: New evidence recovered based on your narrative deductions.');
+              
+              // Auto-dismiss the toast after 4.5 seconds
+              setTimeout(() => setToastMessage(null), 4500);
+            }, 500);
+          }
         }, 2000);
       } else {
         const hintResult = await triggerPersonaHint(roomId);
@@ -65,8 +81,9 @@ export function useInvestigationPhase(roomId: number, refreshRoomData: () => voi
 
   return {
     votes,
-    isSubmitting: submitTheoryMutation.isPending, // Built-in loading state
+    isSubmitting: submitTheoryMutation.isPending,
     feedback,
+    toastMessage, // Expose the toast state to the component
     handleSelectChoice,
     handleSubmitTheory,
     clearFeedback

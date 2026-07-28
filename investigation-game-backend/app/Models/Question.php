@@ -8,11 +8,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Question extends Model
 {
-    protected $fillable = [
+protected $fillable = [
         'level_id',
         'text',
         'img_url',
         'msg_when_wrong',
+        'is_mandatory', 
     ];
 
     public function level(): BelongsTo

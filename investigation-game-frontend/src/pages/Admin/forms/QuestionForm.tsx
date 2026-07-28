@@ -6,6 +6,7 @@ interface ChoiceState {
   id: string; 
   text: string;
   is_correct: boolean;
+  unlocks_evidence_id?: string; 
 }
 
 export default function QuestionForm() {
@@ -14,17 +15,17 @@ export default function QuestionForm() {
   
   const [text, setText] = useState('');
   const [msgWhenWrong, setMsgWhenWrong] = useState('');
+  const [isMandatory, setIsMandatory] = useState(true); // NEW state
   const [image, setImage] = useState<File | null>(null);
   
   const [choices, setChoices] = useState<ChoiceState[]>([
-    { id: crypto.randomUUID(), text: '', is_correct: true },
-    { id: crypto.randomUUID(), text: '', is_correct: false }
+    { id: crypto.randomUUID(), text: '', is_correct: true, unlocks_evidence_id: '' },
+    { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '' }
   ]);
   
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  // 1. Fetch cases and levels for the cascading dropdowns
   const { data: cases = [], isLoading: isFetchingCases } = useQuery({
     queryKey: ['adminCases'],
     queryFn: async () => {
@@ -34,8 +35,12 @@ export default function QuestionForm() {
     }
   });
 
+  // Extract the nested levels and evidence based on selections
   const selectedCase = cases.find((c: any) => c.id.toString() === selectedCaseId);
   const availableLevels = selectedCase?.levels || [];
+  
+  const selectedLevel = availableLevels.find((l: any) => l.id.toString() === levelId);
+  const availableEvidences = selectedLevel?.evidences || []; // Pull the evidence for the dropdowns
 
   const mutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -44,13 +49,14 @@ export default function QuestionForm() {
       return result.value;
     },
     onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Question and choices committed to the database.' });
+      setFeedback({ type: 'success', message: 'Question and narrative choices committed to the database.' });
       setText('');
       setMsgWhenWrong('');
+      setIsMandatory(true);
       setImage(null);
       setChoices([
-        { id: crypto.randomUUID(), text: '', is_correct: true },
-        { id: crypto.randomUUID(), text: '', is_correct: false }
+        { id: crypto.randomUUID(), text: '', is_correct: true, unlocks_evidence_id: '' },
+        { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '' }
       ]);
       if (imageInputRef.current) imageInputRef.current.value = '';
     },
@@ -59,9 +65,8 @@ export default function QuestionForm() {
     }
   });
 
-  // Choice management functions
   const addChoice = () => {
-    setChoices([...choices, { id: crypto.randomUUID(), text: '', is_correct: false }]);
+    setChoices([...choices, { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '' }]);
   };
 
   const removeChoice = (id: string) => {
@@ -74,6 +79,10 @@ export default function QuestionForm() {
 
   const updateChoiceText = (id: string, newText: string) => {
     setChoices(choices.map(c => c.id === id ? { ...c, text: newText } : c));
+  };
+
+  const updateChoiceEvidence = (id: string, evidenceId: string) => {
+    setChoices(choices.map(c => c.id === id ? { ...c, unlocks_evidence_id: evidenceId } : c));
   };
 
   const setCorrectChoice = (id: string) => {
@@ -92,12 +101,17 @@ export default function QuestionForm() {
     const formData = new FormData();
     formData.append('level_id', levelId);
     formData.append('text', text);
+    formData.append('is_mandatory', isMandatory ? '1' : '0'); // Append flag
     if (msgWhenWrong) formData.append('msg_when_wrong', msgWhenWrong);
     if (image) formData.append('image', image);
 
     choices.forEach((choice, index) => {
       formData.append(`choices[${index}][text]`, choice.text);
       formData.append(`choices[${index}][is_correct]`, choice.is_correct ? '1' : '0');
+      // Only append if an evidence was actually selected
+      if (choice.unlocks_evidence_id) {
+        formData.append(`choices[${index}][unlocks_evidence_id]`, choice.unlocks_evidence_id);
+      }
     });
 
     mutation.mutate(formData);
@@ -149,6 +163,20 @@ export default function QuestionForm() {
           </div>
         </div>
 
+        {/* Narrative Toggle */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px' }}>
+          <input 
+            type="checkbox" 
+            id="mandatory-toggle"
+            checked={isMandatory}
+            onChange={(e) => setIsMandatory(e.target.checked)}
+            style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }}
+          />
+          <label htmlFor="mandatory-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
+            <strong>Mandatory Verdict:</strong> Players must answer this correctly to progress to the next phase. (Uncheck for optional narrative paths).
+          </label>
+        </div>
+
         <div className="form-group">
           <label>The Verdict (Question Text)</label>
           <textarea 
@@ -176,35 +204,54 @@ export default function QuestionForm() {
 
         <div style={{ margin: '1.5rem 0', padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>Multiple Choices</label>
+            <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>Multiple Choices & Narrative Unlocks</label>
             <button type="button" onClick={addChoice} className="btn-secondary" style={{ padding: '0.5rem 1rem', flex: 'none' }}>
               + Add Choice
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {choices.map((choice, index) => (
-              <div key={choice.id} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                <input 
-                  type="radio" 
-                  name="correct_choice" 
-                  checked={choice.is_correct}
-                  onChange={() => setCorrectChoice(choice.id)}
-                  style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-success)' }}
-                  title="Mark as correct answer"
-                />
-                <input 
-                  type="text" className="admin-input" required style={{ flex: 1 }}
-                  placeholder={`Choice ${index + 1}`}
-                  value={choice.text} onChange={(e) => updateChoiceText(choice.id, e.target.value)} 
-                />
-                <button 
-                  type="button" onClick={() => removeChoice(choice.id)}
-                  style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.5rem' }}
-                  title="Remove choice"
-                >
-                  ×
-                </button>
+              <div key={choice.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '6px', border: '1px dashed rgba(255,255,255,0.1)' }}>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <input 
+                    type="radio" 
+                    name="correct_choice" 
+                    checked={choice.is_correct}
+                    onChange={() => setCorrectChoice(choice.id)}
+                    style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-success)' }}
+                    title="Mark as correct answer"
+                  />
+                  <input 
+                    type="text" className="admin-input" required style={{ flex: 1 }}
+                    placeholder={`Choice ${index + 1}`}
+                    value={choice.text} onChange={(e) => updateChoiceText(choice.id, e.target.value)} 
+                  />
+                  <button 
+                    type="button" onClick={() => removeChoice(choice.id)}
+                    style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.5rem' }}
+                    title="Remove choice"
+                  >
+                    ×
+                  </button>
+                </div>
+                
+                {/* Optional Evidence Unlock Dropdown */}
+                <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '2.5rem' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Evidence:</label>
+                  <select 
+                    className="admin-input" 
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }}
+                    value={choice.unlocks_evidence_id || ''} 
+                    onChange={(e) => updateChoiceEvidence(choice.id, e.target.value)}
+                    disabled={!levelId}
+                  >
+                    <option value="">-- No Narrative Unlock --</option>
+                    {availableEvidences.map((ev: any) => (
+                      <option key={ev.id} value={ev.id}>EX-{ev.id.toString().padStart(3, '0')} : {ev.title}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
             ))}
           </div>

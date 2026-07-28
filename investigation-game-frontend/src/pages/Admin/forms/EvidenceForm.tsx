@@ -11,10 +11,10 @@ export default function EvidenceForm() {
   // 2. Shared Fields
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [paragraph, setParagraph] = useState(''); // Moved up to shared fields
   const [evidenceType, setEvidenceType] = useState<EvidenceType>('document');
   
-  // 3. Type-Specific Fields
-  const [paragraph, setParagraph] = useState('');
+  // 3. Type-Specific Fields (Media only now)
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
   
@@ -33,7 +33,6 @@ export default function EvidenceForm() {
     }
   });
 
-  // Derive the available levels based on the selected case
   const selectedCase = cases.find((c: any) => c.id.toString() === selectedCaseId);
   const availableLevels = selectedCase?.levels || [];
 
@@ -45,7 +44,6 @@ export default function EvidenceForm() {
     },
     onSuccess: () => {
       setFeedback({ type: 'success', message: 'Evidence successfully secured in the database.' });
-      // Reset form but preserve Case & Level ID for rapid data entry of multiple evidences
       setTitle('');
       setDescription('');
       setParagraph('');
@@ -67,12 +65,12 @@ export default function EvidenceForm() {
     formData.append('level_id', levelId);
     formData.append('title', title);
     formData.append('evidence_type', evidenceType);
-    if (description) formData.append('description', description);
     
-    // Append fields based strictly on the selected type to prevent payload bloat
-    if (['document', 'testimony', 'forensic'].includes(evidenceType) && paragraph) {
-      formData.append('paragraph', paragraph);
-    }
+    // Always append these so the keys exist in the request (Laravel will convert "" to null)
+    formData.append('description', description);
+    formData.append('paragraph', paragraph);
+    
+    // Media remains conditional
     if (evidenceType === 'image' && image) {
       formData.append('image', image);
     }
@@ -85,18 +83,6 @@ export default function EvidenceForm() {
 
   const renderTypeSpecificFields = () => {
     switch (evidenceType) {
-      case 'document':
-      case 'testimony':
-      case 'forensic':
-        return (
-          <div className="form-group">
-            <label>Text Content (Paragraph)</label>
-            <textarea 
-              className="admin-textarea" required
-              value={paragraph} onChange={(e) => setParagraph(e.target.value)} 
-            />
-          </div>
-        );
       case 'image':
         return (
           <div className="form-group">
@@ -143,7 +129,7 @@ export default function EvidenceForm() {
               value={selectedCaseId} 
               onChange={(e) => {
                 setSelectedCaseId(e.target.value);
-                setLevelId(''); // Reset level when a new case is picked
+                setLevelId(''); 
               }} 
               disabled={isFetchingCases}
             >
@@ -160,7 +146,7 @@ export default function EvidenceForm() {
               className="admin-input" required
               value={levelId} 
               onChange={(e) => setLevelId(e.target.value)}
-              disabled={!selectedCaseId} // Locked until a case is chosen
+              disabled={!selectedCaseId} 
             >
               <option value="" disabled>-- Select a Level --</option>
               {availableLevels.map((l: any) => (
@@ -177,7 +163,7 @@ export default function EvidenceForm() {
             value={evidenceType} 
             onChange={(e) => {
               setEvidenceType(e.target.value as EvidenceType);
-              setFeedback(null); // Clear errors when switching contexts
+              setFeedback(null); 
             }}
           >
             <option value="document">Written Document</option>
@@ -204,10 +190,21 @@ export default function EvidenceForm() {
           />
         </div>
 
-        {/* Dynamic Injection Block */}
-        <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '6px' }}>
-          {renderTypeSpecificFields()}
+        {/* Paragraph is now permanently available in the UI */}
+        <div className="form-group">
+          <label>Text Content (Paragraph)</label>
+          <textarea 
+            className="admin-textarea"
+            value={paragraph} onChange={(e) => setParagraph(e.target.value)} 
+          />
         </div>
+
+        {/* Dynamic Injection Block for Media Only */}
+        {(evidenceType === 'image' || evidenceType === 'audio') && (
+          <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '6px' }}>
+            {renderTypeSpecificFields()}
+          </div>
+        )}
 
         <button 
           type="submit" 

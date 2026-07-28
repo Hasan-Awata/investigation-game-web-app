@@ -122,3 +122,25 @@ export const fetchAdminCases = async (): Promise<Result<any[]>> => {
     return failure(error instanceof Error ? error.message : 'Network error');
   }
 };
+
+export const deleteAdminCase = async (caseId: number): Promise<Result<any>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/cases/${caseId}`, {
+      method: 'DELETE',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) handleUnauthorized();
+      const data = await response.json().catch(() => ({}));
+      return failure(data.message || 'Failed to delete case.');
+    }
+    
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};

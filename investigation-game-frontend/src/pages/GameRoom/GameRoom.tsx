@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom'; // Added useNavigate
 import { useGameRoom } from '../../hooks/useGameRoom';
 import { RoomProvider } from '../../context/RoomContext';
 import CaseDetailsTab from './tabs/CaseDetailsTab';
@@ -11,6 +11,7 @@ type Tab = 'details' | 'evidences' | 'campaign';
 
 export default function GameRoom() {
   const { inviteCode } = useParams<{ inviteCode: string }>();
+  const navigate = useNavigate(); // Initialize navigation
   
   const { 
     room, 
@@ -32,6 +33,21 @@ export default function GameRoom() {
       refreshRoomData={refreshRoomData}
     >
       <div className="game-room-layout">
+        
+        {/* The Victory Overlay */}
+        {room.status === 'solved' && (
+          <div className="victory-overlay">
+            <div className="victory-content">
+              <div className="forensic-icon pulse">✧</div>
+              <h1 className="victory-title">CASE CLOSED</h1>
+              <p className="victory-subtitle">The choices were made. The truth is uncovered. Excellent work.</p>
+              <button className="btn-primary" onClick={() => navigate('/')}>
+                Return to Headquarters
+              </button>
+            </div>
+          </div>
+        )}
+
         <aside className="sidebar-panel glass-panel">
           <div className="sidebar-section">
             <h3 className="sidebar-heading">Session Code</h3>

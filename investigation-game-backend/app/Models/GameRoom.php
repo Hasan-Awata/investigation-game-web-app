@@ -54,4 +54,10 @@ class GameRoom extends Model
     {
         return $this->hasMany(RoomVote::class, 'room_id');
     }
+
+    public function unlockedEvidences()
+    {
+        return $this->belongsToMany(Evidence::class, 'room_evidences', 'room_id', 'evidence_id')
+                    ->withTimestamps();
+    }
 }

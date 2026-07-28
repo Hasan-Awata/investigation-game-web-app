@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import type { GameCase, User } from '@/types';
 import { fetchCases } from '@/services/api';
 import CaseCard from '@/components/CaseCard/CaseCard';
@@ -8,49 +9,56 @@ import './MainMenu.css';
 
 export default function MainMenu() {
   const navigate = useNavigate();
-  const [cases, setCases] = useState<GameCase[]>([]);
   const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  
   const [selectedCase, setSelectedCase] = useState<GameCase | null>(null);
 
   useEffect(() => {
-    // 1. Load the authenticated user profile
     const storedUser = localStorage.getItem('auth_user');
     if (storedUser) {
       setUser(JSON.parse(storedUser));
     }
-
-    // 2. Fetch the playable cases
-    const loadCases = async () => {
-      const result = await fetchCases();
-      
-      if (result.isSuccess) {
-        setCases(result.value);
-      } else {
-        setError(result.errorMessage);
-      }
-      
-      setIsLoading(false);
-    };
-
-    loadCases();
   }, []);
 
+  const { data: cases = [], isLoading, error } = useQuery({
+    queryKey: ['cases'],
+    queryFn: async () => {
+      const result = await fetchCases();
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    }
+  });
+
+  const handleLogout = () => {
+    // Triggers the global force logout listener in App.tsx
+    window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+  };
+
   if (isLoading) return <div className="terminal-text">Decrypting case files...</div>;
-  if (error) return <div className="terminal-text error">{error}</div>;
+  if (error) return <div className="terminal-text error">{error instanceof Error ? error.message : 'Failed to load cases'}</div>;
 
   return (
     <div className="main-menu-container">
-      {/* Updated header with Flexbox to align the title and the admin button */}
+      
+      {/* 1. The New Upper Bar */}
+      <div className="upper-bar">
+        {user && (
+          <div className="user-profile-widget">
+            <span className="user-greeting">
+              Agent <span className="user-name-highlight">{user.username}</span>
+            </span>
+            <span className="xp-badge">{user.XP} XP</span>
+            <button className="logout-btn" onClick={handleLogout}>Logout</button>
+          </div>
+        )}
+      </div>
+
+      {/* 2. Existing Header */}
       <header className="menu-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h1 className="agency-title">Active Investigations</h1>
           <p className="agency-subtitle">Select a dossier to initiate the session.</p>
         </div>
         
-        {/* Conditional rendering for the Admin Gate */}
         {user?.is_admin && (
           <button 
             className="btn-secondary" 
@@ -68,12 +76,13 @@ export default function MainMenu() {
         )}
       </header>
       
+      {/* 3. The Cases Grid */}
       <div className="cases-grid">
         {cases.map((gameCase) => (
           <div key={gameCase.id} onClick={() => setSelectedCase(gameCase)}>
             <CaseCard 
               gameCase={gameCase} 
-              imageUrl={`/assets/cases/case-${gameCase.id}.jpg`} 
+              imageUrl={gameCase.img_url || '/placeholder-crime-scene.jpg'} 
             />
           </div>
         ))}

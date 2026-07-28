@@ -23,31 +23,64 @@ class AssessmentService
         return DB::transaction(function () use ($room) {
             $level = $room->currentLevel;
             $consensus = $this->votingService->calculateLevelConsensus($room, $level->id);
-            $questionsCount = $level->questions()->count();
+            
+            // Separate the questions
+            $mandatoryQuestions = $level->questions()->where('is_mandatory', true)->get();
+            $optionalQuestions = $level->questions()->where('is_mandatory', false)->get();
 
-            // Ensure every question has a consensus before assessing
-            if (count($consensus) !== $questionsCount) {
-                return Result::failure("Not all verdicts have a locked-in consensus yet.");
+            // 1. Check Mandatory Progression
+            foreach ($mandatoryQuestions as $question) {
+                if (!isset($consensus[$question->id])) {
+                    return Result::failure("Not all mandatory verdicts have a locked-in consensus yet.");
+                }
+
+                $chosenId = $consensus[$question->id];
+                $isCorrect = Choice::where('id', $chosenId)->value('is_correct');
+
+                if (!$isCorrect) {
+                    return Result::success([
+                        'status' => 'failed', 
+                        'message' => 'The logic on a critical verdict is flawed. The Persona hint system is now available.'
+                    ]);
+                }
             }
 
-            // Cross-reference the consensus choices with the database to check correctness
-            $correctChoicesCount = Choice::whereIn('id', array_values($consensus))
-                ->where('is_correct', true)
-                ->count();
+            // 2. Process Optional Narrative Choices (Only runs if mandatory questions are correct)
+            $newlyUnlockedEvidences = [];
+            foreach ($optionalQuestions as $question) {
+                if (isset($consensus[$question->id])) {
+                    $chosenId = $consensus[$question->id];
+                    $choice = Choice::find($chosenId);
 
-            $isSuccess = ($correctChoicesCount === $questionsCount);
-
-            if ($isSuccess) {
-                $this->advanceToNextLevel($room, $level);
-                return Result::success([
-                    'status' => 'success', 
-                    'message' => 'Verdict accepted. Moving to the next phase of the investigation.'
-                ]);
+                    // If the narrative choice yields evidence, add it to the room's inventory
+                    if ($choice && $choice->unlocks_evidence_id) {
+                        DB::table('room_evidences')->updateOrInsert([
+                            'room_id' => $room->id,
+                            'evidence_id' => $choice->unlocks_evidence_id
+                        ]);
+                        $newlyUnlockedEvidences[] = $choice->unlocks_evidence_id;
+                    }
+                }
             }
 
+            // 3. Dispatch Real-Time Event for the New Evidence
+            if (!empty($newlyUnlockedEvidences)) {
+                \App\Events\EvidenceDiscovered::dispatch($room, $newlyUnlockedEvidences);
+            }
+
+            $this->advanceToNextLevel($room, $level);
+            
             return Result::success([
-                'status' => 'failed', 
-                'message' => 'The logic is flawed. The Persona hint system is now available for the Host.'
+                'status' => 'success', 
+                'message' => 'Verdict accepted. Moving to the next phase of the investigation.',
+                'unlocked_evidence' => $newlyUnlockedEvidences 
+            ]);
+
+            $this->advanceToNextLevel($room, $level);
+            
+            return Result::success([
+                'status' => 'success', 
+                'message' => 'Verdict accepted. Moving to the next phase of the investigation.'
             ]);
         });
     }

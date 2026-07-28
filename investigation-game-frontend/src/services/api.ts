@@ -138,8 +138,7 @@ export const lockVote = async (roomId: number, questionId: number, choiceId: num
   }
 };
 
-export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string }>> => {
-  try {
+export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string; unlocked_evidence?: number[] }>> => {  try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/submit`, {
       method: 'POST',
       headers: {

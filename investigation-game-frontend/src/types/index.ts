@@ -21,6 +21,7 @@ export interface GameCase {
   story: string;
   min_player_XP: number;
   XP_on_solve: number;
+  img_url?: string; 
   levels?: Level[]; 
   is_solved?: boolean; 
 }
@@ -32,9 +33,10 @@ export interface GameRoom {
   host_user_id: number;
   current_level_id: number;
   status: string;
-  game_case?: GameCase; // Note: You might need to eager load 'gameCase' in Laravel's show() method if you haven't already
+  game_case?: GameCase;
   users?: RoomUser[];
   current_level?: Level;
+  unlocked_evidences?: Evidence[]; 
 }
 
 export type EvidenceType = 'document' | 'testimony' | 'audio' | 'image' | 'forensic';
@@ -55,6 +57,7 @@ export interface Choice {
   question_id: number;
   text: string;
   is_correct: boolean;
+  unlocks_evidence_id?: number | null; 
 }
 
 export interface Question {
@@ -64,6 +67,7 @@ export interface Question {
   img_url?: string;
   msg_when_wrong?: string;
   choices?: Choice[];
+  is_mandatory: boolean; 
 }
 
 export interface Level {
