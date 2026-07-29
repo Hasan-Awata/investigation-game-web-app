@@ -1,16 +1,15 @@
 import { type Result, success, failure } from '../utils/Result';
-import type { GameCase, GameRoom } from '../types';
+import type { GameCase, GameRoom, User } from '../types'; 
 import { getToken, logout } from './auth';
 
 const API_BASE_URL = 'http://localhost:8000/api';
 
-// 1. Decoupled helper: Clears the token and emits a native event
 const handleUnauthorized = () => {
   logout();
   window.dispatchEvent(new CustomEvent('auth:unauthorized')); 
 };
 
-export const fetchCases = async (): Promise<Result<GameCase[]>> => {
+export const fetchCases = async (): Promise<Result<{ cases: GameCase[], user: User }>> => {
   try {
     const response = await fetch(`${API_BASE_URL}/cases`, {
       headers: {
@@ -28,7 +27,8 @@ export const fetchCases = async (): Promise<Result<GameCase[]>> => {
     }
     
     const data = await response.json();
-    return success(data.cases);
+    // Return both pieces of data
+    return success({ cases: data.cases, user: data.user });
   } catch (error) {
     return failure(error instanceof Error ? error.message : 'Network error');
   }

@@ -9,12 +9,13 @@ use App\Enums\RoomStatus;
 
 class GameRoom extends Model
 {
-    protected $fillable = [
+protected $fillable = [
         'case_id',
         'host_user_id',
         'invite_code',
         'current_level_id',
         'status',
+        'strikes', 
     ];
 
     /**

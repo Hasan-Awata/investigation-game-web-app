@@ -23,7 +23,7 @@ export interface GameCase {
   XP_on_solve: number;
   img_url?: string; 
   levels?: Level[]; 
-  is_solved?: boolean; 
+  user_status?: 'solved' | 'failed' | null; 
 }
 
 export interface GameRoom {
@@ -33,6 +33,7 @@ export interface GameRoom {
   host_user_id: number;
   current_level_id: number;
   status: string;
+  strikes: number;
   game_case?: GameCase;
   users?: RoomUser[];
   current_level?: Level;

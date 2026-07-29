@@ -24,7 +24,15 @@ export default function MainMenu() {
     queryFn: async () => {
       const result = await fetchCases();
       if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
+      
+      // 1. Silently update the browser's cache so it persists on refresh
+      localStorage.setItem('auth_user', JSON.stringify(result.value.user));
+      
+      // 2. Update the local React state to instantly re-render the XP badge
+      setUser(result.value.user);
+
+      // 3. Return the cases to populate the grid
+      return result.value.cases;
     }
   });
 

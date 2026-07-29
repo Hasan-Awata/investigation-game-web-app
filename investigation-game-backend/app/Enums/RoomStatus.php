@@ -6,4 +6,5 @@ enum RoomStatus: string
 {
     case Active = 'active';
     case Solved = 'solved';
+    case Failed = 'failed';
 }

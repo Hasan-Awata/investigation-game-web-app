@@ -27,27 +27,30 @@ export function useInvestigationPhase(roomId: number, refreshRoomData: () => voi
       return result.value;
     },
     onSuccess: async (data) => {
-      if (data.status === 'success') {
-        // 1. Show the success modal immediately
-        setFeedback({ type: 'success', message: 'Verdict accepted. Advancing to the next phase.' });
+      if (data.status === 'success' || data.status === 'failed_final') {
+        
+        setFeedback({ 
+          type: data.status === 'success' ? 'success' : 'error', 
+          message: data.message 
+        });
         
         setTimeout(() => {
-          // 2. Clear the modal and advance the level
           setFeedback(null);
           setVotes({}); 
           refreshRoomData(); 
           
-          // 3. Trigger the TOAST notification instead of a modal
           if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
             setTimeout(() => {
               setToastMessage('SYSTEM ALERT: New evidence recovered based on your narrative deductions.');
-              
-              // Auto-dismiss the toast after 4.5 seconds
               setTimeout(() => setToastMessage(null), 4500);
             }, 500);
           }
         }, 2000);
+        
       } else {
+        // TRIGGER ROOM SYNC ON STANDARD FAILURE TO UPDATE STRIKES UI
+        refreshRoomData(); 
+        
         const hintResult = await triggerPersonaHint(roomId);
         if (hintResult.isSuccess) {
           setFeedback({ type: 'error', message: hintResult.value.hint });

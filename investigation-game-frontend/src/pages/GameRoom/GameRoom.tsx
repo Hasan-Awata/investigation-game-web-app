@@ -34,13 +34,27 @@ export default function GameRoom() {
     >
       <div className="game-room-layout">
         
-        {/* The Victory Overlay */}
-        {room.status === 'solved' && (
+        {/* The Resolution Overlay */}
+        {(room.status === 'solved' || room.status === 'failed') && (
           <div className="victory-overlay">
             <div className="victory-content">
-              <div className="forensic-icon pulse">✧</div>
-              <h1 className="victory-title">CASE CLOSED</h1>
-              <p className="victory-subtitle">The choices were made. The truth is uncovered. Excellent work.</p>
+              
+              {room.status === 'solved' ? (
+                <>
+                  <div className="forensic-icon pulse" style={{ color: 'var(--accent-cyan)' }}>✧</div>
+                  <h1 className="victory-title" style={{ color: 'var(--accent-cyan)' }}>CASE CLOSED</h1>
+                  <p className="victory-subtitle">The truth is uncovered. Excellent work.</p>
+                </>
+              ) : (
+                <>
+                  <div className="forensic-icon pulse" style={{ color: 'var(--accent-crimson)' }}>✕</div>
+                  <h1 className="victory-title" style={{ color: 'var(--accent-crimson)', textShadow: '0 0 30px rgba(163,50,50,0.4)' }}>
+                    WRONG CONVICTION
+                  </h1>
+                  <p className="victory-subtitle">The evidence was misread. The guilty walk free, and the innocent pay the price.</p>
+                </>
+              )}
+
               <button className="btn-primary" onClick={() => navigate('/')}>
                 Return to Headquarters
               </button>
@@ -48,10 +62,35 @@ export default function GameRoom() {
           </div>
         )}
 
-        <aside className="sidebar-panel glass-panel">
+<aside className="sidebar-panel glass-panel">
           <div className="sidebar-section">
             <h3 className="sidebar-heading">Session Code</h3>
             <div className="invite-code-display">{room.invite_code}</div>
+          </div>
+
+          {/* NEW DEPARTMENT HEAT UI */}
+          <div className="sidebar-section">
+            <h3 className="sidebar-heading" style={{ color: 'var(--accent-crimson)', borderColor: 'rgba(255,51,102,0.2)' }}>
+              Department Heat
+            </h3>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+              {[...Array(5)].map((_, i) => (
+                <div 
+                  key={i} 
+                  style={{
+                    flex: 1,
+                    height: '8px',
+                    borderRadius: '2px',
+                    background: i < (room.strikes || 0) ? 'var(--accent-crimson)' : 'rgba(255,255,255,0.05)',
+                    boxShadow: i < (room.strikes || 0) ? '0 0 10px rgba(163,50,50,0.8)' : 'none',
+                    transition: 'all 0.3s ease'
+                  }}
+                ></div>
+              ))}
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem', textAlign: 'right' }}>
+              STRIKES: {room.strikes || 0} / 5
+            </div>
           </div>
 
           <div className="sidebar-section">
