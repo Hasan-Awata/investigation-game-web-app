@@ -6,7 +6,6 @@ import ImageEvidence from './EvidenceVariants/ImageEvidence';
 import ForensicEvidence from './EvidenceVariants/ForensicEvidence';
 import './EvidenceBoard.css';
 
-// 1. Create the component map
 const EvidenceComponents: Record<string, React.FC<{ evidence: Evidence }>> = {
   document: DocumentEvidence,
   testimony: TestimonyEvidence,
@@ -18,14 +17,13 @@ const EvidenceComponents: Record<string, React.FC<{ evidence: Evidence }>> = {
 interface EvidenceCardProps {
   evidence: Evidence;
   index: number;
+  isNew: boolean; 
   onInspect: (evidence: Evidence) => void;
 }
 
-export default function EvidenceCard({ evidence, index, onInspect }: EvidenceCardProps) {
-  // 2. Dynamically resolve the correct component
+export default function EvidenceCard({ evidence, index, isNew, onInspect }: EvidenceCardProps) {
   const SpecificEvidenceComponent = EvidenceComponents[evidence.evidence_type];
 
-  // Fallback gracefully if an unknown type is passed from the API
   if (!SpecificEvidenceComponent) {
     console.warn(`System Error: Unknown evidence type encountered -> ${evidence.evidence_type}`);
     return null; 
@@ -36,7 +34,9 @@ export default function EvidenceCard({ evidence, index, onInspect }: EvidenceCar
       className={`evidence-card-wrapper item-${index % 5}`} 
       onClick={() => onInspect(evidence)}
     >
-      {/* 3. Render the resolved component */}
+      {/* Unread Notification Ball */}
+      {isNew && <div className="unread-indicator" title="Unread Intel"></div>}
+      
       <SpecificEvidenceComponent evidence={evidence} />
     </div>
   );

@@ -9,9 +9,26 @@ export default function EvidenceBoardTab() {
   const { room, accumulatedEvidences } = useRoomContext();
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
 
-  // Extract the IDs of the evidence the team successfully unlocked
+  // Initialize viewed state from sessionStorage to persist across tab switches
+  const viewedStorageKey = `room_${room.id}_viewed_evidence`;
+  const [viewedEvidences, setViewedEvidences] = useState<Set<number>>(() => {
+    const stored = sessionStorage.getItem(viewedStorageKey);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  });
+
   const unlockedEvidenceIds = new Set((room.unlocked_evidences || []).map(e => e.id));
   const currentLevelIndex = room.game_case?.levels?.find(l => l.id === room.current_level_id)?.order_index || 0;
+
+  // Intercept the inspect action to mark the item as viewed
+  const handleInspect = (evidence: Evidence) => {
+    setInspectedEvidence(evidence);
+    if (!viewedEvidences.has(evidence.id)) {
+      const nextViewed = new Set(viewedEvidences);
+      nextViewed.add(evidence.id);
+      setViewedEvidences(nextViewed);
+      sessionStorage.setItem(viewedStorageKey, JSON.stringify(Array.from(nextViewed)));
+    }
+  };
 
   return (
     <div className="evidence-board-container">
@@ -27,8 +44,6 @@ export default function EvidenceBoardTab() {
           <div className="evidence-scatter-grid">
             {accumulatedEvidences.map((evidence, index) => {
               
-              // Check if the evidence belongs to an optional choice
-              // We do this by checking if ANY choice in the game unlocks this evidence ID
               const isUnlockable = room.game_case?.levels?.some(l => 
                 l.questions?.some(q => 
                   q.choices?.some(c => c.unlocks_evidence_id === evidence.id)
@@ -36,17 +51,13 @@ export default function EvidenceBoardTab() {
               );
 
               const hasAcquired = unlockedEvidenceIds.has(evidence.id);
-              
-              // Determine if the level this evidence belongs to is already passed
               const evidenceLevelIndex = room.game_case?.levels?.find(l => l.id === evidence.level_id)?.order_index || 0;
               const isPastLevel = evidenceLevelIndex < currentLevelIndex || room.status === 'solved';
 
-              // If it requires an unlock, wasn't acquired, and the phase is over: HAUNT THEM.
               if (isUnlockable && !hasAcquired && isPastLevel) {
                 return (
                   <div key={`missed-${evidence.id}`} className={`evidence-card-wrapper item-${index % 5}`}>
                     <div className="evidence-variant" style={{ background: '#1a1a1a', border: '1px dashed #FF3366', opacity: 0.7, filter: 'grayscale(100%)' }}>
-                      <div className="digital-pin crimson"></div>
                       <h4 className="evidence-title" style={{ color: '#FF3366', textDecoration: 'line-through' }}>DATA CORRUPTED</h4>
                       <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
                       <p className="evidence-desc" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
@@ -57,18 +68,17 @@ export default function EvidenceBoardTab() {
                 );
               }
 
-              // If it requires an unlock, and they haven't acquired it yet (and the level is still active), hide it completely so as not to spoil the current puzzle.
               if (isUnlockable && !hasAcquired && !isPastLevel) {
                 return null;
               }
 
-              // Otherwise, render the acquired evidence normally
               return (
                 <EvidenceCard 
                   key={evidence.id} 
                   evidence={evidence} 
-                  index={index} 
-                  onInspect={setInspectedEvidence} 
+                  index={index}
+                  isNew={!viewedEvidences.has(evidence.id)} 
+                  onInspect={handleInspect} 
                 />
               );
             })}

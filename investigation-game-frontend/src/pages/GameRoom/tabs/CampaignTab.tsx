@@ -35,9 +35,31 @@ export default function CampaignTab() {
     <div className="campaign-roadmap-container">
       <h2 className="section-title">Investigation Roadmap</h2>
       
-      {feedback && (
+    {feedback && (
         <div className="feedback-modal-overlay">
           <div className={`feedback-modal-content ${feedback.type}`}>
+            
+            {/* INJECTED PERSONA BLOCK */}
+            {feedback.type === 'error' && (
+              <div className="persona-container">
+                <svg 
+                  className="persona-silhouette" 
+                  viewBox="0 0 256 256" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="currentColor"
+                >
+                  {/* Hat Crown */}
+                  <path d="M100 50 C100 20, 156 20, 156 50 L160 80 L96 80 Z" />
+                  {/* Hat Brim */}
+                  <ellipse cx="128" cy="85" rx="70" ry="12" />
+                  {/* Face/Shadow */}
+                  <path d="M105 100 L151 100 C151 125, 138 145, 128 145 C118 145, 105 125, 105 100 Z" />
+                  {/* Trenchcoat Shoulders */}
+                  <path d="M128 135 C80 135, 40 190, 20 256 L236 256 C216 190, 176 135, 128 135 Z" />
+                </svg>
+              </div>
+            )}
+
             <h3 className="feedback-title">
               {feedback.type === 'success' ? 'Consensus Verified' : 'Theory Rejected'}
             </h3>

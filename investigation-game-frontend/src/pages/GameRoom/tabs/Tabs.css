@@ -336,15 +336,17 @@
 }
 
 .choice-pill.interactable:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--border-light-rgb), 0.1);
+  border-color: rgba(var(--border-light-rgb), 0.4);
+  color: var(--text-primary);
+  box-shadow: inset 3px 0 0 0 var(--text-secondary); 
 }
 
 .choice-pill.selected {
-  background: rgba(0, 229, 255, 0.15);
+  background: rgba(var(--bg-dark-rgb), 1);
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
-  box-shadow: 0 0 10px rgba(0, 229, 255, 0.2);
+  box-shadow: inset 3px 0 0 0 var(--accent-cyan); 
 }
 
 /* For looking back at old levels */
@@ -489,5 +491,35 @@
   100% {
     opacity: 1;
     transform: translateX(0) translateY(0);
+  }
+}
+
+/* --- PERSONA SILHOUETTE --- */
+.persona-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 51, 102, 0.2);
+  padding-bottom: 1.5rem;
+}
+
+.persona-silhouette {
+  height: 120px; 
+  width: auto;
+  object-fit: contain;
+  /* This filter forces ANY image into a solid black silhouette */
+  filter: grayscale(100%) contrast(1000%) brightness(0) drop-shadow(0 15px 15px rgba(0,0,0,0.8));
+  opacity: 0.95;
+  animation: fade-in-persona 0.5s ease-out forwards;
+}
+
+@keyframes fade-in-persona {
+  from { 
+    opacity: 0; 
+    transform: translateY(15px); 
+  }
+  to { 
+    opacity: 0.95; 
+    transform: translateY(0); 
   }
 }
