@@ -8,9 +8,9 @@ export default function CaseForm() {
   const [story, setStory] = useState('');
   const [minPlayerXP, setMinPlayerXP] = useState('0');
   const [xpOnSolve, setXpOnSolve] = useState('100');
+  const [maxStrikes, setMaxStrikes] = useState('5'); 
   const [image, setImage] = useState<File | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch cases to display them for deletion
@@ -69,6 +69,7 @@ export default function CaseForm() {
     formData.append('min_player_XP', minPlayerXP);
     formData.append('XP_on_solve', xpOnSolve);
     if (image) formData.append('image', image);
+    formData.append('max_strikes', maxStrikes); 
 
     createMutation.mutate(formData);
   };
@@ -111,21 +112,29 @@ export default function CaseForm() {
           </div>
 
           <div className="admin-form-row">
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Minimum XP Required</label>
-              <input 
-                type="number" className="admin-input" min="0" required
-                value={minPlayerXP} onChange={(e) => setMinPlayerXP(e.target.value)} 
-              />
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>Minimum XP Required</label>
+                <input 
+                  type="number" className="admin-input" min="0" required
+                  value={minPlayerXP} onChange={(e) => setMinPlayerXP(e.target.value)} 
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>XP Reward on Solve</label>
+                <input 
+                  type="number" className="admin-input" min="0" required
+                  value={xpOnSolve} onChange={(e) => setXpOnSolve(e.target.value)} 
+                />
+              </div>
+              {/* Add the new input block */}
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>Allowed Strikes (Difficulty)</label>
+                <input 
+                  type="number" className="admin-input" min="1" required
+                  value={maxStrikes} onChange={(e) => setMaxStrikes(e.target.value)} 
+                />
+              </div>
             </div>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>XP Reward on Solve</label>
-              <input 
-                type="number" className="admin-input" min="0" required
-                value={xpOnSolve} onChange={(e) => setXpOnSolve(e.target.value)} 
-              />
-            </div>
-          </div>
 
           <div className="form-group">
             <label>Cover Image (Optional)</label>

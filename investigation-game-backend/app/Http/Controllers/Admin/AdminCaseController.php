@@ -13,13 +13,14 @@ class AdminCaseController extends Controller
     /**
      * Store a newly created case with an optional cover image.
      */
-    public function store(Request $request): JsonResponse
+public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'story' => 'required|string',
             'min_player_XP' => 'required|integer|min:0',
             'XP_on_solve' => 'required|integer|min:0',
+            'max_strikes' => 'required|integer|min:1', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
@@ -47,6 +48,7 @@ class AdminCaseController extends Controller
             'story' => $validated['story'],
             'min_player_XP' => $validated['min_player_XP'],
             'XP_on_solve' => $validated['XP_on_solve'],
+            'max_strikes' => $validated['max_strikes'], 
             'img_url' => $imageUrl,
         ]);
 

@@ -27,7 +27,7 @@ class AssessmentService
             $mandatoryQuestions = $level->questions()->where('is_mandatory', true)->get();
             $optionalQuestions = $level->questions()->where('is_mandatory', false)->get();
 
-            // 1. Check Mandatory Progression
+// 1. Check Mandatory Progression
             foreach ($mandatoryQuestions as $question) {
                 if (!isset($consensus[$question->id])) {
                     return Result::failure("Not all mandatory verdicts have a locked-in consensus yet.");
@@ -35,14 +35,16 @@ class AssessmentService
 
                 $chosenId = $consensus[$question->id];
                 $isCorrect = Choice::where('id', $chosenId)->value('is_correct');
+                
+                $maxStrikes = $room->gameCase->max_strikes; // <-- Retrieve dynamic limit
 
                 // IF THEY SUBMIT THE WRONG ANSWER
                 if (!$isCorrect) {
                     $room->increment('strikes');
-                    $room->refresh(); // Fetch the new strike count
+                    $room->refresh();
 
-                    // IF THEY HIT 5 STRIKES (THE POINT OF NO RETURN)
-                    if ($room->strikes >= 5) {
+                    // IF THEY HIT THE MAXIMUM STRIKES (THE POINT OF NO RETURN)
+                    if ($room->strikes >= $maxStrikes) { // <-- Use dynamic limit
                         $room->update(['status' => \App\Enums\RoomStatus::Failed]);
                         $this->finalizeCaseForParticipants($room, 'failed');
                         \App\Events\LevelTransitioned::dispatch($room);
@@ -56,7 +58,7 @@ class AssessmentService
                     // IF THEY STILL HAVE STRIKES LEFT
                     return Result::success([
                         'status' => 'failed', 
-                        'message' => "The logic on a critical verdict is flawed. STRIKE {$room->strikes}/5 LOGGED. The Persona hint system is active."
+                        'message' => "The logic on a critical verdict is flawed. STRIKE {$room->strikes}/{$maxStrikes} LOGGED. The Persona hint system is active."
                     ]);
                 }
             }
