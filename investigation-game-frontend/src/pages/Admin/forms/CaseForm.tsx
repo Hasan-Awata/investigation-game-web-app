@@ -110,7 +110,7 @@ export default function CaseForm() {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
+          <div className="admin-form-row">
             <div className="form-group" style={{ flex: 1 }}>
               <label>Minimum XP Required</label>
               <input 

@@ -128,7 +128,7 @@ export default function QuestionForm() {
       <form onSubmit={handleSubmit} className="admin-form">
         
         {/* Cascading Dropdowns */}
-        <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem' }}>
+        <div className="admin-form-row" style={{ marginBottom: '1rem' }}>
           <div className="form-group" style={{ flex: 1 }}>
             <label>Target Case</label>
             <select 

@@ -66,7 +66,7 @@ export default function LevelForm() {
       )}
 
       <form onSubmit={handleSubmit} className="admin-form">
-        <div style={{ display: 'flex', gap: '1.5rem' }}>
+        <div className="admin-form-row">
           
           <div className="form-group" style={{ flex: 1 }}>
             <label>Target Case</label>

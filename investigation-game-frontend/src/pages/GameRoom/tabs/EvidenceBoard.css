@@ -328,3 +328,40 @@
     box-shadow: 0 0 0 0 rgba(163, 50, 50, 0); 
   }
 }
+
+@media (max-width: 768px) {
+  .acrylic-workspace {
+    padding: 1rem;
+  }
+  
+  .evidence-scatter-grid {
+    gap: 1rem;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .evidence-card-wrapper {
+    width: 100%;
+    /* Reset the desktop scatter rotations for a cleaner mobile stack */
+    transform: none !important;
+    margin: 0 !important;
+  }
+
+  .evidence-variant {
+    width: 100%;
+    max-width: 100%;
+    padding: 1.25rem;
+  }
+
+  .evidence-modal-content {
+    width: 95%;
+    padding: 1.5rem;
+    max-height: 90vh;
+  }
+  
+  .modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
