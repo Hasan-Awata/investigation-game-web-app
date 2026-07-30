@@ -72,15 +72,14 @@ class GameRoomController extends Controller
      */
     public function show(GameRoom $room): JsonResponse
     {
-        // Eager load the nested level data required to render the game UI
         $room->load([
             'host',
             'gameCase.levels.questions.choices',
             'gameCase.levels.evidences',
-            'users.user', // Load the participants and their base user profiles
+            'users.user', 
             'currentLevel.questions.choices',
+            'unlockedEvidences',
             
-            // Only load the votes relevant to the current level to prevent data bloat
             'votes' => function ($query) use ($room) {
                 $query->whereHas('question', function ($q) use ($room) {
                     $q->where('level_id', $room->current_level_id);

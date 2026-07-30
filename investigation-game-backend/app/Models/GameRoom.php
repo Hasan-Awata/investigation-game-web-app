@@ -9,12 +9,13 @@ use App\Enums\RoomStatus;
 
 class GameRoom extends Model
 {
-    protected $fillable = [
+protected $fillable = [
         'case_id',
         'host_user_id',
         'invite_code',
         'current_level_id',
         'status',
+        'strikes', 
     ];
 
     /**
@@ -53,5 +54,11 @@ class GameRoom extends Model
     public function votes(): HasMany
     {
         return $this->hasMany(RoomVote::class, 'room_id');
+    }
+
+    public function unlockedEvidences()
+    {
+        return $this->belongsToMany(Evidence::class, 'room_evidences', 'room_id', 'evidence_id')
+                    ->withTimestamps();
     }
 }

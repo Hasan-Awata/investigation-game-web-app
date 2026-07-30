@@ -8,25 +8,26 @@ use Illuminate\Http\JsonResponse;
 
 class CaseController extends Controller
 {
-    /**
-     * Return a list of all playable cases, ordered by their creation date.
-     */
     public function index(Request $request): JsonResponse
     {
         $userId = $request->user()->id;
 
-        $cases = GameCase::select('id', 'title', 'story', 'min_player_XP', 'XP_on_solve')
-            ->withExists([
-                'users as is_solved' => function ($query) use ($userId) {
-                    $query->where('case_user.user_id', $userId)
-                          ->where('case_user.status', 'solved');
-                }
-            ])
+        $cases = GameCase::select('id', 'title', 'story', 'min_player_XP', 'XP_on_solve', 'img_url')
+            ->with(['users' => function ($query) use ($userId) {
+                $query->where('users.id', $userId)->select('users.id');
+            }])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($case) {
+                $case->user_status = $case->users->first()?->pivot->status;
+                unset($case->users); 
+                return $case;
+            });
 
         return response()->json([
-            'cases' => $cases
+            'cases' => $cases,
+            // Strictly whitelist only the fields the frontend needs to render the UI
+            'user' => $request->user()->only(['id', 'username', 'name', 'email', 'XP', 'is_admin'])
         ], 200);
     }
 }

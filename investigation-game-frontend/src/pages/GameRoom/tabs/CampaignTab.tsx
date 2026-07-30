@@ -1,22 +1,27 @@
 import { useState } from 'react';
-import type { Level, Choice } from '../../../types';
-import { lockVote, submitAssessment, triggerPersonaHint } from '../../../services/api';
+import { useRoomContext } from '../../../context/RoomContext';
+import { useInvestigationPhase } from '../../../hooks/useInvestigationPhase';
 import './Tabs.css';
 
-interface CampaignTabProps {
-  levels: Level[];
-  currentLevelId: number;
-  roomId: number;
-  roomStatus: string; // <-- 1. Add the new prop
-  onLevelCleared: () => void;
-}
-
-export default function CampaignTab({ levels, currentLevelId, roomId, roomStatus, onLevelCleared }: CampaignTabProps) {
-  const [expandedId, setExpandedId] = useState<number | null>(null);
+export default function CampaignTab() {
+  const { room, refreshRoomData } = useRoomContext();
   
-  const [votes, setVotes] = useState<Record<number, number>>({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const levels = room.game_case?.levels || [];
+  const currentLevelId = room.current_level_id;
+  const roomId = room.id;
+  const roomStatus = room.status;
+
+  const {
+    votes,
+    isSubmitting,
+    feedback,
+    toastMessage, 
+    handleSelectChoice,
+    handleSubmitTheory,
+    clearFeedback
+  } = useInvestigationPhase(roomId, refreshRoomData);
+
+  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const sortedLevels = [...levels].sort((a, b) => a.order_index - b.order_index);
   const currentLevelIndex = sortedLevels.find(l => l.id === currentLevelId)?.order_index || 0;
@@ -26,56 +31,41 @@ export default function CampaignTab({ levels, currentLevelId, roomId, roomStatus
     setExpandedId(expandedId === levelId ? null : levelId);
   };
 
-  const handleSelectChoice = async (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => {
-    e.stopPropagation(); 
-    if (status !== 'active') return; 
-
-    setVotes(prev => ({ ...prev, [questionId]: choice.id }));
-    await lockVote(roomId, questionId, choice.id);
-  };
-
-  const handleSubmitTheory = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsSubmitting(true);
-    
-    const result = await submitAssessment(roomId);
-    
-    if (result.isSuccess) {
-      if (result.value.status === 'success') {
-        setFeedback({ type: 'success', message: 'Verdict accepted. Advancing to the next phase.' });
-        setTimeout(() => {
-          setFeedback(null);
-          setVotes({}); 
-          onLevelCleared(); 
-        }, 2000);
-      } else {
-        const hintResult = await triggerPersonaHint(roomId);
-        if (hintResult.isSuccess) {
-          setFeedback({ type: 'error', message: hintResult.value.hint });
-        } else {
-          setFeedback({ type: 'error', message: 'The logic is flawed. Review the evidence.' });
-        }
-      }
-    } else {
-      setFeedback({ type: 'error', message: result.errorMessage });
-    }
-    
-    setIsSubmitting(false);
-  };
-
   return (
     <div className="campaign-roadmap-container">
       <h2 className="section-title">Investigation Roadmap</h2>
       
-      {feedback && (
+    {feedback && (
         <div className="feedback-modal-overlay">
           <div className={`feedback-modal-content ${feedback.type}`}>
+            
+            {/* INJECTED PERSONA BLOCK */}
+            {feedback.type === 'error' && (
+              <div className="persona-container">
+                <svg 
+                  className="persona-silhouette" 
+                  viewBox="0 0 256 256" 
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="currentColor"
+                >
+                  {/* Hat Crown */}
+                  <path d="M100 50 C100 20, 156 20, 156 50 L160 80 L96 80 Z" />
+                  {/* Hat Brim */}
+                  <ellipse cx="128" cy="85" rx="70" ry="12" />
+                  {/* Face/Shadow */}
+                  <path d="M105 100 L151 100 C151 125, 138 145, 128 145 C118 145, 105 125, 105 100 Z" />
+                  {/* Trenchcoat Shoulders */}
+                  <path d="M128 135 C80 135, 40 190, 20 256 L236 256 C216 190, 176 135, 128 135 Z" />
+                </svg>
+              </div>
+            )}
+
             <h3 className="feedback-title">
               {feedback.type === 'success' ? 'Consensus Verified' : 'Theory Rejected'}
             </h3>
             <p className="feedback-message">{feedback.message}</p>
             {feedback.type === 'error' && (
-              <button className="btn-secondary mt-1" onClick={(e) => { e.stopPropagation(); setFeedback(null); }}>
+              <button className="btn-secondary mt-1" onClick={clearFeedback}>
                 Reassess Evidence
               </button>
             )}
@@ -83,13 +73,22 @@ export default function CampaignTab({ levels, currentLevelId, roomId, roomStatus
         </div>
       )}
 
+      {/* FIXED: The Toast Notification must be outside the feedback overlay block */}
+      {toastMessage && (
+        <div className="system-toast-notification">
+          <span className="toast-icon pulse-icon">📄</span>
+          <div className="toast-text-block">
+            <span className="toast-header">INTEL ACQUIRED</span>
+            <p className="toast-message">{toastMessage}</p>
+          </div>
+        </div>
+      )}
+
       <div className="roadmap-timeline">
         {sortedLevels.map((level, index) => {
-          
-          // 2. Safely override the status if the room is globally solved
           let status = 'locked';
           if (roomStatus === 'solved') {
-            status = 'completed'; // If the case is closed, all unlocked levels are completed
+            status = 'completed'; 
           } else {
             if (level.order_index < currentLevelIndex) status = 'completed';
             if (level.id === currentLevelId) status = 'active';
@@ -99,11 +98,12 @@ export default function CampaignTab({ levels, currentLevelId, roomId, roomStatus
           const lineStatus = level.order_index < currentLevelIndex ? 'active-line' : '';
           const isExpanded = expandedId === level.id;
           
-          const allQuestionsAnswered = level.questions?.every(q => votes[q.id] !== undefined);
+          // Strictly evaluate mandatory questions to enable the submit button
+          const mandatoryQuestions = level.questions?.filter(q => q.is_mandatory) || [];
+          const allMandatoryAnswered = mandatoryQuestions.every(q => votes[q.id] !== undefined);
 
           return (
             <div key={level.id} className={`roadmap-node ${status}`}>
-              {/* ... Rest of your node rendering remains exactly the same ... */}
               <div className="timeline-connector">
                 <div className="node-indicator">
                   {status === 'completed' && '✓'}
@@ -137,7 +137,26 @@ export default function CampaignTab({ levels, currentLevelId, roomId, roomStatus
                     <div className="questions-list">
                       {level.questions.map((q, qIdx) => (
                         <div key={q.id} className="question-item">
-                          <span className="question-number">Q{qIdx + 1}</span>
+                          
+                          {/* Optional narrative marker */}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            <span className="question-number">Q{qIdx + 1}</span>
+                            {!q.is_mandatory && (
+                              <span 
+                                title="This question provides additional evidence in some contexts." 
+                                style={{ 
+                                  color: 'var(--accent-amber)', 
+                                  marginTop: '0.35rem', 
+                                  fontSize: '1.1rem', 
+                                  cursor: 'help', 
+                                  animation: 'pulse-icon 2s infinite' 
+                                }}
+                              >
+                                📄
+                              </span>
+                            )}
+                          </div>
+
                           <div className="question-body">
                             <p className="question-text">{q.text}</p>
                             <div className="choices-preview">
@@ -170,7 +189,7 @@ export default function CampaignTab({ levels, currentLevelId, roomId, roomStatus
                       <div className="submit-theory-container">
                         <button 
                           className="btn-primary submit-theory-btn"
-                          disabled={!allQuestionsAnswered || isSubmitting}
+                          disabled={!allMandatoryAnswered || isSubmitting}
                           onClick={handleSubmitTheory}
                         >
                           {isSubmitting ? 'Evaluating...' : 'Submit Theory'}

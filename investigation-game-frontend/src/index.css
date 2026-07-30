@@ -1,14 +1,32 @@
 :root {
-  --bg-dark: #121212;
-  --bg-panel: #1E1E1E;
-  --text-primary: #F5F5F5;
-  --text-secondary: #A0A0A0;
-  --accent-cyan: #00E5FF;
-  --accent-amber: #FFB300;
+  /* Keep the dark bases, but make them richer */
+  --bg-dark: #0a0b0d; 
+  --bg-panel: #141518;
+  --text-primary: #e0e0e0;
+  --text-secondary: #8a8d91;
   
-  /* Typography */
-  --font-primary: 'Inter', system-ui, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  /* Muted, tactical accents instead of neon */
+  --accent-cyan: #5a8a9e;     /* Slate blue instead of neon cyan */
+  --accent-amber: #c48b36;    /* Aged manila folder yellow */
+  --accent-crimson: #a33232;  /* Dried blood/stamped red */
+  --accent-success: #4a7c59;  /* Muted military green */
+
+  /* Update RGB bases to match the hex codes above */
+  --bg-dark-rgb: 10, 11, 13;
+  --bg-panel-rgb: 20, 21, 24;
+  --text-primary-rgb: 224, 224, 224;
+  --border-light-rgb: 150, 150, 150;
+  
+  --accent-cyan-rgb: 90, 138, 158;
+  --accent-amber-rgb: 196, 139, 54;
+  --accent-crimson-rgb: 163, 50, 50;
+  --accent-success-rgb: 74, 124, 89;
+
+  /* Sharpen the radii for a more hostile, official feel */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 4px; 
+  --radius-xl: 8px;
 }
 
 body {
@@ -28,5 +46,98 @@ body {
 }
 
 .terminal-text.error {
-  color: #FF3366; /* Crimson for failures */
+  color: var(--accent-crimson);
+}
+
+/* --- CENTRALIZED BUTTON SHAPES --- */
+.btn-primary, .btn-secondary {
+  flex: 1;
+  padding: 1rem;
+  border-radius: var(--radius-sm); /* Relies on the sharper corners from Step 1 */
+  font-weight: 700; /* Bolder for a more tactile feel */
+  font-family: var(--font-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em; /* Wider tracking for that official classification look */
+  cursor: pointer;
+  transition: all 0.1s ease-in-out; /* Faster, snappier transition */
+  border: 1px solid transparent;
+}
+
+.btn-primary {
+  background: var(--accent-cyan);
+  color: var(--bg-dark);
+  border: 1px solid var(--accent-cyan);
+}
+
+.btn-primary:hover {
+  /* Harsh inversion instead of a neon glow */
+  background: var(--bg-dark);
+  color: var(--accent-cyan);
+  /* Tactical left-border highlight */
+  box-shadow: inset 4px 0 0 0 var(--accent-cyan); 
+}
+
+.btn-primary:disabled {
+  background: rgba(var(--border-light-rgb), 0.1);
+  color: rgba(var(--border-light-rgb), 0.3);
+  border-color: rgba(var(--border-light-rgb), 0.1);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: rgba(var(--bg-panel-rgb), 0.4);
+  color: var(--text-secondary);
+  border: 1px solid rgba(var(--border-light-rgb), 0.2);
+}
+
+.btn-secondary:hover {
+  background: rgba(var(--border-light-rgb), 0.1);
+  color: var(--text-primary);
+  border-color: rgba(var(--border-light-rgb), 0.4);
+  box-shadow: inset 4px 0 0 0 var(--text-secondary);
+}
+
+/* --- CENTRALIZED BADGES --- */
+.badge {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: var(--radius-sm);
+  background: rgba(var(--bg-panel-rgb), 0.6);
+  backdrop-filter: blur(4px);
+  border: var(--border-thin);
+}
+
+.badge.reward {
+  color: var(--accent-amber);
+  border-color: rgba(var(--accent-amber-rgb), 0.3);
+}
+
+/* --- CENTRALIZED GLASS PANELS --- */
+.glass-panel {
+  background: var(--bg-panel);
+  /* Replace the heavy blur with a subtle noise/grain texture if possible, or keep it solid */
+  backdrop-filter: blur(4px); 
+  border: 1px solid rgba(var(--border-light-rgb), 0.15);
+  /* A sharper, harsher drop shadow instead of a wide, soft one */
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.4); 
+}
+
+/* --- TYPOGRAPHY UPGRADES --- */
+/* Enforce the dossier aesthetic on all major headings globally */
+h1, h2, h3, h4, h5, h6 {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* Unify specific component titles with a tactical accent */
+.section-title, 
+.modal-title, 
+.case-title {
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  border-left: 3px solid var(--accent-cyan);
+  padding-left: 0.75rem;
 }

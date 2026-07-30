@@ -1,18 +1,22 @@
-import type { GameCase } from '../../../types';
+import { useRoomContext } from '../../../context/RoomContext';
 import './Tabs.css';
 
-interface CaseDetailsTabProps {
-  gameCase: GameCase;
-}
+export default function CaseDetailsTab() {
+  const { room } = useRoomContext();
+  
+  const gameCase = room.game_case || {
+    id: room.case_id,
+    title: "Case Data Missing",
+    story: "The case metadata was not eager-loaded by the server.",
+    min_player_XP: 0,
+    XP_on_solve: 0,
+    img_url: null
+  };
 
-export default function CaseDetailsTab({ gameCase }: CaseDetailsTabProps) {
-  // Utilizing a placeholder image for the cinematic hero background
-  const heroImageUrl = `/assets/cases/case-${gameCase.id}.jpg`; 
+  const heroImageUrl = gameCase.img_url || '/placeholder-crime-scene.jpg'; 
 
   return (
     <div className="case-details-tab">
-      
-      {/* Cinematic Split-Pane / Hero Header */}
       <div className="case-hero-header">
         <div 
           className="case-hero-background" 
@@ -29,7 +33,6 @@ export default function CaseDetailsTab({ gameCase }: CaseDetailsTabProps) {
         </div>
       </div>
 
-      {/* Full Narrative Section */}
       <div className="case-full-story">
         <h2 className="section-title">Official Briefing</h2>
         <div className="story-text-block">
@@ -38,7 +41,6 @@ export default function CaseDetailsTab({ gameCase }: CaseDetailsTabProps) {
           ))}
         </div>
       </div>
-      
     </div>
   );
 }

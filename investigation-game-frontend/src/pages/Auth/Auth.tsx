@@ -1,39 +1,22 @@
-import { useState } from 'react';
-import { login, register } from '../../services/auth';
+import { useAuth } from '@/hooks/useAuth';
+import type { User } from '@/types';
 import './Auth.css';
 
 interface AuthProps {
-  onSuccess: () => void;
+  // Update this interface to accept the User object
+  onSuccess: (user: User) => void;
 }
 
 export default function Auth({ onSuccess }: AuthProps) {
-  const [isLogin, setIsLogin] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  // Form State
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [name, setName] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setError(null);
-
-    const result = isLogin 
-      ? await login(email, password)
-      : await register(username, name, email, password);
-
-    if (result.isSuccess) {
-      onSuccess(); // Triggers the transition to the Main Menu
-    } else {
-      setError(result.errorMessage);
-    }
-    
-    setIsLoading(false);
-  };
+  const {
+    isLogin, toggleAuthMode,
+    isLoading, error,
+    email, setEmail,
+    password, setPassword,
+    username, setUsername,
+    name, setName,
+    handleSubmit
+  } = useAuth(onSuccess);
 
   return (
     <div className="auth-container">
@@ -72,7 +55,7 @@ export default function Auth({ onSuccess }: AuthProps) {
           </button>
         </form>
 
-        <button className="auth-toggle" onClick={() => setIsLogin(!isLogin)}>
+        <button type="button" className="auth-toggle" onClick={toggleAuthMode}>
           {isLogin ? 'Need clearance? Register here.' : 'Already have access? Login.'}
         </button>
       </div>

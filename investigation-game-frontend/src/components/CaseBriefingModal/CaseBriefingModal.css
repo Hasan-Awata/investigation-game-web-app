@@ -4,26 +4,19 @@
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(18, 18, 18, 0.7);
-  backdrop-filter: blur(6px); /* The core glassmorphism background effect */
+  background: rgba(var(--bg-dark-rgb), 0.7);
+  backdrop-filter: blur(6px); 
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
 }
 
-.glass-panel {
-  background: rgba(30, 30, 30, 0.65);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.75);
-}
-
 .modal-content {
   position: relative;
   width: 90%;
   max-width: 600px;
-  border-radius: 12px;
+  border-radius: var(--radius-xl);
   padding: 2.5rem;
   display: flex;
   flex-direction: column;
@@ -66,7 +59,6 @@
   line-height: 1.6;
 }
 
-/* Custom scrollbar for the Modern Digital Forensics aesthetic */
 .modal-story-container::-webkit-scrollbar {
   width: 6px;
 }
@@ -75,44 +67,11 @@
 }
 .modal-story-container::-webkit-scrollbar-thumb {
   background: var(--accent-cyan);
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .modal-actions {
   display: flex;
   gap: 1rem;
   margin-top: 1rem;
-}
-
-.btn-primary, .btn-secondary {
-  flex: 1;
-  padding: 1rem;
-  border-radius: 4px;
-  font-weight: 600;
-  font-family: var(--font-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.btn-primary {
-  background: var(--accent-cyan);
-  color: var(--bg-dark);
-  border: none;
-}
-
-.btn-primary:hover {
-  background: #00b3cc;
-  box-shadow: 0 0 15px rgba(0, 229, 255, 0.4);
-}
-
-.btn-secondary {
-  background: transparent;
-  color: var(--accent-cyan);
-  border: 1px solid var(--accent-cyan);
-}
-
-.btn-secondary:hover {
-  background: rgba(0, 229, 255, 0.1);
 }

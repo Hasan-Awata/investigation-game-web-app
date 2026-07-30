@@ -31,9 +31,10 @@ class AssessmentController extends Controller
 
         // If the assessment ran successfully, it returns a status and a narrative message
         return response()->json([
-            'status' => $result->value['status'],    // 'success' or 'failed'
-            'message' => $result->value['message'], // The narrative feedback or Persona unlock message
-            'room' => $room->load('currentLevel'),  // Reload the room to reflect any level transitions
+            'status' => $result->value['status'],    
+            'message' => $result->value['message'], 
+            'unlocked_evidence' => $result->value['unlocked_evidence'] ?? [], 
+            'room' => $room->load('currentLevel'),  
         ], 200);
     }
 }

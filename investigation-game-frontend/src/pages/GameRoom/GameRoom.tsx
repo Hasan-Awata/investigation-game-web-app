@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { joinRoom, fetchRoomState } from '../../services/api';
-import type { GameRoom as GameRoomType } from '../../types';
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom'; // Added useNavigate
+import { useGameRoom } from '../../hooks/useGameRoom';
+import { RoomProvider } from '../../context/RoomContext';
 import CaseDetailsTab from './tabs/CaseDetailsTab';
 import EvidenceBoardTab from './tabs/EvidenceBoardTab';
 import CampaignTab from './tabs/CampaignTab';
@@ -11,131 +11,137 @@ type Tab = 'details' | 'evidences' | 'campaign';
 
 export default function GameRoom() {
   const { inviteCode } = useParams<{ inviteCode: string }>();
-  const [room, setRoom] = useState<GameRoomType | null>(null);
+  const navigate = useNavigate(); // Initialize navigation
+  
+  const { 
+    room, 
+    isLoading, 
+    error, 
+    accumulatedEvidences, 
+    refreshRoomData 
+  } = useGameRoom(inviteCode);
+  
   const [activeTab, setActiveTab] = useState<Tab>('details');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const loadRoom = async () => {
-      if (!inviteCode) return;
-      
-      // 1. Join the room to ensure access and get the Room ID
-      const joinResult = await joinRoom(inviteCode);
-      
-      if (joinResult.isSuccess) {
-        // 2. Fetch the fully hydrated room state (with levels and evidence)
-        const stateResult = await fetchRoomState(joinResult.value.id);
-        
-        if (stateResult.isSuccess) {
-          setRoom(stateResult.value);
-        } else {
-          setError(stateResult.errorMessage);
-        }
-      } else {
-        setError(joinResult.errorMessage);
-      }
-      setIsLoading(false);
-    };
-
-    loadRoom();
-  }, [inviteCode]);
 
   if (isLoading) return <div className="terminal-text">Synchronizing session data...</div>;
   if (error || !room) return <div className="terminal-text error">{error || 'Session not found.'}</div>;
 
-// 1. Determine the order index of the current active level
-  const currentLevelIndex = room.game_case?.levels?.find(
-    (l) => l.id === room.current_level_id
-  )?.order_index || 0;
-
-  // 2. Filter out future locked levels, then map and flatten the evidence into a single array
-  const accumulatedEvidences = room.game_case?.levels
-    ?.filter((level) => level.order_index <= currentLevelIndex)
-    ?.flatMap((level) => level.evidences || []) || [];
-
-  // Inside GameRoom.tsx, define a refresh function above the return statement:
-    const refreshRoomData = async () => {
-        if (!room) return;
-        const stateResult = await fetchRoomState(room.id);
-        if (stateResult.isSuccess) setRoom(stateResult.value);
-    };
-
   return (
-    <div className="game-room-layout">
-      <aside className="sidebar-panel glass-panel">
-        <div className="sidebar-section">
-          <h3 className="sidebar-heading">Session Code</h3>
-          <div className="invite-code-display">{room.invite_code}</div>
-        </div>
+    <RoomProvider 
+      room={room} 
+      accumulatedEvidences={accumulatedEvidences} 
+      refreshRoomData={refreshRoomData}
+    >
+      <div className="game-room-layout">
+        
+        {/* The Resolution Overlay */}
+        {(room.status === 'solved' || room.status === 'failed') && (
+          <div className="victory-overlay">
+            <div className="victory-content">
+              
+              {room.status === 'solved' ? (
+                <>
+                  <div className="forensic-icon pulse" style={{ color: 'var(--accent-cyan)' }}>✧</div>
+                  <h1 className="victory-title" style={{ color: 'var(--accent-cyan)' }}>CASE CLOSED</h1>
+                  <p className="victory-subtitle">The truth is uncovered. Excellent work.</p>
+                </>
+              ) : (
+                <>
+                  <div className="forensic-icon pulse" style={{ color: 'var(--accent-crimson)' }}>✕</div>
+                  <h1 className="victory-title" style={{ color: 'var(--accent-crimson)', textShadow: '0 0 30px rgba(163,50,50,0.4)' }}>
+                    WRONG CONVICTION
+                  </h1>
+                  <p className="victory-subtitle">The evidence was misread. The guilty walk free, and the innocent pay the price.</p>
+                </>
+              )}
 
-        <div className="sidebar-section">
-          <h3 className="sidebar-heading">Active Agents</h3>
-          <ul className="agent-list">
-            {room.users ? room.users.map((participant) => (
-              <li key={participant.id} className="agent-item">
-                <span className={`agent-role ${participant.role}`}></span>
-                {participant.user?.username || `Agent #${participant.user_id}`}
-              </li>
-            )) : (
-              <li className="agent-item">
-                <span className="agent-role host"></span>
-                Host (ID: {room.host_user_id})
-              </li>
-            )}
-          </ul>
-        </div>
-      </aside>
+              <button className="btn-primary" onClick={() => navigate('/')}>
+                Return to Headquarters
+              </button>
+            </div>
+          </div>
+        )}
 
-      <main className="workspace-panel">
-        <header className="workspace-header">
-          <nav className="tab-navigation">
-            <button 
-              className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`}
-              onClick={() => setActiveTab('details')}
-            >
-              Case Details
-            </button>
-            <button 
-              className={`tab-btn ${activeTab === 'evidences' ? 'active' : ''}`}
-              onClick={() => setActiveTab('evidences')}
-            >
-              Evidences
-            </button>
-            <button 
-              className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`}
-              onClick={() => setActiveTab('campaign')}
-            >
-              Campaign
-            </button>
-          </nav>
-        </header>
+<aside className="sidebar-panel glass-panel">
+          <div className="sidebar-section">
+            <h3 className="sidebar-heading">Session Code</h3>
+            <div className="invite-code-display">{room.invite_code}</div>
+          </div>
 
-        <div className="tab-content-area">
-          {activeTab === 'details' && (
-            <CaseDetailsTab gameCase={room.game_case || {
-              id: room.case_id,
-              title: "Case Data Missing",
-              story: "The case metadata was not eager-loaded by the server.",
-              min_player_XP: 0,
-              XP_on_solve: 0
-            }} />
-          )}
-          {/* Inject the real DB evidence directly into the tab */}
-          {activeTab === 'evidences' && (
-            <EvidenceBoardTab evidences={accumulatedEvidences} />
-          )}
-          {activeTab === 'campaign' && (
-            <CampaignTab 
-              levels={room.game_case?.levels || []} 
-              currentLevelId={room.current_level_id} 
-              roomId={room.id}
-              roomStatus={room.status} // <-- Add this line
-              onLevelCleared={refreshRoomData} 
-            />
-          )}
-        </div>
-      </main>
-    </div>
+          {/* NEW DEPARTMENT HEAT UI */}
+          <div className="sidebar-section">
+            <h3 className="sidebar-heading" style={{ color: 'var(--accent-crimson)', borderColor: 'rgba(255,51,102,0.2)' }}>
+              Department Heat
+            </h3>
+            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
+              {[...Array(5)].map((_, i) => (
+                <div 
+                  key={i} 
+                  style={{
+                    flex: 1,
+                    height: '8px',
+                    borderRadius: '2px',
+                    background: i < (room.strikes || 0) ? 'var(--accent-crimson)' : 'rgba(255,255,255,0.05)',
+                    boxShadow: i < (room.strikes || 0) ? '0 0 10px rgba(163,50,50,0.8)' : 'none',
+                    transition: 'all 0.3s ease'
+                  }}
+                ></div>
+              ))}
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem', textAlign: 'right' }}>
+              STRIKES: {room.strikes || 0} / 5
+            </div>
+          </div>
+
+          <div className="sidebar-section">
+            <h3 className="sidebar-heading">Active Agents</h3>
+            <ul className="agent-list">
+              {room.users ? room.users.map((participant) => (
+                <li key={participant.id} className="agent-item">
+                  <span className={`agent-role ${participant.role}`}></span>
+                  {participant.user?.username || `Agent #${participant.user_id}`}
+                </li>
+              )) : (
+                <li className="agent-item">
+                  <span className="agent-role host"></span>
+                  Host (ID: {room.host_user_id})
+                </li>
+              )}
+            </ul>
+          </div>
+        </aside>
+
+        <main className="workspace-panel">
+          <header className="workspace-header">
+            <nav className="tab-navigation">
+              <button 
+                className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`}
+                onClick={() => setActiveTab('details')}
+              >
+                Case Details
+              </button>
+              <button 
+                className={`tab-btn ${activeTab === 'evidences' ? 'active' : ''}`}
+                onClick={() => setActiveTab('evidences')}
+              >
+                Evidences
+              </button>
+              <button 
+                className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`}
+                onClick={() => setActiveTab('campaign')}
+              >
+                Campaign
+              </button>
+            </nav>
+          </header>
+
+          <div className="tab-content-area">
+            {activeTab === 'details' && <CaseDetailsTab />}
+            {activeTab === 'evidences' && <EvidenceBoardTab />}
+            {activeTab === 'campaign' && <CampaignTab />}
+          </div>
+        </main>
+      </div>
+    </RoomProvider>
   );
 }

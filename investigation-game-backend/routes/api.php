@@ -7,6 +7,11 @@ use App\Http\Controllers\GameRoomController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\PersonaController;
+use App\Http\Controllers\Admin\AdminCaseController;
+use App\Http\Controllers\Admin\AdminLevelController;
+use App\Http\Controllers\Admin\AdminEvidenceController;
+use App\Http\Controllers\Admin\AdminQuestionController;
+use App\Http\Middleware\IsAdmin; 
 
 // Public Authentication Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -32,4 +37,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // Persona Hint System
     Route::post('/rooms/{room}/hint', [PersonaController::class, 'store']);
     
+Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
+    Route::get('/cases', [AdminCaseController::class, 'index']); 
+    Route::post('/cases', [AdminCaseController::class, 'store']);
+    Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']); 
+    Route::post('/levels', [AdminLevelController::class, 'store']);
+    Route::post('/evidences', [AdminEvidenceController::class, 'store']);
+    Route::post('/questions', [AdminQuestionController::class, 'store']);
+});
 });

@@ -83,10 +83,13 @@ FILE: D:\Laravel\investigation-game\investigation-game-backend\composer.json
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "cloudinary-labs/cloudinary-laravel": "^3.0",
         "laravel/framework": "^12.0",
         "laravel/reverb": "^1.0",
         "laravel/sanctum": "^4.0",
-        "laravel/tinker": "^2.10.1"
+        "laravel/tinker": "^2.10.1",
+        "league/flysystem-aws-s3-v3": "3.0",
+        "pusher/pusher-php-server": "^7.2"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -270,6 +273,46 @@ enum RoomStatus: string
 {
     case Active = 'active';
     case Solved = 'solved';
+    case Failed = 'failed';
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Events\EvidenceDiscovered.php
+----------------------------------------
+<?php
+
+namespace App\Events;
+
+use App\Models\GameRoom;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class EvidenceDiscovered implements ShouldBroadcastNow
+{
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+
+    public function __construct(
+        public readonly GameRoom $room,
+        public readonly array $evidenceIds
+    ) {}
+
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('room.' . $this->room->id),
+        ];
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'evidence_ids' => $this->evidenceIds,
+            'message' => 'New evidence recovered based on your narrative deductions.'
+        ];
+    }
 }
 
 
@@ -453,9 +496,10 @@ class AssessmentController extends Controller
 
         // If the assessment ran successfully, it returns a status and a narrative message
         return response()->json([
-            'status' => $result->value['status'],    // 'success' or 'failed'
-            'message' => $result->value['message'], // The narrative feedback or Persona unlock message
-            'room' => $room->load('currentLevel'),  // Reload the room to reflect any level transitions
+            'status' => $result->value['status'],    
+            'message' => $result->value['message'], 
+            'unlocked_evidence' => $result->value['unlocked_evidence'] ?? [], 
+            'room' => $room->load('currentLevel'),  
         ], 200);
     }
 }
@@ -562,25 +606,26 @@ use Illuminate\Http\JsonResponse;
 
 class CaseController extends Controller
 {
-    /**
-     * Return a list of all playable cases, ordered by their creation date.
-     */
     public function index(Request $request): JsonResponse
     {
         $userId = $request->user()->id;
 
-        $cases = GameCase::select('id', 'title', 'story', 'min_player_XP', 'XP_on_solve')
-            ->withExists([
-                'users as is_solved' => function ($query) use ($userId) {
-                    $query->where('case_user.user_id', $userId)
-                          ->where('case_user.status', 'solved');
-                }
-            ])
+        $cases = GameCase::select('id', 'title', 'story', 'min_player_XP', 'XP_on_solve', 'img_url')
+            ->with(['users' => function ($query) use ($userId) {
+                $query->where('users.id', $userId)->select('users.id');
+            }])
             ->orderBy('created_at', 'desc')
-            ->get();
+            ->get()
+            ->map(function ($case) {
+                $case->user_status = $case->users->first()?->pivot->status;
+                unset($case->users); 
+                return $case;
+            });
 
         return response()->json([
-            'cases' => $cases
+            'cases' => $cases,
+            // Strictly whitelist only the fields the frontend needs to render the UI
+            'user' => $request->user()->only(['id', 'username', 'name', 'email', 'XP', 'is_admin'])
         ], 200);
     }
 }
@@ -675,15 +720,14 @@ class GameRoomController extends Controller
      */
     public function show(GameRoom $room): JsonResponse
     {
-        // Eager load the nested level data required to render the game UI
         $room->load([
             'host',
             'gameCase.levels.questions.choices',
             'gameCase.levels.evidences',
-            'users.user', // Load the participants and their base user profiles
+            'users.user', 
             'currentLevel.questions.choices',
+            'unlockedEvidences',
             
-            // Only load the votes relevant to the current level to prevent data bloat
             'votes' => function ($query) use ($room) {
                 $query->whereHas('question', function ($q) use ($room) {
                     $q->where('level_id', $room->current_level_id);
@@ -788,6 +832,386 @@ class VoteController extends Controller
 
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminCaseController.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\GameCase;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Cloudinary\Cloudinary;
+
+class AdminCaseController extends Controller
+{
+    /**
+     * Store a newly created case with an optional cover image.
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+            'story' => 'required|string',
+            'min_player_XP' => 'required|integer|min:0',
+            'XP_on_solve' => 'required|integer|min:0',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+        ]);
+
+        $imageUrl = null;
+        if ($request->hasFile('image')) {
+            $cloudinary = new Cloudinary([
+                'cloud' => [
+                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                    'api_key'    => env('CLOUDINARY_API_KEY'),
+                    'api_secret' => env('CLOUDINARY_API_SECRET'),
+                ],
+                'url' => [
+                    'secure' => true
+                ]
+            ]);
+
+            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
+                'folder' => 'cases'
+            ]);
+            $imageUrl = $upload['secure_url'];
+        }
+
+        $case = GameCase::create([
+            'title' => $validated['title'],
+            'story' => $validated['story'],
+            'min_player_XP' => $validated['min_player_XP'],
+            'XP_on_solve' => $validated['XP_on_solve'],
+            'img_url' => $imageUrl,
+        ]);
+
+        return response()->json([
+            'message' => 'Case created successfully.',
+            'case' => $case,
+            'image_url' => $imageUrl
+        ], 201);
+    }
+
+    /**
+     * Fetch all cases, their levels, and their evidence for admin dropdowns.
+     */
+    public function index(): JsonResponse
+    {
+        $cases = GameCase::with(['levels' => function ($query) {
+            $query->select('id', 'case_id', 'title', 'order_index')
+                  ->orderBy('order_index', 'asc')
+                  ->with('evidences:id,level_id,title'); 
+        }])
+        ->select('id', 'title')
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+        return response()->json([
+            'cases' => $cases
+        ], 200);
+    }
+
+        public function destroy($id): JsonResponse
+    {
+        // Eager load everything associated with the case to harvest the media URLs
+        $case = GameCase::with(['levels.evidences', 'levels.questions'])->findOrFail($id);
+
+        // 1. Wipe Case Cover
+        $this->deleteCloudinaryMedia($case->img_url);
+
+        // 2. Wipe Level and Evidence Media
+        foreach ($case->levels as $level) {
+            $this->deleteCloudinaryMedia($level->img_url);
+
+            foreach ($level->evidences as $evidence) {
+                $this->deleteCloudinaryMedia($evidence->img_url);
+                $this->deleteCloudinaryMedia($evidence->audio_url);
+            }
+
+            foreach ($level->questions as $question) {
+                $this->deleteCloudinaryMedia($question->img_url);
+            }
+        }
+
+        // 3. Wipe the database rows (handled automatically via SQLite cascadeOnDelete constraints)
+        $case->delete();
+
+        return response()->json(['message' => 'Case and all associated media completely wiped.'], 200);
+    }
+
+    /**
+     * Regex helper to extract the public_id and trigger Cloudinary SDK deletion.
+     */
+    private function deleteCloudinaryMedia(?string $url): void
+    {
+        if (!$url) return;
+
+        // Extracts everything after /upload/[version]/ up to the file extension
+        if (preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
+            $publicId = $matches[1];
+            
+            // Cloudinary requires 'video' resource_type for audio files
+            $resourceType = str_contains($url, '/video/') ? 'video' : 'image';
+
+            $cloudinary = new Cloudinary([
+                'cloud' => [
+                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                    'api_key'    => env('CLOUDINARY_API_KEY'),
+                    'api_secret' => env('CLOUDINARY_API_SECRET'),
+                ],
+                'url' => ['secure' => true]
+            ]);
+
+            try {
+                $cloudinary->uploadApi()->destroy($publicId, ['resource_type' => $resourceType]);
+            } catch (\Exception $e) {
+                // Silently fail if the image is already missing from the cloud vault
+            }
+        }
+    }
+}
+
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminEvidenceController.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Evidence;
+use App\Enums\EvidenceType;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rules\Enum;
+use Cloudinary\Cloudinary; 
+
+class AdminEvidenceController extends Controller
+{
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'level_id' => 'required|exists:levels,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'evidence_type' => ['required', new Enum(EvidenceType::class)],
+            'paragraph' => 'nullable|string',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
+        ]);
+
+        // 1. Manually configure the Cloudinary instance
+        $cloudinary = new Cloudinary([
+            'cloud' => [
+                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                'api_key'    => env('CLOUDINARY_API_KEY'),
+                'api_secret' => env('CLOUDINARY_API_SECRET'),
+            ],
+            'url' => [
+                'secure' => true
+            ]
+        ]);
+
+        // 2. Upload Image
+        $imageUrl = null;
+        if ($request->hasFile('image')) {
+            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
+                'folder' => 'evidence/images'
+            ]);
+            $imageUrl = $upload['secure_url']; 
+        }
+
+        // 3. Upload Audio
+        $audioUrl = null;
+        if ($request->hasFile('audio')) {
+            $upload = $cloudinary->uploadApi()->upload($request->file('audio')->getRealPath(), [
+                'folder' => 'evidence/audio',
+                'resource_type' => 'video' // Required for audio files
+            ]);
+            $audioUrl = $upload['secure_url'];
+        }
+
+        $evidence = Evidence::create([
+            'level_id' => $validated['level_id'],
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'evidence_type' => $validated['evidence_type'],
+            'paragraph' => $validated['paragraph'] ?? null,
+            'img_url' => $imageUrl,
+            'audio_url' => $audioUrl,
+        ]);
+
+        return response()->json([
+            'message' => 'Evidence added successfully.',
+            'evidence' => $evidence
+        ], 201);
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminLevelController.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Level;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Cloudinary\Cloudinary;
+
+class AdminLevelController extends Controller
+{
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'case_id' => 'required|exists:cases,id',
+            'title' => 'required|string|max:255',
+            'details' => 'required|string',
+            'order_index' => 'required|integer|min:1',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+        ]);
+
+        $imageUrl = null;
+        if ($request->hasFile('image')) {
+            $cloudinary = new Cloudinary([
+                'cloud' => [
+                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                    'api_key'    => env('CLOUDINARY_API_KEY'),
+                    'api_secret' => env('CLOUDINARY_API_SECRET'),
+                ],
+                'url' => [
+                    'secure' => true
+                ]
+            ]);
+
+            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
+                'folder' => 'levels'
+            ]);
+            $imageUrl = $upload['secure_url'];
+        }
+
+        $level = Level::create([
+            'case_id' => $validated['case_id'],
+            'title' => $validated['title'],
+            'details' => $validated['details'],
+            'order_index' => $validated['order_index'],
+            'img_url' => $imageUrl,
+        ]);
+
+        return response()->json([
+            'message' => 'Level created successfully.',
+            'level' => $level
+        ], 201);
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminQuestionController.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Question;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
+use Cloudinary\Cloudinary;
+
+class AdminQuestionController extends Controller
+{
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'level_id' => 'required|exists:levels,id',
+            'text' => 'required|string',
+            'msg_when_wrong' => 'nullable|string',
+            'is_mandatory' => 'required|boolean', 
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'choices' => 'required|array|min:2',
+            'choices.*.text' => 'required|string|max:255',
+            'choices.*.is_correct' => 'required|boolean',
+            'choices.*.unlocks_evidence_id' => 'nullable|exists:evidences,id', 
+        ]);
+
+        $imageUrl = null;
+        if ($request->hasFile('image')) {
+            $cloudinary = new \Cloudinary\Cloudinary([
+                'cloud' => [
+                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                    'api_key'    => env('CLOUDINARY_API_KEY'),
+                    'api_secret' => env('CLOUDINARY_API_SECRET'),
+                ],
+                'url' => ['secure' => true]
+            ]);
+
+            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
+                'folder' => 'questions'
+            ]);
+            $imageUrl = $upload['secure_url'];
+        }
+
+        return DB::transaction(function () use ($validated, $imageUrl) {
+            // 1. Create the Question
+            $question = Question::create([
+                'level_id' => $validated['level_id'],
+                'text' => $validated['text'],
+                'msg_when_wrong' => $validated['msg_when_wrong'],
+                'is_mandatory' => $validated['is_mandatory'], // Save flag
+                'img_url' => $imageUrl,
+            ]);
+
+            // 2. Create the associated Choices
+            $choicesData = array_map(function ($choice) use ($question) {
+                return [
+                    'question_id' => $question->id,
+                    'text' => $choice['text'],
+                    'is_correct' => $choice['is_correct'],
+                    'unlocks_evidence_id' => $choice['unlocks_evidence_id'] ?? null, // Save evidence link
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }, $validated['choices']);
+
+            $question->choices()->insert($choicesData);
+
+            return response()->json([
+                'message' => 'Question and choices created successfully.',
+                'question' => $question->load('choices')
+            ], 201);
+        });
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Middleware\IsAdmin.php
+----------------------------------------
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
+
+class IsAdmin
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        if (!$request->user() || !$request->user()->is_admin) {
+            return response()->json(['error' => 'Unauthorized. Admin access required.'], 403);
+        }
+
+        return $next($request);
+    }
+}
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\Choice.php
 ----------------------------------------
 <?php
@@ -803,6 +1227,7 @@ class Choice extends Model
         'question_id',
         'text',
         'is_correct',
+        'unlocks_evidence_id', 
     ];
 
     protected $casts = [
@@ -911,9 +1336,9 @@ class GameCase extends Model
     /**
      * Users who have played or solved this case, tracked via the case_user pivot table.
      */
-    public function users(): BelongsToMany
+public function users(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'case_user')
+        return $this->belongsToMany(User::class, 'case_user', 'case_id', 'user_id')
             ->withPivot('status', 'completed_at')
             ->withTimestamps();
     }
@@ -933,12 +1358,13 @@ use App\Enums\RoomStatus;
 
 class GameRoom extends Model
 {
-    protected $fillable = [
+protected $fillable = [
         'case_id',
         'host_user_id',
         'invite_code',
         'current_level_id',
         'status',
+        'strikes', 
     ];
 
     /**
@@ -977,6 +1403,12 @@ class GameRoom extends Model
     public function votes(): HasMany
     {
         return $this->hasMany(RoomVote::class, 'room_id');
+    }
+
+    public function unlockedEvidences()
+    {
+        return $this->belongsToMany(Evidence::class, 'room_evidences', 'room_id', 'evidence_id')
+                    ->withTimestamps();
     }
 }
 
@@ -1044,11 +1476,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Question extends Model
 {
-    protected $fillable = [
+protected $fillable = [
         'level_id',
         'text',
         'img_url',
         'msg_when_wrong',
+        'is_mandatory', 
     ];
 
     public function level(): BelongsTo
@@ -1251,33 +1684,135 @@ class AssessmentService
         return DB::transaction(function () use ($room) {
             $level = $room->currentLevel;
             $consensus = $this->votingService->calculateLevelConsensus($room, $level->id);
-            $questionsCount = $level->questions()->count();
+            
+            $mandatoryQuestions = $level->questions()->where('is_mandatory', true)->get();
+            $optionalQuestions = $level->questions()->where('is_mandatory', false)->get();
 
-            // Ensure every question has a consensus before assessing
-            if (count($consensus) !== $questionsCount) {
-                return Result::failure("Not all verdicts have a locked-in consensus yet.");
+            // 1. Check Mandatory Progression
+            foreach ($mandatoryQuestions as $question) {
+                if (!isset($consensus[$question->id])) {
+                    return Result::failure("Not all mandatory verdicts have a locked-in consensus yet.");
+                }
+
+                $chosenId = $consensus[$question->id];
+                $isCorrect = Choice::where('id', $chosenId)->value('is_correct');
+
+                // IF THEY SUBMIT THE WRONG ANSWER
+                if (!$isCorrect) {
+                    $room->increment('strikes');
+                    $room->refresh(); // Fetch the new strike count
+
+                    // IF THEY HIT 5 STRIKES (THE POINT OF NO RETURN)
+                    if ($room->strikes >= 5) {
+                        $room->update(['status' => \App\Enums\RoomStatus::Failed]);
+                        $this->finalizeCaseForParticipants($room, 'failed');
+                        \App\Events\LevelTransitioned::dispatch($room);
+
+                        return Result::success([
+                            'status' => 'failed_final', 
+                            'message' => 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.'
+                        ]);
+                    }
+
+                    // IF THEY STILL HAVE STRIKES LEFT
+                    return Result::success([
+                        'status' => 'failed', 
+                        'message' => "The logic on a critical verdict is flawed. STRIKE {$room->strikes}/5 LOGGED. The Persona hint system is active."
+                    ]);
+                }
             }
 
-            // Cross-reference the consensus choices with the database to check correctness
-            $correctChoicesCount = Choice::whereIn('id', array_values($consensus))
-                ->where('is_correct', true)
-                ->count();
+            // 2. Process Optional Narrative Choices
+            $newlyUnlockedEvidences = [];
+            foreach ($optionalQuestions as $question) {
+                if (isset($consensus[$question->id])) {
+                    $chosenId = $consensus[$question->id];
+                    $choice = Choice::find($chosenId);
 
-            $isSuccess = ($correctChoicesCount === $questionsCount);
-
-            if ($isSuccess) {
-                $this->advanceToNextLevel($room, $level);
-                return Result::success([
-                    'status' => 'success', 
-                    'message' => 'Verdict accepted. Moving to the next phase of the investigation.'
-                ]);
+                    if ($choice && $choice->unlocks_evidence_id) {
+                        DB::table('room_evidences')->updateOrInsert([
+                            'room_id' => $room->id,
+                            'evidence_id' => $choice->unlocks_evidence_id
+                        ]);
+                        $newlyUnlockedEvidences[] = $choice->unlocks_evidence_id;
+                    }
+                }
             }
 
+            if (!empty($newlyUnlockedEvidences)) {
+                \App\Events\EvidenceDiscovered::dispatch($room, $newlyUnlockedEvidences);
+            }
+
+            // 3. Advance or Successfully Close the Case
+            $nextLevel = Level::where('case_id', $room->case_id)
+                ->where('order_index', '>', $level->order_index)
+                ->orderBy('order_index', 'asc')
+                ->first();
+
+            if ($nextLevel) {
+                $room->update(['current_level_id' => $nextLevel->id]);
+            } else {
+                $room->update(['status' => \App\Enums\RoomStatus::Solved]);
+                $this->finalizeCaseForParticipants($room, 'solved');
+            }
+
+            \App\Events\LevelTransitioned::dispatch($room);
+            
             return Result::success([
-                'status' => 'failed', 
-                'message' => 'The logic is flawed. The Persona hint system is now available for the Host.'
+                'status' => 'success', 
+                'message' => 'Verdict accepted. Moving to the next phase of the investigation.',
+                'unlocked_evidence' => $newlyUnlockedEvidences 
             ]);
         });
+    }
+
+    /**
+     * Populate the case_user history and distribute XP dynamically.
+     */
+    private function finalizeCaseForParticipants(GameRoom $room, string $finalStatus): void
+    {
+        $userIds = $room->users()->pluck('user_id');
+        $case = $room->gameCase;
+
+        foreach ($userIds as $userId) {
+            // Check the player's personal history with this dossier
+            $existingRecord = DB::table('case_user')
+                ->where('user_id', $userId)
+                ->where('case_id', $case->id)
+                ->first();
+
+            $previousStatus = $existingRecord->status ?? null;
+
+            // 1. Calculate XP Payload
+            if ($finalStatus === 'solved') {
+                $xpGained = 0;
+                
+                if ($previousStatus === 'solved') {
+                    $xpGained = 0; // Replay: 0% XP
+                } elseif ($previousStatus === 'failed') {
+                    $xpGained = (int) floor($case->XP_on_solve / 2); // Redemption: 50% XP
+                } else {
+                    $xpGained = $case->XP_on_solve; // First time: 100% XP
+                }
+
+                if ($xpGained > 0) {
+                    \App\Models\User::where('id', $userId)->increment('XP', $xpGained);
+                }
+            }
+
+            // 2. Preserve or Update State
+            if ($previousStatus === 'solved') {
+                // Never downgrade a successful conviction. Just update the timestamp.
+                DB::table('case_user')
+                    ->where('id', $existingRecord->id)
+                    ->update(['completed_at' => now()]);
+            } else {
+                DB::table('case_user')->updateOrInsert(
+                    ['user_id' => $userId, 'case_id' => $case->id],
+                    ['status' => $finalStatus, 'completed_at' => now()]
+                );
+            }
+        }
     }
 
     /**
@@ -1910,14 +2445,7 @@ return [
             'app_id' => env('PUSHER_APP_ID'),
             'options' => [
                 'cluster' => env('PUSHER_APP_CLUSTER'),
-                'host' => env('PUSHER_HOST') ?: 'api-'.env('PUSHER_APP_CLUSTER', 'mt1').'.pusher.com',
-                'port' => env('PUSHER_PORT', 443),
-                'scheme' => env('PUSHER_SCHEME', 'https'),
-                'encrypted' => true,
-                'useTLS' => env('PUSHER_SCHEME', 'https') === 'https',
-            ],
-            'client_options' => [
-                // Guzzle client options: https://docs.guzzlephp.org/en/stable/request-options.html
+                'useTLS' => true,
             ],
         ],
 
@@ -3732,6 +4260,155 @@ return new class extends Migration {
 };
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_27_185851_add_is_admin_to_users_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('users', function (Blueprint $table) {
+            $table->boolean('is_admin')->default(false)->after('XP');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('is_admin');
+        });
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_28_173628_add_img_url_to_cases_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void {
+        Schema::table('cases', function (Blueprint $table) {
+            $table->string('img_url')->nullable()->after('XP_on_solve');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('cases', function (Blueprint $table) {
+            //
+        });
+    }
+};
+
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_28_214229_add_narrative_flags_to_questions_and_choices.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void {
+    Schema::table('questions', function (Blueprint $table) {
+        // Distinguishes between progression blockers and optional narrative puzzles
+        $table->boolean('is_mandatory')->default(true)->after('text');
+    });
+
+    Schema::table('choices', function (Blueprint $table) {
+        // Maps a specific choice directly to a hidden piece of evidence
+        $table->foreignId('unlocks_evidence_id')->nullable()->constrained('evidences')->nullOnDelete()->after('is_correct');
+    });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('questions_and_choices', function (Blueprint $table) {
+            //
+        });
+    }
+};
+
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_28_214305_create_room_evidences_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void {
+    Schema::create('room_evidences', function (Blueprint $table) {
+        $table->id();
+        $table->foreignId('room_id')->constrained('game_rooms')->cascadeOnDelete();
+        $table->foreignId('evidence_id')->constrained('evidences')->cascadeOnDelete();
+        $table->timestamps();
+    });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('room_evidences');
+    }
+};
+
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_29_225940_add_strikes_to_game_rooms_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('game_rooms', function (Blueprint $table) {
+            $table->integer('strikes')->default(0)->after('status');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('game_rooms', function (Blueprint $table) {
+            $table->dropColumn('strikes');
+        });
+    }
+};
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\DatabaseSeeder.php
 ----------------------------------------
 <?php
@@ -3746,13 +4423,24 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create a couple of test users
+        // 1. Create the Master Admin Account
+        User::create([
+            'username' => 'MasterAdmin',
+            'name' => 'System Administrator',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
+            'XP' => 0,
+            'is_admin' => true, 
+        ]);
+
+        // 2. Create a couple of standard test users
         User::create([
             'username' => 'HostPlayer',
             'name' => 'Host User',
             'email' => 'host@example.com',
             'password' => Hash::make('password'),
             'XP' => 0,
+            'is_admin' => false,
         ]);
 
         User::create([
@@ -3761,15 +4449,15 @@ class DatabaseSeeder extends Seeder
             'email' => 'guest@example.com',
             'password' => Hash::make('password'),
             'XP' => 0,
+            'is_admin' => false,
         ]);
 
-        // Run the Game Case seeder
+        // 3. Run the Game Case seeder
         $this->call([
             GameCaseSeeder::class,
         ]);
     }
 }
-
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\GameCaseSeeder.php
@@ -3795,34 +4483,34 @@ class GameCaseSeeder extends Seeder
     {
         // 1. Create the Parent Case
         $case = GameCase::create([
-            'title' => 'The Midnight Syndicate',
-            'story' => "A prominent local businessman was found unconscious in his office. You must piece together the timeline and identify the culprit before they strike again.\n\nThe investigation requires absolute discretion. Review the initial reports from the scene, determine the point of entry, and analyze the financial records to identify who had the most to gain.",
+            'title' => 'The Midnight Broadcast',
+            'story' => "Late-night radio host Julian Vance was found dead in his soundproof studio booth during a live midnight broadcast. The studio door was bolted from the inside, the mixing board was still looping his final track, and the authorities initially ruled it a sudden medical emergency. But a closer look at the station's logs reveals someone altered the audio automation timer minutes before he died.",
             'min_player_XP' => 0,
-            'XP_on_solve' => 150,
+            'XP_on_solve' => 250,
         ]);
 
         // 2. Create Level 1: The Scene of the Crime
         $level1 = Level::create([
             'case_id' => $case->id,
-            'title' => 'Phase 1: Office Investigation',
-            'details' => 'Review the initial reports from the scene and determine the point of entry.',
+            'title' => 'Phase 1: The Locked Booth',
+            'details' => 'Establish how the intruder accessed the sealed studio and determine the exact time of death.',
             'order_index' => 1,
         ]);
 
         $level2 = Level::create([
             'case_id' => $case->id,
-            'title' => 'Phase 2: Accident Reconstruction',
-            'details' => 'Review the initial reports from the scene and determine the point of entry.',
+            'title' => 'Phase 2: The Digital Loop',
+            'details' => 'Unmask the accomplice who manipulated the broadcast automation system to cover up the timing of the murder.',
             'order_index' => 2,
         ]);
 
         // EVIDENCE 1: Document Variant
         Evidence::create([
             'level_id' => $level1->id,
-            'title' => 'Police Report #102',
-            'description' => 'First responder notes indicating a shattered window and a knocked-over filing cabinet.',
+            'title' => 'Station Floor Plan & Keycard Access #102',
+            'description' => 'Key card logs',
             'evidence_type' => EvidenceType::Document,
-            'paragraph' => 'The window facing the alleyway was broken from the outside. Glass shards were found scattered exclusively on the interior rug.',
+            'paragraph' => 'wide-angle view of the master studio. The main access door is deadbolted from the inside. A half-empty coffee mug sits on the mixing desk, and the emergency studio exit window facing the alley is cracked open three inches.',
         ]);
 
         // EVIDENCE 2: Testimony Variant
@@ -3846,41 +4534,56 @@ class GameCaseSeeder extends Seeder
         // EVIDENCE 4: Image Variant
         Evidence::create([
             'level_id' => $level1->id,
-            'title' => 'Office Door Latch',
-            'description' => 'Crime scene photo showing forced entry marks.',
+            'title' => 'Studio Overview',
+            'description' => 'A wide-angle view of the master studio. The main access door is deadbolted from the inside. A half-empty coffee mug sits on the mixing desk, and the emergency studio exit window facing the alley is cracked open three inches.',
             'evidence_type' => EvidenceType::Image,
-            'img_url' => '/assets/cases/latch-detail.jpg', // Feel free to point this to a real image later
+            'img_url' => '/assets/cases/latch-detail.jpg',
         ]);
 
         // EVIDENCE 5: Forensic Variant
         Evidence::create([
             'level_id' => $level1->id,
-            'title' => 'Toxicology Summary',
-            'description' => 'Preliminary lab results from the victim.',
+            'title' => 'Coroner\'s Preliminary Log',
+            'description' => 'The preliminary coroner\'s report on the victim\'s body.',
             'evidence_type' => EvidenceType::Forensic,
-            'paragraph' => 'High concentrations of synthetic sedatives found in the bloodstream, administered approximately 1 hour before discovery.',
+            'paragraph' => 'The coroner\'s report indicates that the victim died from an acute potassium chloride injection, with a puncture wound found on his left wrist, obscured by a heavy wristwatch.',
         ]);
 
         // 3. Create the Assessment/Puzzle for Level 1
         $question1 = Question::create([
             'level_id' => $level1->id,
-            'text' => 'Based on the initial evidence, how did the perpetrator enter the building?',
-            'msg_when_wrong' => 'Take a closer look at the physical distribution of the glass and the janitor\'s timeline.',
+            'text' => 'Given that the door was bolted from the inside and no keycards were logged after 11:00 PM, how did the perpetrator exit or enter the room without leaving an electronic footprint?',
+            'msg_when_wrong' => 'Check the physical state of the room relative to the keycard logs. Is there another physical entry point?',
         ]);
 
-        Choice::create(['question_id' => $question1->id, 'text' => 'Through the front lobby.', 'is_correct' => false]);
-        Choice::create(['question_id' => $question1->id, 'text' => 'Through the alleyway window.', 'is_correct' => true]);
-        Choice::create(['question_id' => $question1->id, 'text' => 'They hid in the office before closing.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question1->id, 'text' => 'They used a cloned administrator master keycard at the main door', 'is_correct' => false]);
+        Choice::create(['question_id' => $question1->id, 'text' => 'They slipped through the cracked emergency alley window after tampering with the latch.', 'is_correct' => true]);
+        Choice::create(['question_id' => $question1->id, 'text' => 'They hid inside the soundproofing panels until the morning shift arrived.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question1->id, 'text' => 'They poisoned Julian remotely through the building\'s central air ventilation system.', 'is_correct' => false]);
 
         $question2 = Question::create([
             'level_id' => $level1->id,
-            'text' => 'What was the time of the victim\'s last known communication?',
-            'msg_when_wrong' => 'Check the voicemail transcript for the exact time.',
+            'text' => 'According to the coroner\'s report, what physical detail contradicts the idea that Julian died of natural causes while alone?',
+            'msg_when_wrong' => 'Look closer at the physical body inspection details rather than the room surroundings.',
         ]);
 
-        Choice::create(['question_id' => $question2->id, 'text' => '11:47 PM.', 'is_correct' => true]);
-        Choice::create(['question_id' => $question2->id, 'text' => '11:30 PM.', 'is_correct' => false]);
-        Choice::create(['question_id' => $question2->id, 'text' => '12:00 AM.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question2->id, 'text' => 'A hidden needle puncture wound on his left wrist beneath his heavy watch.', 'is_correct' => true]);
+        Choice::create(['question_id' => $question2->id, 'text' => 'The cold temperature inside the soundproof booth.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question2->id, 'text' => 'The fact that his coffee mug contained traces of a rare sedative.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question2->id, 'text' => 'The broken glass found scattered underneath the mixing board desk.', 'is_correct' => false]);
+
+
+        // 3. Create the Assessment/Puzzle for Level 2
+        $question3 = Question::create([
+            'level_id' => $level2->id,
+            'text' => 'Terminal B was used to override the broadcast at 11:58 PM. Which staff member\'s alibi falls apart when cross-referenced with the building\'s physical timeline and terminal location?',
+            'msg_when_wrong' => 'Examine the timing of Sarah\'s trip to the store versus when Terminal B was accessed.',
+        ]);
+
+        Choice::create(['question_id' => $question3->id, 'text' => 'Mark, because payroll accounts can only be accessed from home via a secure VPN.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question3->id, 'text' => 'David, because security guards are required to stay near the main entrance monitors.', 'is_correct' => false]);
+        Choice::create(['question_id' => $question3->id, 'text' => 'Sarah, because her claim of being out of the building during the midnight override contradicts the active terminal timestamp.', 'is_correct' => true]);
+        Choice::create(['question_id' => $question3->id, 'text' => 'None of them, as all electronic timestamps match their physical statements perfectly.', 'is_correct' => false]);
     }
 }
 
@@ -3896,6 +4599,11 @@ use App\Http\Controllers\GameRoomController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\PersonaController;
+use App\Http\Controllers\Admin\AdminCaseController;
+use App\Http\Controllers\Admin\AdminLevelController;
+use App\Http\Controllers\Admin\AdminEvidenceController;
+use App\Http\Controllers\Admin\AdminQuestionController;
+use App\Http\Middleware\IsAdmin; 
 
 // Public Authentication Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -3921,6 +4629,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Persona Hint System
     Route::post('/rooms/{room}/hint', [PersonaController::class, 'store']);
     
+Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
+    Route::get('/cases', [AdminCaseController::class, 'index']); 
+    Route::post('/cases', [AdminCaseController::class, 'store']);
+    Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']); 
+    Route::post('/levels', [AdminLevelController::class, 'store']);
+    Route::post('/evidences', [AdminEvidenceController::class, 'store']);
+    Route::post('/questions', [AdminQuestionController::class, 'store']);
+});
 });
 
 

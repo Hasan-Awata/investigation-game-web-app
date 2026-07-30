@@ -10,13 +10,24 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Create a couple of test users
+        // 1. Create the Master Admin Account
+        User::create([
+            'username' => 'MasterAdmin',
+            'name' => 'System Administrator',
+            'email' => 'admin@example.com',
+            'password' => Hash::make('password'),
+            'XP' => 0,
+            'is_admin' => true, 
+        ]);
+
+        // 2. Create a couple of standard test users
         User::create([
             'username' => 'HostPlayer',
             'name' => 'Host User',
             'email' => 'host@example.com',
             'password' => Hash::make('password'),
             'XP' => 0,
+            'is_admin' => false,
         ]);
 
         User::create([
@@ -25,9 +36,10 @@ class DatabaseSeeder extends Seeder
             'email' => 'guest@example.com',
             'password' => Hash::make('password'),
             'XP' => 0,
+            'is_admin' => false,
         ]);
 
-        // Run the Game Case seeder
+        // 3. Run the Game Case seeder
         $this->call([
             GameCaseSeeder::class,
         ]);

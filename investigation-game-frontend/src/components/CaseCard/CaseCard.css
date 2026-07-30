@@ -1,12 +1,12 @@
 .case-card {
   position: relative;
   aspect-ratio: 1 / 1;
-  border-radius: 8px;
+  border-radius: var(--radius-lg);
   overflow: hidden;
   background-color: var(--bg-panel);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: var(--border-thin);
 }
 
 .case-card:hover {
@@ -29,7 +29,6 @@
   transform: scale(1.05);
 }
 
-/* Vignette fade for mood and text legibility */
 .case-card-overlay {
   position: absolute;
   top: 0;
@@ -38,9 +37,9 @@
   height: 100%;
   background: linear-gradient(
     to bottom,
-    rgba(18, 18, 18, 0.1) 0%,
-    rgba(18, 18, 18, 0.6) 50%,
-    rgba(18, 18, 18, 0.95) 100%
+    rgba(var(--bg-dark-rgb), 0.1) 0%,
+    rgba(var(--bg-dark-rgb), 0.6) 50%,
+    rgba(var(--bg-dark-rgb), 0.95) 100%
   );
 }
 
@@ -52,21 +51,6 @@
   flex-direction: column;
   gap: 0.5rem;
   align-items: flex-end;
-}
-
-.badge {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  background: rgba(30, 30, 30, 0.6);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.badge.reward {
-  color: var(--accent-amber);
-  border-color: rgba(255, 179, 0, 0.3);
 }
 
 .case-card-content {
@@ -85,7 +69,6 @@
   line-height: 1.2;
 }
 
-/* Grayscale the background slightly for solved cases */
 .case-card.is-solved .case-card-background {
   filter: grayscale(80%) brightness(0.6);
 }
@@ -97,8 +80,8 @@
   align-items: center;
   justify-content: center;
   z-index: 10;
-  pointer-events: none; /* Let the user still click the card */
-  background: rgba(0, 229, 255, 0.05);
+  pointer-events: none;
+  background: rgba(var(--accent-cyan-rgb), 0.05);
 }
 
 .solved-stamp {
@@ -110,7 +93,7 @@
   font-weight: 700;
   transform: rotate(-15deg);
   letter-spacing: 0.3em;
-  background: rgba(18, 18, 18, 0.9);
-  box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
-  text-shadow: 0 0 10px rgba(0, 229, 255, 0.5);
+  background: rgba(var(--bg-dark-rgb), 0.9);
+  box-shadow: 0 0 20px rgba(var(--accent-cyan-rgb), 0.2);
+  text-shadow: 0 0 10px rgba(var(--accent-cyan-rgb), 0.5);
 }

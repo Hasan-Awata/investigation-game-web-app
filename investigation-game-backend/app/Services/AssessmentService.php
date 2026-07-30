@@ -23,33 +23,135 @@ class AssessmentService
         return DB::transaction(function () use ($room) {
             $level = $room->currentLevel;
             $consensus = $this->votingService->calculateLevelConsensus($room, $level->id);
-            $questionsCount = $level->questions()->count();
+            
+            $mandatoryQuestions = $level->questions()->where('is_mandatory', true)->get();
+            $optionalQuestions = $level->questions()->where('is_mandatory', false)->get();
 
-            // Ensure every question has a consensus before assessing
-            if (count($consensus) !== $questionsCount) {
-                return Result::failure("Not all verdicts have a locked-in consensus yet.");
+            // 1. Check Mandatory Progression
+            foreach ($mandatoryQuestions as $question) {
+                if (!isset($consensus[$question->id])) {
+                    return Result::failure("Not all mandatory verdicts have a locked-in consensus yet.");
+                }
+
+                $chosenId = $consensus[$question->id];
+                $isCorrect = Choice::where('id', $chosenId)->value('is_correct');
+
+                // IF THEY SUBMIT THE WRONG ANSWER
+                if (!$isCorrect) {
+                    $room->increment('strikes');
+                    $room->refresh(); // Fetch the new strike count
+
+                    // IF THEY HIT 5 STRIKES (THE POINT OF NO RETURN)
+                    if ($room->strikes >= 5) {
+                        $room->update(['status' => \App\Enums\RoomStatus::Failed]);
+                        $this->finalizeCaseForParticipants($room, 'failed');
+                        \App\Events\LevelTransitioned::dispatch($room);
+
+                        return Result::success([
+                            'status' => 'failed_final', 
+                            'message' => 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.'
+                        ]);
+                    }
+
+                    // IF THEY STILL HAVE STRIKES LEFT
+                    return Result::success([
+                        'status' => 'failed', 
+                        'message' => "The logic on a critical verdict is flawed. STRIKE {$room->strikes}/5 LOGGED. The Persona hint system is active."
+                    ]);
+                }
             }
 
-            // Cross-reference the consensus choices with the database to check correctness
-            $correctChoicesCount = Choice::whereIn('id', array_values($consensus))
-                ->where('is_correct', true)
-                ->count();
+            // 2. Process Optional Narrative Choices
+            $newlyUnlockedEvidences = [];
+            foreach ($optionalQuestions as $question) {
+                if (isset($consensus[$question->id])) {
+                    $chosenId = $consensus[$question->id];
+                    $choice = Choice::find($chosenId);
 
-            $isSuccess = ($correctChoicesCount === $questionsCount);
-
-            if ($isSuccess) {
-                $this->advanceToNextLevel($room, $level);
-                return Result::success([
-                    'status' => 'success', 
-                    'message' => 'Verdict accepted. Moving to the next phase of the investigation.'
-                ]);
+                    if ($choice && $choice->unlocks_evidence_id) {
+                        DB::table('room_evidences')->updateOrInsert([
+                            'room_id' => $room->id,
+                            'evidence_id' => $choice->unlocks_evidence_id
+                        ]);
+                        $newlyUnlockedEvidences[] = $choice->unlocks_evidence_id;
+                    }
+                }
             }
 
+            if (!empty($newlyUnlockedEvidences)) {
+                \App\Events\EvidenceDiscovered::dispatch($room, $newlyUnlockedEvidences);
+            }
+
+            // 3. Advance or Successfully Close the Case
+            $nextLevel = Level::where('case_id', $room->case_id)
+                ->where('order_index', '>', $level->order_index)
+                ->orderBy('order_index', 'asc')
+                ->first();
+
+            if ($nextLevel) {
+                $room->update(['current_level_id' => $nextLevel->id]);
+            } else {
+                $room->update(['status' => \App\Enums\RoomStatus::Solved]);
+                $this->finalizeCaseForParticipants($room, 'solved');
+            }
+
+            \App\Events\LevelTransitioned::dispatch($room);
+            
             return Result::success([
-                'status' => 'failed', 
-                'message' => 'The logic is flawed. The Persona hint system is now available for the Host.'
+                'status' => 'success', 
+                'message' => 'Verdict accepted. Moving to the next phase of the investigation.',
+                'unlocked_evidence' => $newlyUnlockedEvidences 
             ]);
         });
+    }
+
+    /**
+     * Populate the case_user history and distribute XP dynamically.
+     */
+    private function finalizeCaseForParticipants(GameRoom $room, string $finalStatus): void
+    {
+        $userIds = $room->users()->pluck('user_id');
+        $case = $room->gameCase;
+
+        foreach ($userIds as $userId) {
+            // Check the player's personal history with this dossier
+            $existingRecord = DB::table('case_user')
+                ->where('user_id', $userId)
+                ->where('case_id', $case->id)
+                ->first();
+
+            $previousStatus = $existingRecord->status ?? null;
+
+            // 1. Calculate XP Payload
+            if ($finalStatus === 'solved') {
+                $xpGained = 0;
+                
+                if ($previousStatus === 'solved') {
+                    $xpGained = 0; // Replay: 0% XP
+                } elseif ($previousStatus === 'failed') {
+                    $xpGained = (int) floor($case->XP_on_solve / 2); // Redemption: 50% XP
+                } else {
+                    $xpGained = $case->XP_on_solve; // First time: 100% XP
+                }
+
+                if ($xpGained > 0) {
+                    \App\Models\User::where('id', $userId)->increment('XP', $xpGained);
+                }
+            }
+
+            // 2. Preserve or Update State
+            if ($previousStatus === 'solved') {
+                // Never downgrade a successful conviction. Just update the timestamp.
+                DB::table('case_user')
+                    ->where('id', $existingRecord->id)
+                    ->update(['completed_at' => now()]);
+            } else {
+                DB::table('case_user')->updateOrInsert(
+                    ['user_id' => $userId, 'case_id' => $case->id],
+                    ['status' => $finalStatus, 'completed_at' => now()]
+                );
+            }
+        }
     }
 
     /**
