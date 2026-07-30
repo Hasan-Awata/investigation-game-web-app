@@ -1,7 +1,8 @@
 import { type Result, success, failure } from '@/utils/Result';
 import { getToken } from './auth';
 
-const API_BASE_URL = 'http://localhost:8000/api/admin';
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
+const API_BASE_URL = `${BASE_URL}/admin`;
 
 // Reusing the event dispatcher from your standard API setup
 const handleUnauthorized = () => {
