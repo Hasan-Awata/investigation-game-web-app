@@ -21,6 +21,7 @@ export interface GameCase {
   story: string;
   min_player_XP: number;
   XP_on_solve: number;
+  max_strikes: number; 
   img_url?: string; 
   levels?: Level[]; 
   user_status?: 'solved' | 'failed' | null; 

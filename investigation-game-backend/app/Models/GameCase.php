@@ -24,6 +24,8 @@ class GameCase extends Model
         'story',
         'min_player_XP',
         'XP_on_solve',
+        'max_strikes', 
+        'img_url',
     ];
 
     /**

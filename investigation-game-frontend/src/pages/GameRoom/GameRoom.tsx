@@ -74,7 +74,7 @@ export default function GameRoom() {
               Department Heat
             </h3>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-              {[...Array(5)].map((_, i) => (
+              {[...Array(room.game_case?.max_strikes || 5)].map((_, i) => (
                 <div 
                   key={i} 
                   style={{
@@ -89,7 +89,8 @@ export default function GameRoom() {
               ))}
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem', textAlign: 'right' }}>
-              STRIKES: {room.strikes || 0} / 5
+              {/* Update the text label to use max_strikes */}
+              STRIKES: {room.strikes || 0} / {room.game_case?.max_strikes || 5}
             </div>
           </div>
 
