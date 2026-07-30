@@ -12,7 +12,6 @@ use App\Http\Controllers\Admin\AdminLevelController;
 use App\Http\Controllers\Admin\AdminEvidenceController;
 use App\Http\Controllers\Admin\AdminQuestionController;
 use App\Http\Middleware\IsAdmin; 
-use App\Models\User;        
 
 // Public Authentication Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -45,11 +44,5 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/levels', [AdminLevelController::class, 'store']);
     Route::post('/evidences', [AdminEvidenceController::class, 'store']);
     Route::post('/questions', [AdminQuestionController::class, 'store']);
-    });
-
-    Route::get('/make-me-admin', function () {
-    // Replace with the exact email you just registered with
-    User::where('email', 'hasan@example.com')->update(['is_admin' => 1]);
-    return 'Admin access granted!';
     });
 });
