@@ -1,3 +1,4 @@
+import ReactMarkdown from 'react-markdown'; 
 import type { Evidence } from '../../../types';
 import './EvidenceBoard.css';
 
@@ -25,10 +26,9 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
         <p className="modal-desc">{evidence.description}</p>
 
         <div className="modal-body">
-          {/* Text renderer for Documents, Testimonies, and Forensics */}
           {evidence.paragraph && (
             <div className={`evidence-text-content type-${evidence.evidence_type}`}>
-              <p>{evidence.paragraph}</p>
+              <ReactMarkdown>{evidence.paragraph}</ReactMarkdown>
             </div>
           )}
 

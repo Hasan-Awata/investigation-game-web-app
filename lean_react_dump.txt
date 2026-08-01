@@ -1261,6 +1261,30 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\
   color: var(--accent-crimson);
 }
 
+/* Responsive Form Rows */
+.admin-form-row {
+  display: flex;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+@media (max-width: 768px) {
+  .admin-form-row {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .admin-tabs {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  .admin-tab-btn {
+    flex: 1 1 calc(50% - 0.5rem);
+    padding: 0.5rem;
+  }
+}
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\AdminDashboard.tsx
 ----------------------------------------
@@ -1328,9 +1352,9 @@ export default function CaseForm() {
   const [story, setStory] = useState('');
   const [minPlayerXP, setMinPlayerXP] = useState('0');
   const [xpOnSolve, setXpOnSolve] = useState('100');
+  const [maxStrikes, setMaxStrikes] = useState('5'); 
   const [image, setImage] = useState<File | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch cases to display them for deletion
@@ -1389,6 +1413,7 @@ export default function CaseForm() {
     formData.append('min_player_XP', minPlayerXP);
     formData.append('XP_on_solve', xpOnSolve);
     if (image) formData.append('image', image);
+    formData.append('max_strikes', maxStrikes); 
 
     createMutation.mutate(formData);
   };
@@ -1430,22 +1455,30 @@ export default function CaseForm() {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '1.5rem' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Minimum XP Required</label>
-              <input 
-                type="number" className="admin-input" min="0" required
-                value={minPlayerXP} onChange={(e) => setMinPlayerXP(e.target.value)} 
-              />
+          <div className="admin-form-row">
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>Minimum XP Required</label>
+                <input 
+                  type="number" className="admin-input" min="0" required
+                  value={minPlayerXP} onChange={(e) => setMinPlayerXP(e.target.value)} 
+                />
+              </div>
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>XP Reward on Solve</label>
+                <input 
+                  type="number" className="admin-input" min="0" required
+                  value={xpOnSolve} onChange={(e) => setXpOnSolve(e.target.value)} 
+                />
+              </div>
+              {/* Add the new input block */}
+              <div className="form-group" style={{ flex: 1 }}>
+                <label>Allowed Strikes (Difficulty)</label>
+                <input 
+                  type="number" className="admin-input" min="1" required
+                  value={maxStrikes} onChange={(e) => setMaxStrikes(e.target.value)} 
+                />
+              </div>
             </div>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>XP Reward on Solve</label>
-              <input 
-                type="number" className="admin-input" min="0" required
-                value={xpOnSolve} onChange={(e) => setXpOnSolve(e.target.value)} 
-              />
-            </div>
-          </div>
 
           <div className="form-group">
             <label>Cover Image (Optional)</label>
@@ -1626,7 +1659,7 @@ export default function EvidenceForm() {
       <form onSubmit={handleSubmit} className="admin-form">
         
         {/* Cascading Dropdowns */}
-        <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem' }}>
+        <div className="admin-form-row" style={{ marginBottom: '1rem' }}>
           <div className="form-group" style={{ flex: 1 }}>
             <label>Target Case</label>
             <select 
@@ -1795,7 +1828,7 @@ export default function LevelForm() {
       )}
 
       <form onSubmit={handleSubmit} className="admin-form">
-        <div style={{ display: 'flex', gap: '1.5rem' }}>
+        <div className="admin-form-row">
           
           <div className="form-group" style={{ flex: 1 }}>
             <label>Target Case</label>
@@ -1991,7 +2024,7 @@ export default function QuestionForm() {
       <form onSubmit={handleSubmit} className="admin-form">
         
         {/* Cascading Dropdowns */}
-        <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem' }}>
+        <div className="admin-form-row" style={{ marginBottom: '1rem' }}>
           <div className="form-group" style={{ flex: 1 }}>
             <label>Target Case</label>
             <select 
@@ -2217,6 +2250,17 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Auth\A
 
 .auth-toggle:hover {
   color: var(--accent-cyan);
+}
+
+@media (max-width: 480px) {
+  .auth-panel {
+    padding: 1.5rem;
+    gap: 1rem;
+  }
+  
+  .auth-title {
+    font-size: 1.5rem;
+  }
 }
 
 
@@ -2471,6 +2515,56 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   100% { text-shadow: 0 0 0 rgba(0, 229, 255, 0); }
 }
 
+/* Responsive Overrides */
+@media (max-width: 900px) {
+  .game-room-layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    height: 100dvh; /* Uses dynamic viewport height for mobile browsers */
+    overflow-y: auto;
+  }
+
+  /* Transform the sidebar into a collapsible/stacked top header */
+  .sidebar-panel {
+    border-right: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .sidebar-section {
+    flex: 1 1 auto;
+    min-width: 140px;
+  }
+
+  .workspace-header {
+    padding: 0 1rem;
+  }
+
+  /* Allow tabs to scroll horizontally if they overflow */
+  .tab-navigation {
+    gap: 1rem;
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .tab-btn {
+    padding: 1rem 0;
+  }
+
+  .tab-content-area {
+    padding: 1rem;
+  }
+  
+  .victory-title {
+    font-size: 2.5rem;
+  }
+}
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\GameRoom.tsx
 ----------------------------------------
@@ -2550,7 +2644,7 @@ export default function GameRoom() {
               Department Heat
             </h3>
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-              {[...Array(5)].map((_, i) => (
+              {[...Array(room.game_case?.max_strikes || 5)].map((_, i) => (
                 <div 
                   key={i} 
                   style={{
@@ -2565,7 +2659,8 @@ export default function GameRoom() {
               ))}
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem', textAlign: 'right' }}>
-              STRIKES: {room.strikes || 0} / 5
+              {/* Update the text label to use max_strikes */}
+              STRIKES: {room.strikes || 0} / {room.game_case?.max_strikes || 5}
             </div>
           </div>
 
@@ -3215,6 +3310,43 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   100% { 
     transform: scale(0.95); 
     box-shadow: 0 0 0 0 rgba(163, 50, 50, 0); 
+  }
+}
+
+@media (max-width: 768px) {
+  .acrylic-workspace {
+    padding: 1rem;
+  }
+  
+  .evidence-scatter-grid {
+    gap: 1rem;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .evidence-card-wrapper {
+    width: 100%;
+    /* Reset the desktop scatter rotations for a cleaner mobile stack */
+    transform: none !important;
+    margin: 0 !important;
+  }
+
+  .evidence-variant {
+    width: 100%;
+    max-width: 100%;
+    padding: 1.25rem;
+  }
+
+  .evidence-modal-content {
+    width: 95%;
+    padding: 1.5rem;
+    max-height: 90vh;
+  }
+  
+  .modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
   }
 }
 
@@ -4148,6 +4280,37 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\MainMe
   box-shadow: 0 0 10px rgba(255, 51, 102, 0.2);
 }
 
+@media (max-width: 768px) {
+  .main-menu-container {
+    padding: 1rem;
+  }
+
+  .upper-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+  }
+
+  .user-profile-widget {
+    justify-content: space-between;
+    border-radius: 8px;
+    padding: 1rem;
+  }
+
+  .menu-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .agency-title {
+    font-size: 1.8rem;
+  }
+  
+  .cases-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\MainMenu\MainMenu.tsx
 ----------------------------------------
@@ -4686,6 +4849,7 @@ export interface GameCase {
   story: string;
   min_player_XP: number;
   XP_on_solve: number;
+  max_strikes: number; 
   img_url?: string; 
   levels?: Level[]; 
   user_status?: 'solved' | 'failed' | null; 

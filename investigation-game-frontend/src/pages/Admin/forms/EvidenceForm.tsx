@@ -192,9 +192,10 @@ export default function EvidenceForm() {
 
         {/* Paragraph is now permanently available in the UI */}
         <div className="form-group">
-          <label>Text Content (Paragraph)</label>
+          <label>Text Content (Markdown Supported)</label>
           <textarea 
             className="admin-textarea"
+            placeholder="Use **bold**, *italics*, or `redacted` text..."
             value={paragraph} onChange={(e) => setParagraph(e.target.value)} 
           />
         </div>
