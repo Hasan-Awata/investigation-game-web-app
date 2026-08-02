@@ -9,7 +9,7 @@ export default function LevelForm() {
   const [orderIndex, setOrderIndex] = useState('1');
   const [image, setImage] = useState<File | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  
+  const [isInitial, setIsInitial] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch cases for the dropdown
@@ -32,7 +32,7 @@ export default function LevelForm() {
       setFeedback({ type: 'success', message: 'Level successfully added to the database.' });
       setTitle('');
       setDetails('');
-      setOrderIndex((prev) => (parseInt(prev) + 1).toString()); // Auto-increment for convenience
+      setOrderIndex((prev) => (parseInt(prev) + 1).toString());
       setImage(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     },
@@ -50,6 +50,7 @@ export default function LevelForm() {
     formData.append('title', title);
     formData.append('details', details);
     formData.append('order_index', orderIndex);
+    formData.append('is_initial', isInitial.toString());
     if (image) {
       formData.append('image', image);
     }
@@ -89,6 +90,17 @@ export default function LevelForm() {
               value={orderIndex} onChange={(e) => setOrderIndex(e.target.value)} 
             />
           </div>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+          <input 
+            type="checkbox" id="initial-level-toggle"
+            checked={isInitial} onChange={(e) => setIsInitial(e.target.checked)}
+            style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }}
+          />
+          <label htmlFor="initial-level-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
+            <strong>Initial Phase:</strong> This phase is visible on the roadmap immediately. (Uncheck if it must be unlocked via a specific player choice).
+          </label>
         </div>
 
         <div className="form-group">

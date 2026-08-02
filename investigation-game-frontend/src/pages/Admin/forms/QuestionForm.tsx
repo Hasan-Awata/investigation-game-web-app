@@ -7,6 +7,7 @@ interface ChoiceState {
   text: string;
   is_correct: boolean;
   unlocks_evidence_id?: string; 
+  unlocks_level_id?: string; 
 }
 
 export default function QuestionForm() {
@@ -19,8 +20,8 @@ export default function QuestionForm() {
   const [image, setImage] = useState<File | null>(null);
   
   const [choices, setChoices] = useState<ChoiceState[]>([
-    { id: crypto.randomUUID(), text: '', is_correct: true, unlocks_evidence_id: '' },
-    { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '' }
+    { id: crypto.randomUUID(), text: '', is_correct: true, unlocks_evidence_id: '', unlocks_level_id: '' },
+    { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '', unlocks_level_id: '' }
   ]);
   
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -65,7 +66,7 @@ export default function QuestionForm() {
   });
 
   const addChoice = () => {
-    setChoices([...choices, { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '' }]);
+    setChoices([...choices, { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '', unlocks_level_id: '' }]);
   };
 
   const removeChoice = (id: string) => {
@@ -109,6 +110,9 @@ export default function QuestionForm() {
       formData.append(`choices[${index}][is_correct]`, choice.is_correct ? '1' : '0');
       if (choice.unlocks_evidence_id) {
         formData.append(`choices[${index}][unlocks_evidence_id]`, choice.unlocks_evidence_id);
+      }
+      if (choice.unlocks_level_id) {
+      formData.append(`choices[${index}][unlocks_level_id]`, choice.unlocks_level_id);
       }
     });
 
@@ -232,6 +236,7 @@ export default function QuestionForm() {
                   </button>
                 </div>
                 
+                {/* Evidence Unlock Dropdown */}            
                 <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '2.5rem' }}>
                   <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Evidence:</label>
                   <select 
@@ -247,6 +252,27 @@ export default function QuestionForm() {
                     ))}
                   </select>
                 </div>
+
+                {/* Phase Unlock Dropdown */}
+                <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '2.5rem', marginTop: '0.5rem' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Phase:</label>
+                  <select 
+                    className="admin-input" 
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }}
+                    value={choice.unlocks_level_id || ''} 
+                    onChange={(e) => {
+                      const newChoices = choices.map(c => c.id === choice.id ? { ...c, unlocks_level_id: e.target.value } : c);
+                      setChoices(newChoices);
+                    }}
+                    disabled={!selectedCaseId}
+                  >
+                    <option value="">-- No Phase Unlock --</option>
+                    {availableLevels.map((l: any) => (
+                      <option key={l.id} value={l.id}>Phase {l.order_index}: {l.title}</option>
+                    ))}
+                  </select>
+                </div>
+
               </div>
             ))}
           </div>
