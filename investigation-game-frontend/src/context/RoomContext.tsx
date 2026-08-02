@@ -5,6 +5,8 @@ interface RoomContextType {
   room: GameRoom;
   accumulatedEvidences: Evidence[];
   refreshRoomData: () => Promise<void>;
+  viewedItems: Set<number>;
+  markItemAsViewed: (id: number) => void;
 }
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -14,11 +16,20 @@ interface RoomProviderProps {
   room: GameRoom;
   accumulatedEvidences: Evidence[];
   refreshRoomData: () => Promise<void>;
+  viewedItems: Set<number>;
+  markItemAsViewed: (id: number) => void;
 }
 
-export function RoomProvider({ children, room, accumulatedEvidences, refreshRoomData }: RoomProviderProps) {
+export function RoomProvider({ 
+  children, 
+  room, 
+  accumulatedEvidences, 
+  refreshRoomData, 
+  viewedItems, 
+  markItemAsViewed 
+}: RoomProviderProps) {
   return (
-    <RoomContext.Provider value={{ room, accumulatedEvidences, refreshRoomData }}>
+    <RoomContext.Provider value={{ room, accumulatedEvidences, refreshRoomData, viewedItems, markItemAsViewed }}>
       {children}
     </RoomContext.Provider>
   );

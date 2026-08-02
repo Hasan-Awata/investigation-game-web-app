@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom'; // Added useNavigate
+import { useParams, useNavigate } from 'react-router-dom';
 import { useGameRoom } from '../../hooks/useGameRoom';
+import { useViewedItems } from '../../hooks/useViewedItems'; 
 import { RoomProvider } from '../../context/RoomContext';
 import CaseDetailsTab from './tabs/CaseDetailsTab';
 import EvidenceBoardTab from './tabs/EvidenceBoardTab';
@@ -11,7 +12,7 @@ type Tab = 'details' | 'evidences' | 'campaign';
 
 export default function GameRoom() {
   const { inviteCode } = useParams<{ inviteCode: string }>();
-  const navigate = useNavigate(); // Initialize navigation
+  const navigate = useNavigate();
   
   const { 
     room, 
@@ -20,8 +21,12 @@ export default function GameRoom() {
     accumulatedEvidences, 
     refreshRoomData 
   } = useGameRoom(inviteCode);
+
+  const { viewedItems, markItemAsViewed } = useViewedItems(room?.id, 'evidence');
   
   const [activeTab, setActiveTab] = useState<Tab>('details');
+
+  const hasUnreadEvidence = accumulatedEvidences.some(evidence => !viewedItems.has(evidence.id));
 
   if (isLoading) return <div className="terminal-text">Synchronizing session data...</div>;
   if (error || !room) return <div className="terminal-text error">{error || 'Session not found.'}</div>;
@@ -31,6 +36,8 @@ export default function GameRoom() {
       room={room} 
       accumulatedEvidences={accumulatedEvidences} 
       refreshRoomData={refreshRoomData}
+      viewedItems={viewedItems}
+      markItemAsViewed={markItemAsViewed}
     >
       <div className="game-room-layout">
         
@@ -62,13 +69,12 @@ export default function GameRoom() {
           </div>
         )}
 
-<aside className="sidebar-panel glass-panel">
+        <aside className="sidebar-panel glass-panel">
           <div className="sidebar-section">
             <h3 className="sidebar-heading">Session Code</h3>
             <div className="invite-code-display">{room.invite_code}</div>
           </div>
 
-          {/* NEW DEPARTMENT HEAT UI */}
           <div className="sidebar-section">
             <h3 className="sidebar-heading" style={{ color: 'var(--accent-crimson)', borderColor: 'rgba(255,51,102,0.2)' }}>
               Department Heat
@@ -89,7 +95,6 @@ export default function GameRoom() {
               ))}
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem', textAlign: 'right' }}>
-              {/* Update the text label to use max_strikes */}
               STRIKES: {room.strikes || 0} / {room.game_case?.max_strikes || 5}
             </div>
           </div>
@@ -121,12 +126,17 @@ export default function GameRoom() {
               >
                 Case Details
               </button>
+              
               <button 
                 className={`tab-btn ${activeTab === 'evidences' ? 'active' : ''}`}
                 onClick={() => setActiveTab('evidences')}
               >
                 Evidences
+                {hasUnreadEvidence && (
+                  <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="Unread Intel"></div>
+                )}
               </button>
+              
               <button 
                 className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`}
                 onClick={() => setActiveTab('campaign')}

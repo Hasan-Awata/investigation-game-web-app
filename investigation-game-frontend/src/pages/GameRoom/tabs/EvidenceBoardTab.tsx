@@ -6,25 +6,12 @@ import EvidenceModal from './EvidenceModal';
 import './EvidenceBoard.css';
 
 export default function EvidenceBoardTab() {
-  const { room, accumulatedEvidences } = useRoomContext();
+  const { accumulatedEvidences, viewedItems, markItemAsViewed } = useRoomContext();
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
 
-  // Initialize viewed state from sessionStorage to persist across tab switches
-  const viewedStorageKey = `room_${room.id}_viewed_evidence`;
-  const [viewedEvidences, setViewedEvidences] = useState<Set<number>>(() => {
-    const stored = sessionStorage.getItem(viewedStorageKey);
-    return stored ? new Set(JSON.parse(stored)) : new Set();
-  });
-
-  // Intercept the inspect action to mark the item as viewed
   const handleInspect = (evidence: Evidence) => {
     setInspectedEvidence(evidence);
-    if (!viewedEvidences.has(evidence.id)) {
-      const nextViewed = new Set(viewedEvidences);
-      nextViewed.add(evidence.id);
-      setViewedEvidences(nextViewed);
-      sessionStorage.setItem(viewedStorageKey, JSON.stringify(Array.from(nextViewed)));
-    }
+    markItemAsViewed(evidence.id);
   };
 
   return (
@@ -44,7 +31,7 @@ export default function EvidenceBoardTab() {
                 key={evidence.id} 
                 evidence={evidence} 
                 index={index}
-                isNew={!viewedEvidences.has(evidence.id)} 
+                isNew={!viewedItems.has(evidence.id)} 
                 onInspect={handleInspect} 
               />
             ))}
