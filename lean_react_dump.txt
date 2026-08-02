@@ -895,6 +895,8 @@ interface RoomContextType {
   room: GameRoom;
   accumulatedEvidences: Evidence[];
   refreshRoomData: () => Promise<void>;
+  viewedItems: Set<number>;
+  markItemAsViewed: (id: number) => void;
 }
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -904,11 +906,20 @@ interface RoomProviderProps {
   room: GameRoom;
   accumulatedEvidences: Evidence[];
   refreshRoomData: () => Promise<void>;
+  viewedItems: Set<number>;
+  markItemAsViewed: (id: number) => void;
 }
 
-export function RoomProvider({ children, room, accumulatedEvidences, refreshRoomData }: RoomProviderProps) {
+export function RoomProvider({ 
+  children, 
+  room, 
+  accumulatedEvidences, 
+  refreshRoomData, 
+  viewedItems, 
+  markItemAsViewed 
+}: RoomProviderProps) {
   return (
-    <RoomContext.Provider value={{ room, accumulatedEvidences, refreshRoomData }}>
+    <RoomContext.Provider value={{ room, accumulatedEvidences, refreshRoomData, viewedItems, markItemAsViewed }}>
       {children}
     </RoomContext.Provider>
   );
@@ -1164,6 +1175,50 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     initiatePhase: (levelId: number) => initiatePhaseMutation.mutate(levelId),
     clearFeedback
   };
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\hooks\useViewedItems.ts
+----------------------------------------
+import { useState, useCallback, useEffect } from 'react';
+
+// Define the allowed entities so TypeScript strictly guards your scaling
+type TrackableEntity = 'evidence' | 'suspects' | 'locations';
+
+export function useViewedItems(roomId: number | undefined, entityType: TrackableEntity) {
+  // Dynamically generate the storage key namespace
+  const storageKey = roomId ? `room_${roomId}_viewed_${entityType}` : null;
+
+  const [viewedItems, setViewedItems] = useState<Set<number>>(() => {
+    if (!storageKey) return new Set();
+    const stored = sessionStorage.getItem(storageKey);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  });
+
+  useEffect(() => {
+    if (!storageKey) return;
+    const stored = sessionStorage.getItem(storageKey);
+    if (stored) {
+      setViewedItems(new Set(JSON.parse(stored)));
+    }
+  }, [storageKey]);
+
+  const markItemAsViewed = useCallback((id: number) => {
+    if (!storageKey) return;
+
+    setViewedItems(prev => {
+      if (prev.has(id)) return prev; 
+      
+      const nextViewed = new Set(prev);
+      nextViewed.add(id);
+      
+      sessionStorage.setItem(storageKey, JSON.stringify(Array.from(nextViewed)));
+      
+      return nextViewed;
+    });
+  }, [storageKey]);
+
+  return { viewedItems, markItemAsViewed };
 }
 
 
@@ -1792,7 +1847,7 @@ export default function LevelForm() {
   const [orderIndex, setOrderIndex] = useState('1');
   const [image, setImage] = useState<File | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  
+  const [isInitial, setIsInitial] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch cases for the dropdown
@@ -1815,7 +1870,7 @@ export default function LevelForm() {
       setFeedback({ type: 'success', message: 'Level successfully added to the database.' });
       setTitle('');
       setDetails('');
-      setOrderIndex((prev) => (parseInt(prev) + 1).toString()); // Auto-increment for convenience
+      setOrderIndex((prev) => (parseInt(prev) + 1).toString());
       setImage(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     },
@@ -1833,6 +1888,7 @@ export default function LevelForm() {
     formData.append('title', title);
     formData.append('details', details);
     formData.append('order_index', orderIndex);
+    formData.append('is_initial', isInitial.toString());
     if (image) {
       formData.append('image', image);
     }
@@ -1872,6 +1928,17 @@ export default function LevelForm() {
               value={orderIndex} onChange={(e) => setOrderIndex(e.target.value)} 
             />
           </div>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+          <input 
+            type="checkbox" id="initial-level-toggle"
+            checked={isInitial} onChange={(e) => setIsInitial(e.target.checked)}
+            style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }}
+          />
+          <label htmlFor="initial-level-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
+            <strong>Initial Phase:</strong> This phase is visible on the roadmap immediately. (Uncheck if it must be unlocked via a specific player choice).
+          </label>
         </div>
 
         <div className="form-group">
@@ -1924,6 +1991,7 @@ interface ChoiceState {
   text: string;
   is_correct: boolean;
   unlocks_evidence_id?: string; 
+  unlocks_level_id?: string; 
 }
 
 export default function QuestionForm() {
@@ -1936,8 +2004,8 @@ export default function QuestionForm() {
   const [image, setImage] = useState<File | null>(null);
   
   const [choices, setChoices] = useState<ChoiceState[]>([
-    { id: crypto.randomUUID(), text: '', is_correct: true, unlocks_evidence_id: '' },
-    { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '' }
+    { id: crypto.randomUUID(), text: '', is_correct: true, unlocks_evidence_id: '', unlocks_level_id: '' },
+    { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '', unlocks_level_id: '' }
   ]);
   
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -1982,7 +2050,7 @@ export default function QuestionForm() {
   });
 
   const addChoice = () => {
-    setChoices([...choices, { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '' }]);
+    setChoices([...choices, { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '', unlocks_level_id: '' }]);
   };
 
   const removeChoice = (id: string) => {
@@ -2026,6 +2094,9 @@ export default function QuestionForm() {
       formData.append(`choices[${index}][is_correct]`, choice.is_correct ? '1' : '0');
       if (choice.unlocks_evidence_id) {
         formData.append(`choices[${index}][unlocks_evidence_id]`, choice.unlocks_evidence_id);
+      }
+      if (choice.unlocks_level_id) {
+      formData.append(`choices[${index}][unlocks_level_id]`, choice.unlocks_level_id);
       }
     });
 
@@ -2149,6 +2220,7 @@ export default function QuestionForm() {
                   </button>
                 </div>
                 
+                {/* Evidence Unlock Dropdown */}            
                 <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '2.5rem' }}>
                   <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Evidence:</label>
                   <select 
@@ -2164,6 +2236,27 @@ export default function QuestionForm() {
                     ))}
                   </select>
                 </div>
+
+                {/* Phase Unlock Dropdown */}
+                <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '2.5rem', marginTop: '0.5rem' }}>
+                  <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Phase:</label>
+                  <select 
+                    className="admin-input" 
+                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }}
+                    value={choice.unlocks_level_id || ''} 
+                    onChange={(e) => {
+                      const newChoices = choices.map(c => c.id === choice.id ? { ...c, unlocks_level_id: e.target.value } : c);
+                      setChoices(newChoices);
+                    }}
+                    disabled={!selectedCaseId}
+                  >
+                    <option value="">-- No Phase Unlock --</option>
+                    {availableLevels.map((l: any) => (
+                      <option key={l.id} value={l.id}>Phase {l.order_index}: {l.title}</option>
+                    ))}
+                  </select>
+                </div>
+
               </div>
             ))}
           </div>
@@ -2585,8 +2678,9 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\GameRoom.tsx
 ----------------------------------------
 import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom'; // Added useNavigate
+import { useParams, useNavigate } from 'react-router-dom';
 import { useGameRoom } from '../../hooks/useGameRoom';
+import { useViewedItems } from '../../hooks/useViewedItems'; 
 import { RoomProvider } from '../../context/RoomContext';
 import CaseDetailsTab from './tabs/CaseDetailsTab';
 import EvidenceBoardTab from './tabs/EvidenceBoardTab';
@@ -2597,7 +2691,7 @@ type Tab = 'details' | 'evidences' | 'campaign';
 
 export default function GameRoom() {
   const { inviteCode } = useParams<{ inviteCode: string }>();
-  const navigate = useNavigate(); // Initialize navigation
+  const navigate = useNavigate();
   
   const { 
     room, 
@@ -2606,8 +2700,12 @@ export default function GameRoom() {
     accumulatedEvidences, 
     refreshRoomData 
   } = useGameRoom(inviteCode);
+
+  const { viewedItems, markItemAsViewed } = useViewedItems(room?.id, 'evidence');
   
   const [activeTab, setActiveTab] = useState<Tab>('details');
+
+  const hasUnreadEvidence = accumulatedEvidences.some(evidence => !viewedItems.has(evidence.id));
 
   if (isLoading) return <div className="terminal-text">Synchronizing session data...</div>;
   if (error || !room) return <div className="terminal-text error">{error || 'Session not found.'}</div>;
@@ -2617,6 +2715,8 @@ export default function GameRoom() {
       room={room} 
       accumulatedEvidences={accumulatedEvidences} 
       refreshRoomData={refreshRoomData}
+      viewedItems={viewedItems}
+      markItemAsViewed={markItemAsViewed}
     >
       <div className="game-room-layout">
         
@@ -2648,13 +2748,12 @@ export default function GameRoom() {
           </div>
         )}
 
-<aside className="sidebar-panel glass-panel">
+        <aside className="sidebar-panel glass-panel">
           <div className="sidebar-section">
             <h3 className="sidebar-heading">Session Code</h3>
             <div className="invite-code-display">{room.invite_code}</div>
           </div>
 
-          {/* NEW DEPARTMENT HEAT UI */}
           <div className="sidebar-section">
             <h3 className="sidebar-heading" style={{ color: 'var(--accent-crimson)', borderColor: 'rgba(255,51,102,0.2)' }}>
               Department Heat
@@ -2675,7 +2774,6 @@ export default function GameRoom() {
               ))}
             </div>
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem', textAlign: 'right' }}>
-              {/* Update the text label to use max_strikes */}
               STRIKES: {room.strikes || 0} / {room.game_case?.max_strikes || 5}
             </div>
           </div>
@@ -2707,12 +2805,17 @@ export default function GameRoom() {
               >
                 Case Details
               </button>
+              
               <button 
                 className={`tab-btn ${activeTab === 'evidences' ? 'active' : ''}`}
                 onClick={() => setActiveTab('evidences')}
               >
                 Evidences
+                {hasUnreadEvidence && (
+                  <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="Unread Intel"></div>
+                )}
               </button>
+              
               <button 
                 className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`}
                 onClick={() => setActiveTab('campaign')}
@@ -3499,25 +3602,12 @@ import EvidenceModal from './EvidenceModal';
 import './EvidenceBoard.css';
 
 export default function EvidenceBoardTab() {
-  const { room, accumulatedEvidences } = useRoomContext();
+  const { accumulatedEvidences, viewedItems, markItemAsViewed } = useRoomContext();
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
 
-  // Initialize viewed state from sessionStorage to persist across tab switches
-  const viewedStorageKey = `room_${room.id}_viewed_evidence`;
-  const [viewedEvidences, setViewedEvidences] = useState<Set<number>>(() => {
-    const stored = sessionStorage.getItem(viewedStorageKey);
-    return stored ? new Set(JSON.parse(stored)) : new Set();
-  });
-
-  // Intercept the inspect action to mark the item as viewed
   const handleInspect = (evidence: Evidence) => {
     setInspectedEvidence(evidence);
-    if (!viewedEvidences.has(evidence.id)) {
-      const nextViewed = new Set(viewedEvidences);
-      nextViewed.add(evidence.id);
-      setViewedEvidences(nextViewed);
-      sessionStorage.setItem(viewedStorageKey, JSON.stringify(Array.from(nextViewed)));
-    }
+    markItemAsViewed(evidence.id);
   };
 
   return (
@@ -3537,7 +3627,7 @@ export default function EvidenceBoardTab() {
                 key={evidence.id} 
                 evidence={evidence} 
                 index={index}
-                isNew={!viewedEvidences.has(evidence.id)} 
+                isNew={!viewedItems.has(evidence.id)} 
                 onInspect={handleInspect} 
               />
             ))}
