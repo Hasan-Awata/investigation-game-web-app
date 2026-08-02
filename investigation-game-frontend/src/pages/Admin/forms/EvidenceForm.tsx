@@ -4,26 +4,24 @@ import { createAdminEvidence, fetchAdminCases } from '@/services/adminApi';
 import type { EvidenceType } from '@/types';
 
 export default function EvidenceForm() {
-  // 1. Cascading Dropdown State
-  const [selectedCaseId, setSelectedCaseId] = useState('');
-  const [levelId, setLevelId] = useState('');
-  
-  // 2. Shared Fields
+  // 1. Core State
+  const [caseId, setCaseId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [paragraph, setParagraph] = useState(''); // Moved up to shared fields
+  const [paragraph, setParagraph] = useState('');
   const [evidenceType, setEvidenceType] = useState<EvidenceType>('document');
+  const [isInitial, setIsInitial] = useState(true);
   
-  // 3. Type-Specific Fields (Media only now)
+  // 2. Media State
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
   
+  // 3. UI State
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch cases and their nested levels
+  // Fetch cases to populate the top-level dropdown
   const { data: cases = [], isLoading: isFetchingCases } = useQuery({
     queryKey: ['adminCases'],
     queryFn: async () => {
@@ -33,9 +31,6 @@ export default function EvidenceForm() {
     }
   });
 
-  const selectedCase = cases.find((c: any) => c.id.toString() === selectedCaseId);
-  const availableLevels = selectedCase?.levels || [];
-
   const mutation = useMutation({
     mutationFn: async (formData: FormData) => {
       const result = await createAdminEvidence(formData);
@@ -44,9 +39,12 @@ export default function EvidenceForm() {
     },
     onSuccess: () => {
       setFeedback({ type: 'success', message: 'Evidence successfully secured in the database.' });
+      
+      // Reset fields (keeping case selection for rapid bulk entry)
       setTitle('');
       setDescription('');
       setParagraph('');
+      setIsInitial(true);
       setImage(null);
       setAudio(null);
       if (imageInputRef.current) imageInputRef.current.value = '';
@@ -61,16 +59,19 @@ export default function EvidenceForm() {
     e.preventDefault();
     setFeedback(null);
 
+    if (!caseId) {
+      setFeedback({ type: 'error', message: 'You must select a target case.' });
+      return;
+    }
+
     const formData = new FormData();
-    formData.append('level_id', levelId);
+    formData.append('case_id', caseId);
     formData.append('title', title);
     formData.append('evidence_type', evidenceType);
-    
-    // Always append these so the keys exist in the request (Laravel will convert "" to null)
     formData.append('description', description);
     formData.append('paragraph', paragraph);
+    formData.append('is_initial', isInitial ? '1' : '0');
     
-    // Media remains conditional
     if (evidenceType === 'image' && image) {
       formData.append('image', image);
     }
@@ -120,40 +121,30 @@ export default function EvidenceForm() {
 
       <form onSubmit={handleSubmit} className="admin-form">
         
-        {/* Cascading Dropdowns */}
-        <div className="admin-form-row" style={{ marginBottom: '1rem' }}>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Target Case</label>
-            <select 
-              className="admin-input" required
-              value={selectedCaseId} 
-              onChange={(e) => {
-                setSelectedCaseId(e.target.value);
-                setLevelId(''); 
-              }} 
-              disabled={isFetchingCases}
-            >
-              <option value="" disabled>-- Select a Case --</option>
-              {cases.map((c: any) => (
-                <option key={c.id} value={c.id}>{c.title}</option>
-              ))}
-            </select>
-          </div>
+        <div className="form-group" style={{ marginBottom: '1rem' }}>
+          <label>Target Case</label>
+          <select 
+            className="admin-input" required
+            value={caseId} 
+            onChange={(e) => setCaseId(e.target.value)} 
+            disabled={isFetchingCases}
+          >
+            <option value="" disabled>-- Select a Case --</option>
+            {cases.map((c: any) => (
+              <option key={c.id} value={c.id}>{c.title}</option>
+            ))}
+          </select>
+        </div>
 
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Target Level</label>
-            <select 
-              className="admin-input" required
-              value={levelId} 
-              onChange={(e) => setLevelId(e.target.value)}
-              disabled={!selectedCaseId} 
-            >
-              <option value="" disabled>-- Select a Level --</option>
-              {availableLevels.map((l: any) => (
-                <option key={l.id} value={l.id}>Phase {l.order_index}: {l.title}</option>
-              ))}
-            </select>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+          <input 
+            type="checkbox" id="initial-toggle"
+            checked={isInitial} onChange={(e) => setIsInitial(e.target.checked)}
+            style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }}
+          />
+          <label htmlFor="initial-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
+            <strong>Initial Evidence:</strong> This item will be available on the board immediately when the case starts. (Uncheck if this is unlocked via player choices later).
+          </label>
         </div>
 
         <div className="form-group">
@@ -190,7 +181,6 @@ export default function EvidenceForm() {
           />
         </div>
 
-        {/* Paragraph is now permanently available in the UI */}
         <div className="form-group">
           <label>Text Content (Markdown Supported)</label>
           <textarea 
@@ -200,7 +190,6 @@ export default function EvidenceForm() {
           />
         </div>
 
-        {/* Dynamic Injection Block for Media Only */}
         {(evidenceType === 'image' || evidenceType === 'audio') && (
           <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '6px' }}>
             {renderTypeSpecificFields()}

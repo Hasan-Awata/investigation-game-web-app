@@ -19,17 +19,11 @@ class GameRoomService
     public function createRoom(GameCase $gameCase, User $host): Result
     {
         return DB::transaction(function () use ($gameCase, $host) {
-            $firstLevel = $gameCase->levels()->orderBy('order_index', 'asc')->first();
-
-            if (!$firstLevel) {
-                return Result::failure("Cannot create a room: The selected case has no levels defined.");
-            }
-
             $room = GameRoom::create([
                 'case_id' => $gameCase->id,
                 'host_user_id' => $host->id,
                 'invite_code' => $this->generateUniqueInviteCode(),
-                'current_level_id' => $firstLevel->id,
+                'current_level_id' => null, 
                 'status' => RoomStatus::Active,
             ]);
 

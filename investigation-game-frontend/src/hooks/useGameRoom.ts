@@ -37,21 +37,18 @@ export function useGameRoom(inviteCode: string | undefined) {
     enabled: !!inviteCode, 
   });
 
-  const currentLevelIndex = room?.game_case?.levels?.find(
-    (l) => l.id === room.current_level_id
-  )?.order_index || 0;
+  const caseEvidences = room?.game_case?.evidences || [];
+  const unlockedEvidenceIds = new Set(room?.unlocked_evidences?.map(e => e.id) || []);
 
-  const accumulatedEvidences: Evidence[] = room?.game_case?.levels
-    ?.filter((level) => level.order_index <= currentLevelIndex)
-    ?.flatMap((level) => level.evidences || []) || [];
+  const accumulatedEvidences: Evidence[] = caseEvidences.filter(
+    (evidence) => evidence.is_initial || unlockedEvidenceIds.has(evidence.id)
+  );
 
   return { 
     room, 
     isLoading, 
     error: error instanceof Error ? error.message : null, 
     accumulatedEvidences, 
-    refreshRoomData: async () => { 
-      await refetch(); 
-    } 
+    refreshRoomData: async () => { await refetch(); } 
   };
 }

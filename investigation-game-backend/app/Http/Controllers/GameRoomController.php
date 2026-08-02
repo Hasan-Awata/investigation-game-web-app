@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\GameCase;
+use App\Models\Level; 
 use App\Services\GameRoomService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -70,16 +71,43 @@ class GameRoomController extends Controller
     /**
      * Fetch the active state of a specific room, including the current level's puzzle data.
      */
+    public function startLevel(Request $request, GameRoom $room, Level $level): JsonResponse
+    {
+        // NEW: Strict authorization gate - Host Only
+        if ($request->user()->id !== $room->host_user_id) {
+            return response()->json([
+                'error' => 'Unauthorized', 
+                'message' => 'Only the assigned Room Host can initiate a new phase.'
+            ], 403);
+        }
+
+        if ($room->current_level_id !== null) {
+            return response()->json(['error' => 'Conflict', 'message' => 'An investigation phase is already active.'], 409);
+        }
+        
+        if ($room->completedLevels()->where('level_id', $level->id)->exists()) {
+            return response()->json(['error' => 'Conflict', 'message' => 'This phase is already solved.'], 409);
+        }
+
+        $room->update(['current_level_id' => $level->id]);
+        \App\Events\LevelTransitioned::dispatch($room);
+
+        return response()->json([
+            'message' => 'Phase initiated.',
+            'room' => $room->load('currentLevel')
+        ], 200);
+    }
+
     public function show(GameRoom $room): JsonResponse
     {
         $room->load([
             'host',
             'gameCase.levels.questions.choices',
-            'gameCase.levels.evidences',
+            'gameCase.evidences', 
             'users.user', 
             'currentLevel.questions.choices',
             'unlockedEvidences',
-            
+            'completedLevels', // NEW: Eager load the pivot table
             'votes' => function ($query) use ($room) {
                 $query->whereHas('question', function ($q) use ($room) {
                     $q->where('level_id', $room->current_level_id);
@@ -87,8 +115,6 @@ class GameRoomController extends Controller
             }
         ]);
 
-        return response()->json([
-            'room' => $room,
-        ], 200);
+        return response()->json(['room' => $room], 200);
     }
 }

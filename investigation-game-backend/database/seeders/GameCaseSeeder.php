@@ -42,7 +42,8 @@ class GameCaseSeeder extends Seeder
 
         // EVIDENCE 1: Document Variant
         Evidence::create([
-            'level_id' => $level1->id,
+            'case_id' => $case->id,
+            'is_initial' => true,
             'title' => 'Station Floor Plan & Keycard Access #102',
             'description' => 'Key card logs',
             'evidence_type' => EvidenceType::Document,
@@ -51,7 +52,8 @@ class GameCaseSeeder extends Seeder
 
         // EVIDENCE 2: Testimony Variant
         Evidence::create([
-            'level_id' => $level1->id,
+            'case_id' => $case->id,
+            'is_initial' => true,
             'title' => 'Janitor Testimony',
             'description' => 'Statement from the night shift janitor.',
             'evidence_type' => EvidenceType::Testimony,
@@ -60,7 +62,8 @@ class GameCaseSeeder extends Seeder
 
         // EVIDENCE 3: Audio Variant
         Evidence::create([
-            'level_id' => $level1->id,
+            'case_id' => $case->id,
+            'is_initial' => true,
             'title' => 'Voicemail, 11:47 PM',
             'description' => 'Recovered from the victim\'s answering machine.',
             'evidence_type' => EvidenceType::Audio,
@@ -69,7 +72,8 @@ class GameCaseSeeder extends Seeder
 
         // EVIDENCE 4: Image Variant
         Evidence::create([
-            'level_id' => $level1->id,
+            'case_id' => $case->id,
+            'is_initial' => true,
             'title' => 'Studio Overview',
             'description' => 'A wide-angle view of the master studio. The main access door is deadbolted from the inside. A half-empty coffee mug sits on the mixing desk, and the emergency studio exit window facing the alley is cracked open three inches.',
             'evidence_type' => EvidenceType::Image,
@@ -78,7 +82,8 @@ class GameCaseSeeder extends Seeder
 
         // EVIDENCE 5: Forensic Variant
         Evidence::create([
-            'level_id' => $level1->id,
+            'case_id' => $case->id,
+            'is_initial' => true,
             'title' => 'Coroner\'s Preliminary Log',
             'description' => 'The preliminary coroner\'s report on the victim\'s body.',
             'evidence_type' => EvidenceType::Forensic,

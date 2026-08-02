@@ -15,7 +15,7 @@ export default function QuestionForm() {
   
   const [text, setText] = useState('');
   const [msgWhenWrong, setMsgWhenWrong] = useState('');
-  const [isMandatory, setIsMandatory] = useState(true); // NEW state
+  const [isMandatory, setIsMandatory] = useState(true); 
   const [image, setImage] = useState<File | null>(null);
   
   const [choices, setChoices] = useState<ChoiceState[]>([
@@ -35,12 +35,11 @@ export default function QuestionForm() {
     }
   });
 
-  // Extract the nested levels and evidence based on selections
   const selectedCase = cases.find((c: any) => c.id.toString() === selectedCaseId);
   const availableLevels = selectedCase?.levels || [];
   
-  const selectedLevel = availableLevels.find((l: any) => l.id.toString() === levelId);
-  const availableEvidences = selectedLevel?.evidences || []; // Pull the evidence for the dropdowns
+  // CLEAN ARCHITECTURE: Pull evidence directly from the case, bypassing levels entirely.
+  const availableEvidences = selectedCase?.evidences || []; 
 
   const mutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -101,14 +100,13 @@ export default function QuestionForm() {
     const formData = new FormData();
     formData.append('level_id', levelId);
     formData.append('text', text);
-    formData.append('is_mandatory', isMandatory ? '1' : '0'); // Append flag
+    formData.append('is_mandatory', isMandatory ? '1' : '0'); 
     if (msgWhenWrong) formData.append('msg_when_wrong', msgWhenWrong);
     if (image) formData.append('image', image);
 
     choices.forEach((choice, index) => {
       formData.append(`choices[${index}][text]`, choice.text);
       formData.append(`choices[${index}][is_correct]`, choice.is_correct ? '1' : '0');
-      // Only append if an evidence was actually selected
       if (choice.unlocks_evidence_id) {
         formData.append(`choices[${index}][unlocks_evidence_id]`, choice.unlocks_evidence_id);
       }
@@ -127,7 +125,6 @@ export default function QuestionForm() {
 
       <form onSubmit={handleSubmit} className="admin-form">
         
-        {/* Cascading Dropdowns */}
         <div className="admin-form-row" style={{ marginBottom: '1rem' }}>
           <div className="form-group" style={{ flex: 1 }}>
             <label>Target Case</label>
@@ -155,7 +152,7 @@ export default function QuestionForm() {
               onChange={(e) => setLevelId(e.target.value)}
               disabled={!selectedCaseId}
             >
-              <option value="" disabled>-- Select a Level --</option>
+              <option value="" disabled>-- Select a Phase --</option>
               {availableLevels.map((l: any) => (
                 <option key={l.id} value={l.id}>Phase {l.order_index}: {l.title}</option>
               ))}
@@ -163,7 +160,6 @@ export default function QuestionForm() {
           </div>
         </div>
 
-        {/* Narrative Toggle */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px' }}>
           <input 
             type="checkbox" 
@@ -236,7 +232,6 @@ export default function QuestionForm() {
                   </button>
                 </div>
                 
-                {/* Optional Evidence Unlock Dropdown */}
                 <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '2.5rem' }}>
                   <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Evidence:</label>
                   <select 
@@ -244,7 +239,7 @@ export default function QuestionForm() {
                     style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }}
                     value={choice.unlocks_evidence_id || ''} 
                     onChange={(e) => updateChoiceEvidence(choice.id, e.target.value)}
-                    disabled={!levelId}
+                    disabled={!selectedCaseId}
                   >
                     <option value="">-- No Narrative Unlock --</option>
                     {availableEvidences.map((ev: any) => (

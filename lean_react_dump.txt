@@ -66,6 +66,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\package.json
     "pusher-js": "^8.6.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.1"
   },
   "devDependencies": {
@@ -1730,9 +1731,10 @@ export default function EvidenceForm() {
 
         {/* Paragraph is now permanently available in the UI */}
         <div className="form-group">
-          <label>Text Content (Paragraph)</label>
+          <label>Text Content (Markdown Supported)</label>
           <textarea 
             className="admin-textarea"
+            placeholder="Use **bold**, *italics*, or `redacted` text..."
             value={paragraph} onChange={(e) => setParagraph(e.target.value)} 
           />
         </div>
@@ -3271,7 +3273,17 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 .modal-close-btn:hover { color: var(--accent-crimson); }
 .modal-desc { margin: 0 0 1.5rem 0; color: var(--text-secondary); font-size: 1rem; }
 
-.evidence-text-content { background: rgba(0, 0, 0, 0.4); padding: 1.5rem; border-radius: var(--radius-md); font-size: 1.1rem; line-height: 1.7; color: var(--text-primary); border-left: 3px solid var(--text-secondary); }
+.evidence-text-content { 
+  background: rgba(0, 0, 0, 0.4); 
+  padding: 1.5rem; 
+  border-radius: var(--radius-md); 
+  font-size: 1.1rem; 
+  line-height: 1.7; 
+  color: var(--text-primary); 
+  border-left: 3px solid var(--text-secondary); 
+  white-space: pre-wrap; 
+}
+
 .evidence-text-content.type-document { border-left-color: var(--accent-amber); }
 .evidence-text-content.type-testimony { border-left-color: var(--accent-cyan); font-style: italic; }
 .evidence-text-content.type-forensic { border-left-color: var(--accent-crimson); font-family: var(--font-mono); font-size: 0.95rem; }
@@ -3348,6 +3360,62 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
     align-items: flex-start;
     gap: 1rem;
   }
+}
+
+/* --- MARKDOWN FORMATTING SUPPORT --- */
+.evidence-text-content p {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+.evidence-text-content p:last-child {
+  margin-bottom: 0;
+}
+
+/* Base emphasis */
+.evidence-text-content strong {
+  color: var(--accent-cyan);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+/* Physical Document Variant Overrides */
+.evidence-text-content.type-document strong,
+.evidence-text-content.type-forensic strong,
+.evidence-text-content.type-testimony strong {
+  color: #000;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.08); /* Simulates a highlighter or heavy ink press */
+  padding: 0 2px;
+}
+
+/* Bullet Points */
+.evidence-text-content ul {
+  margin: 0.5rem 0 1.5rem 1.5rem;
+  padding: 0;
+  list-style-type: square;
+}
+.evidence-text-content li {
+  margin-bottom: 0.5rem;
+}
+
+/* Blockquotes (Great for quoted speech inside a larger document) */
+.evidence-text-content blockquote {
+  border-left: 3px solid var(--accent-crimson);
+  margin: 1rem 0;
+  padding-left: 1rem;
+  font-style: italic;
+  background: rgba(163, 50, 50, 0.05);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+/* REDACTED TEXT TRICK (Authors can use HTML <mark> tags or backticks) */
+.evidence-text-content code {
+  background: #111;
+  color: #111; /* Hides the text */
+  padding: 0 6px;
+  border-radius: 2px;
+  user-select: none; /* Prevents players from highlighting to reveal */
 }
 
 
@@ -3499,6 +3567,7 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceModal.tsx
 ----------------------------------------
+import ReactMarkdown from 'react-markdown'; 
 import type { Evidence } from '../../../types';
 import './EvidenceBoard.css';
 
@@ -3526,10 +3595,9 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
         <p className="modal-desc">{evidence.description}</p>
 
         <div className="modal-body">
-          {/* Text renderer for Documents, Testimonies, and Forensics */}
           {evidence.paragraph && (
             <div className={`evidence-text-content type-${evidence.evidence_type}`}>
-              <p>{evidence.paragraph}</p>
+              <ReactMarkdown>{evidence.paragraph}</ReactMarkdown>
             </div>
           )}
 

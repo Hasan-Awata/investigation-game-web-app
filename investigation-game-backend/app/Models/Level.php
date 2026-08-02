@@ -30,14 +30,6 @@ class Level extends Model
     }
 
     /**
-     * The clues and assets players discover during this level.
-     */
-    public function evidences(): HasMany
-    {
-        return $this->hasMany(Evidence::class, 'level_id');
-    }
-
-    /**
      * The puzzles/verdicts players must solve to clear this level.
      */
     public function questions(): HasMany

@@ -34,13 +34,12 @@ class LevelTransitioned implements ShouldBroadcastNow
     {
         // Load the fresh level data to send down the wire
         $this->room->load([
-            'currentLevel.evidences',
             'currentLevel.questions.choices'
         ]);
 
         return [
             'room' => $this->room,
-            'status' => $this->room->status->value, // Either 'active' or 'solved'
+            'status' => $this->room->status->value, 
         ];
     }
 }

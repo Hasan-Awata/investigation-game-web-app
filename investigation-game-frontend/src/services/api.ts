@@ -158,9 +158,9 @@ export const submitAssessment = async (roomId: number): Promise<Result<{ status:
   }
 };
 
-export const triggerPersonaHint = async (roomId: number): Promise<Result<{ hint: string }>> => {
+export const initiatePhase = async (roomId: number, levelId: number): Promise<Result<any>> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/hint`, {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/levels/${levelId}/start`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -171,10 +171,10 @@ export const triggerPersonaHint = async (roomId: number): Promise<Result<{ hint:
     
     if (!response.ok) {
       if (response.status === 401) handleUnauthorized();
-      return failure('Failed to retrieve Persona analysis.');
+      const data = await response.json().catch(() => null);
+      return failure(data?.message || 'Failed to initiate phase.');
     }
-    const data = await response.json();
-    return success(data.data); 
+    return success(await response.json());
   } catch (error) {
     return failure(error instanceof Error ? error.message : 'Network error');
   }

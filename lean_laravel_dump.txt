@@ -354,13 +354,12 @@ class LevelTransitioned implements ShouldBroadcastNow
     {
         // Load the fresh level data to send down the wire
         $this->room->load([
-            'currentLevel.evidences',
             'currentLevel.questions.choices'
         ]);
 
         return [
             'room' => $this->room,
-            'status' => $this->room->status->value, // Either 'active' or 'solved'
+            'status' => $this->room->status->value, 
         ];
     }
 }
@@ -651,6 +650,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controll
 namespace App\Http\Controllers;
 
 use App\Models\GameCase;
+use App\Models\Level; 
 use App\Services\GameRoomService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -718,16 +718,35 @@ class GameRoomController extends Controller
     /**
      * Fetch the active state of a specific room, including the current level's puzzle data.
      */
+    public function startLevel(Request $request, GameRoom $room, Level $level): JsonResponse
+    {
+        if ($room->current_level_id !== null) {
+            return response()->json(['error' => 'Conflict', 'message' => 'An investigation phase is already active.'], 409);
+        }
+        
+        if ($room->completedLevels()->where('level_id', $level->id)->exists()) {
+            return response()->json(['error' => 'Conflict', 'message' => 'This phase is already solved.'], 409);
+        }
+
+        $room->update(['current_level_id' => $level->id]);
+        \App\Events\LevelTransitioned::dispatch($room);
+
+        return response()->json([
+            'message' => 'Phase initiated.',
+            'room' => $room->load('currentLevel')
+        ], 200);
+    }
+
     public function show(GameRoom $room): JsonResponse
     {
         $room->load([
             'host',
             'gameCase.levels.questions.choices',
-            'gameCase.levels.evidences',
+            'gameCase.evidences', 
             'users.user', 
             'currentLevel.questions.choices',
             'unlockedEvidences',
-            
+            'completedLevels', // NEW: Eager load the pivot table
             'votes' => function ($query) use ($room) {
                 $query->whereHas('question', function ($q) use ($room) {
                     $q->where('level_id', $room->current_level_id);
@@ -735,9 +754,7 @@ class GameRoomController extends Controller
             }
         ]);
 
-        return response()->json([
-            'room' => $room,
-        ], 200);
+        return response()->json(['room' => $room], 200);
     }
 }
 
@@ -900,18 +917,17 @@ public function store(Request $request): JsonResponse
      */
     public function index(): JsonResponse
     {
-        $cases = GameCase::with(['levels' => function ($query) {
-            $query->select('id', 'case_id', 'title', 'order_index')
-                  ->orderBy('order_index', 'asc')
-                  ->with('evidences:id,level_id,title'); 
-        }])
+        $cases = GameCase::with([
+            'levels' => function ($query) {
+                $query->select('id', 'case_id', 'title', 'order_index')->orderBy('order_index', 'asc');
+            },
+            'evidences:id,case_id,title,is_initial'
+        ])
         ->select('id', 'title')
         ->orderBy('created_at', 'desc')
         ->get();
 
-        return response()->json([
-            'cases' => $cases
-        ], 200);
+        return response()->json(['cases' => $cases], 200);
     }
 
         public function destroy($id): JsonResponse
@@ -995,11 +1011,12 @@ class AdminEvidenceController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'level_id' => 'required|exists:levels,id',
+            'case_id' => 'required|exists:cases,id', 
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
             'paragraph' => 'nullable|string',
+            'is_initial' => 'required|boolean', // New validation
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
         ]);
@@ -1036,19 +1053,17 @@ class AdminEvidenceController extends Controller
         }
 
         $evidence = Evidence::create([
-            'level_id' => $validated['level_id'],
+            'case_id' => $validated['case_id'],
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'evidence_type' => $validated['evidence_type'],
             'paragraph' => $validated['paragraph'] ?? null,
+            'is_initial' => $validated['is_initial'],
             'img_url' => $imageUrl,
             'audio_url' => $audioUrl,
         ]);
 
-        return response()->json([
-            'message' => 'Evidence added successfully.',
-            'evidence' => $evidence
-        ], 201);
+        return response()->json(['message' => 'Evidence added successfully.', 'evidence' => $evidence], 201);
     }
 }
 
@@ -1259,34 +1274,29 @@ class Evidence extends Model
     protected $table = 'evidences';
 
     protected $fillable = [
-        'level_id',
+        'case_id', 
         'title',
         'description',
         'evidence_type',
         'audio_url',
         'img_url',
         'paragraph',
+        'is_initial',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    
     protected function casts(): array
     {
         return [
             'evidence_type' => EvidenceType::class,
+            'is_initial' => 'boolean',
         ];
     }
 
-    public function level(): BelongsTo
+    public function gameCase(): BelongsTo
     {
-        return $this->belongsTo(Level::class);
+        return $this->belongsTo(GameCase::class, 'case_id');
     }
 }
-
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\GameCase.php
@@ -1329,6 +1339,11 @@ class GameCase extends Model
         return $this->hasMany(Level::class, 'case_id');
     }
 
+    public function evidences(): HasMany
+    {
+        return $this->hasMany(Evidence::class, 'case_id');
+    }
+    
     /**
      * A case can have multiple multiplayer rooms instantiated from it.
      */
@@ -1414,6 +1429,12 @@ protected $fillable = [
         return $this->belongsToMany(Evidence::class, 'room_evidences', 'room_id', 'evidence_id')
                     ->withTimestamps();
     }
+
+    public function completedLevels()
+    {
+        return $this->belongsToMany(Level::class, 'room_completed_levels', 'room_id', 'level_id')
+                    ->withTimestamps();
+    }
 }
 
 
@@ -1448,14 +1469,6 @@ class Level extends Model
     public function gameCase(): BelongsTo
     {
         return $this->belongsTo(GameCase::class, 'case_id');
-    }
-
-    /**
-     * The clues and assets players discover during this level.
-     */
-    public function evidences(): HasMany
-    {
-        return $this->hasMany(Evidence::class, 'level_id');
     }
 
     /**
@@ -1692,7 +1705,7 @@ class AssessmentService
             $mandatoryQuestions = $level->questions()->where('is_mandatory', true)->get();
             $optionalQuestions = $level->questions()->where('is_mandatory', false)->get();
 
-// 1. Check Mandatory Progression
+            // 1. Check Mandatory Progression
             foreach ($mandatoryQuestions as $question) {
                 if (!isset($consensus[$question->id])) {
                     return Result::failure("Not all mandatory verdicts have a locked-in consensus yet.");
@@ -1749,24 +1762,28 @@ class AssessmentService
                 \App\Events\EvidenceDiscovered::dispatch($room, $newlyUnlockedEvidences);
             }
 
-            // 3. Advance or Successfully Close the Case
-            $nextLevel = Level::where('case_id', $room->case_id)
-                ->where('order_index', '>', $level->order_index)
-                ->orderBy('order_index', 'asc')
-                ->first();
+            // 3. Mark Phase Complete & Check Win Condition
+            $room->completedLevels()->syncWithoutDetaching([$level->id]);
+            
+            $completedCount = $room->completedLevels()->count();
+            $totalLevels = $room->gameCase->levels()->count();
 
-            if ($nextLevel) {
-                $room->update(['current_level_id' => $nextLevel->id]);
-            } else {
-                $room->update(['status' => \App\Enums\RoomStatus::Solved]);
+            if ($completedCount >= $totalLevels) {
+                // ALL PHASES COMPLETE: Close the case
+                $room->update(['status' => \App\Enums\RoomStatus::Solved, 'current_level_id' => null]);
                 $this->finalizeCaseForParticipants($room, 'solved');
+                $responseMessage = 'Final verdict accepted. The case is solved.';
+            } else {
+                // PHASE COMPLETE: Wipe active level, return to roadmap
+                $room->update(['current_level_id' => null]);
+                $responseMessage = 'Verdict accepted. Return to the roadmap to select the next phase.';
             }
 
             \App\Events\LevelTransitioned::dispatch($room);
             
             return Result::success([
                 'status' => 'success', 
-                'message' => 'Verdict accepted. Moving to the next phase of the investigation.',
+                'message' => $responseMessage,
                 'unlocked_evidence' => $newlyUnlockedEvidences 
             ]);
         });
@@ -1834,12 +1851,12 @@ class AssessmentService
         if ($nextLevel) {
             $room->update(['current_level_id' => $nextLevel->id]);
         } else {
-            // Case Solved: Flag room and update user histories
-            $room->update(['status' => RoomStatus::Solved]);
-            $this->markCaseSolvedForParticipants($room);
+            // REMOVED: Case Solved logic for custom flow.
+            // $room->update(['status' => RoomStatus::Solved]);
+            // $this->markCaseSolvedForParticipants($room);
         }
 
-        // Broadcast the transition (whether to a new level or case solved)
+        // Broadcast the transition
         LevelTransitioned::dispatch($room);
     }
 
@@ -1886,17 +1903,11 @@ class GameRoomService
     public function createRoom(GameCase $gameCase, User $host): Result
     {
         return DB::transaction(function () use ($gameCase, $host) {
-            $firstLevel = $gameCase->levels()->orderBy('order_index', 'asc')->first();
-
-            if (!$firstLevel) {
-                return Result::failure("Cannot create a room: The selected case has no levels defined.");
-            }
-
             $room = GameRoom::create([
                 'case_id' => $gameCase->id,
                 'host_user_id' => $host->id,
                 'invite_code' => $this->generateUniqueInviteCode(),
-                'current_level_id' => $firstLevel->id,
+                'current_level_id' => null, 
                 'status' => RoomStatus::Active,
             ]);
 
@@ -4438,6 +4449,72 @@ return new class extends Migration {
 };
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_065959_refactor_evidences_and_strikes.php
+----------------------------------------
+// FILE: database/migrations/2026_08_02_100000_refactor_evidences_and_strikes.php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        // 1. Update the default strikes on the cases table
+        Schema::table('cases', function (Blueprint $table) {
+            $table->integer('max_strikes')->default(3)->change();
+        });
+
+        // 2. Relink evidences to cases and add the narrative flag
+        Schema::table('evidences', function (Blueprint $table) {
+            // Drop the old level relation
+            $table->dropForeign(['level_id']);
+            $table->dropColumn('level_id');
+            
+            // Link directly to the case and add the initial flag
+            $table->foreignId('case_id')->after('id')->constrained('cases')->cascadeOnDelete();
+            $table->boolean('is_initial')->default(false)->after('paragraph');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('evidences', function (Blueprint $table) {
+            $table->dropForeign(['case_id']);
+            $table->dropColumn(['case_id', 'is_initial']);
+            $table->foreignId('level_id')->after('id')->constrained('levels')->cascadeOnDelete();
+        });
+        
+        Schema::table('cases', function (Blueprint $table) {
+            $table->integer('max_strikes')->default(5)->change();
+        });
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_072914_create_room_completed_levels_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::create('room_completed_levels', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('room_id')->constrained('game_rooms')->cascadeOnDelete();
+            $table->foreignId('level_id')->constrained('levels')->cascadeOnDelete();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void {
+        Schema::dropIfExists('room_completed_levels');
+    }
+};
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\DatabaseSeeder.php
 ----------------------------------------
 <?php
@@ -4535,7 +4612,8 @@ class GameCaseSeeder extends Seeder
 
         // EVIDENCE 1: Document Variant
         Evidence::create([
-            'level_id' => $level1->id,
+            'case_id' => $case->id,
+            'is_initial' => true,
             'title' => 'Station Floor Plan & Keycard Access #102',
             'description' => 'Key card logs',
             'evidence_type' => EvidenceType::Document,
@@ -4544,7 +4622,8 @@ class GameCaseSeeder extends Seeder
 
         // EVIDENCE 2: Testimony Variant
         Evidence::create([
-            'level_id' => $level1->id,
+            'case_id' => $case->id,
+            'is_initial' => true,
             'title' => 'Janitor Testimony',
             'description' => 'Statement from the night shift janitor.',
             'evidence_type' => EvidenceType::Testimony,
@@ -4553,7 +4632,8 @@ class GameCaseSeeder extends Seeder
 
         // EVIDENCE 3: Audio Variant
         Evidence::create([
-            'level_id' => $level1->id,
+            'case_id' => $case->id,
+            'is_initial' => true,
             'title' => 'Voicemail, 11:47 PM',
             'description' => 'Recovered from the victim\'s answering machine.',
             'evidence_type' => EvidenceType::Audio,
@@ -4562,7 +4642,8 @@ class GameCaseSeeder extends Seeder
 
         // EVIDENCE 4: Image Variant
         Evidence::create([
-            'level_id' => $level1->id,
+            'case_id' => $case->id,
+            'is_initial' => true,
             'title' => 'Studio Overview',
             'description' => 'A wide-angle view of the master studio. The main access door is deadbolted from the inside. A half-empty coffee mug sits on the mixing desk, and the emergency studio exit window facing the alley is cracked open three inches.',
             'evidence_type' => EvidenceType::Image,
@@ -4571,7 +4652,8 @@ class GameCaseSeeder extends Seeder
 
         // EVIDENCE 5: Forensic Variant
         Evidence::create([
-            'level_id' => $level1->id,
+            'case_id' => $case->id,
+            'is_initial' => true,
             'title' => 'Coroner\'s Preliminary Log',
             'description' => 'The preliminary coroner\'s report on the victim\'s body.',
             'evidence_type' => EvidenceType::Forensic,
@@ -4654,7 +4736,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Core Gameplay Loop
     Route::post('/rooms/{room}/questions/{question}/vote', [VoteController::class, 'store']);
     Route::post('/rooms/{room}/submit', [AssessmentController::class, 'store']);
-    
+    Route::post('/rooms/{room}/levels/{level}/start', [GameRoomController::class, 'startLevel']);
+
     // Persona Hint System
     Route::post('/rooms/{room}/hint', [PersonaController::class, 'store']);
     

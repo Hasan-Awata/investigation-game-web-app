@@ -3,13 +3,13 @@
 namespace App\Services;
 
 use App\Models\GameRoom;
-use App\Models\Level;
 use App\Models\Choice;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use App\Enums\RoomStatus;
 use App\Support\Result;
 use App\Events\LevelTransitioned;
+use App\Events\EvidenceDiscovered;
+use App\Enums\RoomStatus;
 
 class AssessmentService
 {
@@ -27,7 +27,7 @@ class AssessmentService
             $mandatoryQuestions = $level->questions()->where('is_mandatory', true)->get();
             $optionalQuestions = $level->questions()->where('is_mandatory', false)->get();
 
-// 1. Check Mandatory Progression
+            // 1. Check Mandatory Progression
             foreach ($mandatoryQuestions as $question) {
                 if (!isset($consensus[$question->id])) {
                     return Result::failure("Not all mandatory verdicts have a locked-in consensus yet.");
@@ -36,15 +36,14 @@ class AssessmentService
                 $chosenId = $consensus[$question->id];
                 $isCorrect = Choice::where('id', $chosenId)->value('is_correct');
                 
-                $maxStrikes = $room->gameCase->max_strikes; // <-- Retrieve dynamic limit
+                $maxStrikes = $room->gameCase->max_strikes; 
 
                 // IF THEY SUBMIT THE WRONG ANSWER
                 if (!$isCorrect) {
                     $room->increment('strikes');
                     $room->refresh();
 
-                    // IF THEY HIT THE MAXIMUM STRIKES (THE POINT OF NO RETURN)
-                    if ($room->strikes >= $maxStrikes) { // <-- Use dynamic limit
+                    if ($room->strikes >= $maxStrikes) {
                         $room->update(['status' => \App\Enums\RoomStatus::Failed]);
                         $this->finalizeCaseForParticipants($room, 'failed');
                         \App\Events\LevelTransitioned::dispatch($room);
@@ -55,10 +54,18 @@ class AssessmentService
                         ]);
                     }
 
-                    // IF THEY STILL HAVE STRIKES LEFT
+                    // Extract the Persona hint for the exact question they failed
+                    $hint = $question->msg_when_wrong ?? "Re-evaluate the evidence thoroughly.";
+
+                    // REWIND LOGIC: Wipe all votes for this phase so they must start over
+                    \App\Models\RoomVote::where('room_id', $room->id)
+                        ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
+                        ->delete();
+
+                    // Return standard failure, embedding the hint directly into the message
                     return Result::success([
                         'status' => 'failed', 
-                        'message' => "The logic on a critical verdict is flawed. STRIKE {$room->strikes}/{$maxStrikes} LOGGED. The Persona hint system is active."
+                        'message' => "The logic on a critical verdict is flawed. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: {$hint}"
                     ]);
                 }
             }
@@ -81,27 +88,31 @@ class AssessmentService
             }
 
             if (!empty($newlyUnlockedEvidences)) {
-                \App\Events\EvidenceDiscovered::dispatch($room, $newlyUnlockedEvidences);
+                EvidenceDiscovered::dispatch($room, $newlyUnlockedEvidences);
             }
 
-            // 3. Advance or Successfully Close the Case
-            $nextLevel = Level::where('case_id', $room->case_id)
-                ->where('order_index', '>', $level->order_index)
-                ->orderBy('order_index', 'asc')
-                ->first();
+            // 3. Mark Phase Complete & Check Suspension Condition
+            $room->completedLevels()->syncWithoutDetaching([$level->id]);
+            
+            $completedCount = $room->completedLevels()->count();
+            $totalLevels = $room->gameCase->levels()->count();
 
-            if ($nextLevel) {
-                $room->update(['current_level_id' => $nextLevel->id]);
+            // Unhook the current level to return players to the roadmap UI
+            $room->update(['current_level_id' => null]);
+
+            if ($completedCount >= $totalLevels) {
+                // ALL PHASES COMPLETE: Room remains active. Custom flow takes over from here.
+                $responseMessage = 'Final verdict accepted. Stand by for further instructions.';
             } else {
-                $room->update(['status' => \App\Enums\RoomStatus::Solved]);
-                $this->finalizeCaseForParticipants($room, 'solved');
+                // PHASE COMPLETE: Return to roadmap
+                $responseMessage = 'Verdict accepted. Return to the roadmap to select the next phase.';
             }
 
-            \App\Events\LevelTransitioned::dispatch($room);
+            LevelTransitioned::dispatch($room);
             
             return Result::success([
                 'status' => 'success', 
-                'message' => 'Verdict accepted. Moving to the next phase of the investigation.',
+                'message' => $responseMessage,
                 'unlocked_evidence' => $newlyUnlockedEvidences 
             ]);
         });
@@ -109,6 +120,7 @@ class AssessmentService
 
     /**
      * Populate the case_user history and distribute XP dynamically.
+     * (Currently only triggered by the 'failed' state until your custom flow triggers 'solved').
      */
     private function finalizeCaseForParticipants(GameRoom $room, string $finalStatus): void
     {
@@ -116,7 +128,6 @@ class AssessmentService
         $case = $room->gameCase;
 
         foreach ($userIds as $userId) {
-            // Check the player's personal history with this dossier
             $existingRecord = DB::table('case_user')
                 ->where('user_id', $userId)
                 ->where('case_id', $case->id)
@@ -124,26 +135,25 @@ class AssessmentService
 
             $previousStatus = $existingRecord->status ?? null;
 
-            // 1. Calculate XP Payload
+            // 1. Calculate XP Payload (If manually triggered later)
             if ($finalStatus === 'solved') {
                 $xpGained = 0;
                 
                 if ($previousStatus === 'solved') {
-                    $xpGained = 0; // Replay: 0% XP
+                    $xpGained = 0; 
                 } elseif ($previousStatus === 'failed') {
-                    $xpGained = (int) floor($case->XP_on_solve / 2); // Redemption: 50% XP
+                    $xpGained = (int) floor($case->XP_on_solve / 2); 
                 } else {
-                    $xpGained = $case->XP_on_solve; // First time: 100% XP
+                    $xpGained = $case->XP_on_solve; 
                 }
 
                 if ($xpGained > 0) {
-                    \App\Models\User::where('id', $userId)->increment('XP', $xpGained);
+                    User::where('id', $userId)->increment('XP', $xpGained);
                 }
             }
 
             // 2. Preserve or Update State
             if ($previousStatus === 'solved') {
-                // Never downgrade a successful conviction. Just update the timestamp.
                 DB::table('case_user')
                     ->where('id', $existingRecord->id)
                     ->update(['completed_at' => now()]);
@@ -153,46 +163,6 @@ class AssessmentService
                     ['status' => $finalStatus, 'completed_at' => now()]
                 );
             }
-        }
-    }
-
-    /**
-     * Transition the room to the next sequential level or close the case.
-     */
-    private function advanceToNextLevel(GameRoom $room, Level $currentLevel): void
-    {
-        $nextLevel = Level::where('case_id', $room->case_id)
-            ->where('order_index', '>', $currentLevel->order_index)
-            ->orderBy('order_index', 'asc')
-            ->first();
-
-        if ($nextLevel) {
-            $room->update(['current_level_id' => $nextLevel->id]);
-        } else {
-            // Case Solved: Flag room and update user histories
-            $room->update(['status' => RoomStatus::Solved]);
-            $this->markCaseSolvedForParticipants($room);
-        }
-
-        // Broadcast the transition (whether to a new level or case solved)
-        LevelTransitioned::dispatch($room);
-    }
-
-    /**
-     * Populate the UserCaseHistory and distribute the XP reward.
-     */
-    private function markCaseSolvedForParticipants(GameRoom $room): void
-    {
-        $userIds = $room->users()->pluck('user_id');
-        $case = $room->gameCase;
-
-        foreach ($userIds as $userId) {
-            DB::table('case_user')->updateOrInsert(
-                ['user_id' => $userId, 'case_id' => $case->id],
-                ['status' => 'solved', 'completed_at' => now()]
-            );
-
-            User::where('id', $userId)->increment('XP', $case->XP_on_solve);
         }
     }
 }

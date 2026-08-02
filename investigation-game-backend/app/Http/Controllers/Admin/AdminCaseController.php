@@ -64,18 +64,17 @@ public function store(Request $request): JsonResponse
      */
     public function index(): JsonResponse
     {
-        $cases = GameCase::with(['levels' => function ($query) {
-            $query->select('id', 'case_id', 'title', 'order_index')
-                  ->orderBy('order_index', 'asc')
-                  ->with('evidences:id,level_id,title'); 
-        }])
+        $cases = GameCase::with([
+            'levels' => function ($query) {
+                $query->select('id', 'case_id', 'title', 'order_index')->orderBy('order_index', 'asc');
+            },
+            'evidences:id,case_id,title,is_initial'
+        ])
         ->select('id', 'title')
         ->orderBy('created_at', 'desc')
         ->get();
 
-        return response()->json([
-            'cases' => $cases
-        ], 200);
+        return response()->json(['cases' => $cases], 200);
     }
 
         public function destroy($id): JsonResponse

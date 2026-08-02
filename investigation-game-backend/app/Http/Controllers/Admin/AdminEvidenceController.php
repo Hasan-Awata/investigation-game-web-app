@@ -15,11 +15,12 @@ class AdminEvidenceController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'level_id' => 'required|exists:levels,id',
+            'case_id' => 'required|exists:cases,id', 
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
             'paragraph' => 'nullable|string',
+            'is_initial' => 'required|boolean', // New validation
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
         ]);
@@ -56,18 +57,16 @@ class AdminEvidenceController extends Controller
         }
 
         $evidence = Evidence::create([
-            'level_id' => $validated['level_id'],
+            'case_id' => $validated['case_id'],
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'evidence_type' => $validated['evidence_type'],
             'paragraph' => $validated['paragraph'] ?? null,
+            'is_initial' => $validated['is_initial'],
             'img_url' => $imageUrl,
             'audio_url' => $audioUrl,
         ]);
 
-        return response()->json([
-            'message' => 'Evidence added successfully.',
-            'evidence' => $evidence
-        ], 201);
+        return response()->json(['message' => 'Evidence added successfully.', 'evidence' => $evidence], 201);
     }
 }

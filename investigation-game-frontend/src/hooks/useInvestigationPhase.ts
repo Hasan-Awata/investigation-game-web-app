@@ -1,16 +1,13 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import type { Choice } from '@/types';
-import { lockVote, submitAssessment, triggerPersonaHint } from '@/services/api';
+import { lockVote, submitAssessment, initiatePhase } from '@/services/api';
 
 export function useInvestigationPhase(roomId: number, refreshRoomData: () => void) {
   const [votes, setVotes] = useState<Record<number, number>>({});
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  
-  // Dedicated state for non-blocking notifications
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Mutation for voting
   const voteMutation = useMutation({
     mutationFn: async ({ questionId, choiceId }: { questionId: number, choiceId: number }) => {
       const result = await lockVote(roomId, questionId, choiceId);
@@ -19,7 +16,6 @@ export function useInvestigationPhase(roomId: number, refreshRoomData: () => voi
     }
   });
 
-  // Mutation for submitting the theory
   const submitTheoryMutation = useMutation({
     mutationFn: async () => {
       const result = await submitAssessment(roomId);
@@ -29,16 +25,11 @@ export function useInvestigationPhase(roomId: number, refreshRoomData: () => voi
     onSuccess: async (data) => {
       if (data.status === 'success' || data.status === 'failed_final') {
         
-        setFeedback({ 
-          type: data.status === 'success' ? 'success' : 'error', 
-          message: data.message 
-        });
-        
+        setFeedback({ type: data.status === 'success' ? 'success' : 'error', message: data.message });
         setTimeout(() => {
           setFeedback(null);
           setVotes({}); 
           refreshRoomData(); 
-          
           if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
             setTimeout(() => {
               setToastMessage('SYSTEM ALERT: New evidence recovered based on your narrative deductions.');
@@ -48,16 +39,26 @@ export function useInvestigationPhase(roomId: number, refreshRoomData: () => voi
         }, 2000);
         
       } else {
-        // TRIGGER ROOM SYNC ON STANDARD FAILURE TO UPDATE STRIKES UI
-        refreshRoomData(); 
-        
-        const hintResult = await triggerPersonaHint(roomId);
-        if (hintResult.isSuccess) {
-          setFeedback({ type: 'error', message: hintResult.value.hint });
-        } else {
-          setFeedback({ type: 'error', message: 'The logic is flawed. Review the evidence.' });
-        }
+        // STANDARD FAILURE (STRIKE): Set the error containing the hint, clear the UI, and refresh the DB
+        setFeedback({ type: 'error', message: data.message });
+        setVotes({}); // Instantly rewinds the UI locally
+        refreshRoomData(); // Pulls the clean slate from the DB
       }
+    },
+    onError: (error: Error) => {
+      setFeedback({ type: 'error', message: error.message });
+    }
+  });
+
+  // Mutation for locking in a phase
+  const initiatePhaseMutation = useMutation({
+    mutationFn: async (levelId: number) => {
+      const result = await initiatePhase(roomId, levelId);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: () => {
+      refreshRoomData();
     },
     onError: (error: Error) => {
       setFeedback({ type: 'error', message: error.message });
@@ -84,11 +85,13 @@ export function useInvestigationPhase(roomId: number, refreshRoomData: () => voi
 
   return {
     votes,
-    isSubmitting: submitTheoryMutation.isPending,
+    isSubmitting: submitTheoryMutation.isPending || voteMutation.isPending,
+    isInitiating: initiatePhaseMutation.isPending, 
     feedback,
-    toastMessage, // Expose the toast state to the component
+    toastMessage, 
     handleSelectChoice,
     handleSubmitTheory,
+    initiatePhase: (levelId: number) => initiatePhaseMutation.mutate(levelId),
     clearFeedback
-  };
+  }
 }

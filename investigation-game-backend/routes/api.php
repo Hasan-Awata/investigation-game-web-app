@@ -33,10 +33,9 @@ Route::middleware('auth:sanctum')->group(function () {
     // Core Gameplay Loop
     Route::post('/rooms/{room}/questions/{question}/vote', [VoteController::class, 'store']);
     Route::post('/rooms/{room}/submit', [AssessmentController::class, 'store']);
-    
-    // Persona Hint System
-    Route::post('/rooms/{room}/hint', [PersonaController::class, 'store']);
-    
+    Route::post('/rooms/{room}/levels/{level}/start', [GameRoomController::class, 'startLevel']);
+
+
     Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
     Route::get('/cases', [AdminCaseController::class, 'index']); 
     Route::post('/cases', [AdminCaseController::class, 'store']);

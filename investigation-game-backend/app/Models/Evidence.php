@@ -11,30 +11,26 @@ class Evidence extends Model
     protected $table = 'evidences';
 
     protected $fillable = [
-        'level_id',
+        'case_id', 
         'title',
         'description',
         'evidence_type',
         'audio_url',
         'img_url',
         'paragraph',
+        'is_initial',
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    
     protected function casts(): array
     {
         return [
             'evidence_type' => EvidenceType::class,
+            'is_initial' => 'boolean',
         ];
     }
 
-    public function level(): BelongsTo
+    public function gameCase(): BelongsTo
     {
-        return $this->belongsTo(Level::class);
+        return $this->belongsTo(GameCase::class, 'case_id');
     }
 }

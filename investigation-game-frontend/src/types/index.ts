@@ -24,6 +24,7 @@ export interface GameCase {
   max_strikes: number; 
   img_url?: string; 
   levels?: Level[]; 
+  evidences?: Evidence[]; 
   user_status?: 'solved' | 'failed' | null; 
 }
 
@@ -39,19 +40,21 @@ export interface GameRoom {
   users?: RoomUser[];
   current_level?: Level;
   unlocked_evidences?: Evidence[]; 
+  completed_levels?: Level[];
 }
 
 export type EvidenceType = 'document' | 'testimony' | 'audio' | 'image' | 'forensic';
 
 export interface Evidence {
   id: number;
-  level_id: number;
+  case_id: number; 
   title: string;
   description?: string;
   evidence_type: EvidenceType;
   audio_url?: string;
   img_url?: string;
   paragraph?: string;
+  is_initial: boolean; 
 }
 
 export interface Choice {
@@ -79,6 +82,5 @@ export interface Level {
   details: string;
   img_url?: string; 
   order_index: number;
-  evidences?: Evidence[];
   questions?: Question[]; 
 }
