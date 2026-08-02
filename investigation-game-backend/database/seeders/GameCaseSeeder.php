@@ -8,6 +8,7 @@ use App\Models\Level;
 use App\Models\Evidence;
 use App\Models\Question;
 use App\Models\Choice;
+use App\Models\Suspect; // Added Suspect Model
 use App\Enums\EvidenceType;
 
 class GameCaseSeeder extends Seeder
@@ -22,6 +23,43 @@ class GameCaseSeeder extends Seeder
             'XP_on_solve' => 1000,
             'max_strikes' => 3,
             'img_url' => '/assets/cases/Case-cover.png',
+        ]);
+
+        // 1.5 Create the Suspects Roster
+        Suspect::create([
+            'case_id' => $case->id,
+            'name' => 'Marcus Thorne',
+            'background' => 'Co-founder of Vance & Thorne Architectural. Currently orchestrating a hostile takeover of the firm to oust Vance. Alibi: Photographed at the Mayor\'s Charity Gala at the Grand Hotel from 8:00 PM to 3:00 AM.',
+            'is_initial' => true,
+            'is_guilty' => true, 
+            'img_url' => '/assets/placeholder-mugshot.jpg',
+        ]);
+
+        Suspect::create([
+            'case_id' => $case->id,
+            'name' => 'Anton Varga (Night Maintenance)',
+            'background' => 'Employed as a janitor by a shell company recently acquired by Thorne. Clocked into the 40th floor at 11:30 PM on the night of the murder. Has a prior military background specializing in infiltration.',
+            'is_initial' => true,
+            'is_guilty' => true, 
+            'img_url' => '/assets/placeholder-mugshot.jpg',
+        ]);
+
+        Suspect::create([
+            'case_id' => $case->id,
+            'name' => 'Detective Ray Miller',
+            'background' => 'First responder and lead precinct detective on the scene. Eagerly ruled the death a suicide within an hour of discovery. Internal Affairs suspects he may be receiving kickbacks from corporate entities.',
+            'is_initial' => true,
+            'is_guilty' => false, 
+            'img_url' => '/assets/placeholder-mugshot.jpg',
+        ]);
+
+        Suspect::create([
+            'case_id' => $case->id,
+            'name' => 'Sarah Jenkins',
+            'background' => 'Chief Legal Counsel for Vance & Thorne. She was helping Elias build a defense against the hostile takeover and had access to his secure communications regarding the Cayman Islands discrepancy.',
+            'is_initial' => true,
+            'is_guilty' => false,
+            'img_url' => '/assets/placeholder-mugshot.jpg',
         ]);
 
         // 2. Create the Non-Linear Phases (Levels) - Now with 3 Initial Phases

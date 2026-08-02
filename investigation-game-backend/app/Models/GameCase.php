@@ -60,6 +60,11 @@ class GameCase extends Model
             ->withTimestamps();
     }
 
+    public function suspects(): HasMany
+    {
+        return $this->hasMany(Suspect::class, 'case_id');
+    }
+
     protected function imgUrl(): Attribute
     {
         return Attribute::make(

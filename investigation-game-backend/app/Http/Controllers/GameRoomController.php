@@ -104,10 +104,12 @@ class GameRoomController extends Controller
             'host',
             'gameCase.levels.questions.choices',
             'gameCase.evidences', 
+            'gameCase.suspects', 
             'users.user', 
             'currentLevel.questions.choices',
             'unlockedEvidences',
             'unlockedLevels', 
+            'unlockedSuspects',  
             'completedLevels',
             'votes' => function ($query) use ($room) {
                 $query->whereHas('question', function ($q) use ($room) {

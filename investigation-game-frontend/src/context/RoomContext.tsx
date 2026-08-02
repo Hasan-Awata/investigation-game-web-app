@@ -1,9 +1,10 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import type { GameRoom, Evidence } from '../types';
+import type { GameRoom, Evidence, Suspect } from '../types';
 
 interface RoomContextType {
   room: GameRoom;
   accumulatedEvidences: Evidence[];
+  accumulatedSuspects: Suspect[];
   refreshRoomData: () => Promise<void>;
   viewedItems: Set<number>;
   markItemAsViewed: (id: number) => void;
@@ -15,6 +16,7 @@ interface RoomProviderProps {
   children: ReactNode;
   room: GameRoom;
   accumulatedEvidences: Evidence[];
+  accumulatedSuspects: Suspect[];
   refreshRoomData: () => Promise<void>;
   viewedItems: Set<number>;
   markItemAsViewed: (id: number) => void;
@@ -24,18 +26,18 @@ export function RoomProvider({
   children, 
   room, 
   accumulatedEvidences, 
+  accumulatedSuspects,
   refreshRoomData, 
   viewedItems, 
   markItemAsViewed 
 }: RoomProviderProps) {
   return (
-    <RoomContext.Provider value={{ room, accumulatedEvidences, refreshRoomData, viewedItems, markItemAsViewed }}>
+    <RoomContext.Provider value={{ room, accumulatedEvidences, accumulatedSuspects, refreshRoomData, viewedItems, markItemAsViewed }}>
       {children}
     </RoomContext.Provider>
   );
 }
 
-// Custom hook for consuming the context safely
 export function useRoomContext() {
   const context = useContext(RoomContext);
   if (context === undefined) {

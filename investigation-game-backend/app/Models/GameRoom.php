@@ -67,7 +67,13 @@ protected $fillable = [
         return $this->belongsToMany(Level::class, 'room_unlocked_levels', 'room_id', 'level_id')
                     ->withTimestamps();
     }
-    
+
+    public function unlockedSuspects()
+    {
+        return $this->belongsToMany(Suspect::class, 'room_suspects', 'room_id', 'suspect_id')
+                    ->withTimestamps();
+    }
+
     public function completedLevels()
     {
         return $this->belongsToMany(Level::class, 'room_completed_levels', 'room_id', 'level_id')

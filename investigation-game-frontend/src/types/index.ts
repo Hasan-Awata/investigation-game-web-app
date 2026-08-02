@@ -15,6 +15,15 @@ export interface RoomUser {
   user?: User; 
 }
 
+export interface Suspect {
+  id: number;
+  case_id: number;
+  name: string;
+  background?: string;
+  img_url?: string;
+  is_initial: boolean;
+}
+
 export interface GameCase {
   id: number;
   title: string;
@@ -25,6 +34,7 @@ export interface GameCase {
   img_url?: string; 
   levels?: Level[]; 
   evidences?: Evidence[]; 
+  suspects?: Suspect[];
   user_status?: 'solved' | 'failed' | null; 
 }
 
@@ -49,6 +59,7 @@ export interface GameRoom {
   current_level?: Level;
   unlocked_evidences?: Evidence[]; 
   unlocked_levels?: Level[];
+  unlocked_suspects?: Suspect[];
   completed_levels?: Level[];
   votes?: RoomVote[];
 }
@@ -74,6 +85,7 @@ export interface Choice {
   is_correct: boolean;
   unlocks_evidence_id?: number | null; 
   unlocks_level_id?: number | null; 
+  unlocks_suspect_id?: number | null;
 }
 
 export interface Question {

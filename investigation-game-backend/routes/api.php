@@ -11,6 +11,8 @@ use App\Http\Controllers\Admin\AdminCaseController;
 use App\Http\Controllers\Admin\AdminLevelController;
 use App\Http\Controllers\Admin\AdminEvidenceController;
 use App\Http\Controllers\Admin\AdminQuestionController;
+use App\Http\Controllers\Admin\AdminSuspectController;
+use App\Http\Controllers\SuspectVerdictController;
 use App\Http\Middleware\IsAdmin; 
 
 // Public Authentication Routes
@@ -34,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rooms/{room}/questions/{question}/vote', [VoteController::class, 'store']);
     Route::post('/rooms/{room}/submit', [AssessmentController::class, 'store']);
     Route::post('/rooms/{room}/levels/{level}/start', [GameRoomController::class, 'startLevel']);
+    Route::post('/rooms/{room}/suspects/submit', [SuspectVerdictController::class, 'store']);
 
 
     Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
@@ -43,5 +46,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/levels', [AdminLevelController::class, 'store']);
     Route::post('/evidences', [AdminEvidenceController::class, 'store']);
     Route::post('/questions', [AdminQuestionController::class, 'store']);
+    Route::post('/suspects', [AdminSuspectController::class, 'store']);
     });
 });

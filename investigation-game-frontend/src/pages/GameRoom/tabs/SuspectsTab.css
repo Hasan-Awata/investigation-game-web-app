@@ -1,0 +1,159 @@
+.suspects-tab-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  /* Removed height: 100% so the container expands dynamically */
+  padding-bottom: 2rem; 
+}
+
+.suspects-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lock-warning {
+  background: rgba(255, 179, 0, 0.1);
+  border: 1px solid var(--accent-amber);
+  color: var(--accent-amber);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.verdict-zones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  height: max-content; /* Forces the grid to stretch based on its children */
+}
+
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+  height: max-content; 
+}
+
+.drop-zone.guilty-zone {
+  border-color: rgba(163, 50, 50, 0.3);
+}
+
+.drop-zone.innocent-zone {
+  border-color: rgba(74, 124, 89, 0.3);
+}
+
+.zone-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.zone-header h3 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
+}
+
+.guilty-zone .zone-header h3 { color: var(--accent-crimson); }
+.innocent-zone .zone-header h3 { color: var(--accent-success); }
+
+.zone-counter {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.zone-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-content: flex-start;
+  min-height: 220px; /* Keeps the drop zone open even when empty */
+}
+
+.zone-placeholder {
+  width: 100%;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-align: center;
+}
+
+.unassigned-pool {
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  height: max-content;
+}
+
+.unassigned-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  min-height: 120px;
+}
+
+.submit-verdict-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1.5rem;
+  padding-top: 2rem;
+  padding-bottom: 4rem; /* Gives the button solid breathing room at the bottom of the screen */
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.final-verdict-btn {
+  width: 100%;
+  max-width: 450px;
+  padding: 1.25rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  background: var(--accent-crimson);
+  color: var(--bg-dark);
+  border-color: var(--accent-crimson);
+  letter-spacing: 0.15em;
+  box-shadow: 0 4px 15px rgba(163, 50, 50, 0.3);
+  transition: all 0.2s ease;
+}
+
+.final-verdict-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(163, 50, 50, 0.5);
+  background: var(--bg-dark);
+  color: var(--accent-crimson);
+}
+
+.final-verdict-btn:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: transparent;
+  color: rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
+@media (max-width: 768px) {
+  .verdict-zones {
+    grid-template-columns: 1fr;
+  }
+}

@@ -5,10 +5,12 @@ import { useViewedItems } from '../../hooks/useViewedItems';
 import { RoomProvider } from '../../context/RoomContext';
 import CaseDetailsTab from './tabs/CaseDetailsTab';
 import EvidenceBoardTab from './tabs/EvidenceBoardTab';
+import SuspectsTab from './tabs/SuspectsTab';
 import CampaignTab from './tabs/CampaignTab';
 import './GameRoom.css';
 
-type Tab = 'details' | 'evidences' | 'campaign';
+
+type Tab = 'details' | 'evidences' | 'campaign' | 'suspects';
 
 export default function GameRoom() {
   const { inviteCode } = useParams<{ inviteCode: string }>();
@@ -18,12 +20,12 @@ export default function GameRoom() {
     room, 
     isLoading, 
     error, 
-    accumulatedEvidences, 
+    accumulatedEvidences,
+    accumulatedSuspects, 
     refreshRoomData 
   } = useGameRoom(inviteCode);
 
   const { viewedItems, markItemAsViewed } = useViewedItems(room?.id, 'evidence');
-  
   const [activeTab, setActiveTab] = useState<Tab>('details');
 
   const hasUnreadEvidence = accumulatedEvidences.some(evidence => !viewedItems.has(evidence.id));
@@ -34,7 +36,8 @@ export default function GameRoom() {
   return (
     <RoomProvider 
       room={room} 
-      accumulatedEvidences={accumulatedEvidences} 
+      accumulatedEvidences={accumulatedEvidences}
+      accumulatedSuspects={accumulatedSuspects} 
       refreshRoomData={refreshRoomData}
       viewedItems={viewedItems}
       markItemAsViewed={markItemAsViewed}
@@ -121,7 +124,7 @@ export default function GameRoom() {
           <header className="workspace-header">
             <nav className="tab-navigation">
               <button 
-                className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`}
+                className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} 
                 onClick={() => setActiveTab('details')}
               >
                 Case Details
@@ -138,7 +141,14 @@ export default function GameRoom() {
               </button>
               
               <button 
-                className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`}
+                className={`tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} 
+                onClick={() => setActiveTab('suspects')}
+              >
+                Suspects
+              </button>
+              
+              <button 
+                className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`} 
                 onClick={() => setActiveTab('campaign')}
               >
                 Campaign
@@ -149,6 +159,7 @@ export default function GameRoom() {
           <div className="tab-content-area">
             {activeTab === 'details' && <CaseDetailsTab />}
             {activeTab === 'evidences' && <EvidenceBoardTab />}
+            {activeTab === 'suspects' && <SuspectsTab />}
             {activeTab === 'campaign' && <CampaignTab />}
           </div>
         </main>

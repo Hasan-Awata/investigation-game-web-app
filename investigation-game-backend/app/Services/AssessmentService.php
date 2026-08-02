@@ -70,11 +70,11 @@ class AssessmentService
                 }
             }
 
-            // 2. Process Narrative Unlocks (Evidence & Phases)
+            // 2. Process Narrative Unlocks (Evidence, Levels, & Suspects)
             $newlyUnlockedEvidences = [];
             $newlyUnlockedLevels = [];
-            
-            // Loop through all locked consensus choices to check for narrative triggers
+            $newlyUnlockedSuspects = []; // NEW
+
             foreach ($consensus as $questionId => $chosenId) {
                 $choice = Choice::find($chosenId);
 
@@ -93,12 +93,26 @@ class AssessmentService
                     ]);
                     $newlyUnlockedLevels[] = $choice->unlocks_level_id;
                 }
+                
+                // NEW: Handle Suspect Unlocks
+                if ($choice && $choice->unlocks_suspect_id) {
+                    DB::table('room_suspects')->updateOrInsert([
+                        'room_id' => $room->id,
+                        'suspect_id' => $choice->unlocks_suspect_id
+                    ]);
+                    $newlyUnlockedSuspects[] = $choice->unlocks_suspect_id;
+                }
             }
 
+            // Dispatch Evidences and Levels Events
             if (!empty($newlyUnlockedEvidences) || !empty($newlyUnlockedLevels)) {
-                // You can rename this event to NarrativeDiscovered later if you prefer
                 \App\Events\EvidenceDiscovered::dispatch($room, $newlyUnlockedEvidences);
             }
+
+            // Dispatch Suspect Event
+            if (!empty($newlyUnlockedSuspects)) {
+                \App\Events\SuspectDiscovered::dispatch($room, $newlyUnlockedSuspects);
+}
 
             // 3. Mark Phase Complete & Check Suspension Condition
             $room->completedLevels()->syncWithoutDetaching([$level->id]);
@@ -125,6 +139,61 @@ class AssessmentService
                 'unlocked_evidence' => $newlyUnlockedEvidences,
                 'unlocked_levels' => $newlyUnlockedLevels 
             ]);
+        });
+    }
+
+    /**
+     * Evaluate the final suspect indictment submitted by the team.
+     */
+    public function evaluateFinalVerdict(GameRoom $room, array $submittedSuspectIds): Result
+    {
+        return DB::transaction(function () use ($room, $submittedSuspectIds) {
+            $case = $room->gameCase;
+
+            $trueGuiltyIds = \App\Models\Suspect::where('case_id', $case->id)
+                ->where('is_guilty', true)
+                ->pluck('id')
+                ->toArray();
+
+            sort($submittedSuspectIds);
+            sort($trueGuiltyIds);
+
+            if ($submittedSuspectIds === $trueGuiltyIds) {
+                // VERDICT CORRECT
+                $room->update(['status' => \App\Enums\RoomStatus::Solved]);
+                $this->finalizeCaseForParticipants($room, 'solved');
+                
+                \App\Events\LevelTransitioned::dispatch($room);
+
+                return Result::success([
+                    'status' => 'success',
+                    'message' => 'Congratulations. You have successfully identified the perpetrators and closed the case.',
+                    'room' => $room
+                ]);
+            } else {
+                // VERDICT INCORRECT
+                $room->increment('strikes');
+                $room->refresh();
+                $maxStrikes = $case->max_strikes;
+
+                if ($room->strikes >= $maxStrikes) {
+                    $room->update(['status' => \App\Enums\RoomStatus::Failed]);
+                    $this->finalizeCaseForParticipants($room, 'failed');
+                    \App\Events\LevelTransitioned::dispatch($room);
+
+                    return Result::success([
+                        'status' => 'failed_final',
+                        'message' => 'DEPARTMENT THRESHOLD EXCEEDED. You indicted the wrong suspects. The DA has pulled your mandate. The true conspirators walk free.'
+                    ]);
+                }
+
+                \App\Events\LevelTransitioned::dispatch($room);
+                
+                return Result::success([
+                    'status' => 'failed',
+                    'message' => "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: Your grasp of the conspiracy is deeply flawed. Look closer at the testimonies and physical logs—you have either indicted an innocent pawn or missed a key architect."
+                ]);
+            }
         });
     }
 

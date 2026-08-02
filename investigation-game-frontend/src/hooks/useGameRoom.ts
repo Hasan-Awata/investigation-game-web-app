@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { joinRoom, fetchRoomState } from '@/services/api';
-import type { Evidence } from '@/types';
+import type { Evidence, Suspect } from '@/types';
 
 // Track BOTH the invite code and the ID to prevent cross-room contamination
 let joinedInviteCode: string | null = null;
@@ -39,9 +39,14 @@ export function useGameRoom(inviteCode: string | undefined) {
 
   const caseEvidences = room?.game_case?.evidences || [];
   const unlockedEvidenceIds = new Set(room?.unlocked_evidences?.map(e => e.id) || []);
-
   const accumulatedEvidences: Evidence[] = caseEvidences.filter(
     (evidence) => evidence.is_initial || unlockedEvidenceIds.has(evidence.id)
+  );
+
+  const caseSuspects = room?.game_case?.suspects || [];
+  const unlockedSuspectIds = new Set(room?.unlocked_suspects?.map(s => s.id) || []);
+  const accumulatedSuspects: Suspect[] = caseSuspects.filter(
+    (suspect) => suspect.is_initial || unlockedSuspectIds.has(suspect.id)
   );
 
   return { 
@@ -49,6 +54,7 @@ export function useGameRoom(inviteCode: string | undefined) {
     isLoading, 
     error: error instanceof Error ? error.message : null, 
     accumulatedEvidences, 
+    accumulatedSuspects, // NEW
     refreshRoomData: async () => { await refetch(); } 
   };
 }

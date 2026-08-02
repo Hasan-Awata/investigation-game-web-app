@@ -182,3 +182,27 @@ export const initiatePhase = async (roomId: number, levelId: number): Promise<Re
     return failure(error instanceof Error ? error.message : 'Network error');
   }
 };
+
+export const submitSuspectVerdict = async (roomId: number, guiltySuspectIds: number[]): Promise<Result<{ status: string; message: string; room?: GameRoom }>> => {  
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/suspects/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      // Wrap array in guilty_suspect_ids object
+      body: JSON.stringify({ guilty_suspect_ids: guiltySuspectIds })
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) handleUnauthorized();
+      const data = await response.json().catch(() => null);
+      return failure(data?.message || 'Failed to submit final verdict.');
+    }
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
