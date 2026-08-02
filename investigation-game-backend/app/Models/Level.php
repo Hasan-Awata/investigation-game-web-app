@@ -19,7 +19,15 @@ class Level extends Model
         'details',
         'img_url', 
         'order_index',
+        'is_initial', // NEW
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_initial' => 'boolean',
+        ];
+    }
 
     /**
      * A level belongs to a specific parent case.

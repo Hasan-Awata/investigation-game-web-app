@@ -12,118 +12,132 @@ use App\Enums\EvidenceType;
 
 class GameCaseSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         // 1. Create the Parent Case
         $case = GameCase::create([
-            'title' => 'The Midnight Broadcast',
-            'story' => "Late-night radio host Julian Vance was found dead in his soundproof studio booth during a live midnight broadcast. The studio door was bolted from the inside, the mixing board was still looping his final track, and the authorities initially ruled it a sudden medical emergency. But a closer look at the station's logs reveals someone altered the audio automation timer minutes before he died.",
+            'title' => 'Suspended Hostility',
+            'story' => "Elias Vance, the visionary managing partner of Vance & Thorne Architectural, was found dead in his 40th-floor corner office at 6:00 AM this morning. The cause of death: hanging. The office door was bolted from the inside, and the precinct detectives, eager to close their shift, ruled it a tragic suicide.\n\nBut the DA's office isn't buying it. Vance was 48 hours away from a massive hostile takeover that would have ousted his co-founder, Marcus Thorne. You and your unit have been brought in to review the file. You have three strikes before the DA pulls your mandate and closes the case for good. Dig into the forensics. Cross-reference the timeline. Democracy is your tool, but truth is your only objective. Find out who really tied that knot.",
             'min_player_XP' => 0,
-            'XP_on_solve' => 250,
+            'XP_on_solve' => 500,
+            'max_strikes' => 3,
         ]);
 
-        // 2. Create Level 1: The Scene of the Crime
-        $level1 = Level::create([
+        // 2. Create the Non-Linear Phases (Levels)
+        $phase1 = Level::create([
             'case_id' => $case->id,
-            'title' => 'Phase 1: The Locked Booth',
-            'details' => 'Establish how the intruder accessed the sealed studio and determine the exact time of death.',
+            'title' => 'The Locked Room',
+            'details' => 'Establish how the killer executed the victim and escaped the bolted 40th-floor office without triggering the electronic security locks.',
             'order_index' => 1,
+            'is_initial' => true,
         ]);
 
-        $level2 = Level::create([
+        $phase2 = Level::create([
             'case_id' => $case->id,
-            'title' => 'Phase 2: The Digital Loop',
-            'details' => 'Unmask the accomplice who manipulated the broadcast automation system to cover up the timing of the murder.',
+            'title' => 'The Corporate Motive',
+            'details' => 'Cross-reference Marcus Thorne\'s rock-solid alibi with the timeline of the murder.',
             'order_index' => 2,
+            'is_initial' => true,
         ]);
 
-        // EVIDENCE 1: Document Variant
-        Evidence::create([
+        $phase3 = Level::create([
+            'case_id' => $case->id,
+            'title' => 'The Fixer',
+            'details' => 'Identify the external contractor Thorne hired to execute the hit.',
+            'order_index' => 3,
+            'is_initial' => false, // Hidden until unlocked
+        ]);
+
+        // 3. Create Case Evidence
+        $evidence1 = Evidence::create([
             'case_id' => $case->id,
             'is_initial' => true,
-            'title' => 'Station Floor Plan & Keycard Access #102',
-            'description' => 'Key card logs',
+            'title' => 'Security Keycard Logs',
+            'description' => '40th-floor access records for the night of the murder.',
             'evidence_type' => EvidenceType::Document,
-            'paragraph' => 'wide-angle view of the master studio. The main access door is deadbolted from the inside. A half-empty coffee mug sits on the mixing desk, and the emergency studio exit window facing the alley is cracked open three inches.',
+            'paragraph' => "21:00 - Elias Vance (Master Access)\n23:30 - Maintenance/Janitorial Staff (Temp Access)\n\n*No other entries or exits recorded on the 40th floor until morning discovery.*",
         ]);
 
-        // EVIDENCE 2: Testimony Variant
-        Evidence::create([
+        $evidence2 = Evidence::create([
             'case_id' => $case->id,
             'is_initial' => true,
-            'title' => 'Janitor Testimony',
-            'description' => 'Statement from the night shift janitor.',
-            'evidence_type' => EvidenceType::Testimony,
-            'paragraph' => 'I heard a loud crash around 11:30 PM. I didn\'t see anyone in the hallway, but the back door to the alley was propped open.',
-        ]);
-
-        // EVIDENCE 3: Audio Variant
-        Evidence::create([
-            'case_id' => $case->id,
-            'is_initial' => true,
-            'title' => 'Voicemail, 11:47 PM',
-            'description' => 'Recovered from the victim\'s answering machine.',
-            'evidence_type' => EvidenceType::Audio,
-            'audio_url' => '/assets/audio/voicemail-1.mp3',
-        ]);
-
-        // EVIDENCE 4: Image Variant
-        Evidence::create([
-            'case_id' => $case->id,
-            'is_initial' => true,
-            'title' => 'Studio Overview',
-            'description' => 'A wide-angle view of the master studio. The main access door is deadbolted from the inside. A half-empty coffee mug sits on the mixing desk, and the emergency studio exit window facing the alley is cracked open three inches.',
-            'evidence_type' => EvidenceType::Image,
-            'img_url' => '/assets/cases/latch-detail.jpg',
-        ]);
-
-        // EVIDENCE 5: Forensic Variant
-        Evidence::create([
-            'case_id' => $case->id,
-            'is_initial' => true,
-            'title' => 'Coroner\'s Preliminary Log',
-            'description' => 'The preliminary coroner\'s report on the victim\'s body.',
+            'title' => 'Coroner\'s Preliminary Report',
+            'description' => 'Initial physical autopsy findings.',
             'evidence_type' => EvidenceType::Forensic,
-            'paragraph' => 'The coroner\'s report indicates that the victim died from an acute potassium chloride injection, with a puncture wound found on his left wrist, obscured by a heavy wristwatch.',
+            'paragraph' => "Lividity and rigor mortis indicate time of death at approximately 02:00 AM. \n\n**ANOMALY DETECTED:** A faint, secondary ligature mark is present around the circumference of the neck, measuring 2mm in width. This contradicts the 1-inch thick industrial hemp rope found bearing the body's weight at the scene.",
         ]);
 
-        // 3. Create the Assessment/Puzzle for Level 1
-        $question1 = Question::create([
-            'level_id' => $level1->id,
-            'text' => 'Given that the door was bolted from the inside and no keycards were logged after 11:00 PM, how did the perpetrator exit or enter the room without leaving an electronic footprint?',
-            'msg_when_wrong' => 'Check the physical state of the room relative to the keycard logs. Is there another physical entry point?',
+        $evidence3 = Evidence::create([
+            'case_id' => $case->id,
+            'is_initial' => true,
+            'title' => 'Marcus Thorne\'s Statement',
+            'description' => 'Official statement given to precinct detectives.',
+            'evidence_type' => EvidenceType::Testimony,
+            'paragraph' => "> \"Elias was a troubled man. The stress of the firm was getting to him. I was at the Mayor's Charity Gala at the Grand Hotel from 8:00 PM until the bar closed at 3:00 AM. You can check the society pages; I was photographed all night.\"",
         ]);
 
-        Choice::create(['question_id' => $question1->id, 'text' => 'They used a cloned administrator master keycard at the main door', 'is_correct' => false]);
-        Choice::create(['question_id' => $question1->id, 'text' => 'They slipped through the cracked emergency alley window after tampering with the latch.', 'is_correct' => true]);
-        Choice::create(['question_id' => $question1->id, 'text' => 'They hid inside the soundproofing panels until the morning shift arrived.', 'is_correct' => false]);
-        Choice::create(['question_id' => $question1->id, 'text' => 'They poisoned Julian remotely through the building\'s central air ventilation system.', 'is_correct' => false]);
-
-        $question2 = Question::create([
-            'level_id' => $level1->id,
-            'text' => 'According to the coroner\'s report, what physical detail contradicts the idea that Julian died of natural causes while alone?',
-            'msg_when_wrong' => 'Look closer at the physical body inspection details rather than the room surroundings.',
+        $evidence4 = Evidence::create([
+            'case_id' => $case->id,
+            'is_initial' => false, // Hidden until unlocked in Phase 1
+            'title' => 'HVAC Architecture Blueprint',
+            'description' => 'Building schematics for the 40th-floor corner office.',
+            'evidence_type' => EvidenceType::Image,
+            'img_url' => '/assets/cases/hvac-blueprint.jpg', // Placeholder for actual assignment
         ]);
 
-        Choice::create(['question_id' => $question2->id, 'text' => 'A hidden needle puncture wound on his left wrist beneath his heavy watch.', 'is_correct' => true]);
-        Choice::create(['question_id' => $question2->id, 'text' => 'The cold temperature inside the soundproof booth.', 'is_correct' => false]);
-        Choice::create(['question_id' => $question2->id, 'text' => 'The fact that his coffee mug contained traces of a rare sedative.', 'is_correct' => false]);
-        Choice::create(['question_id' => $question2->id, 'text' => 'The broken glass found scattered underneath the mixing board desk.', 'is_correct' => false]);
+        // 4. Create Verdicts and Choices
 
+        // PHASE 1 VERDICTS
+        $p1q1 = Question::create([
+            'level_id' => $phase1->id,
+            'text' => 'The coroner noted a "secondary ligature mark" made by a thinner cord. What does this indicate?',
+            'msg_when_wrong' => 'Look at the mechanics of the staging. A thick rope doesn\'t leave a razor-thin indentation.',
+            'is_mandatory' => true,
+        ]);
+        Choice::create(['question_id' => $p1q1->id, 'text' => 'Vance attempted to hang himself twice with different materials.', 'is_correct' => false]);
+        Choice::create(['question_id' => $p1q1->id, 'text' => 'Vance was garroted from behind with a wire, and the hanging was staged post-mortem using the thicker rope.', 'is_correct' => true]);
+        Choice::create(['question_id' => $p1q1->id, 'text' => 'The rope frayed and dug into the skin during the struggle.', 'is_correct' => false]);
 
-        // 3. Create the Assessment/Puzzle for Level 2
-        $question3 = Question::create([
-            'level_id' => $level2->id,
-            'text' => 'Terminal B was used to override the broadcast at 11:58 PM. Which staff member\'s alibi falls apart when cross-referenced with the building\'s physical timeline and terminal location?',
-            'msg_when_wrong' => 'Examine the timing of Sarah\'s trip to the store versus when Terminal B was accessed.',
+        $p1q2 = Question::create([
+            'level_id' => $phase1->id,
+            'text' => 'How did the killer exit the 40th-floor corner office while leaving the heavy deadbolt locked from the inside?',
+            'msg_when_wrong' => 'The door was physically bolted, not electronically locked. Think about architectural vulnerabilities.',
+            'is_mandatory' => true,
+        ]);
+        Choice::create(['question_id' => $p1q2->id, 'text' => 'They cloned Vance\'s keycard and remotely triggered the deadbolt.', 'is_correct' => false]);
+        Choice::create(['question_id' => $p1q2->id, 'text' => 'They scaled the exterior glass using the window-washing rig.', 'is_correct' => false]);
+        Choice::create([
+            'question_id' => $p1q2->id, 
+            'text' => 'They bypassed the door entirely, utilizing the oversized HVAC return vent and resetting the grille from the inside.', 
+            'is_correct' => true,
+            'unlocks_evidence_id' => $evidence4->id // Unlocks the blueprint
         ]);
 
-        Choice::create(['question_id' => $question3->id, 'text' => 'Mark, because payroll accounts can only be accessed from home via a secure VPN.', 'is_correct' => false]);
-        Choice::create(['question_id' => $question3->id, 'text' => 'David, because security guards are required to stay near the main entrance monitors.', 'is_correct' => false]);
-        Choice::create(['question_id' => $question3->id, 'text' => 'Sarah, because her claim of being out of the building during the midnight override contradicts the active terminal timestamp.', 'is_correct' => true]);
-        Choice::create(['question_id' => $question3->id, 'text' => 'None of them, as all electronic timestamps match their physical statements perfectly.', 'is_correct' => false]);
+        // PHASE 2 VERDICTS
+        $p2q1 = Question::create([
+            'level_id' => $phase2->id,
+            'text' => 'Marcus Thorne was photographed at a charity gala until 3:00 AM, but the murder occurred around 2:00 AM. How does this factor into the locked-room execution?',
+            'msg_when_wrong' => 'A CEO doesn\'t crawl through air vents. Apply Occam\'s razor to his alibi.',
+            'is_mandatory' => true,
+        ]);
+        Choice::create(['question_id' => $p2q1->id, 'text' => 'Thorne slipped out the back of the gala, committed the murder, and returned unnoticed.', 'is_correct' => false]);
+        Choice::create([
+            'question_id' => $p2q1->id, 
+            'text' => 'Thorne\'s alibi is solid because he didn\'t physically commit the murder; he hired a professional \'fixer\' to bypass the security and stage the scene.', 
+            'is_correct' => true,
+            'unlocks_level_id' => $phase3->id // Unlocks Phase 3
+        ]);
+        Choice::create(['question_id' => $p2q1->id, 'text' => 'The coroner\'s estimated time of death was intentionally falsified by a bribed medical examiner.', 'is_correct' => false]);
+
+        // PHASE 3 VERDICTS
+        $p3q1 = Question::create([
+            'level_id' => $phase3->id,
+            'text' => 'Based on the HVAC blueprints and the required skill to cleanly stage the hanging, who is the external contractor Thorne hired?',
+            'msg_when_wrong' => 'Review EX-001. Someone had legitimate access to the floor hours before the murder.',
+            'is_mandatory' => true,
+        ]);
+        Choice::create(['question_id' => $p3q1->id, 'text' => 'The precinct detective who immediately ruled it a suicide.', 'is_correct' => false]);
+        Choice::create(['question_id' => $p3q1->id, 'text' => 'The "Janitor" who badged in at 11:30 PM, whose employer is a shell company quietly owned by Thorne.', 'is_correct' => true]);
+        Choice::create(['question_id' => $p3q1->id, 'text' => 'Vance\'s own executive assistant, who had master access to the floor.', 'is_correct' => false]);
     }
 }

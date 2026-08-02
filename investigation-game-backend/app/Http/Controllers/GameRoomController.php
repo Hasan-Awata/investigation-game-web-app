@@ -107,7 +107,8 @@ class GameRoomController extends Controller
             'users.user', 
             'currentLevel.questions.choices',
             'unlockedEvidences',
-            'completedLevels', // NEW: Eager load the pivot table
+            'unlockedLevels', 
+            'completedLevels',
             'votes' => function ($query) use ($room) {
                 $query->whereHas('question', function ($q) use ($room) {
                     $q->where('level_id', $room->current_level_id);

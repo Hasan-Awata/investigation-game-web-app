@@ -70,25 +70,34 @@ class AssessmentService
                 }
             }
 
-            // 2. Process Optional Narrative Choices
+            // 2. Process Narrative Unlocks (Evidence & Phases)
             $newlyUnlockedEvidences = [];
-            foreach ($optionalQuestions as $question) {
-                if (isset($consensus[$question->id])) {
-                    $chosenId = $consensus[$question->id];
-                    $choice = Choice::find($chosenId);
+            $newlyUnlockedLevels = [];
+            
+            // Loop through all locked consensus choices to check for narrative triggers
+            foreach ($consensus as $questionId => $chosenId) {
+                $choice = Choice::find($chosenId);
 
-                    if ($choice && $choice->unlocks_evidence_id) {
-                        DB::table('room_evidences')->updateOrInsert([
-                            'room_id' => $room->id,
-                            'evidence_id' => $choice->unlocks_evidence_id
-                        ]);
-                        $newlyUnlockedEvidences[] = $choice->unlocks_evidence_id;
-                    }
+                if ($choice && $choice->unlocks_evidence_id) {
+                    DB::table('room_evidences')->updateOrInsert([
+                        'room_id' => $room->id,
+                        'evidence_id' => $choice->unlocks_evidence_id
+                    ]);
+                    $newlyUnlockedEvidences[] = $choice->unlocks_evidence_id;
+                }
+
+                if ($choice && $choice->unlocks_level_id) {
+                    DB::table('room_unlocked_levels')->updateOrInsert([
+                        'room_id' => $room->id,
+                        'level_id' => $choice->unlocks_level_id
+                    ]);
+                    $newlyUnlockedLevels[] = $choice->unlocks_level_id;
                 }
             }
 
-            if (!empty($newlyUnlockedEvidences)) {
-                EvidenceDiscovered::dispatch($room, $newlyUnlockedEvidences);
+            if (!empty($newlyUnlockedEvidences) || !empty($newlyUnlockedLevels)) {
+                // You can rename this event to NarrativeDiscovered later if you prefer
+                \App\Events\EvidenceDiscovered::dispatch($room, $newlyUnlockedEvidences);
             }
 
             // 3. Mark Phase Complete & Check Suspension Condition
@@ -113,7 +122,8 @@ class AssessmentService
             return Result::success([
                 'status' => 'success', 
                 'message' => $responseMessage,
-                'unlocked_evidence' => $newlyUnlockedEvidences 
+                'unlocked_evidence' => $newlyUnlockedEvidences,
+                'unlocked_levels' => $newlyUnlockedLevels 
             ]);
         });
     }

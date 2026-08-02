@@ -138,7 +138,8 @@ export const lockVote = async (roomId: number, questionId: number, choiceId: num
   }
 };
 
-export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string; unlocked_evidence?: number[] }>> => {  try {
+export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string; unlocked_evidence?: number[]; unlocked_levels?: number[] }>> => {  
+  try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/submit`, {
       method: 'POST',
       headers: {
@@ -150,7 +151,9 @@ export const submitAssessment = async (roomId: number): Promise<Result<{ status:
     
     if (!response.ok) {
       if (response.status === 401) handleUnauthorized();
-      return failure('Failed to submit theory.');
+      
+      const data = await response.json().catch(() => null);
+      return failure(data?.message || 'Failed to submit theory.');
     }
     return success(await response.json());
   } catch (error) {

@@ -28,6 +28,14 @@ export interface GameCase {
   user_status?: 'solved' | 'failed' | null; 
 }
 
+export interface RoomVote {
+  id: number;
+  room_id: number;
+  user_id: number;
+  question_id: number;
+  choice_id: number;
+}
+
 export interface GameRoom {
   id: number;
   invite_code: string;
@@ -40,7 +48,9 @@ export interface GameRoom {
   users?: RoomUser[];
   current_level?: Level;
   unlocked_evidences?: Evidence[]; 
+  unlocked_levels?: Level[];
   completed_levels?: Level[];
+  votes?: RoomVote[];
 }
 
 export type EvidenceType = 'document' | 'testimony' | 'audio' | 'image' | 'forensic';
@@ -63,6 +73,7 @@ export interface Choice {
   text: string;
   is_correct: boolean;
   unlocks_evidence_id?: number | null; 
+  unlocks_level_id?: number | null; 
 }
 
 export interface Question {
@@ -82,5 +93,6 @@ export interface Level {
   details: string;
   img_url?: string; 
   order_index: number;
+  is_initial: boolean; 
   questions?: Question[]; 
 }
