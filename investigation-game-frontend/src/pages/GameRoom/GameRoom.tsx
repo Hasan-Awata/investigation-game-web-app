@@ -25,10 +25,15 @@ export default function GameRoom() {
     refreshRoomData 
   } = useGameRoom(inviteCode);
 
-  const { viewedItems, markItemAsViewed } = useViewedItems(room?.id, 'evidence');
+  // Initialize both tracking hooks independently
+  const { viewedItems: viewedEvidences, markItemAsViewed: markEvidenceAsViewed } = useViewedItems(room?.id, 'evidence');
+  const { viewedItems: viewedSuspects, markItemAsViewed: markSuspectAsViewed } = useViewedItems(room?.id, 'suspects');
+  
   const [activeTab, setActiveTab] = useState<Tab>('details');
 
-  const hasUnreadEvidence = accumulatedEvidences.some(evidence => !viewedItems.has(evidence.id));
+  // Compute unread statuses for the red dots
+  const hasUnreadEvidence = accumulatedEvidences.some(evidence => !viewedEvidences.has(evidence.id));
+  const hasUnreadSuspects = accumulatedSuspects.some(suspect => !viewedSuspects.has(suspect.id));
 
   if (isLoading) return <div className="terminal-text">Synchronizing session data...</div>;
   if (error || !room) return <div className="terminal-text error">{error || 'Session not found.'}</div>;
@@ -39,8 +44,10 @@ export default function GameRoom() {
       accumulatedEvidences={accumulatedEvidences}
       accumulatedSuspects={accumulatedSuspects} 
       refreshRoomData={refreshRoomData}
-      viewedItems={viewedItems}
-      markItemAsViewed={markItemAsViewed}
+      viewedEvidences={viewedEvidences}
+      markEvidenceAsViewed={markEvidenceAsViewed}
+      viewedSuspects={viewedSuspects}
+      markSuspectAsViewed={markSuspectAsViewed}
     >
       <div className="game-room-layout">
         
@@ -123,36 +130,23 @@ export default function GameRoom() {
         <main className="workspace-panel">
           <header className="workspace-header">
             <nav className="tab-navigation">
-              <button 
-                className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} 
-                onClick={() => setActiveTab('details')}
-              >
-                Case Details
-              </button>
+              <button className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>Case Details</button>
               
-              <button 
-                className={`tab-btn ${activeTab === 'evidences' ? 'active' : ''}`}
-                onClick={() => setActiveTab('evidences')}
-              >
+              <button className={`tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => setActiveTab('evidences')}>
                 Evidences
                 {hasUnreadEvidence && (
                   <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="Unread Intel"></div>
                 )}
               </button>
               
-              <button 
-                className={`tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} 
-                onClick={() => setActiveTab('suspects')}
-              >
+              <button className={`tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} onClick={() => setActiveTab('suspects')}>
                 Suspects
+                {hasUnreadSuspects && (
+                  <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="Unread Intel"></div>
+                )}
               </button>
               
-              <button 
-                className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`} 
-                onClick={() => setActiveTab('campaign')}
-              >
-                Campaign
-              </button>
+              <button className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`} onClick={() => setActiveTab('campaign')}>Campaign</button>
             </nav>
           </header>
 

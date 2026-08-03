@@ -31,7 +31,14 @@ export interface GameCase {
   min_player_XP: number;
   XP_on_solve: number;
   max_strikes: number; 
+  rating_stars?: number;
+  age_rating?: string;
+  estimated_playtime?: string;
+  difficulty?: string;
+  tags?: string[];
+  author_name?: string;
   img_url?: string; 
+  active_room_invite_code?: string; 
   levels?: Level[]; 
   evidences?: Evidence[]; 
   suspects?: Suspect[];

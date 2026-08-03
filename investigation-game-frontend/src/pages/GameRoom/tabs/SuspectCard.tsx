@@ -6,27 +6,19 @@ interface SuspectCardProps {
   suspect: Suspect;
   sourcePool: 'unassigned' | 'guilty' | 'innocent';
   isDraggable: boolean;
+  isNew: boolean;
   onDragStart: (e: React.DragEvent, suspectId: number, source: 'unassigned' | 'guilty' | 'innocent') => void;
+  onInteract: (suspectId: number) => void;
 }
 
-export default function SuspectCard({ suspect, sourcePool, isDraggable, onDragStart }: SuspectCardProps) {
+export default function SuspectCard({ suspect, sourcePool, isDraggable, isNew, onDragStart, onInteract }: SuspectCardProps) {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleDragStart = (e: React.DragEvent) => {
-    // 1. Stop the event from bubbling up and capturing the entire flex row
     e.stopPropagation();
-
-    // 2. Pass the data back to the parent tab
+    onInteract(suspect.id); // Mark as viewed the moment they grab it
     onDragStart(e, suspect.id, sourcePool);
-
-    // 3. Hide the original card AFTER the browser generates the cursor ghost
     setTimeout(() => setIsDragging(true), 0);
-  };
-
-  const handleDragEnd = (e: React.DragEvent) => {
-    e.stopPropagation();
-    // Restore visibility when dropped, whether in a new zone or cancelled
-    setIsDragging(false);
   };
 
   return (
@@ -34,8 +26,11 @@ export default function SuspectCard({ suspect, sourcePool, isDraggable, onDragSt
       className={`suspect-card ${isDragging ? 'is-dragging' : ''}`}
       draggable={isDraggable}
       onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+      onDragEnd={(e) => { e.stopPropagation(); setIsDragging(false); }}
+      onPointerDown={() => onInteract(suspect.id)} // Mark as viewed if they just click/tap it
     >
+      {isNew && <div className="unread-indicator" title="Unread Suspect Intel"></div>}
+      
       <div 
         className="suspect-mugshot" 
         style={{ backgroundImage: `url(${suspect.img_url || '/placeholder-mugshot.jpg'})` }}

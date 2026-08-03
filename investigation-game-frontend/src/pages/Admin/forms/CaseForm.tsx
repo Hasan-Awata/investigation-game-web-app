@@ -11,6 +11,12 @@ export default function CaseForm() {
   const [maxStrikes, setMaxStrikes] = useState('5'); 
   const [image, setImage] = useState<File | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [ratingStars, setRatingStars] = useState('5.0');
+  const [ageRating, setAgeRating] = useState('Mature 17+');
+  const [estimatedPlaytime, setEstimatedPlaytime] = useState('60 Minutes');
+  const [difficulty, setDifficulty] = useState('Standard');
+  const [tags, setTags] = useState('');
+  const [authorName, setAuthorName] = useState('System');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch cases to display them for deletion
@@ -68,8 +74,14 @@ export default function CaseForm() {
     formData.append('story', story);
     formData.append('min_player_XP', minPlayerXP);
     formData.append('XP_on_solve', xpOnSolve);
-    if (image) formData.append('image', image);
     formData.append('max_strikes', maxStrikes); 
+    formData.append('rating_stars', ratingStars);
+    formData.append('age_rating', ageRating);
+    formData.append('estimated_playtime', estimatedPlaytime);
+    formData.append('difficulty', difficulty);
+    formData.append('tags', tags);
+    formData.append('author_name', authorName);
+    if (image) formData.append('image', image);
 
     createMutation.mutate(formData);
   };
@@ -135,7 +147,37 @@ export default function CaseForm() {
                 />
               </div>
             </div>
+            <div className="admin-form-row">
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Difficulty</label>
+                  <input type="text" className="admin-input" required value={difficulty} onChange={(e) => setDifficulty(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Est. Playtime</label>
+                  <input type="text" className="admin-input" required value={estimatedPlaytime} onChange={(e) => setEstimatedPlaytime(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Content Rating</label>
+                  <input type="text" className="admin-input" required value={ageRating} onChange={(e) => setAgeRating(e.target.value)} />
+                </div>
+              </div>
 
+              <div className="admin-form-row">
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>User Rating (0.0 to 5.0)</label>
+                  <input type="number" step="0.1" max="5" min="0" className="admin-input" required value={ratingStars} onChange={(e) => setRatingStars(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Author / Creator</label>
+                  <input type="text" className="admin-input" required value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Genre Tags (Comma Separated)</label>
+                <input type="text" className="admin-input" placeholder="Tactical, Puzzle, Espionage" value={tags} onChange={(e) => setTags(e.target.value)} />
+              </div>
+          
           <div className="form-group">
             <label>Cover Image (Optional)</label>
             <input 

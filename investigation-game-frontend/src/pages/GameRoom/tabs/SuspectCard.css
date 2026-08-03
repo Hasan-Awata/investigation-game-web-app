@@ -40,9 +40,9 @@
 
 .suspect-name {
   margin: 0 0 0.25rem 0;
-  font-size: 0.9rem;
+  font-size: 1rem;
   color: var(--text-primary);
-  white-space: nowrap;
+  white-space: pre-line;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -55,4 +55,19 @@
 
 .suspect-card.is-dragging {
   opacity: 0;
+}
+
+.suspect-card {
+  width: 160px;
+  background: var(--bg-dark);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: grab;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px; 
+  position: relative;
 }

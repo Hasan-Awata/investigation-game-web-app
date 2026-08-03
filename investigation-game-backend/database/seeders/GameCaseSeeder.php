@@ -18,10 +18,16 @@ class GameCaseSeeder extends Seeder
         // 1. Create the Parent Case
         $case = GameCase::create([
             'title' => 'Suspended Hostility',
-            'story' => "Elias Vance, the visionary managing partner of Vance & Thorne Architectural, was found dead in his 40th-floor corner office at 6:00 AM this morning. The cause of death: hanging. The office door was bolted from the inside, and the precinct detectives, eager to close their shift, ruled it a tragic suicide.\n\nBut the DA's office isn't buying it. Vance was 48 hours away from a massive hostile takeover that would have ousted his co-founder, Marcus Thorne. You and your unit have been brought in to review the file. You have three strikes before the DA pulls your mandate and closes the case for good. Dig into the forensics. Cross-reference the timeline. Democracy is your tool, but truth is your only objective. Find out who really tied that knot.",
-            'min_player_XP' => 500, // Raised to indicate a slightly more complex case
+            'story' => "Elias Vance, the visionary managing partner of Vance & Thorne Architectural, was found dead in his 40th-floor corner office at 6:00 AM this morning. The cause of death: hanging. The office door was bolted from the inside, and the precinct detectives, eager to close their shift, ruled it a tragic suicide.\n\nBut the DA's office isn't buying it. Vance was 48 hours away from a massive hostile takeover that would have ousted his co-founder, Marcus Thorne. You and your unit have been brought in to review the file. You have three strikes before the DA pulls your mandate and closes the case for good. Dig into the forensics. Cross-reference the timeline. Democracy is your tool, but truth is your only objective. Find out who really tied that knot.",            
+            'min_player_XP' => 500, 
             'XP_on_solve' => 1000,
             'max_strikes' => 3,
+            'rating_stars' => 4.8,
+            'age_rating' => 'Mature (17+)',
+            'estimated_playtime' => '45-60 Minutes',
+            'difficulty' => 'Veteran',
+            'tags' => ['Tactical', 'Choice-Driven Narrative', 'Corporate Espionage'],
+            'author_name' => 'Agent MasterAdmin',
             'img_url' => '/assets/cases/Case-cover.png',
         ]);
 

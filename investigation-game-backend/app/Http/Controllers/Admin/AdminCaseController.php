@@ -21,6 +21,12 @@ public function store(Request $request): JsonResponse
             'min_player_XP' => 'required|integer|min:0',
             'XP_on_solve' => 'required|integer|min:0',
             'max_strikes' => 'required|integer|min:1', 
+            'rating_stars' => 'required|numeric|min:0|max:5',
+            'age_rating' => 'required|string|max:50',
+            'estimated_playtime' => 'required|string|max:100',
+            'difficulty' => 'required|string|max:50',
+            'tags' => 'nullable|string', // We will accept a comma-separated string from the frontend
+            'author_name' => 'required|string|max:100',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
@@ -43,20 +49,27 @@ public function store(Request $request): JsonResponse
             $imageUrl = $upload['secure_url'];
         }
 
+        // Convert the comma-separated tags string into a proper array
+        $tagsArray = $request->filled('tags') 
+            ? array_map('trim', explode(',', $validated['tags'])) 
+            : [];
+
         $case = GameCase::create([
             'title' => $validated['title'],
             'story' => $validated['story'],
             'min_player_XP' => $validated['min_player_XP'],
             'XP_on_solve' => $validated['XP_on_solve'],
             'max_strikes' => $validated['max_strikes'], 
+            'rating_stars' => $validated['rating_stars'],
+            'age_rating' => $validated['age_rating'],
+            'estimated_playtime' => $validated['estimated_playtime'],
+            'difficulty' => $validated['difficulty'],
+            'tags' => $tagsArray,
+            'author_name' => $validated['author_name'],
             'img_url' => $imageUrl,
         ]);
 
-        return response()->json([
-            'message' => 'Case created successfully.',
-            'case' => $case,
-            'image_url' => $imageUrl
-        ], 201);
+        return response()->json(['message' => 'Case created successfully.', 'case' => $case], 201);
     }
 
     /**

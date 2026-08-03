@@ -27,8 +27,21 @@ class GameCase extends Model
         'XP_on_solve',
         'max_strikes', 
         'img_url',
+        'rating_stars',
+        'age_rating',
+        'estimated_playtime',
+        'difficulty',
+        'tags',
+        'author_name',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'tags' => 'array',
+        ];
+    }
+    
     /**
      * A case is divided into sequential levels.
      */

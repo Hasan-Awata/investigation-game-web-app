@@ -6,12 +6,12 @@ import EvidenceModal from './EvidenceModal';
 import './EvidenceBoard.css';
 
 export default function EvidenceBoardTab() {
-  const { accumulatedEvidences, viewedItems, markItemAsViewed } = useRoomContext();
+  const { accumulatedEvidences, viewedEvidences, markEvidenceAsViewed } = useRoomContext();
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
 
   const handleInspect = (evidence: Evidence) => {
     setInspectedEvidence(evidence);
-    markItemAsViewed(evidence.id);
+    markEvidenceAsViewed(evidence.id);
   };
 
   return (
@@ -31,7 +31,7 @@ export default function EvidenceBoardTab() {
                 key={evidence.id} 
                 evidence={evidence} 
                 index={index}
-                isNew={!viewedItems.has(evidence.id)} 
+                isNew={!viewedEvidences.has(evidence.id)} 
                 onInspect={handleInspect} 
               />
             ))}

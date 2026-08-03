@@ -6,8 +6,12 @@ interface RoomContextType {
   accumulatedEvidences: Evidence[];
   accumulatedSuspects: Suspect[];
   refreshRoomData: () => Promise<void>;
-  viewedItems: Set<number>;
-  markItemAsViewed: (id: number) => void;
+  
+  viewedEvidences: Set<number>;
+  markEvidenceAsViewed: (id: number) => void;
+  
+  viewedSuspects: Set<number>;
+  markSuspectAsViewed: (id: number) => void;
 }
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -18,8 +22,10 @@ interface RoomProviderProps {
   accumulatedEvidences: Evidence[];
   accumulatedSuspects: Suspect[];
   refreshRoomData: () => Promise<void>;
-  viewedItems: Set<number>;
-  markItemAsViewed: (id: number) => void;
+  viewedEvidences: Set<number>;
+  markEvidenceAsViewed: (id: number) => void;
+  viewedSuspects: Set<number>;
+  markSuspectAsViewed: (id: number) => void;
 }
 
 export function RoomProvider({ 
@@ -28,11 +34,22 @@ export function RoomProvider({
   accumulatedEvidences, 
   accumulatedSuspects,
   refreshRoomData, 
-  viewedItems, 
-  markItemAsViewed 
+  viewedEvidences, 
+  markEvidenceAsViewed,
+  viewedSuspects,
+  markSuspectAsViewed
 }: RoomProviderProps) {
   return (
-    <RoomContext.Provider value={{ room, accumulatedEvidences, accumulatedSuspects, refreshRoomData, viewedItems, markItemAsViewed }}>
+    <RoomContext.Provider value={{ 
+      room, 
+      accumulatedEvidences, 
+      accumulatedSuspects, 
+      refreshRoomData, 
+      viewedEvidences, 
+      markEvidenceAsViewed,
+      viewedSuspects,
+      markSuspectAsViewed
+    }}>
       {children}
     </RoomContext.Provider>
   );

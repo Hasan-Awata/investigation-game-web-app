@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useRoomContext } from '../../../context/RoomContext';
 import { submitSuspectVerdict } from '../../../services/api';
-import type { Suspect } from '../../../types';
 import { useMutation } from '@tanstack/react-query';
 import SuspectCard from './SuspectCard'; 
 import './SuspectsTab.css';
@@ -9,22 +8,37 @@ import './SuspectsTab.css';
 type PoolType = 'unassigned' | 'guilty' | 'innocent';
 
 export default function SuspectsTab() {
-  const { room, accumulatedSuspects, refreshRoomData } = useRoomContext();
+  const { 
+    room, 
+    accumulatedSuspects, 
+    refreshRoomData,
+    viewedSuspects,
+    markSuspectAsViewed
+  } = useRoomContext();
   
-  const [guiltyPool, setGuiltyPool] = useState<Suspect[]>([]);
-  const [innocentPool, setInnocentPool] = useState<Suspect[]>([]);
+  const [guiltyIds, setGuiltyIds] = useState<number[]>(() => {
+    const saved = sessionStorage.getItem(`room_${room.id}_guilty_suspects`);
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  const [innocentIds, setInnocentIds] = useState<number[]>(() => {
+    const saved = sessionStorage.getItem(`room_${room.id}_innocent_suspects`);
+    return saved ? JSON.parse(saved) : [];
+  });
+
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const initialLevels = room.game_case?.levels?.filter(l => l.is_initial) || [];
   const completedLevelIds = new Set(room.completed_levels?.map(l => l.id) || []);
   const allInitialCompleted = initialLevels.length > 0 && initialLevels.every(l => completedLevelIds.has(l.id));
 
-  const assignedIds = new Set([...guiltyPool, ...innocentPool].map(s => s.id));
-  const unassignedPool = accumulatedSuspects.filter(s => !assignedIds.has(s.id));
+  const guiltyPool = accumulatedSuspects.filter(s => guiltyIds.includes(s.id));
+  const innocentPool = accumulatedSuspects.filter(s => innocentIds.includes(s.id));
+  const unassignedPool = accumulatedSuspects.filter(s => !guiltyIds.includes(s.id) && !innocentIds.includes(s.id));
 
   const verdictMutation = useMutation({
-    mutationFn: async (guiltySuspectIds: number[]) => {
-      const result = await submitSuspectVerdict(room.id, guiltySuspectIds);
+    mutationFn: async (submittedGuiltyIds: number[]) => {
+      const result = await submitSuspectVerdict(room.id, submittedGuiltyIds);
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
@@ -32,6 +46,8 @@ export default function SuspectsTab() {
       if (data.status === 'failed' || data.status === 'failed_final') {
         setFeedback({ type: 'error', message: data.message });
       } else {
+        sessionStorage.removeItem(`room_${room.id}_guilty_suspects`);
+        sessionStorage.removeItem(`room_${room.id}_innocent_suspects`);
         refreshRoomData();
       }
     },
@@ -51,25 +67,25 @@ export default function SuspectsTab() {
     const suspectId = parseInt(e.dataTransfer.getData('suspectId'));
     if (isNaN(suspectId)) return;
 
-    const suspect = accumulatedSuspects.find(s => s.id === suspectId);
-    if (!suspect) return;
+    let nextGuilty = guiltyIds.filter(id => id !== suspectId);
+    let nextInnocent = innocentIds.filter(id => id !== suspectId);
 
-    setGuiltyPool(prev => prev.filter(s => s.id !== suspectId));
-    setInnocentPool(prev => prev.filter(s => s.id !== suspectId));
+    if (targetPool === 'guilty') nextGuilty.push(suspectId);
+    if (targetPool === 'innocent') nextInnocent.push(suspectId);
 
-    if (targetPool === 'guilty') {
-      setGuiltyPool(prev => [...prev, suspect]);
-    } else if (targetPool === 'innocent') {
-      setInnocentPool(prev => [...prev, suspect]);
-    }
+    setGuiltyIds(nextGuilty);
+    setInnocentIds(nextInnocent);
+
+    sessionStorage.setItem(`room_${room.id}_guilty_suspects`, JSON.stringify(nextGuilty));
+    sessionStorage.setItem(`room_${room.id}_innocent_suspects`, JSON.stringify(nextInnocent));
   };
 
   const handleSubmitVerdict = () => {
-    if (guiltyPool.length === 0) {
+    if (guiltyIds.length === 0) {
       setFeedback({ type: 'error', message: 'You must select at least one prime suspect for the Guilty verdict.' });
       return;
     }
-    verdictMutation.mutate(guiltyPool.map(s => s.id));
+    verdictMutation.mutate(guiltyIds);
   };
 
   const clearFeedback = () => {
@@ -88,7 +104,6 @@ export default function SuspectsTab() {
         )}
       </header>
 
-      {/* --- PERSONA INTERCEPT MODAL (REUSED FROM CAMPAIGN TAB) --- */}
       {feedback && (
         <div className="feedback-modal-overlay">
           <div className={`feedback-modal-content ${feedback.type}`}>
@@ -124,7 +139,9 @@ export default function SuspectsTab() {
                 suspect={s} 
                 sourcePool="guilty" 
                 isDraggable={true} 
+                isNew={!viewedSuspects.has(s.id)}
                 onDragStart={handleDragStart} 
+                onInteract={markSuspectAsViewed}
               />
             ))}
             {guiltyPool.length === 0 && <div className="zone-placeholder">Drag prime suspects here</div>}
@@ -147,7 +164,9 @@ export default function SuspectsTab() {
                 suspect={s} 
                 sourcePool="innocent" 
                 isDraggable={true} 
+                isNew={!viewedSuspects.has(s.id)}
                 onDragStart={handleDragStart} 
+                onInteract={markSuspectAsViewed}
               />
             ))}
             {innocentPool.length === 0 && <div className="zone-placeholder">Drag cleared suspects here</div>}
@@ -170,7 +189,9 @@ export default function SuspectsTab() {
               suspect={s} 
               sourcePool="unassigned" 
               isDraggable={true} 
+              isNew={!viewedSuspects.has(s.id)}
               onDragStart={handleDragStart} 
+              onInteract={markSuspectAsViewed}
             />
           ))}
           {unassignedPool.length === 0 && accumulatedSuspects.length > 0 && (
