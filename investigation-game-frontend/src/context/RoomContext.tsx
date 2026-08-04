@@ -1,10 +1,11 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import type { GameRoom, Evidence, Suspect } from '../types';
+import type { GameRoom, Evidence, Suspect, Victim } from '../types';
 
 interface RoomContextType {
   room: GameRoom;
   accumulatedEvidences: Evidence[];
   accumulatedSuspects: Suspect[];
+  accumulatedVictims: Victim[];
   refreshRoomData: () => Promise<void>;
   
   viewedEvidences: Set<number>;
@@ -12,6 +13,9 @@ interface RoomContextType {
   
   viewedSuspects: Set<number>;
   markSuspectAsViewed: (id: number) => void;
+  
+  viewedVictims: Set<number>;
+  markVictimAsViewed: (id: number) => void;
 }
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -21,11 +25,14 @@ interface RoomProviderProps {
   room: GameRoom;
   accumulatedEvidences: Evidence[];
   accumulatedSuspects: Suspect[];
+  accumulatedVictims: Victim[];
   refreshRoomData: () => Promise<void>;
   viewedEvidences: Set<number>;
   markEvidenceAsViewed: (id: number) => void;
   viewedSuspects: Set<number>;
   markSuspectAsViewed: (id: number) => void;
+  viewedVictims: Set<number>;
+  markVictimAsViewed: (id: number) => void;
 }
 
 export function RoomProvider({ 
@@ -33,22 +40,28 @@ export function RoomProvider({
   room, 
   accumulatedEvidences, 
   accumulatedSuspects,
+  accumulatedVictims,
   refreshRoomData, 
   viewedEvidences, 
   markEvidenceAsViewed,
   viewedSuspects,
-  markSuspectAsViewed
+  markSuspectAsViewed,
+  viewedVictims,
+  markVictimAsViewed
 }: RoomProviderProps) {
   return (
     <RoomContext.Provider value={{ 
       room, 
       accumulatedEvidences, 
       accumulatedSuspects, 
+      accumulatedVictims,
       refreshRoomData, 
       viewedEvidences, 
       markEvidenceAsViewed,
       viewedSuspects,
-      markSuspectAsViewed
+      markSuspectAsViewed,
+      viewedVictims,
+      markVictimAsViewed
     }}>
       {children}
     </RoomContext.Provider>

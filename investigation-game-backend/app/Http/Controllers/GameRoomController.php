@@ -111,6 +111,8 @@ class GameRoomController extends Controller
             'unlockedLevels', 
             'unlockedSuspects',  
             'completedLevels',
+            'gameCase.victims',    
+            'unlockedVictims',     
             'votes' => function ($query) use ($room) {
                 $query->whereHas('question', function ($q) use ($room) {
                     $q->where('level_id', $room->current_level_id);

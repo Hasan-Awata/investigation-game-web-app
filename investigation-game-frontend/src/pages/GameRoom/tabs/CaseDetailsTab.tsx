@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { useRoomContext } from '../../../context/RoomContext';
+import VictimModal from './VictimModal';
+import type { Victim } from '../../../types';
 import './Tabs.css';
 
 export default function CaseDetailsTab() {
-  const { room } = useRoomContext();
+  const { room, accumulatedVictims, viewedVictims, markVictimAsViewed } = useRoomContext();
+  const [inspectedVictim, setInspectedVictim] = useState<Victim | null>(null);
   
   const gameCase = room.game_case || {
     id: room.case_id,
@@ -14,6 +18,11 @@ export default function CaseDetailsTab() {
   };
 
   const heroImageUrl = gameCase.img_url || '/placeholder-crime-scene.jpg'; 
+
+  const handleInspectVictim = (victim: Victim) => {
+    markVictimAsViewed(victim.id);
+    setInspectedVictim(victim);
+  };
 
   return (
     <div className="case-details-tab">
@@ -41,6 +50,64 @@ export default function CaseDetailsTab() {
           ))}
         </div>
       </div>
+
+      {accumulatedVictims.length > 0 && (
+        <div className="case-victims-section" style={{ marginTop: '3rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '3rem' }}>
+          <h2 className="section-title" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }}>Identified Casualties</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+            {accumulatedVictims.map((victim) => {
+              const isNew = !viewedVictims.has(victim.id);
+              
+              return (
+                <div 
+                  key={victim.id} 
+                  className="glass-panel victim-card"
+                  style={{ 
+                    display: 'flex', gap: '1rem', padding: '1rem', borderRadius: '8px', 
+                    position: 'relative', cursor: 'pointer', transition: 'all 0.2s ease'
+                  }}
+                  onClick={() => handleInspectVictim(victim)}
+                  onMouseEnter={() => markVictimAsViewed(victim.id)}
+                >
+                  {isNew && <div className="unread-indicator" title="New Casualty Intel"></div>}
+                  
+                  <div 
+                    style={{ 
+                      width: '80px', height: '80px', borderRadius: '4px', 
+                      backgroundImage: `url(${victim.img_url || '/placeholder-mugshot.jpg'})`, 
+                      backgroundSize: 'cover', backgroundPosition: 'center', 
+                      flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)' 
+                    }}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <h4 style={{ margin: '0 0 0.25rem 0', fontFamily: 'var(--font-primary)', color: 'var(--text-primary)', fontSize: '1.1rem' }}>
+                      {victim.name}
+                    </h4>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--accent-crimson)', marginBottom: '0.5rem' }}>
+                      VIC-{victim.id.toString().padStart(4, '0')}
+                    </span>
+                    {victim.background && (
+                      <p style={{ 
+                        margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', 
+                        lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 3, 
+                        WebkitBoxOrient: 'vertical', overflow: 'hidden' 
+                      }}>
+                        {victim.background}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* The Victim Modal */}
+      <VictimModal 
+        victim={inspectedVictim} 
+        onClose={() => setInspectedVictim(null)} 
+      />
     </div>
   );
 }

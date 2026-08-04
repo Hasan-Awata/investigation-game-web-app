@@ -73,7 +73,11 @@ class AssessmentService
             // 2. Process Narrative Unlocks (Evidence, Levels, & Suspects)
             $newlyUnlockedEvidences = [];
             $newlyUnlockedLevels = [];
-            $newlyUnlockedSuspects = []; // NEW
+            $newlyUnlockedSuspects = [];
+            $newlyUnlockedVictims = [];
+
+            foreach ($consensus as $questionId => $chosenId) {
+                $choice = Choice::find($chosenId);
 
             foreach ($consensus as $questionId => $chosenId) {
                 $choice = Choice::find($chosenId);
@@ -94,13 +98,20 @@ class AssessmentService
                     $newlyUnlockedLevels[] = $choice->unlocks_level_id;
                 }
                 
-                // NEW: Handle Suspect Unlocks
                 if ($choice && $choice->unlocks_suspect_id) {
                     DB::table('room_suspects')->updateOrInsert([
                         'room_id' => $room->id,
                         'suspect_id' => $choice->unlocks_suspect_id
                     ]);
                     $newlyUnlockedSuspects[] = $choice->unlocks_suspect_id;
+                }
+
+                if ($choice && $choice->unlocks_victim_id) {
+                    DB::table('room_victims')->updateOrInsert([
+                        'room_id' => $room->id,
+                        'victim_id' => $choice->unlocks_victim_id
+                    ]);
+                    $newlyUnlockedVictims[] = $choice->unlocks_victim_id;
                 }
             }
 
@@ -112,7 +123,12 @@ class AssessmentService
             // Dispatch Suspect Event
             if (!empty($newlyUnlockedSuspects)) {
                 \App\Events\SuspectDiscovered::dispatch($room, $newlyUnlockedSuspects);
-}
+            }
+            
+            // Dispatch Victim Event
+            if (!empty($newlyUnlockedVictims)) {
+                \App\Events\VictimDiscovered::dispatch($room, $newlyUnlockedVictims);
+            }
 
             // 3. Mark Phase Complete & Check Suspension Condition
             $room->completedLevels()->syncWithoutDetaching([$level->id]);
@@ -139,7 +155,8 @@ class AssessmentService
                 'unlocked_evidence' => $newlyUnlockedEvidences,
                 'unlocked_levels' => $newlyUnlockedLevels 
             ]);
-        });
+           }
+       });
     }
 
     /**

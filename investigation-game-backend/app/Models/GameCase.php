@@ -77,6 +77,11 @@ class GameCase extends Model
     {
         return $this->hasMany(Suspect::class, 'case_id');
     }
+    
+    public function victims()
+    { 
+        return $this->hasMany(Victim::class, 'case_id');
+    }
 
     protected function imgUrl(): Attribute
     {

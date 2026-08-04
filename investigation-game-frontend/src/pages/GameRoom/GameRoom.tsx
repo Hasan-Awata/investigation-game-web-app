@@ -9,7 +9,6 @@ import SuspectsTab from './tabs/SuspectsTab';
 import CampaignTab from './tabs/CampaignTab';
 import './GameRoom.css';
 
-
 type Tab = 'details' | 'evidences' | 'campaign' | 'suspects';
 
 export default function GameRoom() {
@@ -22,18 +21,21 @@ export default function GameRoom() {
     error, 
     accumulatedEvidences,
     accumulatedSuspects, 
+    accumulatedVictims,
     refreshRoomData 
   } = useGameRoom(inviteCode);
 
-  // Initialize both tracking hooks independently
+  // Initialize tracking hooks independently
   const { viewedItems: viewedEvidences, markItemAsViewed: markEvidenceAsViewed } = useViewedItems(room?.id, 'evidence');
   const { viewedItems: viewedSuspects, markItemAsViewed: markSuspectAsViewed } = useViewedItems(room?.id, 'suspects');
+  const { viewedItems: viewedVictims, markItemAsViewed: markVictimAsViewed } = useViewedItems(room?.id, 'victims');
   
   const [activeTab, setActiveTab] = useState<Tab>('details');
 
   // Compute unread statuses for the red dots
   const hasUnreadEvidence = accumulatedEvidences.some(evidence => !viewedEvidences.has(evidence.id));
   const hasUnreadSuspects = accumulatedSuspects.some(suspect => !viewedSuspects.has(suspect.id));
+  const hasUnreadVictims = accumulatedVictims?.some(victim => !viewedVictims.has(victim.id));
 
   if (isLoading) return <div className="terminal-text">Synchronizing session data...</div>;
   if (error || !room) return <div className="terminal-text error">{error || 'Session not found.'}</div>;
@@ -43,11 +45,14 @@ export default function GameRoom() {
       room={room} 
       accumulatedEvidences={accumulatedEvidences}
       accumulatedSuspects={accumulatedSuspects} 
+      accumulatedVictims={accumulatedVictims}
       refreshRoomData={refreshRoomData}
       viewedEvidences={viewedEvidences}
       markEvidenceAsViewed={markEvidenceAsViewed}
       viewedSuspects={viewedSuspects}
       markSuspectAsViewed={markSuspectAsViewed}
+      viewedVictims={viewedVictims}
+      markVictimAsViewed={markVictimAsViewed}
     >
       <div className="game-room-layout">
         
@@ -130,7 +135,12 @@ export default function GameRoom() {
         <main className="workspace-panel">
           <header className="workspace-header">
             <nav className="tab-navigation">
-              <button className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>Case Details</button>
+              <button className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
+                Case Details
+                {hasUnreadVictims && (
+                  <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="New Casualty"></div>
+                )}
+              </button>
               
               <button className={`tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => setActiveTab('evidences')}>
                 Evidences

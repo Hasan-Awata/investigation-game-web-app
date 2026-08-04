@@ -79,4 +79,10 @@ protected $fillable = [
         return $this->belongsToMany(Level::class, 'room_completed_levels', 'room_id', 'level_id')
                     ->withTimestamps();
     }
+
+    public function unlockedVictims()
+    { 
+        return $this->belongsToMany(Victim::class, 'room_victims', 'room_id', 'victim_id')
+                    ->withTimestamps(); 
+    }
 }

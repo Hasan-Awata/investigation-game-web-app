@@ -8,7 +8,8 @@ use App\Models\Level;
 use App\Models\Evidence;
 use App\Models\Question;
 use App\Models\Choice;
-use App\Models\Suspect; // Added Suspect Model
+use App\Models\Suspect;
+use App\Models\Victim; 
 use App\Enums\EvidenceType;
 
 class GameCaseSeeder extends Seeder
@@ -29,6 +30,22 @@ class GameCaseSeeder extends Seeder
             'tags' => ['Tactical', 'Choice-Driven Narrative', 'Corporate Espionage'],
             'author_name' => 'Agent MasterAdmin',
             'img_url' => '/assets/cases/Case-cover.png',
+        ]);
+
+        Victim::create([
+            'case_id' => $case->id,
+            'name' => 'Elias Vance',
+            'background' => "48-year-old visionary managing partner of Vance & Thorne Architectural. Found dead in his 40th-floor corner office at 6:00 AM. The official cause of death was ruled a suicide by hanging, but circumstances surrounding the bolted door and the impending hostile takeover suggest foul play.",
+            'img_url' => '/assets/victims/elias-vance.png',
+            'is_initial' => true,
+        ]);
+
+        Victim::create([
+            'case_id' => $case->id,
+            'name' => 'Julian Carver',
+            'background' => "Former Chief Financial Officer at Vance & Thorne. Perished in a suspicious hit-and-run accident three weeks prior to Elias Vance's death. Carver was the only board member vocally opposing Marcus Thorne's restructuring plans.",
+            'img_url' => '/assets/victims/julian-carver.png',
+            'is_initial' => false,
         ]);
 
         // 1.5 Create the Suspects Roster

@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 
 // Define the allowed entities so TypeScript strictly guards your scaling
-type TrackableEntity = 'evidence' | 'suspects' | 'locations';
+type TrackableEntity = 'evidence' | 'suspects' | 'locations' | 'victims';
 
 export function useViewedItems(roomId: number | undefined, entityType: TrackableEntity) {
   // Dynamically generate the storage key namespace
