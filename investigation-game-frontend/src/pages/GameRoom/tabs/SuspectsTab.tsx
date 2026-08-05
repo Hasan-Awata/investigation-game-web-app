@@ -13,16 +13,17 @@ export default function SuspectsTab() {
     accumulatedSuspects, 
     refreshRoomData,
     viewedSuspects,
-    markSuspectAsViewed
+    markSuspectAsViewed,
+    setGameOverData 
   } = useRoomContext();
   
   const [guiltyIds, setGuiltyIds] = useState<number[]>(() => {
-    const saved = sessionStorage.getItem(`room_${room.id}_guilty_suspects`);
+    const saved = sessionStorage.getItem(`room_${room.invite_code}_guilty_suspects`);
     return saved ? JSON.parse(saved) : [];
   });
   
   const [innocentIds, setInnocentIds] = useState<number[]>(() => {
-    const saved = sessionStorage.getItem(`room_${room.id}_innocent_suspects`);
+    const saved = sessionStorage.getItem(`room_${room.invite_code}_innocent_suspects`);
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -43,11 +44,16 @@ export default function SuspectsTab() {
       return result.value;
     },
     onSuccess: (data) => {
-      if (data.status === 'failed' || data.status === 'failed_final') {
+      if (data.status === 'failed') {
         setFeedback({ type: 'error', message: data.message });
+        refreshRoomData();
       } else {
-        sessionStorage.removeItem(`room_${room.id}_guilty_suspects`);
-        sessionStorage.removeItem(`room_${room.id}_innocent_suspects`);
+        sessionStorage.removeItem(`room_${room.invite_code}_guilty_suspects`);
+        sessionStorage.removeItem(`room_${room.invite_code}_innocent_suspects`);
+        
+        // 2. USE THE NATIVE REACT CONTEXT METHOD
+        setGameOverData(data.message, data.stats);
+        
         refreshRoomData();
       }
     },
@@ -76,8 +82,8 @@ export default function SuspectsTab() {
     setGuiltyIds(nextGuilty);
     setInnocentIds(nextInnocent);
 
-    sessionStorage.setItem(`room_${room.id}_guilty_suspects`, JSON.stringify(nextGuilty));
-    sessionStorage.setItem(`room_${room.id}_innocent_suspects`, JSON.stringify(nextInnocent));
+    sessionStorage.setItem(`room_${room.invite_code}_guilty_suspects`, JSON.stringify(nextGuilty));
+    sessionStorage.setItem(`room_${room.invite_code}_innocent_suspects`, JSON.stringify(nextInnocent));
   };
 
   const handleSubmitVerdict = () => {

@@ -20,12 +20,12 @@ class AdminEvidenceController extends Controller
             'description' => 'nullable|string',
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
             'paragraph' => 'nullable|string',
-            'is_initial' => 'required|boolean', // New validation
+            'is_initial' => 'required|boolean', 
+            'is_vital_for_conviction' => 'required|boolean', // Unified naming
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
         ]);
 
-        // 1. Manually configure the Cloudinary instance
         $cloudinary = new Cloudinary([
             'cloud' => [
                 'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
@@ -37,7 +37,6 @@ class AdminEvidenceController extends Controller
             ]
         ]);
 
-        // 2. Upload Image
         $imageUrl = null;
         if ($request->hasFile('image')) {
             $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
@@ -46,12 +45,11 @@ class AdminEvidenceController extends Controller
             $imageUrl = $upload['secure_url']; 
         }
 
-        // 3. Upload Audio
         $audioUrl = null;
         if ($request->hasFile('audio')) {
             $upload = $cloudinary->uploadApi()->upload($request->file('audio')->getRealPath(), [
                 'folder' => 'evidence/audio',
-                'resource_type' => 'video' // Required for audio files
+                'resource_type' => 'video'
             ]);
             $audioUrl = $upload['secure_url'];
         }
@@ -63,6 +61,7 @@ class AdminEvidenceController extends Controller
             'evidence_type' => $validated['evidence_type'],
             'paragraph' => $validated['paragraph'] ?? null,
             'is_initial' => $validated['is_initial'],
+            'is_vital_for_conviction' => $validated['is_vital_for_conviction'], // Unified naming
             'img_url' => $imageUrl,
             'audio_url' => $audioUrl,
         ]);

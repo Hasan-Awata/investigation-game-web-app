@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Enums\EvidenceType;
-use Illuminate\Database\Eloquent\Casts\Attribute; 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Evidence extends Model
 {
@@ -20,6 +20,7 @@ class Evidence extends Model
         'img_url',
         'paragraph',
         'is_initial',
+        'is_vital_for_conviction', 
     ];
 
     protected function casts(): array
@@ -27,34 +28,31 @@ class Evidence extends Model
         return [
             'evidence_type' => EvidenceType::class,
             'is_initial' => 'boolean',
+            'is_vital_for_conviction' => 'boolean', 
         ];
     }
 
-        protected function imgUrl(): Attribute
+    protected function imgUrl(): Attribute
     {
         return Attribute::make(
             get: function ($value) {
                 if (!$value) return null;
-                // If it's already a full URL (Cloudinary, S3, etc.), return it as-is
                 if (filter_var($value, FILTER_VALIDATE_URL)) {
                     return $value;
                 }
-                // Otherwise, prepend the backend host for local storage paths
                 return config('app.url') . $value;
             }
         );
     }
 
-        protected function audioUrl(): Attribute
+    protected function audioUrl(): Attribute
     {
         return Attribute::make(
             get: function ($value) {
                 if (!$value) return null;
-                // If it's already a full URL (Cloudinary, S3, etc.), return it as-is
                 if (filter_var($value, FILTER_VALIDATE_URL)) {
                     return $value;
                 }
-                // Otherwise, prepend the backend host for local storage paths
                 return config('app.url') . $value;
             }
         );

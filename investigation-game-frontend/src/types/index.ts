@@ -33,6 +33,16 @@ export interface Victim {
   is_initial: boolean;
 }
 
+export const CaseUserStatus = {
+  SolvedPerfect: 'solved_perfect',
+  SolvedPartial: 'solved_partial',
+  FailedNoProof: 'failed_no_proof',
+  FailedIncomplete: 'failed_incomplete',
+  FailedStrikes: 'failed_strikes',
+} as const;
+// 2. Extract the values into a TypeScript type of the exact same name
+export type CaseUserStatus = typeof CaseUserStatus[keyof typeof CaseUserStatus];
+
 export interface GameCase {
   id: number;
   title: string;
@@ -52,7 +62,7 @@ export interface GameCase {
   evidences?: Evidence[]; 
   suspects?: Suspect[];
   victims?: Victim[];
-  user_status?: 'solved' | 'failed' | null; 
+  user_status?: CaseUserStatus | null; 
 }
 
 export interface RoomVote {
@@ -71,6 +81,7 @@ export interface GameRoom {
   current_level_id: number;
   status: string;
   strikes: number;
+  final_stats?: FinalStats | null; 
   game_case?: GameCase;
   users?: RoomUser[];
   current_level?: Level;
@@ -80,6 +91,15 @@ export interface GameRoom {
   unlocked_victims?: Victim[];
   completed_levels?: Level[];
   votes?: RoomVote[];
+}
+
+export interface FinalStats {
+  time_taken: string;
+  xp_gained: number;
+  max_xp: number;
+  suspects_caught: number;
+  total_guilty: number;
+  innocents_accused: number;
 }
 
 export type EvidenceType = 'document' | 'testimony' | 'audio' | 'image' | 'forensic';
@@ -94,6 +114,7 @@ export interface Evidence {
   img_url?: string;
   paragraph?: string;
   is_initial: boolean; 
+  is_vital_for_conviction: boolean;
 }
 
 export interface Choice {

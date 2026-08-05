@@ -3,9 +3,9 @@ import { useState, useCallback, useEffect } from 'react';
 // Define the allowed entities so TypeScript strictly guards your scaling
 type TrackableEntity = 'evidence' | 'suspects' | 'locations' | 'victims';
 
-export function useViewedItems(roomId: number | undefined, entityType: TrackableEntity) {
-  // Dynamically generate the storage key namespace
-  const storageKey = roomId ? `room_${roomId}_viewed_${entityType}` : null;
+export function useViewedItems(roomKey: string | number | undefined, entityType: TrackableEntity) {
+  // Use the roomKey in the namespace
+  const storageKey = roomKey ? `room_${roomKey}_viewed_${entityType}` : null;
 
   const [viewedItems, setViewedItems] = useState<Set<number>>(() => {
     if (!storageKey) return new Set();

@@ -16,6 +16,13 @@ interface RoomContextType {
   
   viewedVictims: Set<number>;
   markVictimAsViewed: (id: number) => void;
+
+  setGameOverData: (message: string, stats?: any) => void;
+}
+
+interface RoomProviderProps extends Omit<RoomContextType, 'setGameOverData'> {
+  children: ReactNode;
+  setGameOverData: (message: string, stats?: any) => void;
 }
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -47,7 +54,8 @@ export function RoomProvider({
   viewedSuspects,
   markSuspectAsViewed,
   viewedVictims,
-  markVictimAsViewed
+  markVictimAsViewed,
+  setGameOverData 
 }: RoomProviderProps) {
   return (
     <RoomContext.Provider value={{ 
@@ -61,7 +69,8 @@ export function RoomProvider({
       viewedSuspects,
       markSuspectAsViewed,
       viewedVictims,
-      markVictimAsViewed
+      markVictimAsViewed,
+      setGameOverData 
     }}>
       {children}
     </RoomContext.Provider>

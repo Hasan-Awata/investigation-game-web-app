@@ -232,6 +232,36 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Enums\CaseStatus.php
+----------------------------------------
+<?php
+
+namespace App\Enums;
+
+enum CaseUserStatus: string
+{
+    case SolvedPerfect = 'solved_perfect';
+    case SolvedPartial = 'solved_partial';
+    case FailedNoProof = 'failed_no_proof';
+    case FailedIncomplete = 'failed_incomplete';
+    case FailedStrikes = 'failed_strikes';
+
+    // Helper methods to keep your controllers clean
+    public function isSolved(): bool
+    {
+        return $this === self::SolvedPerfect || $this === self::SolvedPartial;
+    }
+
+    public function isFailed(): bool
+    {
+        return match($this) {
+            self::FailedNoProof, self::FailedIncomplete, self::FailedStrikes => true,
+            default => false,
+        };
+    }
+}
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Enums\EvidenceType.php
 ----------------------------------------
 <?php
@@ -360,6 +390,83 @@ class LevelTransitioned implements ShouldBroadcastNow
         return [
             'room' => $this->room,
             'status' => $this->room->status->value, 
+            'message' => $this->message, 
+        ];
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Events\SuspectDiscovered.php
+----------------------------------------
+<?php
+
+namespace App\Events;
+
+use App\Models\GameRoom;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class SuspectDiscovered implements ShouldBroadcastNow
+{
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+
+    public function __construct(
+        public readonly GameRoom $room,
+        public readonly array $suspectIds
+    ) {}
+
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('room.' . $this->room->id),
+        ];
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'suspect_ids' => $this->suspectIds,
+            'message' => 'A new suspect has been identified based on your deductions.'
+        ];
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Events\VictimDiscovered.php
+----------------------------------------
+<?php
+
+namespace App\Events;
+
+use App\Models\GameRoom;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class VictimDiscovered implements ShouldBroadcastNow
+{
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+
+    public function __construct(
+        public readonly GameRoom $room,
+        public readonly array $victimIds
+    ) {}
+
+    public function broadcastOn(): array
+    {
+        return [new PrivateChannel('room.' . $this->room->id)];
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'victim_ids' => $this->victimIds,
+            'message' => 'New casualty identified based on your deductions.'
         ];
     }
 }
@@ -565,21 +672,41 @@ class CaseController extends Controller
     {
         $userId = $request->user()->id;
 
-        $cases = GameCase::select('id', 'title', 'story', 'min_player_XP', 'XP_on_solve', 'img_url')
-            ->with(['users' => function ($query) use ($userId) {
-                $query->where('users.id', $userId)->select('users.id');
-            }])
+        $cases = GameCase::select(
+            'id', 'title', 'story', 'min_player_XP', 'XP_on_solve', 'img_url', 'max_strikes',
+            'rating_stars', 'age_rating', 'estimated_playtime', 'difficulty', 'tags', 'author_name'
+        )
+            ->with([
+                'users' => function ($query) use ($userId) {
+                    $query->where('users.id', $userId)->select('users.id', 'case_user.status');
+                },
+                // Eager load any active rooms where this user is participating
+                'rooms' => function ($query) use ($userId) {
+                    $query->where('status', 'active')
+                          ->where(function ($q) use ($userId) {
+                              $q->where('host_user_id', $userId)
+                                ->orWhereHas('users', function ($q2) use ($userId) {
+                                    $q2->where('user_id', $userId);
+                                });
+                          })->orderBy('created_at', 'desc');
+                }
+            ])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($case) {
+                // Map the narrative completion status
                 $case->user_status = $case->users->first()?->pivot->status;
+                
+                // Map the active session invite code if one exists
+                $case->active_room_invite_code = $case->rooms->first()?->invite_code;
+                
                 unset($case->users); 
+                unset($case->rooms); 
                 return $case;
             });
 
         return response()->json([
             'cases' => $cases,
-            // Strictly whitelist only the fields the frontend needs to render the UI
             'user' => $request->user()->only(['id', 'username', 'name', 'email', 'XP', 'is_admin'])
         ], 200);
     }
@@ -707,11 +834,15 @@ class GameRoomController extends Controller
             'host',
             'gameCase.levels.questions.choices',
             'gameCase.evidences', 
+            'gameCase.suspects', 
             'users.user', 
             'currentLevel.questions.choices',
             'unlockedEvidences',
             'unlockedLevels', 
+            'unlockedSuspects',  
             'completedLevels',
+            'gameCase.victims',    
+            'unlockedVictims',     
             'votes' => function ($query) use ($room) {
                 $query->whereHas('question', function ($q) use ($room) {
                     $q->where('level_id', $room->current_level_id);
@@ -720,6 +851,51 @@ class GameRoomController extends Controller
         ]);
 
         return response()->json(['room' => $room], 200);
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\SuspectVerdictController.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\GameRoom;
+use App\Services\AssessmentService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class SuspectVerdictController extends Controller
+{
+    public function __construct(
+        private readonly AssessmentService $assessmentService
+    ) {}
+
+    public function store(Request $request, GameRoom $room): JsonResponse
+    {
+        if ($request->user()->id !== $room->host_user_id) {
+            return response()->json([
+                'error' => 'Unauthorized',
+                'message' => 'Only the assigned Room Host can submit the final indictment.'
+            ], 403);
+        }
+
+        $validated = $request->validate([
+            'guilty_suspect_ids' => 'required|array|min:1',
+            'guilty_suspect_ids.*' => 'integer|exists:suspects,id'
+        ]);
+
+        $result = $this->assessmentService->evaluateFinalVerdict($room, $validated['guilty_suspect_ids']);
+
+        if ($result->isFailure()) {
+            return response()->json([
+                'error' => 'Assessment Failed',
+                'message' => $result->errorMessage
+            ], 422);
+        }
+
+        return response()->json($result->value, 200);
     }
 }
 
@@ -798,6 +974,12 @@ public function store(Request $request): JsonResponse
             'min_player_XP' => 'required|integer|min:0',
             'XP_on_solve' => 'required|integer|min:0',
             'max_strikes' => 'required|integer|min:1', 
+            'rating_stars' => 'required|numeric|min:0|max:5',
+            'age_rating' => 'required|string|max:50',
+            'estimated_playtime' => 'required|string|max:100',
+            'difficulty' => 'required|string|max:50',
+            'tags' => 'nullable|string', // We will accept a comma-separated string from the frontend
+            'author_name' => 'required|string|max:100',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
@@ -820,20 +1002,27 @@ public function store(Request $request): JsonResponse
             $imageUrl = $upload['secure_url'];
         }
 
+        // Convert the comma-separated tags string into a proper array
+        $tagsArray = $request->filled('tags') 
+            ? array_map('trim', explode(',', $validated['tags'])) 
+            : [];
+
         $case = GameCase::create([
             'title' => $validated['title'],
             'story' => $validated['story'],
             'min_player_XP' => $validated['min_player_XP'],
             'XP_on_solve' => $validated['XP_on_solve'],
             'max_strikes' => $validated['max_strikes'], 
+            'rating_stars' => $validated['rating_stars'],
+            'age_rating' => $validated['age_rating'],
+            'estimated_playtime' => $validated['estimated_playtime'],
+            'difficulty' => $validated['difficulty'],
+            'tags' => $tagsArray,
+            'author_name' => $validated['author_name'],
             'img_url' => $imageUrl,
         ]);
 
-        return response()->json([
-            'message' => 'Case created successfully.',
-            'case' => $case,
-            'image_url' => $imageUrl
-        ], 201);
+        return response()->json(['message' => 'Case created successfully.', 'case' => $case], 201);
     }
 
     /**
@@ -940,12 +1129,12 @@ class AdminEvidenceController extends Controller
             'description' => 'nullable|string',
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
             'paragraph' => 'nullable|string',
-            'is_initial' => 'required|boolean', // New validation
+            'is_initial' => 'required|boolean', 
+            'is_vital_for_conviction' => 'required|boolean', // Unified naming
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
         ]);
 
-        // 1. Manually configure the Cloudinary instance
         $cloudinary = new Cloudinary([
             'cloud' => [
                 'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
@@ -957,7 +1146,6 @@ class AdminEvidenceController extends Controller
             ]
         ]);
 
-        // 2. Upload Image
         $imageUrl = null;
         if ($request->hasFile('image')) {
             $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
@@ -966,12 +1154,11 @@ class AdminEvidenceController extends Controller
             $imageUrl = $upload['secure_url']; 
         }
 
-        // 3. Upload Audio
         $audioUrl = null;
         if ($request->hasFile('audio')) {
             $upload = $cloudinary->uploadApi()->upload($request->file('audio')->getRealPath(), [
                 'folder' => 'evidence/audio',
-                'resource_type' => 'video' // Required for audio files
+                'resource_type' => 'video'
             ]);
             $audioUrl = $upload['secure_url'];
         }
@@ -983,6 +1170,7 @@ class AdminEvidenceController extends Controller
             'evidence_type' => $validated['evidence_type'],
             'paragraph' => $validated['paragraph'] ?? null,
             'is_initial' => $validated['is_initial'],
+            'is_vital_for_conviction' => $validated['is_vital_for_conviction'], // Unified naming
             'img_url' => $imageUrl,
             'audio_url' => $audioUrl,
         ]);
@@ -1130,6 +1318,64 @@ class AdminQuestionController extends Controller
 }
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminSuspectController.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Suspect;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Cloudinary\Cloudinary;
+
+class AdminSuspectController extends Controller
+{
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'case_id' => 'required|exists:cases,id',
+            'name' => 'required|string|max:255',
+            'background' => 'nullable|string',
+            'is_initial' => 'required|boolean',
+            'is_guilty' => 'required|boolean', 
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+        ]);
+
+        $cloudinary = new Cloudinary([
+            'cloud' => [
+                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                'api_key'    => env('CLOUDINARY_API_KEY'),
+                'api_secret' => env('CLOUDINARY_API_SECRET'),
+            ],
+            'url' => [
+                'secure' => true
+            ]
+        ]);
+
+        $imageUrl = null;
+        if ($request->hasFile('image')) {
+            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
+                'folder' => 'suspects/images'
+            ]);
+            $imageUrl = $upload['secure_url'];
+        }
+
+        $suspect = Suspect::create([
+            'case_id' => $validated['case_id'],
+            'name' => $validated['name'],
+            'background' => $validated['background'] ?? null,
+            'is_initial' => $validated['is_initial'],
+            'is_guilty' => $validated['is_guilty'], // NEW
+            'img_url' => $imageUrl,
+        ]);
+
+        return response()->json(['message' => 'Suspect added successfully.', 'suspect' => $suspect], 201);
+    }
+}
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Middleware\IsAdmin.php
 ----------------------------------------
 <?php
@@ -1169,7 +1415,9 @@ class Choice extends Model
         'text',
         'is_correct',
         'unlocks_evidence_id', 
-        'unlocks_level_id', 
+        'unlocks_level_id',
+        'unlocks_victim_id', 
+        'unlocks_suspect_id' 
     ];
 
     protected $casts = [
@@ -1193,7 +1441,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Enums\EvidenceType;
-use Illuminate\Database\Eloquent\Casts\Attribute; 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Evidence extends Model
 {
@@ -1208,6 +1456,7 @@ class Evidence extends Model
         'img_url',
         'paragraph',
         'is_initial',
+        'is_vital_for_conviction', 
     ];
 
     protected function casts(): array
@@ -1215,34 +1464,31 @@ class Evidence extends Model
         return [
             'evidence_type' => EvidenceType::class,
             'is_initial' => 'boolean',
+            'is_vital_for_conviction' => 'boolean', 
         ];
     }
 
-        protected function imgUrl(): Attribute
+    protected function imgUrl(): Attribute
     {
         return Attribute::make(
             get: function ($value) {
                 if (!$value) return null;
-                // If it's already a full URL (Cloudinary, S3, etc.), return it as-is
                 if (filter_var($value, FILTER_VALIDATE_URL)) {
                     return $value;
                 }
-                // Otherwise, prepend the backend host for local storage paths
                 return config('app.url') . $value;
             }
         );
     }
 
-        protected function audioUrl(): Attribute
+    protected function audioUrl(): Attribute
     {
         return Attribute::make(
             get: function ($value) {
                 if (!$value) return null;
-                // If it's already a full URL (Cloudinary, S3, etc.), return it as-is
                 if (filter_var($value, FILTER_VALIDATE_URL)) {
                     return $value;
                 }
-                // Otherwise, prepend the backend host for local storage paths
                 return config('app.url') . $value;
             }
         );
@@ -1286,8 +1532,21 @@ class GameCase extends Model
         'XP_on_solve',
         'max_strikes', 
         'img_url',
+        'rating_stars',
+        'age_rating',
+        'estimated_playtime',
+        'difficulty',
+        'tags',
+        'author_name',
     ];
 
+    protected function casts(): array
+    {
+        return [
+            'tags' => 'array',
+        ];
+    }
+    
     /**
      * A case is divided into sequential levels.
      */
@@ -1317,6 +1576,16 @@ class GameCase extends Model
         return $this->belongsToMany(User::class, 'case_user', 'case_id', 'user_id')
             ->withPivot('status', 'completed_at')
             ->withTimestamps();
+    }
+
+    public function suspects(): HasMany
+    {
+        return $this->hasMany(Suspect::class, 'case_id');
+    }
+    
+    public function victims()
+    { 
+        return $this->hasMany(Victim::class, 'case_id');
     }
 
     protected function imgUrl(): Attribute
@@ -1407,11 +1676,23 @@ protected $fillable = [
         return $this->belongsToMany(Level::class, 'room_unlocked_levels', 'room_id', 'level_id')
                     ->withTimestamps();
     }
-    
+
+    public function unlockedSuspects()
+    {
+        return $this->belongsToMany(Suspect::class, 'room_suspects', 'room_id', 'suspect_id')
+                    ->withTimestamps();
+    }
+
     public function completedLevels()
     {
         return $this->belongsToMany(Level::class, 'room_completed_levels', 'room_id', 'level_id')
                     ->withTimestamps();
+    }
+
+    public function unlockedVictims()
+    { 
+        return $this->belongsToMany(Victim::class, 'room_victims', 'room_id', 'victim_id')
+                    ->withTimestamps(); 
     }
 }
 
@@ -1590,6 +1871,55 @@ class RoomVote extends Model
 }
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\Suspect.php
+----------------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Casts\Attribute; 
+
+class Suspect extends Model
+{
+    protected $fillable = [
+        'case_id',
+        'name',
+        'background',
+        'img_url',
+        'is_initial',
+        'is_guilty', 
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_initial' => 'boolean',
+            'is_guilty' => 'boolean', 
+        ];
+    }
+
+    protected function imgUrl(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if (!$value) return null;
+                if (filter_var($value, FILTER_VALIDATE_URL)) {
+                    return $value;
+                }
+                return config('app.url') . $value;
+            }
+        );
+    }
+
+    public function gameCase(): BelongsTo
+    {
+        return $this->belongsTo(GameCase::class, 'case_id');
+    }
+}
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\User.php
 ----------------------------------------
 <?php
@@ -1647,6 +1977,47 @@ class User extends Authenticatable
 
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\Victim.php
+----------------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Casts\Attribute; 
+
+class Victim extends Model
+{
+    protected $fillable = [
+        'case_id', 'name', 'background', 'img_url', 'is_initial',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_initial' => 'boolean',
+        ];
+    }
+
+    protected function imgUrl(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if (!$value) return null;
+                if (filter_var($value, FILTER_VALIDATE_URL)) return $value;
+                return config('app.url') . $value;
+            }
+        );
+    }
+
+    public function gameCase(): BelongsTo
+    {
+        return $this->belongsTo(GameCase::class, 'case_id');
+    }
+}
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Providers\AppServiceProvider.php
 ----------------------------------------
 <?php
@@ -1690,6 +2061,7 @@ use App\Support\Result;
 use App\Events\LevelTransitioned;
 use App\Events\EvidenceDiscovered;
 use App\Enums\RoomStatus;
+use App\Enums\CaseUserStatus;
 
 class AssessmentService
 {
@@ -1725,7 +2097,7 @@ class AssessmentService
 
                     if ($room->strikes >= $maxStrikes) {
                         $room->update(['status' => \App\Enums\RoomStatus::Failed]);
-                        $this->finalizeCaseForParticipants($room, 'failed');
+                        $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
                         \App\Events\LevelTransitioned::dispatch($room);
 
                         return Result::success([
@@ -1750,11 +2122,15 @@ class AssessmentService
                 }
             }
 
-            // 2. Process Narrative Unlocks (Evidence & Phases)
+            // 2. Process Narrative Unlocks (Evidence, Levels, & Suspects)
             $newlyUnlockedEvidences = [];
             $newlyUnlockedLevels = [];
-            
-            // Loop through all locked consensus choices to check for narrative triggers
+            $newlyUnlockedSuspects = [];
+            $newlyUnlockedVictims = [];
+
+            foreach ($consensus as $questionId => $chosenId) {
+                $choice = Choice::find($chosenId);
+
             foreach ($consensus as $questionId => $chosenId) {
                 $choice = Choice::find($chosenId);
 
@@ -1773,11 +2149,37 @@ class AssessmentService
                     ]);
                     $newlyUnlockedLevels[] = $choice->unlocks_level_id;
                 }
+                
+                if ($choice && $choice->unlocks_suspect_id) {
+                    DB::table('room_suspects')->updateOrInsert([
+                        'room_id' => $room->id,
+                        'suspect_id' => $choice->unlocks_suspect_id
+                    ]);
+                    $newlyUnlockedSuspects[] = $choice->unlocks_suspect_id;
+                }
+
+                if ($choice && $choice->unlocks_victim_id) {
+                    DB::table('room_victims')->updateOrInsert([
+                        'room_id' => $room->id,
+                        'victim_id' => $choice->unlocks_victim_id
+                    ]);
+                    $newlyUnlockedVictims[] = $choice->unlocks_victim_id;
+                }
             }
 
+            // Dispatch Evidences and Levels Events
             if (!empty($newlyUnlockedEvidences) || !empty($newlyUnlockedLevels)) {
-                // You can rename this event to NarrativeDiscovered later if you prefer
                 \App\Events\EvidenceDiscovered::dispatch($room, $newlyUnlockedEvidences);
+            }
+
+            // Dispatch Suspect Event
+            if (!empty($newlyUnlockedSuspects)) {
+                \App\Events\SuspectDiscovered::dispatch($room, $newlyUnlockedSuspects);
+            }
+            
+            // Dispatch Victim Event
+            if (!empty($newlyUnlockedVictims)) {
+                \App\Events\VictimDiscovered::dispatch($room, $newlyUnlockedVictims);
             }
 
             // 3. Mark Phase Complete & Check Suspension Condition
@@ -1805,50 +2207,144 @@ class AssessmentService
                 'unlocked_evidence' => $newlyUnlockedEvidences,
                 'unlocked_levels' => $newlyUnlockedLevels 
             ]);
-        });
+           }
+       });
     }
 
     /**
-     * Populate the case_user history and distribute XP dynamically.
-     * (Currently only triggered by the 'failed' state until your custom flow triggers 'solved').
+     * Evaluate the final suspect indictment submitted by the team.
      */
-    private function finalizeCaseForParticipants(GameRoom $room, string $finalStatus): void
+    /**
+     * Evaluate the final suspect indictment submitted by the team.
+     */
+    public function evaluateFinalVerdict(GameRoom $room, array $submittedSuspectIds): \App\Support\Result
+    {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($room, $submittedSuspectIds) {
+            $case = $room->gameCase;
+
+            // 1. STATUS GUARD: Prevent double-taps and race conditions
+            if ($room->status !== \App\Enums\RoomStatus::Active) {
+                return \App\Support\Result::failure("This investigation has already been concluded.");
+            }
+
+            // 2. THE PROOF CHECK (Gatekeeper)
+            $vitalEvidenceIds = \App\Models\Evidence::where('case_id', $case->id)
+                ->where('is_vital_for_conviction', true)
+                ->pluck('id');
+
+            $unlockedVitalEvidenceIds = $room->unlockedEvidences()
+                ->whereIn('evidence_id', $vitalEvidenceIds)
+                ->pluck('evidence_id');
+
+            if ($unlockedVitalEvidenceIds->count() < $vitalEvidenceIds->count()) {
+                $room->update(['status' => \App\Enums\RoomStatus::Failed]);
+                $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedNoProof->value, 0);
+                \App\Events\LevelTransitioned::dispatch($room, 'The DA rejected the indictment. You identified suspects but failed to secure the vital evidence needed for a conviction. The conspirators walk free.');
+
+                return \App\Support\Result::success([
+                    'status' => 'failed_final',
+                    'message' => 'The DA rejected the indictment. You identified suspects but failed to secure the vital evidence needed for a conviction.'
+                ]);
+            }
+
+            // 3. THE INDICTMENT CHECK
+            $trueGuiltyIds = \App\Models\Suspect::where('case_id', $case->id)
+                ->where('is_guilty', true)
+                ->pluck('id')
+                ->toArray();
+
+            $correctGuesses = array_intersect($submittedSuspectIds, $trueGuiltyIds);
+            $innocentGuesses = array_diff($submittedSuspectIds, $trueGuiltyIds);
+
+            // STRIKE CHECK: Accusing innocent people
+            if (!empty($innocentGuesses)) {
+                $room->increment('strikes');
+                $room->refresh();
+                $maxStrikes = $case->max_strikes;
+
+                if ($room->strikes >= $maxStrikes) {
+                    $room->update(['status' => \App\Enums\RoomStatus::Failed]);
+                    $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
+                    \App\Events\LevelTransitioned::dispatch($room, 'DEPARTMENT THRESHOLD EXCEEDED. You indicted innocent citizens. The DA has pulled your mandate.');
+
+                    return \App\Support\Result::success([
+                        'status' => 'failed_final',
+                        'message' => 'DEPARTMENT THRESHOLD EXCEEDED. You indicted innocent citizens. The DA has pulled your mandate.'
+                    ]);
+                }
+
+                \App\Events\LevelTransitioned::dispatch($room, "The DA has rejected your indictment due to insufficient grounds. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.");
+                return \App\Support\Result::success([
+                    'status' => 'failed',
+                    'message' => "The DA has rejected your indictment due to insufficient grounds. STRIKE {$room->strikes}/{$maxStrikes} LOGGED."
+                ]);
+            }
+
+            // 4. WIN / LOSS CONDITIONS (Threshold Logic)
+            $totalGuiltyCount = count($trueGuiltyIds);
+            $correctCount = count($correctGuesses);
+            $percentageCaught = $correctCount / $totalGuiltyCount;
+
+            if ($percentageCaught === 1.0) {
+                // Perfect Win: 100% XP
+                $room->update(['status' => \App\Enums\RoomStatus::Solved]);
+                $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
+                $message = 'Congratulations. You secured the vital proof and indicted all perpetrators. Case closed.';
+                
+            } elseif ($percentageCaught >= 0.5) {
+                // Partial Win: Caught 50% or more, but not all. 50% XP.
+                $room->update(['status' => \App\Enums\RoomStatus::Solved]);
+                $xpPayload = (int) floor($case->XP_on_solve / 2);
+                $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPartial->value, $xpPayload);
+                $message = 'You secured a conviction with solid proof, but some conspirators slipped through the cracks. Justice is incomplete.';
+                
+            } else {
+                // Incomplete Failure: Caught less than 50%. Case thrown out. 0 XP.
+                $room->update(['status' => \App\Enums\RoomStatus::Failed]);
+                $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedIncomplete->value, 0);
+                $message = 'Your indictment was too narrow. By missing the majority of the conspirators, the DA refused to take the case to trial. The network remains intact.';
+            }
+
+            \App\Events\LevelTransitioned::dispatch($room, $message);
+            return \App\Support\Result::success([
+                'status' => $room->status === \App\Enums\RoomStatus::Solved ? 'success' : 'failed_final',
+                'message' => $message,
+                'room' => $room
+            ]);
+        });
+    }
+
+    /*
+     * Populate the case_user history and distribute XP dynamically.
+     */
+    private function finalizeCaseForParticipants(GameRoom $room, string $finalStatus, int $xpGained): void
     {
         $userIds = $room->users()->pluck('user_id');
         $case = $room->gameCase;
 
         foreach ($userIds as $userId) {
-            $existingRecord = DB::table('case_user')
+            $existingRecord = \Illuminate\Support\Facades\DB::table('case_user')
                 ->where('user_id', $userId)
                 ->where('case_id', $case->id)
                 ->first();
 
             $previousStatus = $existingRecord->status ?? null;
 
-            // 1. Calculate XP Payload (If manually triggered later)
-            if ($finalStatus === 'solved') {
-                $xpGained = 0;
-                
-                if ($previousStatus === 'solved') {
-                    $xpGained = 0; 
-                } elseif ($previousStatus === 'failed') {
-                    $xpGained = (int) floor($case->XP_on_solve / 2); 
-                } else {
-                    $xpGained = $case->XP_on_solve; 
-                }
-
-                if ($xpGained > 0) {
-                    User::where('id', $userId)->increment('XP', $xpGained);
-                }
+            // 1. Distribute XP
+            // Prevent XP farming: Only award XP if they haven't already achieved a perfect solve.
+            if ($xpGained > 0 && $previousStatus !== 'solved_perfect') {
+                \App\Models\User::where('id', $userId)->increment('XP', $xpGained);
             }
 
             // 2. Preserve or Update State
-            if ($previousStatus === 'solved') {
-                DB::table('case_user')
+            // If they already have a perfect solve on record, do not downgrade their status to a partial win or failure on replay.
+            if ($previousStatus === 'solved_perfect') {
+                \Illuminate\Support\Facades\DB::table('case_user')
                     ->where('id', $existingRecord->id)
                     ->update(['completed_at' => now()]);
             } else {
-                DB::table('case_user')->updateOrInsert(
+                // Otherwise, record their new outcome (solved_perfect, solved_partial, failed_no_proof, etc.)
+                \Illuminate\Support\Facades\DB::table('case_user')->updateOrInsert(
                     ['user_id' => $userId, 'case_id' => $case->id],
                     ['status' => $finalStatus, 'completed_at' => now()]
                 );
@@ -4474,6 +4970,231 @@ return new class extends Migration {
 };
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_210452_create_suspects_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::create('suspects', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('case_id')->constrained('cases')->cascadeOnDelete();
+            $table->string('name');
+            $table->text('background')->nullable();
+            $table->string('img_url')->nullable();
+            $table->boolean('is_initial')->default(false);
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void {
+        Schema::dropIfExists('suspects');
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_210523_create_room_suspects_table.php
+----------------------------------------
+<?php 
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::create('room_suspects', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('room_id')->constrained('game_rooms')->cascadeOnDelete();
+            $table->foreignId('suspect_id')->constrained('suspects')->cascadeOnDelete();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void {
+        Schema::dropIfExists('room_suspects');
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_210551_add_unlocks_suspect_id_to_choices_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('choices', function (Blueprint $table) {
+            $table->foreignId('unlocks_suspect_id')->nullable()->constrained('suspects')->nullOnDelete()->after('unlocks_evidence_id');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('choices', function (Blueprint $table) {
+            $table->dropForeign(['unlocks_suspect_id']);
+            $table->dropColumn('unlocks_suspect_id');
+        });
+    }
+};
+
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_223417_add_is_guilty_to_suspects_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('suspects', function (Blueprint $table) {
+            $table->boolean('is_guilty')->default(false)->after('is_initial');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('suspects', function (Blueprint $table) {
+            $table->dropColumn('is_guilty');
+        });
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_03_072753_add_metadata_to_cases_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('cases', function (Blueprint $table) {
+            $table->decimal('rating_stars', 3, 1)->default(5.0)->after('max_strikes');
+            $table->string('age_rating')->default('Unrated')->after('rating_stars');
+            $table->string('estimated_playtime')->nullable()->after('age_rating');
+            $table->string('difficulty')->default('Standard')->after('estimated_playtime');
+            $table->json('tags')->nullable()->after('difficulty');
+            $table->string('author_name')->default('System')->after('tags');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('cases', function (Blueprint $table) {
+            $table->dropColumn(['rating_stars', 'age_rating', 'estimated_playtime', 'difficulty', 'tags', 'author_name']);
+        });
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_03_181318_create_victims_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::create('victims', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('case_id')->constrained('cases')->cascadeOnDelete();
+            $table->string('name');
+            $table->text('background')->nullable();
+            $table->string('img_url')->nullable();
+            $table->boolean('is_initial')->default(true);
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void {
+        Schema::dropIfExists('victims');
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_03_181331_create_room_victims_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::create('room_victims', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('room_id')->constrained('game_rooms')->cascadeOnDelete();
+            $table->foreignId('victim_id')->constrained('victims')->cascadeOnDelete();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void {
+        Schema::dropIfExists('room_victims');
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_03_181343_add_unlocks_victim_id_to_choices_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('choices', function (Blueprint $table) {
+            $table->foreignId('unlocks_victim_id')->nullable()->constrained('victims')->nullOnDelete()->after('unlocks_suspect_id');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('choices', function (Blueprint $table) {
+            $table->dropForeign(['unlocks_victim_id']);
+            $table->dropColumn('unlocks_victim_id');
+        });
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_04_225624_add_is_vital_to_evidences_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('evidences', function (Blueprint $table) {
+            $table->boolean('is_vital_for_conviction')->default(false)->after('is_initial');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('evidences', function (Blueprint $table) {
+            $table->dropColumn('is_vital_for_conviction');
+        });
+    }
+};
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\DatabaseSeeder.php
 ----------------------------------------
 <?php
@@ -4537,6 +5258,8 @@ use App\Models\Level;
 use App\Models\Evidence;
 use App\Models\Question;
 use App\Models\Choice;
+use App\Models\Suspect;
+use App\Models\Victim; 
 use App\Enums\EvidenceType;
 
 class GameCaseSeeder extends Seeder
@@ -4546,11 +5269,70 @@ class GameCaseSeeder extends Seeder
         // 1. Create the Parent Case
         $case = GameCase::create([
             'title' => 'Suspended Hostility',
-            'story' => "Elias Vance, the visionary managing partner of Vance & Thorne Architectural, was found dead in his 40th-floor corner office at 6:00 AM this morning. The cause of death: hanging. The office door was bolted from the inside, and the precinct detectives, eager to close their shift, ruled it a tragic suicide.\n\nBut the DA's office isn't buying it. Vance was 48 hours away from a massive hostile takeover that would have ousted his co-founder, Marcus Thorne. You and your unit have been brought in to review the file. You have three strikes before the DA pulls your mandate and closes the case for good. Dig into the forensics. Cross-reference the timeline. Democracy is your tool, but truth is your only objective. Find out who really tied that knot.",
-            'min_player_XP' => 500, // Raised to indicate a slightly more complex case
+            'story' => "Elias Vance, the visionary managing partner of Vance & Thorne Architectural, was found dead in his 40th-floor corner office at 6:00 AM this morning. The cause of death: hanging. The office door was bolted from the inside, and the precinct detectives, eager to close their shift, ruled it a tragic suicide.\n\nBut the DA's office isn't buying it. Vance was 48 hours away from a massive hostile takeover that would have ousted his co-founder, Marcus Thorne. You and your unit have been brought in to review the file. You have three strikes before the DA pulls your mandate and closes the case for good. Dig into the forensics. Cross-reference the timeline. Democracy is your tool, but truth is your only objective. Find out who really tied that knot.",            
+            'min_player_XP' => 500, 
             'XP_on_solve' => 1000,
             'max_strikes' => 3,
+            'rating_stars' => 4.8,
+            'age_rating' => 'Mature (17+)',
+            'estimated_playtime' => '45-60 Minutes',
+            'difficulty' => 'Veteran',
+            'tags' => ['Tactical', 'Choice-Driven Narrative', 'Corporate Espionage'],
+            'author_name' => 'Agent MasterAdmin',
             'img_url' => '/assets/cases/Case-cover.png',
+        ]);
+
+        Victim::create([
+            'case_id' => $case->id,
+            'name' => 'Elias Vance',
+            'background' => "48-year-old visionary managing partner of Vance & Thorne Architectural. Found dead in his 40th-floor corner office at 6:00 AM. The official cause of death was ruled a suicide by hanging, but circumstances surrounding the bolted door and the impending hostile takeover suggest foul play.",
+            'img_url' => '/assets/victims/elias-vance.png',
+            'is_initial' => true,
+        ]);
+
+        Victim::create([
+            'case_id' => $case->id,
+            'name' => 'Julian Carver',
+            'background' => "Former Chief Financial Officer at Vance & Thorne. Perished in a suspicious hit-and-run accident three weeks prior to Elias Vance's death. Carver was the only board member vocally opposing Marcus Thorne's restructuring plans.",
+            'img_url' => '/assets/victims/julian-carver.png',
+            'is_initial' => false,
+        ]);
+
+        // 1.5 Create the Suspects Roster
+        Suspect::create([
+            'case_id' => $case->id,
+            'name' => 'Marcus Thorne',
+            'background' => 'Co-founder of Vance & Thorne Architectural. Currently orchestrating a hostile takeover of the firm to oust Vance. Alibi: Photographed at the Mayor\'s Charity Gala at the Grand Hotel from 8:00 PM to 3:00 AM.',
+            'is_initial' => true,
+            'is_guilty' => true, 
+            'img_url' => '/assets/placeholder-mugshot.jpg',
+        ]);
+
+        Suspect::create([
+            'case_id' => $case->id,
+            'name' => 'Anton Varga (Night Maintenance)',
+            'background' => 'Employed as a janitor by a shell company recently acquired by Thorne. Clocked into the 40th floor at 11:30 PM on the night of the murder. Has a prior military background specializing in infiltration.',
+            'is_initial' => true,
+            'is_guilty' => true, 
+            'img_url' => '/assets/placeholder-mugshot.jpg',
+        ]);
+
+        Suspect::create([
+            'case_id' => $case->id,
+            'name' => 'Detective Ray Miller',
+            'background' => 'First responder and lead precinct detective on the scene. Eagerly ruled the death a suicide within an hour of discovery. Internal Affairs suspects he may be receiving kickbacks from corporate entities.',
+            'is_initial' => true,
+            'is_guilty' => false, 
+            'img_url' => '/assets/placeholder-mugshot.jpg',
+        ]);
+
+        Suspect::create([
+            'case_id' => $case->id,
+            'name' => 'Sarah Jenkins',
+            'background' => 'Chief Legal Counsel for Vance & Thorne. She was helping Elias build a defense against the hostile takeover and had access to his secure communications regarding the Cayman Islands discrepancy.',
+            'is_initial' => true,
+            'is_guilty' => false,
+            'img_url' => '/assets/placeholder-mugshot.jpg',
         ]);
 
         // 2. Create the Non-Linear Phases (Levels) - Now with 3 Initial Phases
@@ -4745,6 +5527,8 @@ use App\Http\Controllers\Admin\AdminCaseController;
 use App\Http\Controllers\Admin\AdminLevelController;
 use App\Http\Controllers\Admin\AdminEvidenceController;
 use App\Http\Controllers\Admin\AdminQuestionController;
+use App\Http\Controllers\Admin\AdminSuspectController;
+use App\Http\Controllers\SuspectVerdictController;
 use App\Http\Middleware\IsAdmin; 
 
 // Public Authentication Routes
@@ -4768,6 +5552,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rooms/{room}/questions/{question}/vote', [VoteController::class, 'store']);
     Route::post('/rooms/{room}/submit', [AssessmentController::class, 'store']);
     Route::post('/rooms/{room}/levels/{level}/start', [GameRoomController::class, 'startLevel']);
+    Route::post('/rooms/{room}/suspects/submit', [SuspectVerdictController::class, 'store']);
 
 
     Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
@@ -4777,6 +5562,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/levels', [AdminLevelController::class, 'store']);
     Route::post('/evidences', [AdminEvidenceController::class, 'store']);
     Route::post('/questions', [AdminQuestionController::class, 'store']);
+    Route::post('/suspects', [AdminSuspectController::class, 'store']);
     });
 });
 

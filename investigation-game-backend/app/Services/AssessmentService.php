@@ -10,6 +10,7 @@ use App\Support\Result;
 use App\Events\LevelTransitioned;
 use App\Events\EvidenceDiscovered;
 use App\Enums\RoomStatus;
+use App\Enums\CaseUserStatus;
 
 class AssessmentService
 {
@@ -44,13 +45,17 @@ class AssessmentService
                     $room->refresh();
 
                     if ($room->strikes >= $maxStrikes) {
-                        $room->update(['status' => \App\Enums\RoomStatus::Failed]);
-                        $this->finalizeCaseForParticipants($room, 'failed');
-                        \App\Events\LevelTransitioned::dispatch($room);
+                        $totalGuilty = \App\Models\Suspect::where('case_id', $room->case_id)->where('is_guilty', true)->count();
+                        $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
+
+                        $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
+                        $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
+                        \App\Events\LevelTransitioned::dispatch($room, 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.', $stats);
 
                         return Result::success([
                             'status' => 'failed_final', 
-                            'message' => 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.'
+                            'message' => 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.',
+                            'stats' => $stats
                         ]);
                     }
 
@@ -63,9 +68,9 @@ class AssessmentService
                         ->delete();
 
                     // Return standard failure, embedding the hint directly into the message
-                    return Result::success([
-                        'status' => 'failed', 
-                        'message' => "The logic on a critical verdict is flawed. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: {$hint}"
+                    return \App\Support\Result::success([
+                        'status' => 'success', 
+                        'message' => $responseMessage,  
                     ]);
                 }
             }
@@ -75,9 +80,6 @@ class AssessmentService
             $newlyUnlockedLevels = [];
             $newlyUnlockedSuspects = [];
             $newlyUnlockedVictims = [];
-
-            foreach ($consensus as $questionId => $chosenId) {
-                $choice = Choice::find($chosenId);
 
             foreach ($consensus as $questionId => $chosenId) {
                 $choice = Choice::find($chosenId);
@@ -147,118 +149,237 @@ class AssessmentService
                 $responseMessage = 'Verdict accepted. Return to the roadmap to select the next phase.';
             }
 
-            LevelTransitioned::dispatch($room);
+            LevelTransitioned::dispatch($room, $responseMessage);
             
             return Result::success([
                 'status' => 'success', 
                 'message' => $responseMessage,
                 'unlocked_evidence' => $newlyUnlockedEvidences,
-                'unlocked_levels' => $newlyUnlockedLevels 
+                'unlocked_levels' => $newlyUnlockedLevels,
+                'unlocked_suspects' => $newlyUnlockedSuspects,
+                'unlocked_victims' => $newlyUnlockedVictims
             ]);
            }
-       });
+       );
     }
 
     /**
      * Evaluate the final suspect indictment submitted by the team.
      */
-    public function evaluateFinalVerdict(GameRoom $room, array $submittedSuspectIds): Result
+    public function evaluateFinalVerdict(GameRoom $room, array $submittedSuspectIds): \App\Support\Result
     {
-        return DB::transaction(function () use ($room, $submittedSuspectIds) {
+        return \Illuminate\Support\Facades\DB::transaction(function () use ($room, $submittedSuspectIds) {
             $case = $room->gameCase;
 
+            // 1. STATUS GUARD
+            if ($room->status !== \App\Enums\RoomStatus::Active) {
+                return \App\Support\Result::failure("This investigation has already been concluded.");
+            }
+
+            // --- 2. THE PROOF CHECK (THE GATEKEEPER) ---
+            $vitalEvidenceIds = \App\Models\Evidence::where('case_id', $case->id)
+                ->where('is_vital_for_conviction', true)->pluck('id')->toArray();
+            
+            $unlockedEvidenceIds = $room->unlockedEvidences()->pluck('evidences.id')->toArray();
+            $initialEvidenceIds = \App\Models\Evidence::where('case_id', $case->id)->where('is_initial', true)->pluck('id')->toArray();
+            $allPossessedEvidence = array_unique(array_merge($unlockedEvidenceIds, $initialEvidenceIds));
+
+            $missingVital = array_diff($vitalEvidenceIds, $allPossessedEvidence);
+            $totalGuiltyCount = \App\Models\Suspect::where('case_id', $case->id)->where('is_guilty', true)->count();
+
+            if (!empty($missingVital)) {
+                $stats = $this->generateFinalStats($room, 0, 0, $totalGuiltyCount, 0);
+                $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedNoProof->value, 0);
+                
+                $message = 'INSTANT FAILURE: The DA threw out the case due to lack of definitive proof. You failed to uncover vital evidence.';
+                \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+
+                return \App\Support\Result::success([
+                    'status' => 'failed_final',
+                    'message' => $message,
+                    'stats' => $stats
+                ]);
+            }
+
+            // --- 3. THE INDICTMENT CHECK (THE VERDICT) ---
             $trueGuiltyIds = \App\Models\Suspect::where('case_id', $case->id)
                 ->where('is_guilty', true)
                 ->pluck('id')
                 ->toArray();
 
-            sort($submittedSuspectIds);
-            sort($trueGuiltyIds);
+            $innocentsSubmitted = array_diff($submittedSuspectIds, $trueGuiltyIds);
+            $missedGuilty = array_diff($trueGuiltyIds, $submittedSuspectIds);
+            $correctGuesses = array_intersect($submittedSuspectIds, $trueGuiltyIds);
 
-            if ($submittedSuspectIds === $trueGuiltyIds) {
-                // VERDICT CORRECT
-                $room->update(['status' => \App\Enums\RoomStatus::Solved]);
-                $this->finalizeCaseForParticipants($room, 'solved');
+            // Generate the dynamic message for accused innocents to append later
+            $innocentMessage = "";
+            if (count($innocentsSubmitted) > 0) {
+                $innocentNames = \App\Models\Suspect::whereIn('id', $innocentsSubmitted)->pluck('name')->toArray();
+                $verb = count($innocentNames) > 1 ? "were" : "was";
+                $innocentMessage = " " . implode(', ', $innocentNames) . " {$verb} found innocent.";
+            }
+
+            // SCENARIO A: Perfect Win (Got everyone, no innocents)
+            if (count($missedGuilty) === 0 && count($innocentsSubmitted) === 0) {
+                $stats = $this->generateFinalStats($room, $case->XP_on_solve, count($correctGuesses), $totalGuiltyCount, 0);
+                $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
                 
-                \App\Events\LevelTransitioned::dispatch($room);
+                $message = 'PERFECT WIN: You successfully identified all perpetrators with irrefutable proof. Case closed.';
+                \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
 
-                return Result::success([
+                return \App\Support\Result::success([
                     'status' => 'success',
-                    'message' => 'Congratulations. You have successfully identified the perpetrators and closed the case.',
-                    'room' => $room
+                    'message' => $message,
+                    'room' => $room,
+                    'stats' => $stats
+                ]);
+            } 
+            
+            // SCENARIO B: Partial Win (Got all guilty, but included innocents)
+            if (count($missedGuilty) === 0 && count($innocentsSubmitted) > 0) {
+                $xpPayload = (int) floor($case->XP_on_solve / 2);
+                $stats = $this->generateFinalStats($room, $xpPayload, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
+                
+                $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPartial->value, $xpPayload);
+                
+                $message = 'PARTIAL WIN: You successfully caught all perpetrators, but collateral damage was done.' . $innocentMessage;
+                \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+
+                return \App\Support\Result::success([
+                    'status' => 'success',
+                    'message' => $message,
+                    'room' => $room,
+                    'stats' => $stats
+                ]);
+            }
+
+            // SCENARIO C: Failure States (Missed one or more guilty suspects)
+            $initialSuspectIds = \App\Models\Suspect::where('case_id', $case->id)->where('is_initial', true)->pluck('id')->toArray();
+            $unlockedSuspectIds = $room->unlockedSuspects()->pluck('suspects.id')->toArray();
+            $possessedSuspectIds = array_unique(array_merge($initialSuspectIds, $unlockedSuspectIds));
+
+            $unpossessedMissedGuilty = array_diff($missedGuilty, $possessedSuspectIds);
+
+            if (count($unpossessedMissedGuilty) > 0) {
+                // FAILURE 1: They never unlocked the required suspects in the campaign
+                $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
+                $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedIncomplete->value, 0);
+                
+                $message = 'INSTANT FAILURE: The true masterminds were never even on your radar. The remaining guilty people have escaped.' . $innocentMessage;
+                \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+
+                return \App\Support\Result::success([
+                    'status' => 'failed_final',
+                    'message' => $message,
+                    'stats' => $stats
                 ]);
             } else {
-                // VERDICT INCORRECT
+                // FAILURE 2: They had the suspects on their board, but failed to accuse them (Strike)
                 $room->increment('strikes');
                 $room->refresh();
                 $maxStrikes = $case->max_strikes;
 
                 if ($room->strikes >= $maxStrikes) {
-                    $room->update(['status' => \App\Enums\RoomStatus::Failed]);
-                    $this->finalizeCaseForParticipants($room, 'failed');
-                    \App\Events\LevelTransitioned::dispatch($room);
+                    $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
+                    $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
+                    $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedStrikes->value, 0);
+                    
+                    $message = 'DEPARTMENT THRESHOLD EXCEEDED. You failed to indict the correct suspects. The DA has pulled your mandate.' . $innocentMessage;
+                    \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
 
-                    return Result::success([
+                    return \App\Support\Result::success([
                         'status' => 'failed_final',
-                        'message' => 'DEPARTMENT THRESHOLD EXCEEDED. You indicted the wrong suspects. The DA has pulled your mandate. The true conspirators walk free.'
+                        'message' => $message,
+                        'stats' => $stats
                     ]);
                 }
 
-                \App\Events\LevelTransitioned::dispatch($room);
+                $message = "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: There are still guilty people on your board that you haven't accused." . $innocentMessage;
                 
-                return Result::success([
+                // We pass null for stats here because the room is still active
+                \App\Events\LevelTransitioned::dispatch($room, $message, null);
+                
+                return \App\Support\Result::success([
                     'status' => 'failed',
-                    'message' => "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: Your grasp of the conspiracy is deeply flawed. Look closer at the testimonies and physical logs—you have either indicted an innocent pawn or missed a key architect."
+                    'message' => $message
                 ]);
             }
         });
     }
 
-    /**
+    /*
      * Populate the case_user history and distribute XP dynamically.
-     * (Currently only triggered by the 'failed' state until your custom flow triggers 'solved').
      */
-    private function finalizeCaseForParticipants(GameRoom $room, string $finalStatus): void
+    private function finalizeCaseForParticipants(GameRoom $room, string $finalStatus, int $xpGained): void
     {
         $userIds = $room->users()->pluck('user_id');
         $case = $room->gameCase;
 
         foreach ($userIds as $userId) {
-            $existingRecord = DB::table('case_user')
+            $existingRecord = \Illuminate\Support\Facades\DB::table('case_user')
                 ->where('user_id', $userId)
                 ->where('case_id', $case->id)
                 ->first();
 
             $previousStatus = $existingRecord->status ?? null;
 
-            // 1. Calculate XP Payload (If manually triggered later)
-            if ($finalStatus === 'solved') {
-                $xpGained = 0;
-                
-                if ($previousStatus === 'solved') {
-                    $xpGained = 0; 
-                } elseif ($previousStatus === 'failed') {
-                    $xpGained = (int) floor($case->XP_on_solve / 2); 
-                } else {
-                    $xpGained = $case->XP_on_solve; 
-                }
-
-                if ($xpGained > 0) {
-                    User::where('id', $userId)->increment('XP', $xpGained);
-                }
+            // 1. Distribute XP
+            // Prevent XP farming: Only award XP if they haven't already achieved a perfect solve.
+            if ($xpGained > 0 && $previousStatus !== 'solved_perfect') {
+                \App\Models\User::where('id', $userId)->increment('XP', $xpGained);
             }
 
             // 2. Preserve or Update State
-            if ($previousStatus === 'solved') {
-                DB::table('case_user')
+            // If they already have a perfect solve on record, do not downgrade their status to a partial win or failure on replay.
+            if ($previousStatus === 'solved_perfect') {
+                \Illuminate\Support\Facades\DB::table('case_user')
                     ->where('id', $existingRecord->id)
                     ->update(['completed_at' => now()]);
             } else {
-                DB::table('case_user')->updateOrInsert(
+                // Otherwise, record their new outcome (solved_perfect, solved_partial, failed_no_proof, etc.)
+                \Illuminate\Support\Facades\DB::table('case_user')->updateOrInsert(
                     ['user_id' => $userId, 'case_id' => $case->id],
                     ['status' => $finalStatus, 'completed_at' => now()]
                 );
             }
         }
+    }
+
+    private function generateFinalStats(GameRoom $room, int $xpGained, int $caught, int $total, int $innocents): array
+    {
+        $case = $room->gameCase;
+        
+        // Use Carbon's native DateInterval to guarantee clean integers
+        $diff = $room->created_at->diff(now());
+        
+        // Cascade downwards, appending the next smallest unit if it is greater than zero
+        if ($diff->y > 0) {
+            $timeTaken = "{$diff->y} years" . ($diff->m > 0 ? " {$diff->m} months" : "");
+        } elseif ($diff->m > 0) {
+            $timeTaken = "{$diff->m} months" . ($diff->d > 0 ? " {$diff->d} days" : "");
+        } elseif ($diff->d >= 7) {
+            $weeks = (int) floor($diff->d / 7);
+            $days = $diff->d % 7;
+            $timeTaken = "{$weeks} weeks" . ($days > 0 ? " {$days} days" : "");
+        } elseif ($diff->d > 0) {
+            $timeTaken = "{$diff->d} days" . ($diff->h > 0 ? " {$diff->h} hours" : "");
+        } elseif ($diff->h > 0) {
+            $timeTaken = "{$diff->h} hours" . ($diff->i > 0 ? " {$diff->i} minutes" : "");
+        } else {
+            $timeTaken = "Less than a minute";
+        }
+
+        return [
+            'time_taken' => $timeTaken,
+            'xp_gained' => $xpGained,
+            'max_xp' => $case->XP_on_solve,
+            'suspects_caught' => $caught,
+            'total_guilty' => $total,
+            'innocents_accused' => $innocents,
+        ];
     }
 }

@@ -440,10 +440,18 @@
 }
 
 /* --- Tactical Toast Notification --- */
-.system-toast-notification {
+.toast-container {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  z-index: 9999;
+  pointer-events: none; /* Lets clicks pass through the gaps */
+}
+
+.system-toast-notification {
   background: rgba(15, 15, 20, 0.95);
   border: 1px solid var(--accent-amber);
   border-left: 4px solid var(--accent-amber);
@@ -453,7 +461,7 @@
   display: flex;
   align-items: center;
   gap: 1rem;
-  z-index: 9999;
+  pointer-events: auto; /* Restores clicks for the notification itself */
   animation: slide-in-toast 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
@@ -481,6 +489,13 @@
   font-size: 0.9rem;
   color: var(--text-primary);
   margin: 0;
+}
+
+.toast-svg-graphic {
+  width: 28px;
+  height: 28px;
+  display: block;
+  filter: brightness(1.2) drop-shadow(0 0 6px currentColor);
 }
 
 @keyframes slide-in-toast {

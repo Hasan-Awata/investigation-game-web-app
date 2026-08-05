@@ -308,36 +308,6 @@
 .audio-visualizer-mock { height: 40px; width: 100%; background: repeating-linear-gradient(90deg, var(--accent-cyan), var(--accent-cyan) 2px, transparent 2px, transparent 6px); opacity: 0.3; }
 .evidence-audio-player { width: 100%; outline: none; }
 
-/* --- UNREAD EVIDENCE NOTIFICATION --- */
-.unread-indicator {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 16px;
-  height: 16px;
-  background-color: rgba(112, 239, 112, 0.8);
-  border-radius: 50%;
-  border: 2px solid #1a1a1a;
-  box-shadow: 0 0 10px rgba(112, 239, 112, 0.8);
-  z-index: 20;
-  pointer-events: none;
-  animation: radar-pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes radar-pulse {
-  0% { 
-    transform: scale(0.95); 
-    box-shadow: 0 0 0 0 rgba(112, 239, 112, 0.8); 
-  }
-  70% { 
-    transform: scale(1); 
-    box-shadow: 0 0 0 8px rgba(163, 50, 50, 0); 
-  }
-  100% { 
-    transform: scale(0.95); 
-    box-shadow: 0 0 0 0 rgba(163, 50, 50, 0); 
-  }
-}
 
 @media (max-width: 768px) {
   .acrylic-workspace {

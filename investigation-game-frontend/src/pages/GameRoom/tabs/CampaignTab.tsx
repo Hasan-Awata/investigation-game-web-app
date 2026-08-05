@@ -19,7 +19,7 @@ export default function CampaignTab() {
     isSubmitting,
     isInitiating,
     feedback,
-    toastMessage, 
+    toasts, 
     handleSelectChoice,
     handleSubmitTheory,
     initiatePhase,
@@ -79,16 +79,20 @@ export default function CampaignTab() {
         </div>
       )}
 
-      {/* --- TACTICAL TOAST NOTIFICATION --- */}
-      {toastMessage && (
-        <div className="system-toast-notification">
-          <span className="toast-icon pulse-icon">📄</span>
-          <div className="toast-text-block">
-            <span className="toast-header">INTEL ACQUIRED</span>
-            <p className="toast-message">{toastMessage}</p>
+      {/* --- TACTICAL TOAST NOTIFICATIONS --- */}
+      <div className="toast-container">
+        {toasts.map((toast) => (
+          <div key={toast.id} className="system-toast-notification">
+            <div className="toast-icon pulse-icon">
+              <img src={toast.icon} alt={toast.type} className="toast-svg-graphic" />
+            </div>
+            <div className="toast-text-block">
+              <span className="toast-header">{toast.title}</span>
+              <p className="toast-message">{toast.message}</p>
+            </div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
       {/* --- NON-LINEAR ROADMAP --- */}
       <div className="roadmap-timeline">

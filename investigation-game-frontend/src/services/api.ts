@@ -138,7 +138,14 @@ export const lockVote = async (roomId: number, questionId: number, choiceId: num
   }
 };
 
-export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string; unlocked_evidence?: number[]; unlocked_levels?: number[] }>> => {  
+export const submitAssessment = async (roomId: number): Promise<Result<{ 
+  status: string; 
+  message: string; 
+  unlocked_evidence?: number[]; 
+  unlocked_levels?: number[];
+  unlocked_suspects?: number[];
+  unlocked_victims?: number[]; 
+}>> => {  
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/submit`, {
       method: 'POST',
@@ -183,7 +190,10 @@ export const initiatePhase = async (roomId: number, levelId: number): Promise<Re
   }
 };
 
-export const submitSuspectVerdict = async (roomId: number, guiltySuspectIds: number[]): Promise<Result<{ status: string; message: string; room?: GameRoom }>> => {  
+export const submitSuspectVerdict = async (
+  roomId: number, 
+  guiltySuspectIds: number[]
+): Promise<Result<{ status: string; message: string; room?: GameRoom; stats?: any }>> => {  
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/suspects/submit`, {
       method: 'POST',
@@ -192,7 +202,6 @@ export const submitSuspectVerdict = async (roomId: number, guiltySuspectIds: num
         'Accept': 'application/json',
         'Authorization': `Bearer ${getToken()}`
       },
-      // Wrap array in guilty_suspect_ids object
       body: JSON.stringify({ guilty_suspect_ids: guiltySuspectIds })
     });
     

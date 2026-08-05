@@ -14,7 +14,9 @@ class LevelTransitioned implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(
-        public readonly GameRoom $room
+        public readonly GameRoom $room,
+        public readonly ?string $message = null,
+        public readonly ?array $stats = null
     ) {}
 
     /**
@@ -40,6 +42,8 @@ class LevelTransitioned implements ShouldBroadcastNow
         return [
             'room' => $this->room,
             'status' => $this->room->status->value, 
+            'message' => $this->message, 
+            'stats' => $this->stats, 
         ];
     }
 }

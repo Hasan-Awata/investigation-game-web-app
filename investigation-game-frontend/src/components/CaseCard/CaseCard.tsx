@@ -1,4 +1,5 @@
 import type { GameCase } from '../../types';
+import { CaseUserStatus } from '../../types';
 import './CaseCard.css';
 
 interface CaseCardProps {
@@ -7,8 +8,12 @@ interface CaseCardProps {
 }
 
 export default function CaseCard({ gameCase, imageUrl }: CaseCardProps) {
-  const isSolved = gameCase.user_status === 'solved';
-  const isFailed = gameCase.user_status === 'failed';
+  const isSolved = gameCase.user_status === CaseUserStatus.SolvedPerfect || 
+                   gameCase.user_status === CaseUserStatus.SolvedPartial;
+                   
+  const isFailed = gameCase.user_status === CaseUserStatus.FailedNoProof || 
+                   gameCase.user_status === CaseUserStatus.FailedIncomplete || 
+                   gameCase.user_status === CaseUserStatus.FailedStrikes;
 
   return (
     <div className={`case-card ${isSolved || isFailed ? 'is-solved' : ''}`}>

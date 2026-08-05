@@ -13,15 +13,10 @@ class AssessmentController extends Controller
         private readonly AssessmentService $assessmentService
     ) {}
 
-    /**
-     * Submit the room's locked-in votes for the current level to be assessed.
-     */
     public function store(Request $request, GameRoom $room): JsonResponse
     {
-        // Execute the domain logic to evaluate the team's consensus
         $result = $this->assessmentService->evaluateSubmission($room);
 
-        // If validation fails (e.g., not all questions have votes)
         if ($result->isFailure()) {
             return response()->json([
                 'error' => 'Assessment Failed',
@@ -29,11 +24,13 @@ class AssessmentController extends Controller
             ], 422);
         }
 
-        // If the assessment ran successfully, it returns a status and a narrative message
         return response()->json([
             'status' => $result->value['status'],    
             'message' => $result->value['message'], 
             'unlocked_evidence' => $result->value['unlocked_evidence'] ?? [], 
+            'unlocked_levels' => $result->value['unlocked_levels'] ?? [],
+            'unlocked_suspects' => $result->value['unlocked_suspects'] ?? [],
+            'unlocked_victims' => $result->value['unlocked_victims'] ?? [],  
             'room' => $room->load('currentLevel'),  
         ], 200);
     }

@@ -3,10 +3,18 @@ import { useMutation } from '@tanstack/react-query';
 import type { Choice, GameRoom } from '@/types';
 import { lockVote, submitAssessment, initiatePhase } from '@/services/api';
 
+export interface ToastNotification {
+  id: string;
+  type: 'evidence' | 'level' | 'suspect' | 'victim';
+  title: string;
+  message: string;
+  icon: string;
+}
+
 export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => void) {
   const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
   const roomId = room.id;
 
@@ -65,11 +73,42 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
           setLocalVotes({}); 
           refreshRoomData(); 
           
-          // Check for either evidence OR level unlocks
-          if ((data.unlocked_evidence && data.unlocked_evidence.length > 0) || (data.unlocked_levels && data.unlocked_levels.length > 0)) {
+          if (data.unlocked_evidence?.length || data.unlocked_levels?.length || data.unlocked_suspects?.length || data.unlocked_victims?.length) {
             setTimeout(() => {
-              setToastMessage('SYSTEM ALERT: New narrative pathways or evidence recovered.');
-              setTimeout(() => setToastMessage(null), 4500);
+              const newToasts: ToastNotification[] = [];
+              
+              if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
+                newToasts.push({ 
+                  id: crypto.randomUUID(), type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${data.unlocked_evidence.length} new piece(s) of physical evidence secured.`, 
+                  icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
+                });
+              }
+              if (data.unlocked_levels && data.unlocked_levels.length > 0) {
+                newToasts.push({ 
+                  id: crypto.randomUUID(), type: 'level', title: 'PHASE UNLOCKED', message: 'A new narrative path is now available.', 
+                  icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
+                });
+              }
+              if (data.unlocked_suspects && data.unlocked_suspects.length > 0) {
+                newToasts.push({ 
+                  id: crypto.randomUUID(), type: 'suspect', title: 'PERSON OF INTEREST', message: 'New suspect added to the board.', 
+                  icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232' 
+                });
+              }
+              if (data.unlocked_victims && data.unlocked_victims.length > 0) {
+                newToasts.push({ 
+                  id: crypto.randomUUID(), type: 'victim', title: 'CASUALTY IDENTIFIED', message: 'New victim details have been verified.', 
+                  icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91' 
+                });
+              }
+
+              // Append all generated toasts at once
+              setToasts((prev) => [...prev, ...newToasts]);
+
+              // Automatically sweep them off the screen after 5 seconds
+              setTimeout(() => {
+                setToasts((prev) => prev.filter((t) => !newToasts.some((nt) => nt.id === t.id)));
+              }, 5000);
             }, 500);
           }
         }, 2000);
@@ -118,7 +157,7 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     isSubmitting: submitTheoryMutation.isPending || voteMutation.isPending,
     isInitiating: initiatePhaseMutation.isPending,
     feedback,
-    toastMessage, 
+    toasts, 
     handleSelectChoice,
     handleSubmitTheory,
     initiatePhase: (levelId: number) => initiatePhaseMutation.mutate(levelId),

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameRoom } from '../../hooks/useGameRoom';
 import { useViewedItems } from '../../hooks/useViewedItems'; 
@@ -25,14 +25,42 @@ export default function GameRoom() {
     refreshRoomData 
   } = useGameRoom(inviteCode);
 
-  // Initialize tracking hooks independently
-  const { viewedItems: viewedEvidences, markItemAsViewed: markEvidenceAsViewed } = useViewedItems(room?.id, 'evidence');
-  const { viewedItems: viewedSuspects, markItemAsViewed: markSuspectAsViewed } = useViewedItems(room?.id, 'suspects');
-  const { viewedItems: viewedVictims, markItemAsViewed: markVictimAsViewed } = useViewedItems(room?.id, 'victims');
+  const { viewedItems: viewedEvidences, markItemAsViewed: markEvidenceAsViewed } = useViewedItems(room?.invite_code, 'evidence');
+  const { viewedItems: viewedSuspects, markItemAsViewed: markSuspectAsViewed } = useViewedItems(room?.invite_code, 'suspects');
+  const { viewedItems: viewedVictims, markItemAsViewed: markVictimAsViewed } = useViewedItems(room?.invite_code, 'victims');
   
   const [activeTab, setActiveTab] = useState<Tab>('details');
+  const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
+  const [finalStats, setFinalStats] = useState<any>(room?.final_stats || null);
 
-  // Compute unread statuses for the red dots
+  // 1. CREATE THE UNIFIED STATE UPDATER
+  const setGameOverData = (message: string, stats?: any) => {
+    setResolutionMessage(message);
+    if (stats) setFinalStats(stats);
+  };
+
+  // 2. UPDATE THE WEBSOCKET TO USE THE NEW FUNCTION
+  useEffect(() => {
+    if (!room || !window.Echo) return;
+    const channel = window.Echo.private(`room.${room.id}`);
+    
+    channel.listen('LevelTransitioned', (e: any) => {
+      if (e.message) {
+        if (e.status === 'active') {
+           window.alert(`🚨 DEPARTMENT UPDATE:\n\n${e.message}`);
+        } else {
+           // If the game is actually over, update the overlay data
+           setGameOverData(e.message, e.stats);
+        }
+      }
+      refreshRoomData();
+    });
+
+    return () => {
+      channel.stopListening('LevelTransitioned');
+    };
+  }, [room?.id, refreshRoomData]);
+
   const hasUnreadEvidence = accumulatedEvidences.some(evidence => !viewedEvidences.has(evidence.id));
   const hasUnreadSuspects = accumulatedSuspects.some(suspect => !viewedSuspects.has(suspect.id));
   const hasUnreadVictims = accumulatedVictims?.some(victim => !viewedVictims.has(victim.id));
@@ -53,31 +81,56 @@ export default function GameRoom() {
       markSuspectAsViewed={markSuspectAsViewed}
       viewedVictims={viewedVictims}
       markVictimAsViewed={markVictimAsViewed}
+      setGameOverData={setGameOverData} 
     >
       <div className="game-room-layout">
         
-        {/* The Resolution Overlay */}
         {(room.status === 'solved' || room.status === 'failed') && (
           <div className="victory-overlay">
-            <div className="victory-content">
+            <div className="victory-content" style={{ maxWidth: '800px', padding: '2rem' }}>
               
               {room.status === 'solved' ? (
                 <>
                   <div className="forensic-icon pulse" style={{ color: 'var(--accent-cyan)' }}>✧</div>
                   <h1 className="victory-title" style={{ color: 'var(--accent-cyan)' }}>CASE CLOSED</h1>
-                  <p className="victory-subtitle">The truth is uncovered. Excellent work.</p>
+                  <p className="victory-subtitle">{resolutionMessage || 'The truth is uncovered. Excellent work.'}</p>
                 </>
               ) : (
                 <>
                   <div className="forensic-icon pulse" style={{ color: 'var(--accent-crimson)' }}>✕</div>
                   <h1 className="victory-title" style={{ color: 'var(--accent-crimson)', textShadow: '0 0 30px rgba(163,50,50,0.4)' }}>
-                    WRONG CONVICTION
+                    MANDATE REVOKED
                   </h1>
-                  <p className="victory-subtitle">The evidence was misread. The guilty walk free, and the innocent pay the price.</p>
+                  <p className="victory-subtitle" style={{ color: 'var(--accent-crimson)' }}>
+                    {resolutionMessage || 'The evidence was misread. The guilty walk free, and the innocent pay the price.'}
+                  </p>
                 </>
               )}
 
-              <button className="btn-primary" onClick={() => navigate('/')}>
+              {finalStats && (
+                <div className="victory-stats-grid">
+                  <div className="stat-box">
+                    <span className="stat-label">Time Elapsed</span>
+                    <span className="stat-value">{finalStats.time_taken}</span>
+                  </div>
+                  <div className="stat-box">
+                    <span className="stat-label">XP Granted</span>
+                    <span className="stat-value highlight">{finalStats.xp_gained} <span className="stat-sub">/ {finalStats.max_xp}</span></span>
+                  </div>
+                  <div className="stat-box">
+                    <span className="stat-label">Suspects Caught</span>
+                    <span className="stat-value">{finalStats.suspects_caught} <span className="stat-sub">/ {finalStats.total_guilty}</span></span>
+                  </div>
+                  <div className="stat-box">
+                    <span className="stat-label">Innocents Accused</span>
+                    <span className={`stat-value ${finalStats.innocents_accused > 0 ? 'error' : 'success'}`}>
+                      {finalStats.innocents_accused}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <button className="btn-primary" onClick={() => navigate('/')} style={{ marginTop: '1rem', width: '100%' }}>
                 Return to Headquarters
               </button>
             </div>

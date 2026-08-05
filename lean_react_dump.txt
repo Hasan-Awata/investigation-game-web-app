@@ -653,12 +653,168 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\components\C
   margin-top: 1rem;
 }
 
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(var(--bg-dark-rgb), 0.85);
+  backdrop-filter: blur(6px); 
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  position: relative;
+  width: 95%;
+  max-width: 900px;
+  border-radius: var(--radius-xl);
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.close-btn {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.close-btn:hover { color: var(--accent-cyan); }
+
+.modal-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  /* padding-bottom: 1rem; */
+  /* padding-top: 1.5rem; */
+  margin-top: 2rem;
+}
+
+.modal-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 2.5rem;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.modal-author {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+}
+
+.modal-dossier-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 2rem;
+  max-height: 50vh;
+}
+
+.modal-story-container {
+  overflow-y: auto;
+  padding-right: 1rem;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.modal-story-container::-webkit-scrollbar { width: 6px; }
+.modal-story-container::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
+.modal-story-container::-webkit-scrollbar-thumb { background: var(--accent-cyan); border-radius: var(--radius-sm); }
+
+.dossier-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.dossier-tag-pill {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  padding: 0.25rem 0.75rem;
+  border-radius: 50px;
+  font-family: var(--font-primary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.modal-metadata-sidebar {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.meta-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.meta-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.meta-value {
+  font-family: var(--font-primary);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+}
+
+.advisory-badge {
+  background: var(--text-primary);
+  color: var(--bg-dark);
+  padding: 0.1rem 0.5rem;
+  border-radius: 2px;
+  width: fit-content;
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .modal-dossier-layout {
+    grid-template-columns: 1fr;
+    max-height: 65vh;
+    overflow-y: auto;
+  }
+  
+  .modal-story-container {
+    overflow-y: visible;
+  }
+}
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\components\CaseBriefingModal\CaseBriefingModal.tsx
 ----------------------------------------
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { GameCase } from '../../types';
+import { CaseUserStatus } from '../../types';
 import { createRoom } from '../../services/api';
 import './CaseBriefingModal.css';
 
@@ -675,9 +831,7 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
   const handleStartSession = async () => {
     setIsLoading(true);
     setError(null);
-    
     const result = await createRoom(gameCase.id);
-    
     if (result.isSuccess) {
       navigate(`/room/${result.value.invite_code}`);
     } else {
@@ -687,48 +841,118 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
   };
 
   const userStatus = gameCase.user_status;
-  const isReplay = userStatus === 'solved' || userStatus === 'failed';
+  
+  const isSolved = userStatus === CaseUserStatus.SolvedPerfect || userStatus === CaseUserStatus.SolvedPartial;
+  const isFailed = userStatus === CaseUserStatus.FailedNoProof || userStatus === CaseUserStatus.FailedIncomplete || userStatus === CaseUserStatus.FailedStrikes;
+  const isFinished = isSolved || isFailed;
+  
+  const activeInviteCode = gameCase.active_room_invite_code;
+  
+  const showContinue = !!activeInviteCode;
+
+  let primaryButtonText = 'Start the Case';
+  if (isLoading) {
+    primaryButtonText = 'Encrypting...';
+  } else if (activeInviteCode) {
+    primaryButtonText = 'Restart Case'; 
+  } else if (isFinished) {
+    primaryButtonText = 'Replay Case'; 
+  }
   
   let rewardText = `${gameCase.XP_on_solve} XP`;
   let rewardColor = 'var(--accent-amber)';
   
-  if (userStatus === 'solved') {
-    rewardText = `0 XP (REPLAY)`;
+  if (userStatus === CaseUserStatus.SolvedPerfect) {
+    rewardText = `0 XP (PERFECT REPLAY)`;
     rewardColor = 'var(--text-secondary)';
-  } else if (userStatus === 'failed') {
-    rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} XP (PENALTY)`;
+  } else if (userStatus === CaseUserStatus.SolvedPartial) {
+    rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} XP (PARTIAL REPLAY)`;
+    rewardColor = 'var(--text-secondary)';
+  } else if (isFailed) {
+    rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} XP (PENALTY ALLOWANCE)`;
     rewardColor = 'var(--accent-crimson)';
   }
+
+  const renderStars = (rating: number) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <span key={i} style={{ color: i <= Math.round(rating) ? 'var(--accent-amber)' : 'rgba(255,255,255,0.1)', fontSize: '1.2rem' }}>★</span>
+      );
+    }
+    return stars;
+  };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
-        
         <button className="close-btn" onClick={onClose} disabled={isLoading}>✕</button>
         
         <div className="modal-header">
           <h2 className="modal-title">{gameCase.title}</h2>
-          <div className="modal-badges">
-            <span className="badge">Min XP: {gameCase.min_player_XP}</span>
-            <span className="badge reward" style={{ color: rewardColor, borderColor: rewardColor }}>
-              Reward: {rewardText}
-            </span>
-          </div>
+          <div className="modal-author">Authored by {gameCase.author_name || 'System'}</div>
         </div>
 
-        <div className="modal-story-container">
-          <p className="modal-story-text">{gameCase.story}</p>
+        <div className="modal-dossier-layout">
+          <div className="modal-story-container">
+            <div className="dossier-tags">
+              {gameCase.tags?.map((tag, idx) => (
+                <span key={idx} className="dossier-tag-pill">{tag}</span>
+              ))}
+            </div>
+            <p className="modal-story-text">{gameCase.story}</p>
+          </div>
+
+          <div className="modal-metadata-sidebar">
+            <div className="meta-block">
+              <span className="meta-label">Player Rating</span>
+              <div className="meta-value">{renderStars(gameCase.rating_stars || 0)} <span style={{fontSize: '0.8rem', marginLeft: '0.5rem'}}>({gameCase.rating_stars || 'N/A'})</span></div>
+            </div>
+            
+            <div className="meta-block">
+              <span className="meta-label">Difficulty</span>
+              <div className="meta-value" style={{ color: 'var(--accent-crimson)' }}>{gameCase.difficulty || 'Standard'}</div>
+            </div>
+            
+            <div className="meta-block">
+              <span className="meta-label">Est. Playtime</span>
+              <div className="meta-value">{gameCase.estimated_playtime || 'Unknown'}</div>
+            </div>
+
+            <div className="meta-block">
+              <span className="meta-label">Advisory</span>
+              <div className="meta-value advisory-badge">{gameCase.age_rating || 'Unrated'}</div>
+            </div>
+
+            <div className="meta-block" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+              <span className="meta-label">Access Requirements</span>
+              <div className="modal-badges" style={{ marginTop: '0.5rem', flexDirection: 'column' }}>
+                <span className="badge">Min XP: {gameCase.min_player_XP}</span>
+                <span className="badge reward" style={{ color: rewardColor, borderColor: rewardColor }}>
+                  Reward: {rewardText}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         {error && <div className="terminal-text error" style={{ padding: 0 }}>{error}</div>}
 
         <div className="modal-actions">
           <button className="btn-primary" onClick={handleStartSession} disabled={isLoading}>
-            {isLoading ? 'Encrypting...' : (isReplay ? 'Replay Solo' : 'Start the Case')}
+            {primaryButtonText}
           </button>
-          <button className="btn-secondary" onClick={handleStartSession} disabled={isLoading}>
-            {isReplay ? 'Replay Multiplayer' : 'Multiplayer'}
-          </button>
+          
+          {showContinue && (
+            <button 
+              className="btn-secondary" 
+              onClick={() => navigate(`/room/${activeInviteCode}`)} 
+              disabled={isLoading}
+              style={{ borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
+            >
+              Continue Investigation
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -842,6 +1066,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\components\C
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\components\CaseCard\CaseCard.tsx
 ----------------------------------------
 import type { GameCase } from '../../types';
+import { CaseUserStatus } from '../../types';
 import './CaseCard.css';
 
 interface CaseCardProps {
@@ -850,8 +1075,12 @@ interface CaseCardProps {
 }
 
 export default function CaseCard({ gameCase, imageUrl }: CaseCardProps) {
-  const isSolved = gameCase.user_status === 'solved';
-  const isFailed = gameCase.user_status === 'failed';
+  const isSolved = gameCase.user_status === CaseUserStatus.SolvedPerfect || 
+                   gameCase.user_status === CaseUserStatus.SolvedPartial;
+                   
+  const isFailed = gameCase.user_status === CaseUserStatus.FailedNoProof || 
+                   gameCase.user_status === CaseUserStatus.FailedIncomplete || 
+                   gameCase.user_status === CaseUserStatus.FailedStrikes;
 
   return (
     <div className={`case-card ${isSolved || isFailed ? 'is-solved' : ''}`}>
@@ -889,14 +1118,23 @@ export default function CaseCard({ gameCase, imageUrl }: CaseCardProps) {
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\context\RoomContext.tsx
 ----------------------------------------
 import { createContext, useContext, type ReactNode } from 'react';
-import type { GameRoom, Evidence } from '../types';
+import type { GameRoom, Evidence, Suspect, Victim } from '../types';
 
 interface RoomContextType {
   room: GameRoom;
   accumulatedEvidences: Evidence[];
+  accumulatedSuspects: Suspect[];
+  accumulatedVictims: Victim[];
   refreshRoomData: () => Promise<void>;
-  viewedItems: Set<number>;
-  markItemAsViewed: (id: number) => void;
+  
+  viewedEvidences: Set<number>;
+  markEvidenceAsViewed: (id: number) => void;
+  
+  viewedSuspects: Set<number>;
+  markSuspectAsViewed: (id: number) => void;
+  
+  viewedVictims: Set<number>;
+  markVictimAsViewed: (id: number) => void;
 }
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -905,27 +1143,50 @@ interface RoomProviderProps {
   children: ReactNode;
   room: GameRoom;
   accumulatedEvidences: Evidence[];
+  accumulatedSuspects: Suspect[];
+  accumulatedVictims: Victim[];
   refreshRoomData: () => Promise<void>;
-  viewedItems: Set<number>;
-  markItemAsViewed: (id: number) => void;
+  viewedEvidences: Set<number>;
+  markEvidenceAsViewed: (id: number) => void;
+  viewedSuspects: Set<number>;
+  markSuspectAsViewed: (id: number) => void;
+  viewedVictims: Set<number>;
+  markVictimAsViewed: (id: number) => void;
 }
 
 export function RoomProvider({ 
   children, 
   room, 
   accumulatedEvidences, 
+  accumulatedSuspects,
+  accumulatedVictims,
   refreshRoomData, 
-  viewedItems, 
-  markItemAsViewed 
+  viewedEvidences, 
+  markEvidenceAsViewed,
+  viewedSuspects,
+  markSuspectAsViewed,
+  viewedVictims,
+  markVictimAsViewed
 }: RoomProviderProps) {
   return (
-    <RoomContext.Provider value={{ room, accumulatedEvidences, refreshRoomData, viewedItems, markItemAsViewed }}>
+    <RoomContext.Provider value={{ 
+      room, 
+      accumulatedEvidences, 
+      accumulatedSuspects, 
+      accumulatedVictims,
+      refreshRoomData, 
+      viewedEvidences, 
+      markEvidenceAsViewed,
+      viewedSuspects,
+      markSuspectAsViewed,
+      viewedVictims,
+      markVictimAsViewed
+    }}>
       {children}
     </RoomContext.Provider>
   );
 }
 
-// Custom hook for consuming the context safely
 export function useRoomContext() {
   const context = useContext(RoomContext);
   if (context === undefined) {
@@ -993,7 +1254,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\hooks\useGam
 ----------------------------------------
 import { useQuery } from '@tanstack/react-query';
 import { joinRoom, fetchRoomState } from '@/services/api';
-import type { Evidence } from '@/types';
+import type { Evidence, Suspect, Victim } from '@/types';
 
 // Track BOTH the invite code and the ID to prevent cross-room contamination
 let joinedInviteCode: string | null = null;
@@ -1032,9 +1293,20 @@ export function useGameRoom(inviteCode: string | undefined) {
 
   const caseEvidences = room?.game_case?.evidences || [];
   const unlockedEvidenceIds = new Set(room?.unlocked_evidences?.map(e => e.id) || []);
-
   const accumulatedEvidences: Evidence[] = caseEvidences.filter(
     (evidence) => evidence.is_initial || unlockedEvidenceIds.has(evidence.id)
+  );
+
+  const caseSuspects = room?.game_case?.suspects || [];
+  const unlockedSuspectIds = new Set(room?.unlocked_suspects?.map(s => s.id) || []);
+  const accumulatedSuspects: Suspect[] = caseSuspects.filter(
+    (suspect) => suspect.is_initial || unlockedSuspectIds.has(suspect.id)
+  );
+
+  const caseVictims = room?.game_case?.victims || [];
+  const unlockedVictimIds = new Set(room?.unlocked_victims?.map(v => v.id) || []);
+  const accumulatedVictims: Victim[] = caseVictims.filter(
+    (victim) => victim.is_initial || unlockedVictimIds.has(victim.id)
   );
 
   return { 
@@ -1042,6 +1314,8 @@ export function useGameRoom(inviteCode: string | undefined) {
     isLoading, 
     error: error instanceof Error ? error.message : null, 
     accumulatedEvidences, 
+    accumulatedSuspects, 
+    accumulatedVictims,
     refreshRoomData: async () => { await refetch(); } 
   };
 }
@@ -1183,7 +1457,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\hooks\useVie
 import { useState, useCallback, useEffect } from 'react';
 
 // Define the allowed entities so TypeScript strictly guards your scaling
-type TrackableEntity = 'evidence' | 'suspects' | 'locations';
+type TrackableEntity = 'evidence' | 'suspects' | 'locations' | 'victims';
 
 export function useViewedItems(roomId: number | undefined, entityType: TrackableEntity) {
   // Dynamically generate the storage key namespace
@@ -1379,9 +1653,10 @@ import CaseForm from './forms/CaseForm';
 import LevelForm from './forms/LevelForm';
 import EvidenceForm from './forms/EvidenceForm';
 import QuestionForm from './forms/QuestionForm';
+import SuspectForm from './forms/SuspectForm'; 
 import './AdminDashboard.css';
 
-type AdminTab = 'cases' | 'levels' | 'evidences' | 'questions';
+type AdminTab = 'cases' | 'levels' | 'evidences' | 'suspects' | 'questions';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('cases');
@@ -1389,36 +1664,18 @@ export default function AdminDashboard() {
   return (
     <div className="admin-dashboard">
       <nav className="admin-tabs">
-        <button 
-          className={`admin-tab-btn ${activeTab === 'cases' ? 'active' : ''}`}
-          onClick={() => setActiveTab('cases')}
-        >
-          New Case
-        </button>
-        <button 
-          className={`admin-tab-btn ${activeTab === 'levels' ? 'active' : ''}`}
-          onClick={() => setActiveTab('levels')}
-        >
-          New Level
-        </button>
-        <button 
-          className={`admin-tab-btn ${activeTab === 'evidences' ? 'active' : ''}`}
-          onClick={() => setActiveTab('evidences')}
-        >
-          New Evidence
-        </button>
-        <button 
-          className={`admin-tab-btn ${activeTab === 'questions' ? 'active' : ''}`}
-          onClick={() => setActiveTab('questions')}
-        >
-          New Question
-        </button>
+        <button className={`admin-tab-btn ${activeTab === 'cases' ? 'active' : ''}`} onClick={() => setActiveTab('cases')}>New Case</button>
+        <button className={`admin-tab-btn ${activeTab === 'levels' ? 'active' : ''}`} onClick={() => setActiveTab('levels')}>New Level</button>
+        <button className={`admin-tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => setActiveTab('evidences')}>New Evidence</button>
+        <button className={`admin-tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} onClick={() => setActiveTab('suspects')}>New Suspect</button>
+        <button className={`admin-tab-btn ${activeTab === 'questions' ? 'active' : ''}`} onClick={() => setActiveTab('questions')}>New Question</button>
       </nav>
 
       <div className="admin-tab-content">
         {activeTab === 'cases' && <CaseForm />}
         {activeTab === 'levels' && <LevelForm />}
         {activeTab === 'evidences' && <EvidenceForm />}
+        {activeTab === 'suspects' && <SuspectForm />}
         {activeTab === 'questions' && <QuestionForm />}
       </div>
     </div>
@@ -1441,6 +1698,12 @@ export default function CaseForm() {
   const [maxStrikes, setMaxStrikes] = useState('5'); 
   const [image, setImage] = useState<File | null>(null);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [ratingStars, setRatingStars] = useState('5.0');
+  const [ageRating, setAgeRating] = useState('Mature 17+');
+  const [estimatedPlaytime, setEstimatedPlaytime] = useState('60 Minutes');
+  const [difficulty, setDifficulty] = useState('Standard');
+  const [tags, setTags] = useState('');
+  const [authorName, setAuthorName] = useState('System');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch cases to display them for deletion
@@ -1498,8 +1761,14 @@ export default function CaseForm() {
     formData.append('story', story);
     formData.append('min_player_XP', minPlayerXP);
     formData.append('XP_on_solve', xpOnSolve);
-    if (image) formData.append('image', image);
     formData.append('max_strikes', maxStrikes); 
+    formData.append('rating_stars', ratingStars);
+    formData.append('age_rating', ageRating);
+    formData.append('estimated_playtime', estimatedPlaytime);
+    formData.append('difficulty', difficulty);
+    formData.append('tags', tags);
+    formData.append('author_name', authorName);
+    if (image) formData.append('image', image);
 
     createMutation.mutate(formData);
   };
@@ -1565,7 +1834,37 @@ export default function CaseForm() {
                 />
               </div>
             </div>
+            <div className="admin-form-row">
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Difficulty</label>
+                  <input type="text" className="admin-input" required value={difficulty} onChange={(e) => setDifficulty(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Est. Playtime</label>
+                  <input type="text" className="admin-input" required value={estimatedPlaytime} onChange={(e) => setEstimatedPlaytime(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Content Rating</label>
+                  <input type="text" className="admin-input" required value={ageRating} onChange={(e) => setAgeRating(e.target.value)} />
+                </div>
+              </div>
 
+              <div className="admin-form-row">
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>User Rating (0.0 to 5.0)</label>
+                  <input type="number" step="0.1" max="5" min="0" className="admin-input" required value={ratingStars} onChange={(e) => setRatingStars(e.target.value)} />
+                </div>
+                <div className="form-group" style={{ flex: 1 }}>
+                  <label>Author / Creator</label>
+                  <input type="text" className="admin-input" required value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label>Genre Tags (Comma Separated)</label>
+                <input type="text" className="admin-input" placeholder="Tactical, Puzzle, Espionage" value={tags} onChange={(e) => setTags(e.target.value)} />
+              </div>
+          
           <div className="form-group">
             <label>Cover Image (Optional)</label>
             <input 
@@ -1628,24 +1927,20 @@ import { createAdminEvidence, fetchAdminCases } from '@/services/adminApi';
 import type { EvidenceType } from '@/types';
 
 export default function EvidenceForm() {
-  // 1. Core State
   const [caseId, setCaseId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [paragraph, setParagraph] = useState('');
   const [evidenceType, setEvidenceType] = useState<EvidenceType>('document');
   const [isInitial, setIsInitial] = useState(true);
+  const [isVitalForConviction, setIsVitalForConviction] = useState(false); // Unified naming
   
-  // 2. Media State
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
-  
-  // 3. UI State
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch cases to populate the top-level dropdown
   const { data: cases = [], isLoading: isFetchingCases } = useQuery({
     queryKey: ['adminCases'],
     queryFn: async () => {
@@ -1663,12 +1958,11 @@ export default function EvidenceForm() {
     },
     onSuccess: () => {
       setFeedback({ type: 'success', message: 'Evidence successfully secured in the database.' });
-      
-      // Reset fields (keeping case selection for rapid bulk entry)
       setTitle('');
       setDescription('');
       setParagraph('');
       setIsInitial(true);
+      setIsVitalForConviction(false); // Unified naming
       setImage(null);
       setAudio(null);
       if (imageInputRef.current) imageInputRef.current.value = '';
@@ -1695,13 +1989,10 @@ export default function EvidenceForm() {
     formData.append('description', description);
     formData.append('paragraph', paragraph);
     formData.append('is_initial', isInitial ? '1' : '0');
+    formData.append('is_vital_for_conviction', isVitalForConviction ? '1' : '0'); // Unified naming
     
-    if (evidenceType === 'image' && image) {
-      formData.append('image', image);
-    }
-    if (evidenceType === 'audio' && audio) {
-      formData.append('audio', audio);
-    }
+    if (evidenceType === 'image' && image) formData.append('image', image);
+    if (evidenceType === 'audio' && audio) formData.append('audio', audio);
 
     mutation.mutate(formData);
   };
@@ -1744,7 +2035,6 @@ export default function EvidenceForm() {
       )}
 
       <form onSubmit={handleSubmit} className="admin-form">
-        
         <div className="form-group" style={{ marginBottom: '1rem' }}>
           <label>Target Case</label>
           <select 
@@ -1768,6 +2058,17 @@ export default function EvidenceForm() {
           />
           <label htmlFor="initial-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
             <strong>Initial Evidence:</strong> This item will be available on the board immediately when the case starts. (Uncheck if this is unlocked via player choices later).
+          </label>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(163,50,50,0.1)', border: '1px solid rgba(163,50,50,0.3)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+          <input 
+            type="checkbox" id="vital-toggle"
+            checked={isVitalForConviction} onChange={(e) => setIsVitalForConviction(e.target.checked)} // Unified naming
+            style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-crimson)' }}
+          />
+          <label htmlFor="vital-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', cursor: 'pointer' }}>
+            <strong>Vital Evidence:</strong> This item is strictly required to secure a conviction. The DA will throw out the case if this proof is not unlocked by the team.
           </label>
         </div>
 
@@ -2276,6 +2577,139 @@ export default function QuestionForm() {
 }
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\SuspectForm.tsx
+----------------------------------------
+import { useState, useRef } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { createAdminSuspect, fetchAdminCases } from '@/services/adminApi';
+
+export default function SuspectForm() {
+  const [caseId, setCaseId] = useState('');
+  const [name, setName] = useState('');
+  const [background, setBackground] = useState('');
+  const [isInitial, setIsInitial] = useState(true);
+  const [isGuilty, setIsGuilty] = useState(false); 
+  const [image, setImage] = useState<File | null>(null);
+  
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: cases = [], isLoading: isFetchingCases } = useQuery({
+    queryKey: ['adminCases'],
+    queryFn: async () => {
+      const result = await fetchAdminCases();
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    }
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const result = await createAdminSuspect(formData);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: () => {
+      setFeedback({ type: 'success', message: 'Suspect profile filed successfully.' });
+      setName('');
+      setBackground('');
+      setIsInitial(true);
+      setImage(null);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    },
+    onError: (error: Error) => {
+      setFeedback({ type: 'error', message: error.message });
+    }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFeedback(null);
+
+    const formData = new FormData();
+    formData.append('case_id', caseId);
+    formData.append('name', name);
+    formData.append('background', background);
+    formData.append('is_initial', isInitial ? '1' : '0');
+    if (image) formData.append('image', image);
+
+    mutation.mutate(formData);
+  };
+
+  return (
+    <div className="admin-form-container glass-panel">
+      {feedback && (
+        <div className={`status-message ${feedback.type}`}>
+          {feedback.message}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="admin-form">
+        <div className="form-group" style={{ marginBottom: '1rem' }}>
+          <label>Target Case</label>
+          <select 
+            className="admin-input" required
+            value={caseId} 
+            onChange={(e) => setCaseId(e.target.value)} 
+            disabled={isFetchingCases}
+          >
+            <option value="" disabled>-- Select a Case --</option>
+            {cases.map((c: any) => (
+              <option key={c.id} value={c.id}>{c.title}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(163,50,50,0.1)', border: '1px solid rgba(163,50,50,0.3)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+          <input 
+            type="checkbox" id="suspect-guilty-toggle"
+            checked={isGuilty} onChange={(e) => setIsGuilty(e.target.checked)}
+            style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-crimson)' }}
+          />
+          <label htmlFor="suspect-guilty-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', cursor: 'pointer' }}>
+            <strong>Guilty Verdict:</strong> This individual is one of the actual perpetrators required to solve the case.
+          </label>
+        </div>
+
+        <div className="form-group">
+          <label>Full Name / Alias</label>
+          <input 
+            type="text" className="admin-input" required
+            value={name} onChange={(e) => setName(e.target.value)} 
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Background Intel (Optional)</label>
+          <textarea 
+            className="admin-textarea"
+            value={background} onChange={(e) => setBackground(e.target.value)} 
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Mugshot / Photo (Optional)</label>
+          <input 
+            type="file" className="admin-file-input" accept="image/*"
+            ref={imageInputRef}
+            onChange={(e) => setImage(e.target.files?.[0] || null)} 
+          />
+        </div>
+
+        <button 
+          type="submit" 
+          className="btn-primary" 
+          disabled={mutation.isPending}
+          style={{ background: 'var(--accent-crimson)', marginTop: '1rem' }}
+        >
+          {mutation.isPending ? 'Encrypting Data...' : 'Commit Suspect to Database'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Auth\Auth.css
 ----------------------------------------
 .auth-container {
@@ -2677,17 +3111,18 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\GameRoom.tsx
 ----------------------------------------
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useGameRoom } from '../../hooks/useGameRoom';
 import { useViewedItems } from '../../hooks/useViewedItems'; 
 import { RoomProvider } from '../../context/RoomContext';
 import CaseDetailsTab from './tabs/CaseDetailsTab';
 import EvidenceBoardTab from './tabs/EvidenceBoardTab';
+import SuspectsTab from './tabs/SuspectsTab';
 import CampaignTab from './tabs/CampaignTab';
 import './GameRoom.css';
 
-type Tab = 'details' | 'evidences' | 'campaign';
+type Tab = 'details' | 'evidences' | 'campaign' | 'suspects';
 
 export default function GameRoom() {
   const { inviteCode } = useParams<{ inviteCode: string }>();
@@ -2697,15 +3132,38 @@ export default function GameRoom() {
     room, 
     isLoading, 
     error, 
-    accumulatedEvidences, 
+    accumulatedEvidences,
+    accumulatedSuspects, 
+    accumulatedVictims,
     refreshRoomData 
   } = useGameRoom(inviteCode);
 
-  const { viewedItems, markItemAsViewed } = useViewedItems(room?.id, 'evidence');
+  const { viewedItems: viewedEvidences, markItemAsViewed: markEvidenceAsViewed } = useViewedItems(room?.id, 'evidence');
+  const { viewedItems: viewedSuspects, markItemAsViewed: markSuspectAsViewed } = useViewedItems(room?.id, 'suspects');
+  const { viewedItems: viewedVictims, markItemAsViewed: markVictimAsViewed } = useViewedItems(room?.id, 'victims');
   
   const [activeTab, setActiveTab] = useState<Tab>('details');
+  const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
 
-  const hasUnreadEvidence = accumulatedEvidences.some(evidence => !viewedItems.has(evidence.id));
+  useEffect(() => {
+    if (!room || !window.Echo) return;
+    const channel = window.Echo.private(`room.${room.id}`);
+    
+    channel.listen('LevelTransitioned', (e: any) => {
+      if (e.message) {
+        setResolutionMessage(e.message);
+      }
+      refreshRoomData();
+    });
+
+    return () => {
+      channel.stopListening('LevelTransitioned');
+    };
+  }, [room?.id, refreshRoomData]);
+
+  const hasUnreadEvidence = accumulatedEvidences.some(evidence => !viewedEvidences.has(evidence.id));
+  const hasUnreadSuspects = accumulatedSuspects.some(suspect => !viewedSuspects.has(suspect.id));
+  const hasUnreadVictims = accumulatedVictims?.some(victim => !viewedVictims.has(victim.id));
 
   if (isLoading) return <div className="terminal-text">Synchronizing session data...</div>;
   if (error || !room) return <div className="terminal-text error">{error || 'Session not found.'}</div>;
@@ -2713,31 +3171,38 @@ export default function GameRoom() {
   return (
     <RoomProvider 
       room={room} 
-      accumulatedEvidences={accumulatedEvidences} 
+      accumulatedEvidences={accumulatedEvidences}
+      accumulatedSuspects={accumulatedSuspects} 
+      accumulatedVictims={accumulatedVictims}
       refreshRoomData={refreshRoomData}
-      viewedItems={viewedItems}
-      markItemAsViewed={markItemAsViewed}
+      viewedEvidences={viewedEvidences}
+      markEvidenceAsViewed={markEvidenceAsViewed}
+      viewedSuspects={viewedSuspects}
+      markSuspectAsViewed={markSuspectAsViewed}
+      viewedVictims={viewedVictims}
+      markVictimAsViewed={markVictimAsViewed}
     >
       <div className="game-room-layout">
         
-        {/* The Resolution Overlay */}
         {(room.status === 'solved' || room.status === 'failed') && (
           <div className="victory-overlay">
-            <div className="victory-content">
+            <div className="victory-content" style={{ maxWidth: '800px', padding: '2rem' }}>
               
               {room.status === 'solved' ? (
                 <>
                   <div className="forensic-icon pulse" style={{ color: 'var(--accent-cyan)' }}>✧</div>
                   <h1 className="victory-title" style={{ color: 'var(--accent-cyan)' }}>CASE CLOSED</h1>
-                  <p className="victory-subtitle">The truth is uncovered. Excellent work.</p>
+                  <p className="victory-subtitle">{resolutionMessage || 'The truth is uncovered. Excellent work.'}</p>
                 </>
               ) : (
                 <>
                   <div className="forensic-icon pulse" style={{ color: 'var(--accent-crimson)' }}>✕</div>
                   <h1 className="victory-title" style={{ color: 'var(--accent-crimson)', textShadow: '0 0 30px rgba(163,50,50,0.4)' }}>
-                    WRONG CONVICTION
+                    MANDATE REVOKED
                   </h1>
-                  <p className="victory-subtitle">The evidence was misread. The guilty walk free, and the innocent pay the price.</p>
+                  <p className="victory-subtitle" style={{ color: 'var(--accent-crimson)' }}>
+                    {resolutionMessage || 'The evidence was misread. The guilty walk free, and the innocent pay the price.'}
+                  </p>
                 </>
               )}
 
@@ -2799,35 +3264,35 @@ export default function GameRoom() {
         <main className="workspace-panel">
           <header className="workspace-header">
             <nav className="tab-navigation">
-              <button 
-                className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`}
-                onClick={() => setActiveTab('details')}
-              >
+              <button className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
                 Case Details
+                {hasUnreadVictims && (
+                  <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="New Casualty"></div>
+                )}
               </button>
               
-              <button 
-                className={`tab-btn ${activeTab === 'evidences' ? 'active' : ''}`}
-                onClick={() => setActiveTab('evidences')}
-              >
+              <button className={`tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => setActiveTab('evidences')}>
                 Evidences
                 {hasUnreadEvidence && (
                   <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="Unread Intel"></div>
                 )}
               </button>
               
-              <button 
-                className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`}
-                onClick={() => setActiveTab('campaign')}
-              >
-                Campaign
+              <button className={`tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} onClick={() => setActiveTab('suspects')}>
+                Suspects
+                {hasUnreadSuspects && (
+                  <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="Unread Intel"></div>
+                )}
               </button>
+              
+              <button className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`} onClick={() => setActiveTab('campaign')}>Campaign</button>
             </nav>
           </header>
 
           <div className="tab-content-area">
             {activeTab === 'details' && <CaseDetailsTab />}
             {activeTab === 'evidences' && <EvidenceBoardTab />}
+            {activeTab === 'suspects' && <SuspectsTab />}
             {activeTab === 'campaign' && <CampaignTab />}
           </div>
         </main>
@@ -3107,11 +3572,15 @@ export default function CampaignTab() {
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\CaseDetailsTab.tsx
 ----------------------------------------
+import { useState } from 'react';
 import { useRoomContext } from '../../../context/RoomContext';
+import VictimModal from './VictimModal';
+import type { Victim } from '../../../types';
 import './Tabs.css';
 
 export default function CaseDetailsTab() {
-  const { room } = useRoomContext();
+  const { room, accumulatedVictims, viewedVictims, markVictimAsViewed } = useRoomContext();
+  const [inspectedVictim, setInspectedVictim] = useState<Victim | null>(null);
   
   const gameCase = room.game_case || {
     id: room.case_id,
@@ -3123,6 +3592,11 @@ export default function CaseDetailsTab() {
   };
 
   const heroImageUrl = gameCase.img_url || '/placeholder-crime-scene.jpg'; 
+
+  const handleInspectVictim = (victim: Victim) => {
+    markVictimAsViewed(victim.id);
+    setInspectedVictim(victim);
+  };
 
   return (
     <div className="case-details-tab">
@@ -3150,6 +3624,64 @@ export default function CaseDetailsTab() {
           ))}
         </div>
       </div>
+
+      {accumulatedVictims.length > 0 && (
+        <div className="case-victims-section" style={{ marginTop: '3rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '3rem' }}>
+          <h2 className="section-title" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }}>Identified Casualties</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
+            {accumulatedVictims.map((victim) => {
+              const isNew = !viewedVictims.has(victim.id);
+              
+              return (
+                <div 
+                  key={victim.id} 
+                  className="glass-panel victim-card"
+                  style={{ 
+                    display: 'flex', gap: '1rem', padding: '1rem', borderRadius: '8px', 
+                    position: 'relative', cursor: 'pointer', transition: 'all 0.2s ease'
+                  }}
+                  onClick={() => handleInspectVictim(victim)}
+                  onMouseEnter={() => markVictimAsViewed(victim.id)}
+                >
+                  {isNew && <div className="unread-indicator" title="New Casualty Intel"></div>}
+                  
+                  <div 
+                    style={{ 
+                      width: '80px', height: '80px', borderRadius: '4px', 
+                      backgroundImage: `url(${victim.img_url || '/placeholder-mugshot.jpg'})`, 
+                      backgroundSize: 'cover', backgroundPosition: 'center', 
+                      flexShrink: 0, border: '1px solid rgba(255,255,255,0.1)' 
+                    }}
+                  />
+                  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <h4 style={{ margin: '0 0 0.25rem 0', fontFamily: 'var(--font-primary)', color: 'var(--text-primary)', fontSize: '1.1rem' }}>
+                      {victim.name}
+                    </h4>
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--accent-crimson)', marginBottom: '0.5rem' }}>
+                      VIC-{victim.id.toString().padStart(4, '0')}
+                    </span>
+                    {victim.background && (
+                      <p style={{ 
+                        margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)', 
+                        lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 3, 
+                        WebkitBoxOrient: 'vertical', overflow: 'hidden' 
+                      }}>
+                        {victim.background}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* The Victim Modal */}
+      <VictimModal 
+        victim={inspectedVictim} 
+        onClose={() => setInspectedVictim(null)} 
+      />
     </div>
   );
 }
@@ -3602,12 +4134,12 @@ import EvidenceModal from './EvidenceModal';
 import './EvidenceBoard.css';
 
 export default function EvidenceBoardTab() {
-  const { accumulatedEvidences, viewedItems, markItemAsViewed } = useRoomContext();
+  const { accumulatedEvidences, viewedEvidences, markEvidenceAsViewed } = useRoomContext();
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
 
   const handleInspect = (evidence: Evidence) => {
     setInspectedEvidence(evidence);
-    markItemAsViewed(evidence.id);
+    markEvidenceAsViewed(evidence.id);
   };
 
   return (
@@ -3627,7 +4159,7 @@ export default function EvidenceBoardTab() {
                 key={evidence.id} 
                 evidence={evidence} 
                 index={index}
-                isNew={!viewedItems.has(evidence.id)} 
+                isNew={!viewedEvidences.has(evidence.id)} 
                 onInspect={handleInspect} 
               />
             ))}
@@ -3749,6 +4281,518 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
           )}
         </div>
 
+      </div>
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\SuspectCard.css
+----------------------------------------
+.suspect-card {
+  width: 160px;
+  background: var(--bg-dark);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: grab;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  
+  /* Hardened structure to prevent collapsing */
+  display: flex;
+  flex-direction: column;
+  min-height: 220px; 
+}
+
+.suspect-card:active {
+  cursor: grabbing;
+  transform: scale(1.05);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
+}
+
+.suspect-mugshot {
+  width: 100%;
+  height: 160px;
+  background-color: rgba(0, 0, 0, 0.4); /* Fallback if image breaks */
+  background-size: cover;
+  background-position: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.suspect-info {
+  padding: 0.75rem;
+  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.suspect-name {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+  white-space: pre-line;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.suspect-id {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}
+
+.suspect-card.is-dragging {
+  opacity: 0;
+}
+
+.suspect-card {
+  width: 160px;
+  background: var(--bg-dark);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: grab;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px; 
+  position: relative;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\SuspectCard.tsx
+----------------------------------------
+import { useState } from 'react';
+import type { Suspect } from '../../../types';
+import './SuspectCard.css';
+
+interface SuspectCardProps {
+  suspect: Suspect;
+  sourcePool: 'unassigned' | 'guilty' | 'innocent';
+  isDraggable: boolean;
+  isNew: boolean;
+  onDragStart: (e: React.DragEvent, suspectId: number, source: 'unassigned' | 'guilty' | 'innocent') => void;
+  onInteract: (suspectId: number) => void;
+}
+
+export default function SuspectCard({ suspect, sourcePool, isDraggable, isNew, onDragStart, onInteract }: SuspectCardProps) {
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleDragStart = (e: React.DragEvent) => {
+    e.stopPropagation();
+    onInteract(suspect.id); // Mark as viewed the moment they grab it
+    onDragStart(e, suspect.id, sourcePool);
+    setTimeout(() => setIsDragging(true), 0);
+  };
+
+  return (
+    <div 
+      className={`suspect-card ${isDragging ? 'is-dragging' : ''}`}
+      draggable={isDraggable}
+      onDragStart={handleDragStart}
+      onDragEnd={(e) => { e.stopPropagation(); setIsDragging(false); }}
+      onPointerDown={() => onInteract(suspect.id)} // Mark as viewed if they just click/tap it
+    >
+      {isNew && <div className="unread-indicator" title="Unread Suspect Intel"></div>}
+      
+      <div 
+        className="suspect-mugshot" 
+        style={{ backgroundImage: `url(${suspect.img_url || '/placeholder-mugshot.jpg'})` }}
+      />
+      <div className="suspect-info">
+        <h4 className="suspect-name" title={suspect.name}>{suspect.name}</h4>
+        <span className="suspect-id">PID-{suspect.id.toString().padStart(4, '0')}</span>
+      </div>
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\SuspectsTab.css
+----------------------------------------
+.suspects-tab-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  /* Removed height: 100% so the container expands dynamically */
+  padding-bottom: 2rem; 
+}
+
+.suspects-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lock-warning {
+  background: rgba(255, 179, 0, 0.1);
+  border: 1px solid var(--accent-amber);
+  color: var(--accent-amber);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.verdict-zones {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  height: max-content; /* Forces the grid to stretch based on its children */
+}
+
+.drop-zone {
+  display: flex;
+  flex-direction: column;
+  border: 2px dashed rgba(255, 255, 255, 0.1);
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+  height: max-content; 
+}
+
+.drop-zone.guilty-zone {
+  border-color: rgba(163, 50, 50, 0.3);
+}
+
+.drop-zone.innocent-zone {
+  border-color: rgba(74, 124, 89, 0.3);
+}
+
+.zone-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.zone-header h3 {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
+}
+
+.guilty-zone .zone-header h3 { color: var(--accent-crimson); }
+.innocent-zone .zone-header h3 { color: var(--accent-success); }
+
+.zone-counter {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-primary);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+}
+
+.zone-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-content: flex-start;
+  min-height: 220px; /* Keeps the drop zone open even when empty */
+}
+
+.zone-placeholder {
+  width: 100%;
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-align: center;
+}
+
+.unassigned-pool {
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  height: max-content;
+}
+
+.unassigned-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  min-height: 120px;
+}
+
+.submit-verdict-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1.5rem;
+  padding-top: 2rem;
+  padding-bottom: 4rem; /* Gives the button solid breathing room at the bottom of the screen */
+  border-top: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.final-verdict-btn {
+  width: 100%;
+  max-width: 450px;
+  padding: 1.25rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  background: var(--accent-crimson);
+  color: var(--bg-dark);
+  border-color: var(--accent-crimson);
+  letter-spacing: 0.15em;
+  box-shadow: 0 4px 15px rgba(163, 50, 50, 0.3);
+  transition: all 0.2s ease;
+}
+
+.final-verdict-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(163, 50, 50, 0.5);
+  background: var(--bg-dark);
+  color: var(--accent-crimson);
+}
+
+.final-verdict-btn:disabled {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: transparent;
+  color: rgba(255, 255, 255, 0.2);
+  box-shadow: none;
+}
+
+@media (max-width: 768px) {
+  .verdict-zones {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\SuspectsTab.tsx
+----------------------------------------
+import { useState } from 'react';
+import { useRoomContext } from '../../../context/RoomContext';
+import { submitSuspectVerdict } from '../../../services/api';
+import { useMutation } from '@tanstack/react-query';
+import SuspectCard from './SuspectCard'; 
+import './SuspectsTab.css';
+
+type PoolType = 'unassigned' | 'guilty' | 'innocent';
+
+export default function SuspectsTab() {
+  const { 
+    room, 
+    accumulatedSuspects, 
+    refreshRoomData,
+    viewedSuspects,
+    markSuspectAsViewed
+  } = useRoomContext();
+  
+  const [guiltyIds, setGuiltyIds] = useState<number[]>(() => {
+    const saved = sessionStorage.getItem(`room_${room.id}_guilty_suspects`);
+    return saved ? JSON.parse(saved) : [];
+  });
+  
+  const [innocentIds, setInnocentIds] = useState<number[]>(() => {
+    const saved = sessionStorage.getItem(`room_${room.id}_innocent_suspects`);
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const initialLevels = room.game_case?.levels?.filter(l => l.is_initial) || [];
+  const completedLevelIds = new Set(room.completed_levels?.map(l => l.id) || []);
+  const allInitialCompleted = initialLevels.length > 0 && initialLevels.every(l => completedLevelIds.has(l.id));
+
+  const guiltyPool = accumulatedSuspects.filter(s => guiltyIds.includes(s.id));
+  const innocentPool = accumulatedSuspects.filter(s => innocentIds.includes(s.id));
+  const unassignedPool = accumulatedSuspects.filter(s => !guiltyIds.includes(s.id) && !innocentIds.includes(s.id));
+
+  const verdictMutation = useMutation({
+    mutationFn: async (submittedGuiltyIds: number[]) => {
+      const result = await submitSuspectVerdict(room.id, submittedGuiltyIds);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: (data) => {
+      if (data.status === 'failed') {
+        // Just a strike penalty - keep players on the board
+        setFeedback({ type: 'error', message: data.message });
+        refreshRoomData();
+      } else {
+        // Game Over (success or failed_final) - Wipe state and let the GameRoom.tsx overlay takeover
+        sessionStorage.removeItem(`room_${room.id}_guilty_suspects`);
+        sessionStorage.removeItem(`room_${room.id}_innocent_suspects`);
+        refreshRoomData();
+      }
+    },
+    onError: (error: Error) => {
+      setFeedback({ type: 'error', message: error.message });
+    }
+  });
+
+  const handleDragStart = (e: React.DragEvent, suspectId: number, source: PoolType) => {
+    e.dataTransfer.setData('suspectId', suspectId.toString());
+    e.dataTransfer.setData('sourcePool', source);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetPool: PoolType) => {
+    e.preventDefault();
+
+    const suspectId = parseInt(e.dataTransfer.getData('suspectId'));
+    if (isNaN(suspectId)) return;
+
+    let nextGuilty = guiltyIds.filter(id => id !== suspectId);
+    let nextInnocent = innocentIds.filter(id => id !== suspectId);
+
+    if (targetPool === 'guilty') nextGuilty.push(suspectId);
+    if (targetPool === 'innocent') nextInnocent.push(suspectId);
+
+    setGuiltyIds(nextGuilty);
+    setInnocentIds(nextInnocent);
+
+    sessionStorage.setItem(`room_${room.id}_guilty_suspects`, JSON.stringify(nextGuilty));
+    sessionStorage.setItem(`room_${room.id}_innocent_suspects`, JSON.stringify(nextInnocent));
+  };
+
+  const handleSubmitVerdict = () => {
+    if (guiltyIds.length === 0) {
+      setFeedback({ type: 'error', message: 'You must select at least one prime suspect for the Guilty verdict.' });
+      return;
+    }
+    verdictMutation.mutate(guiltyIds);
+  };
+
+  const clearFeedback = () => {
+    setFeedback(null);
+    refreshRoomData();
+  };
+
+  return (
+    <div className="suspects-tab-container">
+      <header className="suspects-header">
+        <h2 className="section-title">Suspect Board</h2>
+        {!allInitialCompleted && (
+          <div className="lock-warning">
+            <span className="forensic-icon">🔒</span> All initial investigation phases must be completed before filing a final indictment.
+          </div>
+        )}
+      </header>
+
+      {feedback && (
+        <div className="feedback-modal-overlay">
+          <div className={`feedback-modal-content ${feedback.type}`}>
+            <div className="persona-container">
+              <svg className="persona-silhouette" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                <path d="M100 50 C100 20, 156 20, 156 50 L160 80 L96 80 Z" />
+                <ellipse cx="128" cy="85" rx="70" ry="12" />
+                <path d="M105 100 L151 100 C151 125, 138 145, 128 145 C118 145, 105 125, 105 100 Z" />
+                <path d="M128 135 C80 135, 40 190, 20 256 L236 256 C216 190, 176 135, 128 135 Z" />
+              </svg>
+            </div>
+            <h3 className="feedback-title">Indictment Rejected</h3>
+            <p className="feedback-message">{feedback.message}</p>
+            <button className="btn-secondary mt-1" onClick={clearFeedback}>Reassess Evidence</button>
+          </div>
+        </div>
+      )}
+
+      <div className="verdict-zones">
+        <div 
+          className="drop-zone guilty-zone glass-panel"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => handleDrop(e, 'guilty')}
+        >
+          <div className="zone-header">
+            <h3>PRIME SUSPECTS (GUILTY)</h3>
+            <span className="zone-counter">{guiltyPool.length}</span>
+          </div>
+          <div className="zone-content">
+            {guiltyPool.map(s => (
+              <SuspectCard 
+                key={s.id} 
+                suspect={s} 
+                sourcePool="guilty" 
+                isDraggable={true} 
+                isNew={!viewedSuspects.has(s.id)}
+                onDragStart={handleDragStart} 
+                onInteract={markSuspectAsViewed}
+              />
+            ))}
+            {guiltyPool.length === 0 && <div className="zone-placeholder">Drag prime suspects here</div>}
+          </div>
+        </div>
+
+        <div 
+          className="drop-zone innocent-zone glass-panel"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => handleDrop(e, 'innocent')}
+        >
+          <div className="zone-header">
+            <h3>CLEARED (INNOCENT)</h3>
+            <span className="zone-counter">{innocentPool.length}</span>
+          </div>
+          <div className="zone-content">
+            {innocentPool.map(s => (
+              <SuspectCard 
+                key={s.id} 
+                suspect={s} 
+                sourcePool="innocent" 
+                isDraggable={true} 
+                isNew={!viewedSuspects.has(s.id)}
+                onDragStart={handleDragStart} 
+                onInteract={markSuspectAsViewed}
+              />
+            ))}
+            {innocentPool.length === 0 && <div className="zone-placeholder">Drag cleared suspects here</div>}
+          </div>
+        </div>
+      </div>
+
+      <div 
+        className="unassigned-pool glass-panel"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={(e) => handleDrop(e, 'unassigned')}
+      >
+        <div className="zone-header">
+          <h3>UNASSIGNED PERSONS OF INTEREST</h3>
+        </div>
+        <div className="unassigned-grid">
+          {unassignedPool.map(s => (
+            <SuspectCard 
+              key={s.id} 
+              suspect={s} 
+              sourcePool="unassigned" 
+              isDraggable={true} 
+              isNew={!viewedSuspects.has(s.id)}
+              onDragStart={handleDragStart} 
+              onInteract={markSuspectAsViewed}
+            />
+          ))}
+          {unassignedPool.length === 0 && accumulatedSuspects.length > 0 && (
+            <div className="zone-placeholder">All suspects categorized.</div>
+          )}
+          {accumulatedSuspects.length === 0 && (
+            <div className="zone-placeholder">No suspects have been identified yet.</div>
+          )}
+        </div>
+      </div>
+
+      <div className="submit-verdict-container">
+        <button 
+          className="btn-primary final-verdict-btn"
+          disabled={!allInitialCompleted || unassignedPool.length > 0 || guiltyPool.length === 0 || verdictMutation.isPending}
+          onClick={handleSubmitVerdict}
+        >
+          {verdictMutation.isPending ? 'Filing Indictment...' : 'Submit Final Verdict'}
+        </button>
       </div>
     </div>
   );
@@ -4284,6 +5328,85 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 }
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\VictimModal.tsx
+----------------------------------------
+import type { Victim } from '../../../types';
+
+interface VictimModalProps {
+  victim: Victim | null;
+  onClose: () => void;
+}
+
+export default function VictimModal({ victim, onClose }: VictimModalProps) {
+  if (!victim) return null;
+
+  return (
+    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 2000 }}>
+      <div 
+        className="modal-content glass-panel" 
+        style={{ maxWidth: '650px', padding: '2.5rem' }} 
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button className="close-btn" onClick={onClose}>✕</button>
+        
+        <div style={{ display: 'flex', gap: '2rem', marginTop: '0.5rem' }}>
+          {/* Left Column: Image */}
+          <div 
+            style={{ 
+              width: '180px', 
+              height: '180px', 
+              backgroundImage: `url(${victim.img_url || '/placeholder-mugshot.jpg'})`, 
+              backgroundSize: 'cover', 
+              backgroundPosition: 'center', 
+              borderRadius: '8px', 
+              border: '1px solid rgba(255,255,255,0.1)',
+              flexShrink: 0,
+              boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
+            }}
+          />
+          
+          {/* Right Column: Details */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <h2 style={{ 
+              margin: '0 0 0.25rem 0', 
+              color: 'var(--text-primary)', 
+              textTransform: 'uppercase',
+              fontSize: '2rem',
+              letterSpacing: '0.05em'
+            }}>
+              {victim.name}
+            </h2>
+            
+            <div style={{ 
+              fontFamily: 'var(--font-mono)', 
+              color: 'var(--accent-crimson)', 
+              fontSize: '0.9rem', 
+              marginBottom: '1.5rem',
+              paddingBottom: '0.75rem',
+              borderBottom: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              IDENTIFICATION CODE: VIC-{victim.id.toString().padStart(4, '0')}
+            </div>
+            
+            <div style={{ 
+              color: 'var(--text-secondary)', 
+              lineHeight: '1.7', 
+              whiteSpace: 'pre-wrap',
+              maxHeight: '40vh',
+              overflowY: 'auto',
+              paddingRight: '1rem',
+              fontFamily: 'var(--font-mono)'
+            }}>
+              {victim.background || 'No background information available in the official records.'}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceVariants\AudioEvidence.tsx
 ----------------------------------------
 import type { Evidence } from '../../../../types';
@@ -4767,6 +5890,29 @@ export const deleteAdminCase = async (caseId: number): Promise<Result<any>> => {
   }
 };
 
+export const createAdminSuspect = async (formData: FormData): Promise<Result<any>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/suspects`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) handleUnauthorized();
+      const data = await response.json().catch(() => ({}));
+      return failure(data.message || 'Failed to create suspect.');
+    }
+    
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\services\api.ts
 ----------------------------------------
@@ -4955,6 +6101,30 @@ export const initiatePhase = async (roomId: number, levelId: number): Promise<Re
   }
 };
 
+export const submitSuspectVerdict = async (roomId: number, guiltySuspectIds: number[]): Promise<Result<{ status: string; message: string; room?: GameRoom }>> => {  
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/suspects/submit`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      // Wrap array in guilty_suspect_ids object
+      body: JSON.stringify({ guilty_suspect_ids: guiltySuspectIds })
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) handleUnauthorized();
+      const data = await response.json().catch(() => null);
+      return failure(data?.message || 'Failed to submit final verdict.');
+    }
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\services\auth.ts
 ----------------------------------------
@@ -5040,6 +6210,34 @@ export interface RoomUser {
   user?: User; 
 }
 
+export interface Suspect {
+  id: number;
+  case_id: number;
+  name: string;
+  background?: string;
+  img_url?: string;
+  is_initial: boolean;
+}
+
+export interface Victim {
+  id: number;
+  case_id: number;
+  name: string;
+  background?: string;
+  img_url?: string;
+  is_initial: boolean;
+}
+
+export const CaseUserStatus = {
+  SolvedPerfect: 'solved_perfect',
+  SolvedPartial: 'solved_partial',
+  FailedNoProof: 'failed_no_proof',
+  FailedIncomplete: 'failed_incomplete',
+  FailedStrikes: 'failed_strikes',
+} as const;
+// 2. Extract the values into a TypeScript type of the exact same name
+export type CaseUserStatus = typeof CaseUserStatus[keyof typeof CaseUserStatus];
+
 export interface GameCase {
   id: number;
   title: string;
@@ -5047,10 +6245,19 @@ export interface GameCase {
   min_player_XP: number;
   XP_on_solve: number;
   max_strikes: number; 
+  rating_stars?: number;
+  age_rating?: string;
+  estimated_playtime?: string;
+  difficulty?: string;
+  tags?: string[];
+  author_name?: string;
   img_url?: string; 
+  active_room_invite_code?: string; 
   levels?: Level[]; 
   evidences?: Evidence[]; 
-  user_status?: 'solved' | 'failed' | null; 
+  suspects?: Suspect[];
+  victims?: Victim[];
+  user_status?: CaseUserStatus | null; 
 }
 
 export interface RoomVote {
@@ -5074,6 +6281,8 @@ export interface GameRoom {
   current_level?: Level;
   unlocked_evidences?: Evidence[]; 
   unlocked_levels?: Level[];
+  unlocked_suspects?: Suspect[];
+  unlocked_victims?: Victim[];
   completed_levels?: Level[];
   votes?: RoomVote[];
 }
@@ -5090,6 +6299,7 @@ export interface Evidence {
   img_url?: string;
   paragraph?: string;
   is_initial: boolean; 
+  is_vital_for_conviction: boolean;
 }
 
 export interface Choice {
@@ -5099,6 +6309,8 @@ export interface Choice {
   is_correct: boolean;
   unlocks_evidence_id?: number | null; 
   unlocks_level_id?: number | null; 
+  unlocks_suspect_id?: number | null;
+  unlocks_victim_id?: number | null;
 }
 
 export interface Question {

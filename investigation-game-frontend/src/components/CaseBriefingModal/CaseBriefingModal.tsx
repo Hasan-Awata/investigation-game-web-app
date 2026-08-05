@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { GameCase } from '../../types';
+import { CaseUserStatus } from '../../types';
 import { createRoom } from '../../services/api';
 import './CaseBriefingModal.css';
 
@@ -27,13 +28,15 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
   };
 
   const userStatus = gameCase.user_status;
-  const isFinished = userStatus === 'solved' || userStatus === 'failed';
+  
+  const isSolved = userStatus === CaseUserStatus.SolvedPerfect || userStatus === CaseUserStatus.SolvedPartial;
+  const isFailed = userStatus === CaseUserStatus.FailedNoProof || userStatus === CaseUserStatus.FailedIncomplete || userStatus === CaseUserStatus.FailedStrikes;
+  const isFinished = isSolved || isFailed;
+  
   const activeInviteCode = gameCase.active_room_invite_code;
   
-  // If the backend provides an invite code, it means they are currently mid-session.
   const showContinue = !!activeInviteCode;
 
-  // Refined button text mapping to account for active replays vs starting fresh
   let primaryButtonText = 'Start the Case';
   if (isLoading) {
     primaryButtonText = 'Encrypting...';
@@ -46,11 +49,14 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
   let rewardText = `${gameCase.XP_on_solve} XP`;
   let rewardColor = 'var(--accent-amber)';
   
-  if (userStatus === 'solved') {
-    rewardText = `0 XP (REPLAY)`;
+  if (userStatus === CaseUserStatus.SolvedPerfect) {
+    rewardText = `0 XP (PERFECT REPLAY)`;
     rewardColor = 'var(--text-secondary)';
-  } else if (userStatus === 'failed') {
-    rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} XP (PENALTY)`;
+  } else if (userStatus === CaseUserStatus.SolvedPartial) {
+    rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} XP (PARTIAL REPLAY)`;
+    rewardColor = 'var(--text-secondary)';
+  } else if (isFailed) {
+    rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} XP (PENALTY ALLOWANCE)`;
     rewardColor = 'var(--accent-crimson)';
   }
 

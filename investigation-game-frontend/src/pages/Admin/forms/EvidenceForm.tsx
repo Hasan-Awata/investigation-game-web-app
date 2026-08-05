@@ -4,24 +4,20 @@ import { createAdminEvidence, fetchAdminCases } from '@/services/adminApi';
 import type { EvidenceType } from '@/types';
 
 export default function EvidenceForm() {
-  // 1. Core State
   const [caseId, setCaseId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [paragraph, setParagraph] = useState('');
   const [evidenceType, setEvidenceType] = useState<EvidenceType>('document');
   const [isInitial, setIsInitial] = useState(true);
+  const [isVitalForConviction, setIsVitalForConviction] = useState(false); // Unified naming
   
-  // 2. Media State
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
-  
-  // 3. UI State
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch cases to populate the top-level dropdown
   const { data: cases = [], isLoading: isFetchingCases } = useQuery({
     queryKey: ['adminCases'],
     queryFn: async () => {
@@ -39,12 +35,11 @@ export default function EvidenceForm() {
     },
     onSuccess: () => {
       setFeedback({ type: 'success', message: 'Evidence successfully secured in the database.' });
-      
-      // Reset fields (keeping case selection for rapid bulk entry)
       setTitle('');
       setDescription('');
       setParagraph('');
       setIsInitial(true);
+      setIsVitalForConviction(false); // Unified naming
       setImage(null);
       setAudio(null);
       if (imageInputRef.current) imageInputRef.current.value = '';
@@ -71,13 +66,10 @@ export default function EvidenceForm() {
     formData.append('description', description);
     formData.append('paragraph', paragraph);
     formData.append('is_initial', isInitial ? '1' : '0');
+    formData.append('is_vital_for_conviction', isVitalForConviction ? '1' : '0'); // Unified naming
     
-    if (evidenceType === 'image' && image) {
-      formData.append('image', image);
-    }
-    if (evidenceType === 'audio' && audio) {
-      formData.append('audio', audio);
-    }
+    if (evidenceType === 'image' && image) formData.append('image', image);
+    if (evidenceType === 'audio' && audio) formData.append('audio', audio);
 
     mutation.mutate(formData);
   };
@@ -120,7 +112,6 @@ export default function EvidenceForm() {
       )}
 
       <form onSubmit={handleSubmit} className="admin-form">
-        
         <div className="form-group" style={{ marginBottom: '1rem' }}>
           <label>Target Case</label>
           <select 
@@ -144,6 +135,17 @@ export default function EvidenceForm() {
           />
           <label htmlFor="initial-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
             <strong>Initial Evidence:</strong> This item will be available on the board immediately when the case starts. (Uncheck if this is unlocked via player choices later).
+          </label>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(163,50,50,0.1)', border: '1px solid rgba(163,50,50,0.3)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+          <input 
+            type="checkbox" id="vital-toggle"
+            checked={isVitalForConviction} onChange={(e) => setIsVitalForConviction(e.target.checked)} // Unified naming
+            style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-crimson)' }}
+          />
+          <label htmlFor="vital-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', cursor: 'pointer' }}>
+            <strong>Vital Evidence:</strong> This item is strictly required to secure a conviction. The DA will throw out the case if this proof is not unlocked by the team.
           </label>
         </div>
 
