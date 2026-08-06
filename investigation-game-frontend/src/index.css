@@ -36,6 +36,21 @@ body {
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  
+  /* Disable text selection globally */
+  -webkit-user-select: none; /* Safari */
+  user-select: none; /* Standard syntax */
+}
+
+/* 
+  CRITICAL EXCEPTION: 
+  Re-enable text selection for input fields and textareas. 
+  If you don't do this, players won't be able to highlight, delete, 
+  or easily edit text inside the Agent Notepad or authentication forms.
+*/
+input, textarea {
+  -webkit-user-select: auto;
+  user-select: auto;
 }
 
 .terminal-text {

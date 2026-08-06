@@ -391,6 +391,21 @@ body {
   margin: 0;
   padding: 0;
   -webkit-font-smoothing: antialiased;
+  
+  /* Disable text selection globally */
+  -webkit-user-select: none; /* Safari */
+  user-select: none; /* Standard syntax */
+}
+
+/* 
+  CRITICAL EXCEPTION: 
+  Re-enable text selection for input fields and textareas. 
+  If you don't do this, players won't be able to highlight, delete, 
+  or easily edit text inside the Agent Notepad or authentication forms.
+*/
+input, textarea {
+  -webkit-user-select: auto;
+  user-select: auto;
 }
 
 .terminal-text {
@@ -497,6 +512,37 @@ h1, h2, h3, h4, h5, h6 {
   padding-left: 0.75rem;
 }
 
+/* --- UNREAD ITEMS NOTIFICATION --- */
+.unread-indicator {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  background-color: rgba(112, 239, 112, 0.8);
+  border-radius: 50%;
+  border: 2px solid #1a1a1a;
+  box-shadow: 0 0 10px rgba(112, 239, 112, 0.8);
+  z-index: 20;
+  pointer-events: none;
+  animation: radar-pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes radar-pulse {
+  0% { 
+    transform: scale(0.95); 
+    box-shadow: 0 0 0 0 rgba(112, 239, 112, 0.8); 
+  }
+  70% { 
+    transform: scale(1); 
+    box-shadow: 0 0 0 8px rgba(163, 50, 50, 0); 
+  }
+  100% { 
+    transform: scale(0.95); 
+    box-shadow: 0 0 0 0 rgba(163, 50, 50, 0); 
+  }
+}
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\main.tsx
 ----------------------------------------
@@ -568,6 +614,149 @@ export default function AdminGuard({ user }: AdminGuardProps) {
       <main className="admin-content" style={{ padding: '2rem' }}>
         <Outlet />
       </main>
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\components\AgentNotepad\AgentNotepad.css
+----------------------------------------
+.agent-notepad-container {
+  /* Forces the notepad to stretch and fill the remaining vertical space in the sidebar */
+  flex: 1; 
+  display: flex;
+  flex-direction: column;
+  min-height: 250px;
+}
+
+.notepad-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.save-indicator {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  transition: color 0.3s ease;
+}
+
+.save-indicator.synced {
+  color: var(--accent-success);
+}
+
+.save-indicator.saving {
+  color: var(--accent-amber);
+}
+
+.notepad-textarea {
+  flex: 1;
+  background: rgba(10, 11, 13, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  padding: 1rem;
+  
+  /* Styling it to look like a raw data terminal */
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 1.6;
+  
+  resize: none;
+  outline: none;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+  transition: border-color 0.2s;
+}
+
+.notepad-textarea:focus {
+  border-color: rgba(0, 229, 255, 0.3);
+}
+
+.notepad-textarea::placeholder {
+  color: rgba(90, 138, 158, 0.4);
+  font-style: italic;
+}
+
+/* Custom Tactical Scrollbar */
+.notepad-textarea::-webkit-scrollbar {
+  width: 4px;
+}
+.notepad-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+.notepad-textarea::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.2);
+  border-radius: 4px;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\components\AgentNotepad\AgentNotepad.tsx
+----------------------------------------
+import { useState, useEffect, useRef } from 'react';
+import './AgentNotepad.css';
+
+interface AgentNotepadProps {
+  roomId: number;
+}
+
+export default function AgentNotepad({ roomId }: AgentNotepadProps) {
+  const [notes, setNotes] = useState('');
+  const [isSaved, setIsSaved] = useState(true);
+  
+  // We use a ref for the timer to debounce the "Saved" UI indicator
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // We use a ref for the storage key so it's instantly available without triggering re-renders
+  const storageKey = useRef(`notepad_fallback`);
+
+  useEffect(() => {
+    // Dynamically generate a unique key for this specific player in this specific room
+    const storedUser = localStorage.getItem('auth_user');
+    const currentUser = storedUser ? JSON.parse(storedUser) : null;
+    
+    if (currentUser) {
+       storageKey.current = `room_${roomId}_user_${currentUser.id}_ledger`;
+       const savedNotes = localStorage.getItem(storageKey.current);
+       if (savedNotes) {
+         setNotes(savedNotes);
+       }
+    }
+  }, [roomId]);
+
+  const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const text = e.target.value;
+    setNotes(text);
+    setIsSaved(false);
+    
+    // Save to local storage instantly on every keystroke
+    localStorage.setItem(storageKey.current, text);
+
+    // Debounce the UI update so it doesn't flicker wildly while typing
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setIsSaved(true), 800);
+  };
+
+  return (
+    <div className="sidebar-section agent-notepad-container">
+      <div className="notepad-header">
+        <h3 className="sidebar-heading" style={{ marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>
+          Field Ledger
+        </h3>
+        <span className={`save-indicator ${isSaved ? 'synced' : 'saving'}`}>
+          {isSaved ? '✓ SYNCED' : '⟳ SAVING'}
+        </span>
+      </div>
+      <textarea
+        className="notepad-textarea"
+        placeholder="Log timelines, suspect discrepancies, and evidence links here..."
+        value={notes}
+        onChange={handleNoteChange}
+        spellCheck="false"
+      />
     </div>
   );
 }
@@ -1135,6 +1324,13 @@ interface RoomContextType {
   
   viewedVictims: Set<number>;
   markVictimAsViewed: (id: number) => void;
+
+  setGameOverData: (message: string, stats?: any) => void;
+}
+
+interface RoomProviderProps extends Omit<RoomContextType, 'setGameOverData'> {
+  children: ReactNode;
+  setGameOverData: (message: string, stats?: any) => void;
 }
 
 const RoomContext = createContext<RoomContextType | undefined>(undefined);
@@ -1166,7 +1362,8 @@ export function RoomProvider({
   viewedSuspects,
   markSuspectAsViewed,
   viewedVictims,
-  markVictimAsViewed
+  markVictimAsViewed,
+  setGameOverData 
 }: RoomProviderProps) {
   return (
     <RoomContext.Provider value={{ 
@@ -1180,7 +1377,8 @@ export function RoomProvider({
       viewedSuspects,
       markSuspectAsViewed,
       viewedVictims,
-      markVictimAsViewed
+      markVictimAsViewed,
+      setGameOverData 
     }}>
       {children}
     </RoomContext.Provider>
@@ -1328,10 +1526,18 @@ import { useMutation } from '@tanstack/react-query';
 import type { Choice, GameRoom } from '@/types';
 import { lockVote, submitAssessment, initiatePhase } from '@/services/api';
 
+export interface ToastNotification {
+  id: string;
+  type: 'evidence' | 'level' | 'suspect' | 'victim';
+  title: string;
+  message: string;
+  icon: string;
+}
+
 export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => void) {
   const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
   const roomId = room.id;
 
@@ -1390,11 +1596,42 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
           setLocalVotes({}); 
           refreshRoomData(); 
           
-          // Check for either evidence OR level unlocks
-          if ((data.unlocked_evidence && data.unlocked_evidence.length > 0) || (data.unlocked_levels && data.unlocked_levels.length > 0)) {
+          if (data.unlocked_evidence?.length || data.unlocked_levels?.length || data.unlocked_suspects?.length || data.unlocked_victims?.length) {
             setTimeout(() => {
-              setToastMessage('SYSTEM ALERT: New narrative pathways or evidence recovered.');
-              setTimeout(() => setToastMessage(null), 4500);
+              const newToasts: ToastNotification[] = [];
+              
+              if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
+                newToasts.push({ 
+                  id: crypto.randomUUID(), type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${data.unlocked_evidence.length} new piece(s) of physical evidence secured.`, 
+                  icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
+                });
+              }
+              if (data.unlocked_levels && data.unlocked_levels.length > 0) {
+                newToasts.push({ 
+                  id: crypto.randomUUID(), type: 'level', title: 'PHASE UNLOCKED', message: 'A new narrative path is now available.', 
+                  icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
+                });
+              }
+              if (data.unlocked_suspects && data.unlocked_suspects.length > 0) {
+                newToasts.push({ 
+                  id: crypto.randomUUID(), type: 'suspect', title: 'PERSON OF INTEREST', message: 'New suspect added to the board.', 
+                  icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232' 
+                });
+              }
+              if (data.unlocked_victims && data.unlocked_victims.length > 0) {
+                newToasts.push({ 
+                  id: crypto.randomUUID(), type: 'victim', title: 'CASUALTY IDENTIFIED', message: 'New victim details have been verified.', 
+                  icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91' 
+                });
+              }
+
+              // Append all generated toasts at once
+              setToasts((prev) => [...prev, ...newToasts]);
+
+              // Automatically sweep them off the screen after 5 seconds
+              setTimeout(() => {
+                setToasts((prev) => prev.filter((t) => !newToasts.some((nt) => nt.id === t.id)));
+              }, 5000);
             }, 500);
           }
         }, 2000);
@@ -1443,11 +1680,85 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     isSubmitting: submitTheoryMutation.isPending || voteMutation.isPending,
     isInitiating: initiatePhaseMutation.isPending,
     feedback,
-    toastMessage, 
+    toasts, 
     handleSelectChoice,
     handleSubmitTheory,
     initiatePhase: (levelId: number) => initiatePhaseMutation.mutate(levelId),
     clearFeedback
+  };
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\hooks\useInvestigationRequest.ts
+----------------------------------------
+import { useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
+import { submitInvestigationRequest } from '@/services/api';
+import type { GameRoom } from '@/types';
+import type { ToastNotification } from './useInvestigationPhase';
+
+export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => void) {
+  const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
+  const [requestType, setRequestType] = useState<string>('');
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [toasts, setToasts] = useState<ToastNotification[]>([]);
+
+  const requestMutation = useMutation({
+    mutationFn: async () => {
+      const result = await submitInvestigationRequest(room.id, trayEvidences);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: (data) => {
+      setFeedback({ type: 'success', message: data.message });
+      setTrayEvidences([]);
+      setRequestType('');
+      refreshRoomData();
+
+      // Dispatch a tactical toast notification
+      if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
+        setTimeout(() => {
+          const newToast: ToastNotification = { 
+            id: crypto.randomUUID(), 
+            type: 'evidence', 
+            title: 'PROCEDURAL REQUEST APPROVED', 
+            message: 'New case files have been authorized and added to the board.', 
+            icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
+          };
+          setToasts(prev => [...prev, newToast]);
+          setTimeout(() => setToasts(prev => prev.filter(t => t.id !== newToast.id)), 5000);
+        }, 500);
+      }
+    },
+    onError: (error: Error) => {
+      setFeedback({ type: 'error', message: error.message });
+      setTrayEvidences([]);
+    }
+  });
+
+  const addToTray = (evidenceId: number) => {
+    if (!trayEvidences.includes(evidenceId)) {
+      setTrayEvidences([...trayEvidences, evidenceId]);
+    }
+  };
+
+  const removeFromTray = (evidenceId: number) => {
+    setTrayEvidences(trayEvidences.filter(id => id !== evidenceId));
+  };
+
+  const clearFeedback = () => setFeedback(null);
+
+  return {
+    trayEvidences,
+    requestType,
+    setRequestType,
+    addToTray,
+    removeFromTray,
+    isSubmitting: requestMutation.isPending,
+    feedback,
+    toasts,
+    clearFeedback,
+    submitRequest: requestMutation.mutate
   };
 }
 
@@ -1459,9 +1770,9 @@ import { useState, useCallback, useEffect } from 'react';
 // Define the allowed entities so TypeScript strictly guards your scaling
 type TrackableEntity = 'evidence' | 'suspects' | 'locations' | 'victims';
 
-export function useViewedItems(roomId: number | undefined, entityType: TrackableEntity) {
-  // Dynamically generate the storage key namespace
-  const storageKey = roomId ? `room_${roomId}_viewed_${entityType}` : null;
+export function useViewedItems(roomKey: string | number | undefined, entityType: TrackableEntity) {
+  // Use the roomKey in the namespace
+  const storageKey = roomKey ? `room_${roomKey}_viewed_${entityType}` : null;
 
   const [viewedItems, setViewedItems] = useState<Set<number>>(() => {
     if (!storageKey) return new Set();
@@ -1654,9 +1965,10 @@ import LevelForm from './forms/LevelForm';
 import EvidenceForm from './forms/EvidenceForm';
 import QuestionForm from './forms/QuestionForm';
 import SuspectForm from './forms/SuspectForm'; 
+import InvestigationRequestForm from './forms/InvestigationRequestForm';
 import './AdminDashboard.css';
 
-type AdminTab = 'cases' | 'levels' | 'evidences' | 'suspects' | 'questions';
+type AdminTab = 'cases' | 'levels' | 'evidences' | 'requests' | 'suspects' | 'questions';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('cases');
@@ -1667,6 +1979,7 @@ export default function AdminDashboard() {
         <button className={`admin-tab-btn ${activeTab === 'cases' ? 'active' : ''}`} onClick={() => setActiveTab('cases')}>New Case</button>
         <button className={`admin-tab-btn ${activeTab === 'levels' ? 'active' : ''}`} onClick={() => setActiveTab('levels')}>New Level</button>
         <button className={`admin-tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => setActiveTab('evidences')}>New Evidence</button>
+        <button className={`admin-tab-btn ${activeTab === 'requests' ? 'active' : ''}`} onClick={() => setActiveTab('requests')}>Combos / Requests</button>
         <button className={`admin-tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} onClick={() => setActiveTab('suspects')}>New Suspect</button>
         <button className={`admin-tab-btn ${activeTab === 'questions' ? 'active' : ''}`} onClick={() => setActiveTab('questions')}>New Question</button>
       </nav>
@@ -1675,6 +1988,7 @@ export default function AdminDashboard() {
         {activeTab === 'cases' && <CaseForm />}
         {activeTab === 'levels' && <LevelForm />}
         {activeTab === 'evidences' && <EvidenceForm />}
+        {activeTab === 'requests' && <InvestigationRequestForm />}
         {activeTab === 'suspects' && <SuspectForm />}
         {activeTab === 'questions' && <QuestionForm />}
       </div>
@@ -2128,6 +2442,189 @@ export default function EvidenceForm() {
           style={{ background: 'var(--accent-crimson)', marginTop: '1rem' }}
         >
           {mutation.isPending ? 'Encrypting Data...' : 'Commit Evidence to Database'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\InvestigationRequestForm.tsx
+----------------------------------------
+import { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { createAdminInvestigationRequest, fetchAdminCases } from '@/services/adminApi';
+import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
+
+export default function InvestigationRequestForm() {
+  const [caseId, setCaseId] = useState('');
+  const [requestType, setRequestType] = useState<string>('');
+  const [unlocksEvidenceId, setUnlocksEvidenceId] = useState('');
+  const [requiredEvidenceIds, setRequiredEvidenceIds] = useState<number[]>([]);
+  
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const { data: cases = [], isLoading: isFetchingCases } = useQuery({
+    queryKey: ['adminCases'],
+    queryFn: async () => {
+      const result = await fetchAdminCases();
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    }
+  });
+
+  const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
+  const availableEvidences = selectedCase?.evidences || [];
+
+  const mutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const result = await createAdminInvestigationRequest(formData);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: () => {
+      setFeedback({ type: 'success', message: 'Investigation request successfully compiled.' });
+      setRequestType('');
+      setUnlocksEvidenceId('');
+      setRequiredEvidenceIds([]);
+    },
+    onError: (error: Error) => {
+      setFeedback({ type: 'error', message: error.message });
+    }
+  });
+
+  const handleToggleRequired = (id: number) => {
+    setRequiredEvidenceIds(prev => 
+      prev.includes(id) ? prev.filter(eId => eId !== id) : [...prev, id]
+    );
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFeedback(null);
+
+    if (requiredEvidenceIds.length < 2) {
+      setFeedback({ type: 'error', message: 'A procedural request must require at least two pieces of evidence to cross-reference.' });
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('case_id', caseId);
+    formData.append('request_type', requestType);
+    formData.append('unlocks_evidence_id', unlocksEvidenceId);
+    
+    requiredEvidenceIds.forEach(id => {
+      formData.append('required_evidence_ids[]', id.toString());
+    });
+
+    mutation.mutate(formData);
+  };
+
+  return (
+    <div className="admin-form-container glass-panel">
+      {feedback && (
+        <div className={`status-message ${feedback.type}`}>
+          {feedback.message}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="admin-form">
+        <div className="admin-form-row">
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Target Case</label>
+            <select 
+              className="admin-input" required
+              value={caseId} 
+              onChange={(e) => {
+                setCaseId(e.target.value);
+                setRequiredEvidenceIds([]);
+                setUnlocksEvidenceId('');
+              }} 
+              disabled={isFetchingCases}
+            >
+              <option value="" disabled>-- Select a Case --</option>
+              {cases.map((c: any) => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
+          </div>
+          
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Request Classification</label>
+            <select 
+              className="admin-input" required
+              value={requestType} 
+              onChange={(e) => setRequestType(e.target.value)}
+            >
+              <option value="" disabled>-- Select Classification --</option>
+              {Object.values(InvestigationRequestType).map(type => (
+                <option key={type} value={type}>{getInvestigationRequestLabel(type)}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="form-group" style={{ marginTop: '1rem' }}>
+          <label style={{ color: 'var(--accent-amber)' }}>Target Evidence to Unlock</label>
+          <select 
+            className="admin-input" required
+            value={unlocksEvidenceId} 
+            onChange={(e) => setUnlocksEvidenceId(e.target.value)}
+            disabled={!caseId}
+          >
+            <option value="" disabled>-- Select the Reward Evidence --</option>
+            {availableEvidences.map((ev: any) => (
+              <option key={`unlock-${ev.id}`} value={ev.id}>EX-{ev.id.toString().padStart(3, '0')} : {ev.title}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="form-group" style={{ marginTop: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '8px' }}>
+          <label style={{ marginBottom: '1rem', color: 'var(--accent-cyan)' }}>Required Evidence Combination</label>
+          
+          {availableEvidences.length === 0 ? (
+            <div className="terminal-text" style={{ padding: 0, textAlign: 'left' }}>No evidence available in this case.</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              {availableEvidences.map((ev: any) => {
+                const isSelected = requiredEvidenceIds.includes(ev.id);
+                return (
+                  <div 
+                    key={`req-${ev.id}`}
+                    onClick={() => handleToggleRequired(ev.id)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem', 
+                      background: isSelected ? 'rgba(0, 229, 255, 0.1)' : 'rgba(255,255,255,0.02)',
+                      border: `1px solid ${isSelected ? 'var(--accent-cyan)' : 'rgba(255,255,255,0.1)'}`,
+                      borderRadius: '4px', cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                  >
+                    <input 
+                      type="checkbox" 
+                      checked={isSelected}
+                      readOnly
+                      style={{ transform: 'scale(1.2)', accentColor: 'var(--accent-cyan)' }}
+                    />
+                    <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+                      EX-{ev.id.toString().padStart(3, '0')}
+                    </span>
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {ev.title}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <button 
+          type="submit" 
+          className="btn-primary" 
+          disabled={mutation.isPending}
+          style={{ background: 'var(--accent-crimson)', marginTop: '1rem' }}
+        >
+          {mutation.isPending ? 'Processing...' : 'Compile Investigation Request'}
         </button>
       </form>
     </div>
@@ -2907,6 +3404,51 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   padding-bottom: 0.5rem;
 }
 
+.sidebar-heading-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
+}
+
+.sidebar-heading-wrapper .sidebar-heading {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.copy-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 1.1rem;
+  transition: all 0.2s ease;
+  line-height: 1;
+  padding: 0;
+}
+
+.copy-btn:hover {
+  background: rgba(0, 229, 255, 0.1);
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  box-shadow: inset 0 0 5px rgba(0, 229, 255, 0.2);
+}
+
+.copy-btn.copied {
+  background: rgba(0, 255, 128, 0.1);
+  color: #00FF80;
+  border-color: #00FF80;
+}
+
 .invite-code-display {
   font-family: var(--font-mono);
   font-size: 2rem;
@@ -3108,6 +3650,63 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   }
 }
 
+/* --- Victory Statistics Grid --- */
+.victory-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  width: 100%;
+  margin-bottom: 2rem;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.02);
+}
+
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.stat-value {
+  font-family: var(--font-primary);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.stat-value.highlight {
+  color: var(--accent-amber);
+}
+
+.stat-value.error {
+  color: var(--accent-crimson);
+}
+
+.stat-value.success {
+  color: var(--accent-success);
+}
+
+.stat-sub {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  font-weight: 400;
+}
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\GameRoom.tsx
 ----------------------------------------
@@ -3120,6 +3719,7 @@ import CaseDetailsTab from './tabs/CaseDetailsTab';
 import EvidenceBoardTab from './tabs/EvidenceBoardTab';
 import SuspectsTab from './tabs/SuspectsTab';
 import CampaignTab from './tabs/CampaignTab';
+import AgentNotepad from '../../components/AgentNotepad/AgentNotepad'; 
 import './GameRoom.css';
 
 type Tab = 'details' | 'evidences' | 'campaign' | 'suspects';
@@ -3138,20 +3738,47 @@ export default function GameRoom() {
     refreshRoomData 
   } = useGameRoom(inviteCode);
 
-  const { viewedItems: viewedEvidences, markItemAsViewed: markEvidenceAsViewed } = useViewedItems(room?.id, 'evidence');
-  const { viewedItems: viewedSuspects, markItemAsViewed: markSuspectAsViewed } = useViewedItems(room?.id, 'suspects');
-  const { viewedItems: viewedVictims, markItemAsViewed: markVictimAsViewed } = useViewedItems(room?.id, 'victims');
+  const { viewedItems: viewedEvidences, markItemAsViewed: markEvidenceAsViewed } = useViewedItems(room?.invite_code, 'evidence');
+  const { viewedItems: viewedSuspects, markItemAsViewed: markSuspectAsViewed } = useViewedItems(room?.invite_code, 'suspects');
+  const { viewedItems: viewedVictims, markItemAsViewed: markVictimAsViewed } = useViewedItems(room?.invite_code, 'victims');
   
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
+  const [finalStats, setFinalStats] = useState<any>(room?.final_stats || null);
+  const [isCopied, setIsCopied] = useState(false);
 
+  const handleCopyCode = async () => {
+    if (!room?.invite_code) return;
+    
+    try {
+      await navigator.clipboard.writeText(room.invite_code);
+      setIsCopied(true);
+      // Revert the icon back after 2 seconds
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  // 1. CREATE THE UNIFIED STATE UPDATER
+  const setGameOverData = (message: string, stats?: any) => {
+    setResolutionMessage(message);
+    if (stats) setFinalStats(stats);
+  };
+
+  // 2. UPDATE THE WEBSOCKET TO USE THE NEW FUNCTION
   useEffect(() => {
     if (!room || !window.Echo) return;
     const channel = window.Echo.private(`room.${room.id}`);
     
     channel.listen('LevelTransitioned', (e: any) => {
       if (e.message) {
-        setResolutionMessage(e.message);
+        if (e.status === 'active') {
+           window.alert(`🚨 DEPARTMENT UPDATE:\n\n${e.message}`);
+        } else {
+           // If the game is actually over, update the overlay data
+           setGameOverData(e.message, e.stats);
+        }
       }
       refreshRoomData();
     });
@@ -3181,6 +3808,7 @@ export default function GameRoom() {
       markSuspectAsViewed={markSuspectAsViewed}
       viewedVictims={viewedVictims}
       markVictimAsViewed={markVictimAsViewed}
+      setGameOverData={setGameOverData} 
     >
       <div className="game-room-layout">
         
@@ -3206,7 +3834,30 @@ export default function GameRoom() {
                 </>
               )}
 
-              <button className="btn-primary" onClick={() => navigate('/')}>
+              {finalStats && (
+                <div className="victory-stats-grid">
+                  <div className="stat-box">
+                    <span className="stat-label">Time Elapsed</span>
+                    <span className="stat-value">{finalStats.time_taken}</span>
+                  </div>
+                  <div className="stat-box">
+                    <span className="stat-label">XP Granted</span>
+                    <span className="stat-value highlight">{finalStats.xp_gained} <span className="stat-sub">/ {finalStats.max_xp}</span></span>
+                  </div>
+                  <div className="stat-box">
+                    <span className="stat-label">Suspects Caught</span>
+                    <span className="stat-value">{finalStats.suspects_caught} <span className="stat-sub">/ {finalStats.total_guilty}</span></span>
+                  </div>
+                  <div className="stat-box">
+                    <span className="stat-label">Innocents Accused</span>
+                    <span className={`stat-value ${finalStats.innocents_accused > 0 ? 'error' : 'success'}`}>
+                      {finalStats.innocents_accused}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <button className="btn-primary" onClick={() => navigate('/')} style={{ marginTop: '1rem', width: '100%' }}>
                 Return to Headquarters
               </button>
             </div>
@@ -3215,7 +3866,17 @@ export default function GameRoom() {
 
         <aside className="sidebar-panel glass-panel">
           <div className="sidebar-section">
-            <h3 className="sidebar-heading">Session Code</h3>
+            <div className="sidebar-heading-wrapper">
+              <h3 className="sidebar-heading">Session Code</h3>
+              <button 
+                className={`copy-btn ${isCopied ? 'copied' : ''}`}
+                onClick={handleCopyCode}
+                title="Copy Invite Code"
+              >
+                {/* Fallback to simple unicode icons if you aren't using an icon library */}
+                {isCopied ? '✓' : '⧉'}
+              </button>
+            </div>
             <div className="invite-code-display">{room.invite_code}</div>
           </div>
 
@@ -3259,6 +3920,10 @@ export default function GameRoom() {
               )}
             </ul>
           </div>
+
+          {/* 2. Inject the Notepad Component */}
+          <AgentNotepad roomId={room.id} />
+          
         </aside>
 
         <main className="workspace-panel">
@@ -3325,7 +3990,7 @@ export default function CampaignTab() {
     isSubmitting,
     isInitiating,
     feedback,
-    toastMessage, 
+    toasts, 
     handleSelectChoice,
     handleSubmitTheory,
     initiatePhase,
@@ -3385,16 +4050,20 @@ export default function CampaignTab() {
         </div>
       )}
 
-      {/* --- TACTICAL TOAST NOTIFICATION --- */}
-      {toastMessage && (
-        <div className="system-toast-notification">
-          <span className="toast-icon pulse-icon">📄</span>
-          <div className="toast-text-block">
-            <span className="toast-header">INTEL ACQUIRED</span>
-            <p className="toast-message">{toastMessage}</p>
+      {/* --- TACTICAL TOAST NOTIFICATIONS --- */}
+      <div className="toast-container">
+        {toasts.map((toast) => (
+          <div key={toast.id} className="system-toast-notification">
+            <div className="toast-icon pulse-icon">
+              <img src={toast.icon} alt={toast.type} className="toast-svg-graphic" />
+            </div>
+            <div className="toast-text-block">
+              <span className="toast-header">{toast.title}</span>
+              <p className="toast-message">{toast.message}</p>
+            </div>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
 
       {/* --- NON-LINEAR ROADMAP --- */}
       <div className="roadmap-timeline">
@@ -3690,7 +4359,7 @@ export default function CaseDetailsTab() {
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard.css
 ----------------------------------------
 /* Container rules remain identical */
-.evidence-board-container { display: flex; flex-direction: column; gap: 1.5rem; height: 100%; }
+.evidence-board-container { display: flex; flex-direction: column; gap: 1.5rem; /*height: 100%;*/ }
 .board-header { display: flex; justify-content: space-between; align-items: flex-end; }
 .board-meta { font-family: var(--font-mono); color: var(--text-secondary); font-size: 0.85rem; opacity: 0.7; }
 
@@ -3701,7 +4370,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   border: var(--border-thin);
   border-radius: var(--radius-xl);
   padding: 3rem;
-  overflow-y: auto;
+  /* overflow-y: auto; */
   position: relative;
   box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
 }
@@ -3999,36 +4668,6 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 .audio-visualizer-mock { height: 40px; width: 100%; background: repeating-linear-gradient(90deg, var(--accent-cyan), var(--accent-cyan) 2px, transparent 2px, transparent 6px); opacity: 0.3; }
 .evidence-audio-player { width: 100%; outline: none; }
 
-/* --- UNREAD EVIDENCE NOTIFICATION --- */
-.unread-indicator {
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  width: 16px;
-  height: 16px;
-  background-color: rgba(112, 239, 112, 0.8);
-  border-radius: 50%;
-  border: 2px solid #1a1a1a;
-  box-shadow: 0 0 10px rgba(112, 239, 112, 0.8);
-  z-index: 20;
-  pointer-events: none;
-  animation: radar-pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes radar-pulse {
-  0% { 
-    transform: scale(0.95); 
-    box-shadow: 0 0 0 0 rgba(112, 239, 112, 0.8); 
-  }
-  70% { 
-    transform: scale(1); 
-    box-shadow: 0 0 0 8px rgba(163, 50, 50, 0); 
-  }
-  100% { 
-    transform: scale(0.95); 
-    box-shadow: 0 0 0 0 rgba(163, 50, 50, 0); 
-  }
-}
 
 @media (max-width: 768px) {
   .acrylic-workspace {
@@ -4123,31 +4762,194 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   user-select: none; /* Prevents players from highlighting to reveal */
 }
 
+/* --- Filing Tray Styles --- */
+.filing-tray {
+  margin-top: 1rem;
+  padding: 1.5rem;
+  border-color: rgba(var(--accent-amber-rgb), 0.3);
+  box-shadow: inset 0 0 20px rgba(var(--accent-amber-rgb), 0.05);
+}
+
+.tray-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  border-bottom: 1px dashed rgba(255,255,255,0.1);
+  padding-bottom: 0.5rem;
+}
+
+.tray-header h3 {
+  margin: 0;
+  font-family: var(--font-mono);
+  color: var(--accent-amber);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 1rem;
+}
+
+.tray-layout {
+  display: flex;
+  gap: 2rem;
+  align-items: stretch;
+}
+
+.tray-dropzone {
+  flex: 1;
+  border: 2px dashed rgba(255,255,255,0.1);
+  border-radius: var(--radius-sm);
+  background: rgba(0,0,0,0.3);
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  transition: all 0.2s ease;
+}
+
+.tray-placeholder {
+  font-family: var(--font-mono);
+  color: rgba(255,255,255,0.2);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.tray-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.tray-item-pill {
+  display: flex;
+  align-items: center;
+  background: rgba(var(--accent-amber-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-amber-rgb), 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.tray-item-id {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: rgba(0,0,0,0.5);
+  padding: 0.5rem;
+  color: var(--accent-amber);
+}
+
+.tray-item-title {
+  padding: 0.5rem 1rem;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.tray-item-remove {
+  background: rgba(163, 50, 50, 0.2);
+  border: none;
+  border-left: 1px solid rgba(163, 50, 50, 0.3);
+  color: var(--accent-crimson);
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  line-height: 1;
+  transition: background 0.2s;
+}
+
+.tray-item-remove:hover {
+  background: var(--accent-crimson);
+  color: var(--bg-dark);
+}
+
+.tray-actions {
+  width: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+@media (max-width: 768px) {
+  .tray-layout {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .tray-actions {
+    width: 100%;
+  }
+}
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoardTab.tsx
 ----------------------------------------
 import { useState } from 'react';
 import type { Evidence } from '../../../types';
 import { useRoomContext } from '../../../context/RoomContext';
+import { useInvestigationRequest } from '../../../hooks/useInvestigationRequest';
+import { InvestigationRequestType, getInvestigationRequestLabel } from '../../../types';
 import EvidenceCard from './EvidenceCard';
 import EvidenceModal from './EvidenceModal'; 
 import './EvidenceBoard.css';
 
 export default function EvidenceBoardTab() {
-  const { accumulatedEvidences, viewedEvidences, markEvidenceAsViewed } = useRoomContext();
+  const { room, accumulatedEvidences, viewedEvidences, markEvidenceAsViewed, refreshRoomData } = useRoomContext();
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
+
+  const {
+    trayEvidences,
+    requestType,
+    setRequestType,
+    addToTray,
+    removeFromTray,
+    isSubmitting,
+    feedback,
+    toasts,
+    clearFeedback,
+    submitRequest
+  } = useInvestigationRequest(room, refreshRoomData);
 
   const handleInspect = (evidence: Evidence) => {
     setInspectedEvidence(evidence);
     markEvidenceAsViewed(evidence.id);
   };
 
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const evidenceId = parseInt(e.dataTransfer.getData('evidenceId'), 10);
+    if (!isNaN(evidenceId)) addToTray(evidenceId);
+  };
+
   return (
     <div className="evidence-board-container">
       <header className="board-header">
         <h2 className="section-title">The Evidence Board</h2>
-        <span className="board-meta">pinned by the system • click to inspect</span>
+        <span className="board-meta">Drag files to the tray below to request warrants or subpoenas.</span>
       </header>
+
+      {feedback && (
+        <div className="feedback-modal-overlay" style={{ zIndex: 1000 }}>
+          <div className={`feedback-modal-content ${feedback.type}`}>
+            <h3 className="feedback-title">
+              {feedback.type === 'success' ? 'Request Approved' : 'Request Denied'}
+            </h3>
+            <p className="feedback-message">{feedback.message}</p>
+            <button className="btn-secondary mt-1" onClick={clearFeedback}>Acknowledge</button>
+          </div>
+        </div>
+      )}
+
+      <div className="toast-container">
+        {toasts.map((toast) => (
+          <div key={toast.id} className="system-toast-notification">
+            <div className="toast-icon pulse-icon">
+              <img src={toast.icon} alt={toast.type} className="toast-svg-graphic" />
+            </div>
+            <div className="toast-text-block">
+              <span className="toast-header">{toast.title}</span>
+              <p className="toast-message">{toast.message}</p>
+            </div>
+          </div>
+        ))}
+      </div>
       
       <div className="acrylic-workspace">
         {accumulatedEvidences.length === 0 ? (
@@ -4167,10 +4969,59 @@ export default function EvidenceBoardTab() {
         )}
       </div>
 
-      <EvidenceModal 
-        evidence={inspectedEvidence} 
-        onClose={() => setInspectedEvidence(null)} 
-      />
+      {/* TACTICAL FILING TRAY */}
+      <div className="filing-tray glass-panel" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+        <div className="tray-header">
+          <span className="forensic-icon">⚖️</span>
+          <h3>Procedural Request Tray</h3>
+        </div>
+        
+        <div className="tray-layout">
+          <div className="tray-dropzone">
+            {trayEvidences.length === 0 ? (
+              <span className="tray-placeholder">Drag & Drop Evidence Here</span>
+            ) : (
+              <div className="tray-items">
+                {trayEvidences.map(id => {
+                  const ev = accumulatedEvidences.find(e => e.id === id);
+                  return (
+                    <div key={id} className="tray-item-pill">
+                      <span className="tray-item-id">EX-{id.toString().padStart(3, '0')}</span>
+                      <span className="tray-item-title">{ev?.title || 'Unknown File'}</span>
+                      <button className="tray-item-remove" onClick={() => removeFromTray(id)}>×</button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="tray-actions">
+            <select 
+              className="admin-input" 
+              value={requestType} 
+              onChange={(e) => setRequestType(e.target.value)}
+              style={{ width: '100%', marginBottom: '1rem', background: 'rgba(0,0,0,0.5)' }}
+            >
+              <option value="" disabled>-- Select Request Type --</option>
+              {Object.values(InvestigationRequestType).map(type => (
+                <option key={type} value={type}>{getInvestigationRequestLabel(type)}</option>
+              ))}
+            </select>
+            
+            <button 
+              className="btn-primary" 
+              disabled={trayEvidences.length < 2 || !requestType || isSubmitting}
+              onClick={() => submitRequest()}
+              style={{ width: '100%' }}
+            >
+              {isSubmitting ? 'Filing...' : 'Submit Request to DA'}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <EvidenceModal evidence={inspectedEvidence} onClose={() => setInspectedEvidence(null)} />
     </div>
   );
 }
@@ -4213,10 +5064,13 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
     <div 
       className={`evidence-card-wrapper item-${index % 5}`} 
       onClick={() => onInspect(evidence)}
+      draggable
+      onDragStart={(e) => {
+        // Only set the ID, don't stop propagation so click works if they don't drag
+        e.dataTransfer.setData('evidenceId', evidence.id.toString());
+      }}
     >
-      {/* Unread Notification Ball */}
       {isNew && <div className="unread-indicator" title="Unread Intel"></div>}
-      
       <SpecificEvidenceComponent evidence={evidence} />
     </div>
   );
@@ -4314,10 +5168,11 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 .suspect-mugshot {
   width: 100%;
   height: 160px;
-  background-color: rgba(0, 0, 0, 0.4); /* Fallback if image breaks */
+  background-color: rgba(0, 0, 0, 0.4); 
   background-size: cover;
   background-position: center;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: calc(var(--radius-sm) - 1px) calc(var(--radius-sm) - 1px) 0 0;
 }
 
 .suspect-info {
@@ -4353,7 +5208,6 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   background: var(--bg-dark);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-sm);
-  overflow: hidden;
   cursor: grab;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   transition: transform 0.1s ease, box-shadow 0.1s ease;
@@ -4592,16 +5446,17 @@ export default function SuspectsTab() {
     accumulatedSuspects, 
     refreshRoomData,
     viewedSuspects,
-    markSuspectAsViewed
+    markSuspectAsViewed,
+    setGameOverData 
   } = useRoomContext();
   
   const [guiltyIds, setGuiltyIds] = useState<number[]>(() => {
-    const saved = sessionStorage.getItem(`room_${room.id}_guilty_suspects`);
+    const saved = sessionStorage.getItem(`room_${room.invite_code}_guilty_suspects`);
     return saved ? JSON.parse(saved) : [];
   });
   
   const [innocentIds, setInnocentIds] = useState<number[]>(() => {
-    const saved = sessionStorage.getItem(`room_${room.id}_innocent_suspects`);
+    const saved = sessionStorage.getItem(`room_${room.invite_code}_innocent_suspects`);
     return saved ? JSON.parse(saved) : [];
   });
 
@@ -4623,13 +5478,15 @@ export default function SuspectsTab() {
     },
     onSuccess: (data) => {
       if (data.status === 'failed') {
-        // Just a strike penalty - keep players on the board
         setFeedback({ type: 'error', message: data.message });
         refreshRoomData();
       } else {
-        // Game Over (success or failed_final) - Wipe state and let the GameRoom.tsx overlay takeover
-        sessionStorage.removeItem(`room_${room.id}_guilty_suspects`);
-        sessionStorage.removeItem(`room_${room.id}_innocent_suspects`);
+        sessionStorage.removeItem(`room_${room.invite_code}_guilty_suspects`);
+        sessionStorage.removeItem(`room_${room.invite_code}_innocent_suspects`);
+        
+        // 2. USE THE NATIVE REACT CONTEXT METHOD
+        setGameOverData(data.message, data.stats);
+        
         refreshRoomData();
       }
     },
@@ -4658,8 +5515,8 @@ export default function SuspectsTab() {
     setGuiltyIds(nextGuilty);
     setInnocentIds(nextInnocent);
 
-    sessionStorage.setItem(`room_${room.id}_guilty_suspects`, JSON.stringify(nextGuilty));
-    sessionStorage.setItem(`room_${room.id}_innocent_suspects`, JSON.stringify(nextInnocent));
+    sessionStorage.setItem(`room_${room.invite_code}_guilty_suspects`, JSON.stringify(nextGuilty));
+    sessionStorage.setItem(`room_${room.invite_code}_innocent_suspects`, JSON.stringify(nextInnocent));
   };
 
   const handleSubmitVerdict = () => {
@@ -5243,10 +6100,18 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 }
 
 /* --- Tactical Toast Notification --- */
-.system-toast-notification {
+.toast-container {
   position: fixed;
   bottom: 2rem;
   right: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  z-index: 9999;
+  pointer-events: none; /* Lets clicks pass through the gaps */
+}
+
+.system-toast-notification {
   background: rgba(15, 15, 20, 0.95);
   border: 1px solid var(--accent-amber);
   border-left: 4px solid var(--accent-amber);
@@ -5256,7 +6121,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   display: flex;
   align-items: center;
   gap: 1rem;
-  z-index: 9999;
+  pointer-events: auto; /* Restores clicks for the notification itself */
   animation: slide-in-toast 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
@@ -5284,6 +6149,13 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   font-size: 0.9rem;
   color: var(--text-primary);
   margin: 0;
+}
+
+.toast-svg-graphic {
+  width: 28px;
+  height: 28px;
+  display: block;
+  filter: brightness(1.2) drop-shadow(0 0 6px currentColor);
 }
 
 @keyframes slide-in-toast {
@@ -5913,6 +6785,29 @@ export const createAdminSuspect = async (formData: FormData): Promise<Result<any
   }
 };
 
+export const createAdminInvestigationRequest = async (formData: FormData): Promise<Result<any>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/investigation-requests`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: formData, // Sending as FormData to match the rest of your admin architecture seamlessly
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) handleUnauthorized();
+      const data = await response.json().catch(() => ({}));
+      return failure(data.message || 'Failed to create investigation request.');
+    }
+    
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\services\api.ts
 ----------------------------------------
@@ -6056,7 +6951,14 @@ export const lockVote = async (roomId: number, questionId: number, choiceId: num
   }
 };
 
-export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string; unlocked_evidence?: number[]; unlocked_levels?: number[] }>> => {  
+export const submitAssessment = async (roomId: number): Promise<Result<{ 
+  status: string; 
+  message: string; 
+  unlocked_evidence?: number[]; 
+  unlocked_levels?: number[];
+  unlocked_suspects?: number[];
+  unlocked_victims?: number[]; 
+}>> => {  
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/submit`, {
       method: 'POST',
@@ -6101,7 +7003,10 @@ export const initiatePhase = async (roomId: number, levelId: number): Promise<Re
   }
 };
 
-export const submitSuspectVerdict = async (roomId: number, guiltySuspectIds: number[]): Promise<Result<{ status: string; message: string; room?: GameRoom }>> => {  
+export const submitSuspectVerdict = async (
+  roomId: number, 
+  guiltySuspectIds: number[]
+): Promise<Result<{ status: string; message: string; room?: GameRoom; stats?: any }>> => {  
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/suspects/submit`, {
       method: 'POST',
@@ -6110,7 +7015,6 @@ export const submitSuspectVerdict = async (roomId: number, guiltySuspectIds: num
         'Accept': 'application/json',
         'Authorization': `Bearer ${getToken()}`
       },
-      // Wrap array in guilty_suspect_ids object
       body: JSON.stringify({ guilty_suspect_ids: guiltySuspectIds })
     });
     
@@ -6118,6 +7022,32 @@ export const submitSuspectVerdict = async (roomId: number, guiltySuspectIds: num
       if (response.status === 401) handleUnauthorized();
       const data = await response.json().catch(() => null);
       return failure(data?.message || 'Failed to submit final verdict.');
+    }
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
+
+export const submitInvestigationRequest = async (
+  roomId: number, 
+  evidenceIds: number[]
+): Promise<Result<{ status: string; message: string; unlocked_evidence: number[] }>> => {  
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/investigate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ evidence_ids: evidenceIds })
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) handleUnauthorized();
+      const data = await response.json().catch(() => null);
+      return failure(data?.message || 'The DA denied your request.');
     }
     return success(await response.json());
   } catch (error) {
@@ -6276,6 +7206,7 @@ export interface GameRoom {
   current_level_id: number;
   status: string;
   strikes: number;
+  final_stats?: FinalStats | null; 
   game_case?: GameCase;
   users?: RoomUser[];
   current_level?: Level;
@@ -6285,6 +7216,15 @@ export interface GameRoom {
   unlocked_victims?: Victim[];
   completed_levels?: Level[];
   votes?: RoomVote[];
+}
+
+export interface FinalStats {
+  time_taken: string;
+  xp_gained: number;
+  max_xp: number;
+  suspects_caught: number;
+  total_guilty: number;
+  innocents_accused: number;
 }
 
 export type EvidenceType = 'document' | 'testimony' | 'audio' | 'image' | 'forensic';
@@ -6333,6 +7273,31 @@ export interface Level {
   is_initial: boolean; 
   questions?: Question[]; 
 }
+
+export const InvestigationRequestType = {
+  SearchWarrant: 'search_warrant',
+  FinancialSubpoena: 'financial_subpoena',
+  ToxicologyReport: 'toxicology_report',
+  WiretapAuthorization: 'wiretap_authorization',
+  BallisticsAnalysis: 'ballistics_analysis',
+  DigitalForensics: 'digital_forensics',
+  ExhumationOrder: 'exhumation_order',
+} as const;
+
+export type InvestigationRequestType = typeof InvestigationRequestType[keyof typeof InvestigationRequestType];
+
+export const getInvestigationRequestLabel = (type: string): string => {
+  const labels: Record<string, string> = {
+    search_warrant: 'Search Warrant Execution',
+    financial_subpoena: 'Subpoena of Financial Records',
+    toxicology_report: 'Advanced Toxicology Screen',
+    wiretap_authorization: 'Communications Wiretap',
+    ballistics_analysis: 'Firearm Ballistics Match',
+    digital_forensics: 'Device Decryption & Forensics',
+    exhumation_order: 'Coroner Exhumation Order',
+  };
+  return labels[type] || 'Procedural Request';
+};
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\utils\Result.ts

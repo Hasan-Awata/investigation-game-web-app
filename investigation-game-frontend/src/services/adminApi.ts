@@ -168,3 +168,26 @@ export const createAdminSuspect = async (formData: FormData): Promise<Result<any
     return failure(error instanceof Error ? error.message : 'Network error');
   }
 };
+
+export const createAdminInvestigationRequest = async (formData: FormData): Promise<Result<any>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/investigation-requests`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: formData, // Sending as FormData to match the rest of your admin architecture seamlessly
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) handleUnauthorized();
+      const data = await response.json().catch(() => ({}));
+      return failure(data.message || 'Failed to create investigation request.');
+    }
+    
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};

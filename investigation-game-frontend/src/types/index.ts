@@ -148,3 +148,28 @@ export interface Level {
   is_initial: boolean; 
   questions?: Question[]; 
 }
+
+export const InvestigationRequestType = {
+  SearchWarrant: 'search_warrant',
+  FinancialSubpoena: 'financial_subpoena',
+  ToxicologyReport: 'toxicology_report',
+  WiretapAuthorization: 'wiretap_authorization',
+  BallisticsAnalysis: 'ballistics_analysis',
+  DigitalForensics: 'digital_forensics',
+  ExhumationOrder: 'exhumation_order',
+} as const;
+
+export type InvestigationRequestType = typeof InvestigationRequestType[keyof typeof InvestigationRequestType];
+
+export const getInvestigationRequestLabel = (type: string): string => {
+  const labels: Record<string, string> = {
+    search_warrant: 'Search Warrant Execution',
+    financial_subpoena: 'Subpoena of Financial Records',
+    toxicology_report: 'Advanced Toxicology Screen',
+    wiretap_authorization: 'Communications Wiretap',
+    ballistics_analysis: 'Firearm Ballistics Match',
+    digital_forensics: 'Device Decryption & Forensics',
+    exhumation_order: 'Coroner Exhumation Order',
+  };
+  return labels[type] || 'Procedural Request';
+};

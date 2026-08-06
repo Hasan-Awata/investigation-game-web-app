@@ -215,3 +215,29 @@ export const submitSuspectVerdict = async (
     return failure(error instanceof Error ? error.message : 'Network error');
   }
 };
+
+export const submitInvestigationRequest = async (
+  roomId: number, 
+  evidenceIds: number[]
+): Promise<Result<{ status: string; message: string; unlocked_evidence: number[] }>> => {  
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/investigate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ evidence_ids: evidenceIds })
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) handleUnauthorized();
+      const data = await response.json().catch(() => null);
+      return failure(data?.message || 'The DA denied your request.');
+    }
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};

@@ -33,10 +33,13 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
     <div 
       className={`evidence-card-wrapper item-${index % 5}`} 
       onClick={() => onInspect(evidence)}
+      draggable
+      onDragStart={(e) => {
+        // Only set the ID, don't stop propagation so click works if they don't drag
+        e.dataTransfer.setData('evidenceId', evidence.id.toString());
+      }}
     >
-      {/* Unread Notification Ball */}
       {isNew && <div className="unread-indicator" title="Unread Intel"></div>}
-      
       <SpecificEvidenceComponent evidence={evidence} />
     </div>
   );

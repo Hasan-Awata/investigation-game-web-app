@@ -232,7 +232,7 @@ The Laravel framework is open-sourced software licensed under the [MIT license](
 
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Enums\CaseStatus.php
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Enums\CaseUserStatus.php
 ----------------------------------------
 <?php
 
@@ -288,6 +288,37 @@ enum EvidenceType: string
             self::Audio => 'Audio Recording',
             self::Image => 'Photographic Evidence',
             self::Forensic => 'Forensic Report',
+        };
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Enums\InvestigationRequestType.php
+----------------------------------------
+<?php
+
+namespace App\Enums;
+
+enum InvestigationRequestType: string
+{
+    case SearchWarrant = 'search_warrant';
+    case FinancialSubpoena = 'financial_subpoena';
+    case ToxicologyReport = 'toxicology_report';
+    case WiretapAuthorization = 'wiretap_authorization';
+    case BallisticsAnalysis = 'ballistics_analysis';
+    case DigitalForensics = 'digital_forensics';
+    case ExhumationOrder = 'exhumation_order';
+
+    public function label(): string
+    {
+        return match($this) {
+            self::SearchWarrant => 'Search Warrant Execution',
+            self::FinancialSubpoena => 'Subpoena of Financial Records',
+            self::ToxicologyReport => 'Advanced Toxicology Screen',
+            self::WiretapAuthorization => 'Communications Wiretap',
+            self::BallisticsAnalysis => 'Firearm Ballistics Match',
+            self::DigitalForensics => 'Device Decryption & Forensics',
+            self::ExhumationOrder => 'Coroner Exhumation Order',
         };
     }
 }
@@ -364,7 +395,9 @@ class LevelTransitioned implements ShouldBroadcastNow
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(
-        public readonly GameRoom $room
+        public readonly GameRoom $room,
+        public readonly ?string $message = null,
+        public readonly ?array $stats = null
     ) {}
 
     /**
@@ -391,6 +424,7 @@ class LevelTransitioned implements ShouldBroadcastNow
             'room' => $this->room,
             'status' => $this->room->status->value, 
             'message' => $this->message, 
+            'stats' => $this->stats, 
         ];
     }
 }
@@ -540,15 +574,10 @@ class AssessmentController extends Controller
         private readonly AssessmentService $assessmentService
     ) {}
 
-    /**
-     * Submit the room's locked-in votes for the current level to be assessed.
-     */
     public function store(Request $request, GameRoom $room): JsonResponse
     {
-        // Execute the domain logic to evaluate the team's consensus
         $result = $this->assessmentService->evaluateSubmission($room);
 
-        // If validation fails (e.g., not all questions have votes)
         if ($result->isFailure()) {
             return response()->json([
                 'error' => 'Assessment Failed',
@@ -556,11 +585,13 @@ class AssessmentController extends Controller
             ], 422);
         }
 
-        // If the assessment ran successfully, it returns a status and a narrative message
         return response()->json([
             'status' => $result->value['status'],    
             'message' => $result->value['message'], 
             'unlocked_evidence' => $result->value['unlocked_evidence'] ?? [], 
+            'unlocked_levels' => $result->value['unlocked_levels'] ?? [],
+            'unlocked_suspects' => $result->value['unlocked_suspects'] ?? [],
+            'unlocked_victims' => $result->value['unlocked_victims'] ?? [],  
             'room' => $room->load('currentLevel'),  
         ], 200);
     }
@@ -851,6 +882,51 @@ class GameRoomController extends Controller
         ]);
 
         return response()->json(['room' => $room], 200);
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\InvestigationRequestController.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\GameRoom;
+use App\Services\InvestigationRequestService;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class InvestigationRequestController extends Controller
+{
+    public function __construct(
+        private readonly InvestigationRequestService $requestService
+    ) {}
+
+    public function store(Request $request, GameRoom $room): JsonResponse
+    {
+        // 1. Strict HTTP Validation
+        $validated = $request->validate([
+            'evidence_ids' => 'required|array|min:2',
+            'evidence_ids.*' => 'integer|exists:evidences,id',
+        ]);
+
+        // 2. Execute Domain Logic
+        $result = $this->requestService->processRequest($room, $validated['evidence_ids']);
+
+        // 3. Handle the Result
+        if ($result->isFailure()) {
+            return response()->json([
+                'error' => 'Request Denied',
+                'message' => $result->errorMessage
+            ], 422);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $result->value['message'],
+            'unlocked_evidence' => $result->value['unlocked_evidence']
+        ], 200);
     }
 }
 
@@ -1176,6 +1252,52 @@ class AdminEvidenceController extends Controller
         ]);
 
         return response()->json(['message' => 'Evidence added successfully.', 'evidence' => $evidence], 201);
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminInvestigationRequestController.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\InvestigationRequest;
+use App\Enums\InvestigationRequestType;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rules\Enum;
+use Illuminate\Support\Facades\DB;
+
+class AdminInvestigationRequestController extends Controller
+{
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'case_id' => 'required|exists:cases,id',
+            'request_type' => ['required', new Enum(InvestigationRequestType::class)],
+            'unlocks_evidence_id' => 'required|exists:evidences,id',
+            'required_evidence_ids' => 'required|array|min:2',
+            'required_evidence_ids.*' => 'exists:evidences,id',
+        ]);
+
+        // Wrap in a transaction to ensure both the parent record and pivot table sync cleanly
+        return DB::transaction(function () use ($validated) {
+            $investigationRequest = InvestigationRequest::create([
+                'case_id' => $validated['case_id'],
+                'request_type' => $validated['request_type'],
+                'unlocks_evidence_id' => $validated['unlocks_evidence_id'],
+            ]);
+
+            // Automatically populate the investigation_request_items pivot table
+            $investigationRequest->requiredEvidences()->sync($validated['required_evidence_ids']);
+
+            return response()->json([
+                'message' => 'Investigation request created successfully.',
+                'investigation_request' => $investigationRequest->load('requiredEvidences')
+            ], 201);
+        });
     }
 }
 
@@ -1618,25 +1740,21 @@ use App\Enums\RoomStatus;
 
 class GameRoom extends Model
 {
-protected $fillable = [
+    protected $fillable = [
         'case_id',
         'host_user_id',
         'invite_code',
         'current_level_id',
         'status',
         'strikes', 
+        'final_stats', 
     ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    
     protected function casts(): array
     {
         return [
             'status' => RoomStatus::class,
+            'final_stats' => 'array', 
         ];
     }
 
@@ -1693,6 +1811,49 @@ protected $fillable = [
     { 
         return $this->belongsToMany(Victim::class, 'room_victims', 'room_id', 'victim_id')
                     ->withTimestamps(); 
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\InvestigationRequest.php
+----------------------------------------
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Enums\InvestigationRequestType;
+
+class InvestigationRequest extends Model
+{
+    protected $fillable = [
+        'case_id',
+        'request_type',
+        'unlocks_evidence_id'
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'request_type' => InvestigationRequestType::class,
+        ];
+    }
+
+    public function requiredEvidences(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Evidence::class, 
+            'investigation_request_items', 
+            'request_id', 
+            'evidence_id'
+        );
+    }
+
+    public function unlockedEvidence(): BelongsTo
+    {
+        return $this->belongsTo(Evidence::class, 'unlocks_evidence_id');
     }
 }
 
@@ -2096,13 +2257,17 @@ class AssessmentService
                     $room->refresh();
 
                     if ($room->strikes >= $maxStrikes) {
-                        $room->update(['status' => \App\Enums\RoomStatus::Failed]);
+                        $totalGuilty = \App\Models\Suspect::where('case_id', $room->case_id)->where('is_guilty', true)->count();
+                        $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
+
+                        $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
                         $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
-                        \App\Events\LevelTransitioned::dispatch($room);
+                        \App\Events\LevelTransitioned::dispatch($room, 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.', $stats);
 
                         return Result::success([
                             'status' => 'failed_final', 
-                            'message' => 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.'
+                            'message' => 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.',
+                            'stats' => $stats
                         ]);
                     }
 
@@ -2115,9 +2280,9 @@ class AssessmentService
                         ->delete();
 
                     // Return standard failure, embedding the hint directly into the message
-                    return Result::success([
-                        'status' => 'failed', 
-                        'message' => "The logic on a critical verdict is flawed. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: {$hint}"
+                    return \App\Support\Result::success([
+                        'status' => 'success', 
+                        'message' => $responseMessage,  
                     ]);
                 }
             }
@@ -2127,9 +2292,6 @@ class AssessmentService
             $newlyUnlockedLevels = [];
             $newlyUnlockedSuspects = [];
             $newlyUnlockedVictims = [];
-
-            foreach ($consensus as $questionId => $chosenId) {
-                $choice = Choice::find($chosenId);
 
             foreach ($consensus as $questionId => $chosenId) {
                 $choice = Choice::find($chosenId);
@@ -2199,21 +2361,20 @@ class AssessmentService
                 $responseMessage = 'Verdict accepted. Return to the roadmap to select the next phase.';
             }
 
-            LevelTransitioned::dispatch($room);
+            LevelTransitioned::dispatch($room, $responseMessage);
             
             return Result::success([
                 'status' => 'success', 
                 'message' => $responseMessage,
                 'unlocked_evidence' => $newlyUnlockedEvidences,
-                'unlocked_levels' => $newlyUnlockedLevels 
+                'unlocked_levels' => $newlyUnlockedLevels,
+                'unlocked_suspects' => $newlyUnlockedSuspects,
+                'unlocked_victims' => $newlyUnlockedVictims
             ]);
            }
-       });
+       );
     }
 
-    /**
-     * Evaluate the final suspect indictment submitted by the team.
-     */
     /**
      * Evaluate the final suspect indictment submitted by the team.
      */
@@ -2222,95 +2383,143 @@ class AssessmentService
         return \Illuminate\Support\Facades\DB::transaction(function () use ($room, $submittedSuspectIds) {
             $case = $room->gameCase;
 
-            // 1. STATUS GUARD: Prevent double-taps and race conditions
+            // 1. STATUS GUARD
             if ($room->status !== \App\Enums\RoomStatus::Active) {
                 return \App\Support\Result::failure("This investigation has already been concluded.");
             }
 
-            // 2. THE PROOF CHECK (Gatekeeper)
+            // --- 2. THE PROOF CHECK (THE GATEKEEPER) ---
             $vitalEvidenceIds = \App\Models\Evidence::where('case_id', $case->id)
-                ->where('is_vital_for_conviction', true)
-                ->pluck('id');
+                ->where('is_vital_for_conviction', true)->pluck('id')->toArray();
+            
+            $unlockedEvidenceIds = $room->unlockedEvidences()->pluck('evidences.id')->toArray();
+            $initialEvidenceIds = \App\Models\Evidence::where('case_id', $case->id)->where('is_initial', true)->pluck('id')->toArray();
+            $allPossessedEvidence = array_unique(array_merge($unlockedEvidenceIds, $initialEvidenceIds));
 
-            $unlockedVitalEvidenceIds = $room->unlockedEvidences()
-                ->whereIn('evidence_id', $vitalEvidenceIds)
-                ->pluck('evidence_id');
+            $missingVital = array_diff($vitalEvidenceIds, $allPossessedEvidence);
+            $totalGuiltyCount = \App\Models\Suspect::where('case_id', $case->id)->where('is_guilty', true)->count();
 
-            if ($unlockedVitalEvidenceIds->count() < $vitalEvidenceIds->count()) {
-                $room->update(['status' => \App\Enums\RoomStatus::Failed]);
-                $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedNoProof->value, 0);
-                \App\Events\LevelTransitioned::dispatch($room, 'The DA rejected the indictment. You identified suspects but failed to secure the vital evidence needed for a conviction. The conspirators walk free.');
+            if (!empty($missingVital)) {
+                $stats = $this->generateFinalStats($room, 0, 0, $totalGuiltyCount, 0);
+                $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedNoProof->value, 0);
+                
+                $message = 'INSTANT FAILURE: The DA threw out the case due to lack of definitive proof. You failed to uncover vital evidence.';
+                \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
 
                 return \App\Support\Result::success([
                     'status' => 'failed_final',
-                    'message' => 'The DA rejected the indictment. You identified suspects but failed to secure the vital evidence needed for a conviction.'
+                    'message' => $message,
+                    'stats' => $stats
                 ]);
             }
 
-            // 3. THE INDICTMENT CHECK
+            // --- 3. THE INDICTMENT CHECK (THE VERDICT) ---
             $trueGuiltyIds = \App\Models\Suspect::where('case_id', $case->id)
                 ->where('is_guilty', true)
                 ->pluck('id')
                 ->toArray();
 
+            $innocentsSubmitted = array_diff($submittedSuspectIds, $trueGuiltyIds);
+            $missedGuilty = array_diff($trueGuiltyIds, $submittedSuspectIds);
             $correctGuesses = array_intersect($submittedSuspectIds, $trueGuiltyIds);
-            $innocentGuesses = array_diff($submittedSuspectIds, $trueGuiltyIds);
 
-            // STRIKE CHECK: Accusing innocent people
-            if (!empty($innocentGuesses)) {
+            // Generate the dynamic message for accused innocents to append later
+            $innocentMessage = "";
+            if (count($innocentsSubmitted) > 0) {
+                $innocentNames = \App\Models\Suspect::whereIn('id', $innocentsSubmitted)->pluck('name')->toArray();
+                $verb = count($innocentNames) > 1 ? "were" : "was";
+                $innocentMessage = " " . implode(', ', $innocentNames) . " {$verb} found innocent.";
+            }
+
+            // SCENARIO A: Perfect Win (Got everyone, no innocents)
+            if (count($missedGuilty) === 0 && count($innocentsSubmitted) === 0) {
+                $stats = $this->generateFinalStats($room, $case->XP_on_solve, count($correctGuesses), $totalGuiltyCount, 0);
+                $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
+                
+                $message = 'PERFECT WIN: You successfully identified all perpetrators with irrefutable proof. Case closed.';
+                \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+
+                return \App\Support\Result::success([
+                    'status' => 'success',
+                    'message' => $message,
+                    'room' => $room,
+                    'stats' => $stats
+                ]);
+            } 
+            
+            // SCENARIO B: Partial Win (Got all guilty, but included innocents)
+            if (count($missedGuilty) === 0 && count($innocentsSubmitted) > 0) {
+                $xpPayload = (int) floor($case->XP_on_solve / 2);
+                $stats = $this->generateFinalStats($room, $xpPayload, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
+                
+                $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPartial->value, $xpPayload);
+                
+                $message = 'PARTIAL WIN: You successfully caught all perpetrators, but collateral damage was done.' . $innocentMessage;
+                \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+
+                return \App\Support\Result::success([
+                    'status' => 'success',
+                    'message' => $message,
+                    'room' => $room,
+                    'stats' => $stats
+                ]);
+            }
+
+            // SCENARIO C: Failure States (Missed one or more guilty suspects)
+            $initialSuspectIds = \App\Models\Suspect::where('case_id', $case->id)->where('is_initial', true)->pluck('id')->toArray();
+            $unlockedSuspectIds = $room->unlockedSuspects()->pluck('suspects.id')->toArray();
+            $possessedSuspectIds = array_unique(array_merge($initialSuspectIds, $unlockedSuspectIds));
+
+            $unpossessedMissedGuilty = array_diff($missedGuilty, $possessedSuspectIds);
+
+            if (count($unpossessedMissedGuilty) > 0) {
+                // FAILURE 1: They never unlocked the required suspects in the campaign
+                $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
+                $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedIncomplete->value, 0);
+                
+                $message = 'INSTANT FAILURE: The true masterminds were never even on your radar. The remaining guilty people have escaped.' . $innocentMessage;
+                \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+
+                return \App\Support\Result::success([
+                    'status' => 'failed_final',
+                    'message' => $message,
+                    'stats' => $stats
+                ]);
+            } else {
+                // FAILURE 2: They had the suspects on their board, but failed to accuse them (Strike)
                 $room->increment('strikes');
                 $room->refresh();
                 $maxStrikes = $case->max_strikes;
 
                 if ($room->strikes >= $maxStrikes) {
-                    $room->update(['status' => \App\Enums\RoomStatus::Failed]);
-                    $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
-                    \App\Events\LevelTransitioned::dispatch($room, 'DEPARTMENT THRESHOLD EXCEEDED. You indicted innocent citizens. The DA has pulled your mandate.');
+                    $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
+                    $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
+                    $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedStrikes->value, 0);
+                    
+                    $message = 'DEPARTMENT THRESHOLD EXCEEDED. You failed to indict the correct suspects. The DA has pulled your mandate.' . $innocentMessage;
+                    \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
 
                     return \App\Support\Result::success([
                         'status' => 'failed_final',
-                        'message' => 'DEPARTMENT THRESHOLD EXCEEDED. You indicted innocent citizens. The DA has pulled your mandate.'
+                        'message' => $message,
+                        'stats' => $stats
                     ]);
                 }
 
-                \App\Events\LevelTransitioned::dispatch($room, "The DA has rejected your indictment due to insufficient grounds. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.");
+                $message = "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: There are still guilty people on your board that you haven't accused." . $innocentMessage;
+                
+                // We pass null for stats here because the room is still active
+                \App\Events\LevelTransitioned::dispatch($room, $message, null);
+                
                 return \App\Support\Result::success([
                     'status' => 'failed',
-                    'message' => "The DA has rejected your indictment due to insufficient grounds. STRIKE {$room->strikes}/{$maxStrikes} LOGGED."
+                    'message' => $message
                 ]);
             }
-
-            // 4. WIN / LOSS CONDITIONS (Threshold Logic)
-            $totalGuiltyCount = count($trueGuiltyIds);
-            $correctCount = count($correctGuesses);
-            $percentageCaught = $correctCount / $totalGuiltyCount;
-
-            if ($percentageCaught === 1.0) {
-                // Perfect Win: 100% XP
-                $room->update(['status' => \App\Enums\RoomStatus::Solved]);
-                $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
-                $message = 'Congratulations. You secured the vital proof and indicted all perpetrators. Case closed.';
-                
-            } elseif ($percentageCaught >= 0.5) {
-                // Partial Win: Caught 50% or more, but not all. 50% XP.
-                $room->update(['status' => \App\Enums\RoomStatus::Solved]);
-                $xpPayload = (int) floor($case->XP_on_solve / 2);
-                $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPartial->value, $xpPayload);
-                $message = 'You secured a conviction with solid proof, but some conspirators slipped through the cracks. Justice is incomplete.';
-                
-            } else {
-                // Incomplete Failure: Caught less than 50%. Case thrown out. 0 XP.
-                $room->update(['status' => \App\Enums\RoomStatus::Failed]);
-                $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedIncomplete->value, 0);
-                $message = 'Your indictment was too narrow. By missing the majority of the conspirators, the DA refused to take the case to trial. The network remains intact.';
-            }
-
-            \App\Events\LevelTransitioned::dispatch($room, $message);
-            return \App\Support\Result::success([
-                'status' => $room->status === \App\Enums\RoomStatus::Solved ? 'success' : 'failed_final',
-                'message' => $message,
-                'room' => $room
-            ]);
         });
     }
 
@@ -2350,6 +2559,40 @@ class AssessmentService
                 );
             }
         }
+    }
+
+    private function generateFinalStats(GameRoom $room, int $xpGained, int $caught, int $total, int $innocents): array
+    {
+        $case = $room->gameCase;
+        
+        // Use Carbon's native DateInterval to guarantee clean integers
+        $diff = $room->created_at->diff(now());
+        
+        // Cascade downwards, appending the next smallest unit if it is greater than zero
+        if ($diff->y > 0) {
+            $timeTaken = "{$diff->y} years" . ($diff->m > 0 ? " {$diff->m} months" : "");
+        } elseif ($diff->m > 0) {
+            $timeTaken = "{$diff->m} months" . ($diff->d > 0 ? " {$diff->d} days" : "");
+        } elseif ($diff->d >= 7) {
+            $weeks = (int) floor($diff->d / 7);
+            $days = $diff->d % 7;
+            $timeTaken = "{$weeks} weeks" . ($days > 0 ? " {$days} days" : "");
+        } elseif ($diff->d > 0) {
+            $timeTaken = "{$diff->d} days" . ($diff->h > 0 ? " {$diff->h} hours" : "");
+        } elseif ($diff->h > 0) {
+            $timeTaken = "{$diff->h} hours" . ($diff->i > 0 ? " {$diff->i} minutes" : "");
+        } else {
+            $timeTaken = "Less than a minute";
+        }
+
+        return [
+            'time_taken' => $timeTaken,
+            'xp_gained' => $xpGained,
+            'max_xp' => $case->XP_on_solve,
+            'suspects_caught' => $caught,
+            'total_guilty' => $total,
+            'innocents_accused' => $innocents,
+        ];
     }
 }
 
@@ -2439,6 +2682,76 @@ class GameRoomService
         } while (GameRoom::where('invite_code', $code)->exists());
 
         return $code;
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Services\InvestigationRequestService.php
+----------------------------------------
+<?php
+
+namespace App\Services;
+
+use App\Models\GameRoom;
+use App\Models\InvestigationRequest;
+use Illuminate\Support\Facades\DB;
+use App\Support\Result;
+use App\Events\EvidenceDiscovered;
+
+class InvestigationRequestService
+{
+    /**
+     * Evaluates if the submitted evidence qualifies for a procedural request.
+     */
+    public function processRequest(GameRoom $room, array $submittedIds): Result
+    {
+        // 1. Establish the room's total known knowledge base
+        $initialEvidences = $room->gameCase->evidences()->where('is_initial', true)->pluck('id')->toArray();
+        $unlockedEvidences = $room->unlockedEvidences()->pluck('evidences.id')->toArray();
+        $possessedEvidences = array_unique(array_merge($initialEvidences, $unlockedEvidences));
+
+        // 2. Validate the players actually own the evidence they are trying to combine
+        if (array_diff($submittedIds, $possessedEvidences)) {
+            return Result::failure("Unauthorized: You cannot file a request using evidence you have not yet discovered.");
+        }
+
+        // Sort to ensure array equality checks work regardless of input order
+        sort($submittedIds);
+
+        // 3. Fetch all active requests for this case
+        $availableRequests = InvestigationRequest::with('requiredEvidences')
+            ->where('case_id', $room->case_id)
+            ->get();
+
+        foreach ($availableRequests as $request) {
+            $requiredIds = $request->requiredEvidences->pluck('id')->toArray();
+            sort($requiredIds);
+
+            // 4. Check for a perfect match
+            if ($requiredIds === $submittedIds) {
+                $unlockedId = $request->unlocks_evidence_id;
+
+                if (in_array($unlockedId, $possessedEvidences)) {
+                    return Result::failure("This {$request->request_type->label()} has already been executed.");
+                }
+
+                // 5. Update State & Broadcast via Reverb
+                DB::table('room_evidences')->updateOrInsert([
+                    'room_id' => $room->id,
+                    'evidence_id' => $unlockedId
+                ]);
+
+                EvidenceDiscovered::dispatch($room, [$unlockedId]);
+
+                return Result::success([
+                    'message' => "{$request->request_type->label()} approved. New files added to your case board.",
+                    'unlocked_evidence' => [$unlockedId],
+                    'request_type' => $request->request_type->value
+                ]);
+            }
+        }
+
+        return Result::failure("The DA rejected your request. The provided evidence does not establish sufficient grounds.");
     }
 }
 
@@ -5195,6 +5508,68 @@ return new class extends Migration {
 };
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_05_110159_add_final_stats_to_game_rooms_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('game_rooms', function (Blueprint $table) {
+            $table->json('final_stats')->nullable()->after('strikes');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('game_rooms', function (Blueprint $table) {
+            $table->dropColumn('final_stats');
+        });
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_06_063400_create_investigation_requests_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        // The core procedural request
+        Schema::create('investigation_requests', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('case_id')->constrained('cases')->cascadeOnDelete();
+            $table->string('request_type'); // Maps to InvestigationRequestType enum
+            
+            // The resulting evidence they get if the DA/Judge approves the request
+            $table->foreignId('unlocks_evidence_id')->constrained('evidences')->cascadeOnDelete();
+            $table->timestamps();
+        });
+
+        // The pivot table storing the strict evidence IDs required to get approval
+        Schema::create('investigation_request_items', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('request_id')->constrained('investigation_requests')->cascadeOnDelete();
+            $table->foreignId('evidence_id')->constrained('evidences')->cascadeOnDelete();
+            
+            // A request cannot require the exact same piece of evidence twice
+            $table->unique(['request_id', 'evidence_id']);
+        });
+    }
+
+    public function down(): void {
+        Schema::dropIfExists('investigation_request_items');
+        Schema::dropIfExists('investigation_requests');
+    }
+};
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\DatabaseSeeder.php
 ----------------------------------------
 <?php
@@ -5522,13 +5897,14 @@ use App\Http\Controllers\CaseController;
 use App\Http\Controllers\GameRoomController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\AssessmentController;
-use App\Http\Controllers\PersonaController;
+use App\Http\Controllers\InvestigationRequestController; 
+use App\Http\Controllers\SuspectVerdictController;
 use App\Http\Controllers\Admin\AdminCaseController;
 use App\Http\Controllers\Admin\AdminLevelController;
 use App\Http\Controllers\Admin\AdminEvidenceController;
 use App\Http\Controllers\Admin\AdminQuestionController;
 use App\Http\Controllers\Admin\AdminSuspectController;
-use App\Http\Controllers\SuspectVerdictController;
+use App\Http\Controllers\Admin\AdminInvestigationRequestController; 
 use App\Http\Middleware\IsAdmin; 
 
 // Public Authentication Routes
@@ -5553,16 +5929,19 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rooms/{room}/submit', [AssessmentController::class, 'store']);
     Route::post('/rooms/{room}/levels/{level}/start', [GameRoomController::class, 'startLevel']);
     Route::post('/rooms/{room}/suspects/submit', [SuspectVerdictController::class, 'store']);
+    Route::post('/rooms/{room}/investigate', [InvestigationRequestController::class, 'store']);
+    
 
-
+    // Admin Dashboard Routes
     Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
-    Route::get('/cases', [AdminCaseController::class, 'index']); 
-    Route::post('/cases', [AdminCaseController::class, 'store']);
-    Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']); 
-    Route::post('/levels', [AdminLevelController::class, 'store']);
-    Route::post('/evidences', [AdminEvidenceController::class, 'store']);
-    Route::post('/questions', [AdminQuestionController::class, 'store']);
-    Route::post('/suspects', [AdminSuspectController::class, 'store']);
+        Route::get('/cases', [AdminCaseController::class, 'index']); 
+        Route::post('/cases', [AdminCaseController::class, 'store']);
+        Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']); 
+        Route::post('/levels', [AdminLevelController::class, 'store']);
+        Route::post('/evidences', [AdminEvidenceController::class, 'store']);
+        Route::post('/questions', [AdminQuestionController::class, 'store']);
+        Route::post('/suspects', [AdminSuspectController::class, 'store']);
+        Route::post('/investigation-requests', [AdminInvestigationRequestController::class, 'store']);        
     });
 });
 

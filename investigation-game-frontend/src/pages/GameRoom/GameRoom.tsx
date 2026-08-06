@@ -7,6 +7,7 @@ import CaseDetailsTab from './tabs/CaseDetailsTab';
 import EvidenceBoardTab from './tabs/EvidenceBoardTab';
 import SuspectsTab from './tabs/SuspectsTab';
 import CampaignTab from './tabs/CampaignTab';
+import AgentNotepad from '../../components/AgentNotepad/AgentNotepad'; 
 import './GameRoom.css';
 
 type Tab = 'details' | 'evidences' | 'campaign' | 'suspects';
@@ -32,6 +33,20 @@ export default function GameRoom() {
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
   const [finalStats, setFinalStats] = useState<any>(room?.final_stats || null);
+  const [isCopied, setIsCopied] = useState(false);
+
+  const handleCopyCode = async () => {
+    if (!room?.invite_code) return;
+    
+    try {
+      await navigator.clipboard.writeText(room.invite_code);
+      setIsCopied(true);
+      // Revert the icon back after 2 seconds
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
 
   // 1. CREATE THE UNIFIED STATE UPDATER
   const setGameOverData = (message: string, stats?: any) => {
@@ -139,7 +154,17 @@ export default function GameRoom() {
 
         <aside className="sidebar-panel glass-panel">
           <div className="sidebar-section">
-            <h3 className="sidebar-heading">Session Code</h3>
+            <div className="sidebar-heading-wrapper">
+              <h3 className="sidebar-heading">Session Code</h3>
+              <button 
+                className={`copy-btn ${isCopied ? 'copied' : ''}`}
+                onClick={handleCopyCode}
+                title="Copy Invite Code"
+              >
+                {/* Fallback to simple unicode icons if you aren't using an icon library */}
+                {isCopied ? '✓' : '⧉'}
+              </button>
+            </div>
             <div className="invite-code-display">{room.invite_code}</div>
           </div>
 
@@ -183,6 +208,10 @@ export default function GameRoom() {
               )}
             </ul>
           </div>
+
+          {/* 2. Inject the Notepad Component */}
+          <AgentNotepad roomId={room.id} />
+          
         </aside>
 
         <main className="workspace-panel">
