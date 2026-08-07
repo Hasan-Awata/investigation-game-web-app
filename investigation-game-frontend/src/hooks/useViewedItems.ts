@@ -9,8 +9,10 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
 
   const [viewedItems, setViewedItems] = useState<Set<number>>(() => {
     if (!storageKey) return new Set();
-    const stored = sessionStorage.getItem(storageKey);
-    return stored ? new Set(JSON.parse(stored)) : new Set();
+    try {
+      const stored = sessionStorage.getItem(storageKey);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
   });
 
   useEffect(() => {

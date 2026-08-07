@@ -1,40 +1,47 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useRoomContext } from '@/context/RoomContext';
 import type { Level, Choice, Question } from '@/types';
 import './InterrogationPhase.css';
 
-const Typewriter = ({ text, delay = 45, onComplete, skip = false }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean }) => {
-  const [currentText, setCurrentText] = useState(skip ? text : '');
-  const [currentIndex, setCurrentIndex] = useState(skip ? text.length : 0);
+const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
+  const spanRef = useRef<HTMLSpanElement>(null);
   const savedOnComplete = useRef(onComplete);
   
-  useEffect(() => { savedOnComplete.current = onComplete; }, [onComplete]);
-
-  const onCompleteFired = useRef(false);
+  useEffect(() => { 
+    savedOnComplete.current = onComplete; 
+  }, [onComplete]);
 
   useEffect(() => {
-    if (skip) {
-      setCurrentText(text);
-      if (savedOnComplete.current && !onCompleteFired.current) {
-        onCompleteFired.current = true;
-        savedOnComplete.current();
-      }
+    const el = spanRef.current;
+    if (!el) return;
+
+    // 1. Instantly complete if skipping or already cached in session storage
+    if (skip || (cacheKey && sessionStorage.getItem(cacheKey))) {
+      el.textContent = text;
+      if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
+      if (savedOnComplete.current) savedOnComplete.current();
       return;
     }
-    if (currentIndex < text.length) {
-      const timeout = setTimeout(() => {
-        setCurrentText(prevText => prevText + text[currentIndex]);
-        setCurrentIndex(prevIndex => prevIndex + 1);
-      }, delay);
-      return () => clearTimeout(timeout);
-    } else if (currentIndex === text.length) {
-      if (savedOnComplete.current && !onCompleteFired.current) {
-        onCompleteFired.current = true;
-        savedOnComplete.current();
-      }
-    }
-  }, [currentIndex, delay, text, skip]);
 
-  return <span>{currentText}</span>;
+    // 2. Perform raw DOM manipulation to bypass React's render cycle (fixes the stutter/half-way cutoffs)
+    let i = 0;
+    el.textContent = '';
+    
+    const interval = setInterval(() => {
+      el.textContent += text.charAt(i);
+      i++;
+      if (i >= text.length) {
+        clearInterval(interval);
+        if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
+        if (savedOnComplete.current) savedOnComplete.current();
+      }
+    }, delay);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+  }, [text, delay, skip, cacheKey]);
+
+  return <span ref={spanRef} />;
 };
 
 interface InterrogationPhaseProps {
@@ -47,8 +54,24 @@ interface InterrogationPhaseProps {
 }
 
 export default function InterrogationPhase({ level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice }: InterrogationPhaseProps) {
-  const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>({});
-  const [investigatorTypingComplete, setInvestigatorTypingComplete] = useState<Record<number, boolean>>({});
+  const { room } = useRoomContext();
+
+  // Initialize state directly from sessionStorage
+  const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>(() => {
+    const initial: Record<number, boolean> = {};
+    level.questions?.forEach(q => {
+      if (sessionStorage.getItem(`room_${room.id}_suspect_${q.id}`)) initial[q.id] = true;
+    });
+    return initial;
+  });
+
+  const [investigatorTypingComplete, setInvestigatorTypingComplete] = useState<Record<number, boolean>>(() => {
+    const initial: Record<number, boolean> = {};
+    level.questions?.forEach(q => {
+      if (sessionStorage.getItem(`room_${room.id}_investigator_${q.id}`)) initial[q.id] = true;
+    });
+    return initial;
+  });
 
   if (!level.questions) return null;
 
@@ -59,7 +82,9 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
     <div className="interrogation-log">
       {level.questions.map((q, qIdx) => {
         const consensus = getQuestionConsensus(q);
-        const isVisible = status === 'completed' || qIdx === 0 || investigatorTypingComplete[level.questions![qIdx - 1].id];
+        const prevQ = qIdx > 0 ? level.questions![qIdx - 1] : null;
+        const isVisible = status === 'completed' || qIdx === 0 || (prevQ && investigatorTypingComplete[prevQ.id]);
+        
         if (!isVisible) return null;
 
         const isGloballyLocked = consensus.isResolved;
@@ -72,7 +97,15 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
             
             <div className="chat-bubble suspect-bubble">
               <span className="speaker-label suspect">SUSPECT</span>
-              <p><Typewriter text={q.text} skip={skipTyping} onComplete={() => handleSuspectDone(q.id)} /></p>
+              <p>
+                <Typewriter 
+                  text={q.text} 
+                  skip={skipTyping} 
+                  delay={15} 
+                  cacheKey={`room_${room.id}_suspect_${q.id}`} 
+                  onComplete={() => handleSuspectDone(q.id)} 
+                />
+              </p>
             </div>
 
             {isSuspectDone && (
@@ -111,6 +144,8 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
                         <Typewriter 
                           text={status === 'completed' ? (q.choices?.find(c => c.is_correct)?.text || '...') : (q.choices?.find(c => c.id === consensus.winningChoiceId)?.text || '...')} 
                           skip={skipTyping} 
+                          delay={15} 
+                          cacheKey={`room_${room.id}_investigator_${q.id}`} 
                           onComplete={() => handleInvestigatorDone(q.id)}
                         />
                       </p>

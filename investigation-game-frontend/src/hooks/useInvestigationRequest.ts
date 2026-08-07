@@ -20,8 +20,10 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
   // Persistent history in sessionStorage for this room
   const historyStorageKey = `room_${room.id}_filed_requests`;
   const [filedRequests, setFiledRequests] = useState<FiledRequest[]>(() => {
-    const saved = sessionStorage.getItem(historyStorageKey);
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = sessionStorage.getItem(historyStorageKey);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
   });
 
   const requestMutation = useMutation({

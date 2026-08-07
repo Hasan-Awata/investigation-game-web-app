@@ -18,18 +18,22 @@ export default function SuspectsTab() {
   } = useRoomContext();
   
   const [guiltyIds, setGuiltyIds] = useState<number[]>(() => {
-    const saved = sessionStorage.getItem(`room_${room.invite_code}_guilty_suspects`);
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = sessionStorage.getItem(`room_${room.invite_code}_guilty_suspects`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
   });
   
   const [innocentIds, setInnocentIds] = useState<number[]>(() => {
-    const saved = sessionStorage.getItem(`room_${room.invite_code}_innocent_suspects`);
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = sessionStorage.getItem(`room_${room.invite_code}_innocent_suspects`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
   });
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const initialLevels = room.game_case?.levels?.filter(l => l.is_initial) || [];
+  const initialLevels = room.game_case?.phases?.flatMap(p => p.levels || []).filter(l => l.is_initial) || [];
   const completedLevelIds = new Set(room.completed_levels?.map(l => l.id) || []);
   const allInitialCompleted = initialLevels.length > 0 && initialLevels.every(l => completedLevelIds.has(l.id));
 
@@ -48,12 +52,14 @@ export default function SuspectsTab() {
         setFeedback({ type: 'error', message: data.message });
         refreshRoomData();
       } else {
-        sessionStorage.removeItem(`room_${room.invite_code}_guilty_suspects`);
-        sessionStorage.removeItem(`room_${room.invite_code}_innocent_suspects`);
+        // Complete Garbage Collection: Wipe all session memory tied to this room
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.includes(`room_${room.invite_code}`) || key.includes(`room_${room.id}`)) {
+            sessionStorage.removeItem(key);
+          }
+        });
         
-        // 2. USE THE NATIVE REACT CONTEXT METHOD
         setGameOverData(data.message, data.stats);
-        
         refreshRoomData();
       }
     },

@@ -68,7 +68,6 @@ export default function CaseDetailsTab() {
                     position: 'relative', cursor: 'pointer', transition: 'all 0.2s ease'
                   }}
                   onClick={() => handleInspectVictim(victim)}
-                  onMouseEnter={() => markVictimAsViewed(victim.id)}
                 >
                   {isNew && <div className="unread-indicator" title="New Casualty Intel"></div>}
                   

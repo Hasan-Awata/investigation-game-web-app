@@ -543,6 +543,34 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* --- GLOBAL TACTICAL SCROLLBAR --- */
+
+/* Firefox Support */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(90, 138, 158, 0.5) transparent; /* Uses your muted cyan */
+}
+
+/* WebKit Support (Chrome, Safari, Edge) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px; /* Handles horizontal scrollbars like the phase sub-nav */
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(var(--bg-dark-rgb), 0.5); 
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(var(--accent-cyan-rgb), 0.5); 
+  border-radius: var(--radius-sm);
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan); /* Fully illuminates when the user interacts with it */
+}
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\main.tsx
 ----------------------------------------
@@ -1699,11 +1727,25 @@ import { submitInvestigationRequest } from '@/services/api';
 import type { GameRoom } from '@/types';
 import type { ToastNotification } from './useInvestigationPhase';
 
+export interface FiledRequest {
+  id: string;
+  type: string;
+  timestamp: string;
+  evidenceIds: number[];
+}
+
 export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => void) {
   const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
   const [requestType, setRequestType] = useState<string>('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+
+  // Persistent history in sessionStorage for this room
+  const historyStorageKey = `room_${room.id}_filed_requests`;
+  const [filedRequests, setFiledRequests] = useState<FiledRequest[]>(() => {
+    const saved = sessionStorage.getItem(historyStorageKey);
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const requestMutation = useMutation({
     mutationFn: async () => {
@@ -1713,11 +1755,23 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
     },
     onSuccess: (data) => {
       setFeedback({ type: 'success', message: data.message });
+      
+      // Save to local filed requests history
+      const newRequest: FiledRequest = {
+        id: crypto.randomUUID(),
+        type: requestType,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        evidenceIds: [...trayEvidences]
+      };
+      
+      const updatedHistory = [newRequest, ...filedRequests];
+      setFiledRequests(updatedHistory);
+      sessionStorage.setItem(historyStorageKey, JSON.stringify(updatedHistory));
+
       setTrayEvidences([]);
       setRequestType('');
       refreshRoomData();
 
-      // Dispatch a tactical toast notification
       if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
         setTimeout(() => {
           const newToast: ToastNotification = { 
@@ -1760,7 +1814,8 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
     feedback,
     toasts,
     clearFeedback,
-    submitRequest: requestMutation.mutate
+    submitRequest: requestMutation.mutate,
+    filedRequests
   };
 }
 
@@ -2704,6 +2759,7 @@ import { createAdminLevel, fetchAdminCases } from '@/services/adminApi';
 
 export default function LevelForm() {
   const [caseId, setCaseId] = useState('');
+  const [phaseId, setPhaseId] = useState(''); 
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
   const [orderIndex, setOrderIndex] = useState('1');
@@ -2742,12 +2798,13 @@ export default function LevelForm() {
     }
   });
 
+  const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
+  const availablePhases = selectedCase?.phases || [];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setFeedback(null);
-
     const formData = new FormData();
-    formData.append('case_id', caseId);
+    formData.append('phase_id', phaseId);
     formData.append('title', title);
     formData.append('details', details);
     formData.append('order_index', orderIndex);
@@ -2785,6 +2842,14 @@ export default function LevelForm() {
             </select>
           </div>
           
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Target Phase</label>
+            <select className="admin-input" required value={phaseId} onChange={(e) => setPhaseId(e.target.value)} disabled={!caseId}>
+              <option value="" disabled>-- Select a Phase --</option>
+              {availablePhases.map((p: any) => <option key={p.id} value={p.id}>{p.order_index}: {p.title}</option>)}
+            </select>
+          </div>
+
           <div className="form-group" style={{ flex: 1 }}>
             <label>Phase Order Index</label>
             <input 
@@ -2858,6 +2923,96 @@ export default function LevelForm() {
 }
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\PhaseForm.tsx
+----------------------------------------
+import { useState } from 'react';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import { createAdminPhase, fetchAdminCases } from '@/services/adminApi';
+
+export default function PhaseForm() {
+  const [caseId, setCaseId] = useState('');
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [orderIndex, setOrderIndex] = useState('1');
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const { data: cases = [], isLoading: isFetchingCases } = useQuery({
+    queryKey: ['adminCases'],
+    queryFn: async () => {
+      const result = await fetchAdminCases();
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    }
+  });
+
+  const mutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const result = await createAdminPhase(formData);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: () => {
+      setFeedback({ type: 'success', message: 'Phase successfully created.' });
+      setTitle('');
+      setDescription('');
+      setOrderIndex((prev) => (parseInt(prev) + 1).toString());
+    },
+    onError: (error: Error) => {
+      setFeedback({ type: 'error', message: error.message });
+    }
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFeedback(null);
+
+    const formData = new FormData();
+    formData.append('case_id', caseId);
+    formData.append('title', title);
+    if (description) formData.append('description', description);
+    formData.append('order_index', orderIndex);
+
+    mutation.mutate(formData);
+  };
+
+  return (
+    <div className="admin-form-container glass-panel">
+      {feedback && <div className={`status-message ${feedback.type}`}>{feedback.message}</div>}
+
+      <form onSubmit={handleSubmit} className="admin-form">
+        <div className="admin-form-row">
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Target Case</label>
+            <select className="admin-input" required value={caseId} onChange={(e) => setCaseId(e.target.value)} disabled={isFetchingCases}>
+              <option value="" disabled>-- Select a Case --</option>
+              {cases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Chronological Order Index</label>
+            <input type="number" className="admin-input" min="1" required value={orderIndex} onChange={(e) => setOrderIndex(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label>Phase Title (e.g. "The Setup", "The Alibi")</label>
+          <input type="text" className="admin-input" required value={title} onChange={(e) => setTitle(e.target.value)} />
+        </div>
+
+        <div className="form-group">
+          <label>Description (Optional Narrative Fluff)</label>
+          <textarea className="admin-textarea" style={{ minHeight: '100px' }} value={description} onChange={(e) => setDescription(e.target.value)} />
+        </div>
+
+        <button type="submit" className="btn-primary" disabled={mutation.isPending} style={{ background: 'var(--accent-crimson)', marginTop: '1rem' }}>
+          {mutation.isPending ? 'Committing...' : 'Commit Phase to Database'}
+        </button>
+      </form>
+    </div>
+  );
+}
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\QuestionForm.tsx
 ----------------------------------------
 import { useState, useRef } from 'react';
@@ -2874,6 +3029,7 @@ interface ChoiceState {
 
 export default function QuestionForm() {
   const [selectedCaseId, setSelectedCaseId] = useState('');
+  const [phaseId, setPhaseId] = useState(''); // NEW Phase tracker
   const [levelId, setLevelId] = useState('');
   
   const [text, setText] = useState('');
@@ -2881,7 +3037,6 @@ export default function QuestionForm() {
   const [isMandatory, setIsMandatory] = useState(true); 
   const [image, setImage] = useState<File | null>(null);
   
-  // NEW: State to track which choice is currently listening for an image click
   const [activeCoordinateTarget, setActiveCoordinateTarget] = useState<string | null>(null);
   
   const [choices, setChoices] = useState<ChoiceState[]>([
@@ -2901,8 +3056,11 @@ export default function QuestionForm() {
     }
   });
 
+  // HIERARCHICAL LOOKUPS
   const selectedCase = cases.find((c: any) => c.id.toString() === selectedCaseId);
-  const availableLevels = selectedCase?.levels || [];
+  const availablePhases = selectedCase?.phases || [];
+  const selectedPhase = availablePhases.find((p: any) => p.id.toString() === phaseId);
+  const availableLevels = selectedPhase?.levels || [];
   const availableEvidences = selectedCase?.evidences || []; 
 
   // Look up the selected level to check its presentation_type and grab its image
@@ -2933,22 +3091,15 @@ export default function QuestionForm() {
     }
   });
 
-  // --- NEW: THE MATH FOR THE VISUAL PICKER ---
   const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!activeCoordinateTarget) return;
 
-    // Get the exact dimensions and position of the image container on the screen
     const rect = e.currentTarget.getBoundingClientRect();
-    
-    // Calculate the click position relative to the image boundaries
     const xRelative = e.clientX - rect.left;
     const yRelative = e.clientY - rect.top;
-    
-    // Convert to strict percentages (0 to 100) and round to 1 decimal for clean coordinates
     const xPercent = ((xRelative / rect.width) * 100).toFixed(1);
     const yPercent = ((yRelative / rect.height) * 100).toFixed(1);
 
-    // Grab the existing title if one exists, otherwise default to 'New Point'
     const targetChoice = choices.find(c => c.id === activeCoordinateTarget);
     let title = 'New Point';
     if (targetChoice && targetChoice.text.includes('|')) {
@@ -2957,10 +3108,7 @@ export default function QuestionForm() {
       title = targetChoice.text.trim();
     }
 
-    // Format and save the string
     updateChoiceText(activeCoordinateTarget, `${xPercent},${yPercent} | ${title}`);
-    
-    // Disengage the targeting system
     setActiveCoordinateTarget(null);
   };
 
@@ -2989,7 +3137,7 @@ export default function QuestionForm() {
     }
 
     const formData = new FormData();
-    formData.append('level_id', levelId);
+    formData.append('level_id', levelId); // Even with phase introduced, Questions still attach directly to Levels
     formData.append('text', text);
     formData.append('is_mandatory', isMandatory ? '1' : '0'); 
     if (msgWhenWrong) formData.append('msg_when_wrong', msgWhenWrong);
@@ -3015,7 +3163,7 @@ export default function QuestionForm() {
           <div className="form-group" style={{ flex: 1 }}>
             <label>Target Case</label>
             <select className="admin-input" required value={selectedCaseId} disabled={isFetchingCases}
-              onChange={(e) => { setSelectedCaseId(e.target.value); setLevelId(''); setActiveCoordinateTarget(null); }} 
+              onChange={(e) => { setSelectedCaseId(e.target.value); setPhaseId(''); setLevelId(''); setActiveCoordinateTarget(null); }} 
             >
               <option value="" disabled>-- Select a Case --</option>
               {cases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
@@ -3023,15 +3171,24 @@ export default function QuestionForm() {
           </div>
 
           <div className="form-group" style={{ flex: 1 }}>
-            <label>Target Level</label>
-            <select className="admin-input" required value={levelId} onChange={(e) => { setLevelId(e.target.value); setActiveCoordinateTarget(null); }} disabled={!selectedCaseId}>
+            <label>Target Phase</label>
+            <select className="admin-input" required value={phaseId} disabled={!selectedCaseId}
+              onChange={(e) => { setPhaseId(e.target.value); setLevelId(''); setActiveCoordinateTarget(null); }} 
+            >
               <option value="" disabled>-- Select a Phase --</option>
-              {availableLevels.map((l: any) => <option key={l.id} value={l.id}>Phase {l.order_index}: {l.title}</option>)}
+              {availablePhases.map((p: any) => <option key={p.id} value={p.id}>{p.order_index}: {p.title}</option>)}
+            </select>
+          </div>
+
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Target Level</label>
+            <select className="admin-input" required value={levelId} onChange={(e) => { setLevelId(e.target.value); setActiveCoordinateTarget(null); }} disabled={!phaseId}>
+              <option value="" disabled>-- Select a Level --</option>
+              {availableLevels.map((l: any) => <option key={l.id} value={l.id}>Lead {l.order_index}: {l.title}</option>)}
             </select>
           </div>
         </div>
 
-        {/* NEW: THE VISUAL LOCATION PICKER */}
         {isLocationPhase && selectedLevel?.img_url && (
           <div className="coordinate-picker-container">
             <div className="coordinate-picker-header">
@@ -3104,7 +3261,6 @@ export default function QuestionForm() {
                       value={choice.text} onChange={(e) => updateChoiceText(choice.id, e.target.value)} 
                     />
 
-                    {/* NEW: THE CROSSHAIR TARGETING BUTTON */}
                     {isLocationPhase && selectedLevel?.img_url && (
                       <button 
                         type="button" 
@@ -3124,8 +3280,7 @@ export default function QuestionForm() {
                       ×
                     </button>
                   </div>
-                  
-                  {/* ... unlock dropdowns ... */}            
+                             
                   <div style={{ display: 'flex', alignItems: 'center', paddingLeft: isLocationPhase ? '0' : '2.5rem' }}>
                     <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Evidence:</label>
                     <select className="admin-input" style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }} value={choice.unlocks_evidence_id || ''} onChange={(e) => updateChoiceEvidence(choice.id, e.target.value)}>
@@ -3135,10 +3290,14 @@ export default function QuestionForm() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', paddingLeft: isLocationPhase ? '0' : '2.5rem', marginTop: '0.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Phase:</label>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Next Phase:</label>
                     <select className="admin-input" style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }} value={choice.unlocks_level_id || ''} onChange={(e) => updateChoiceText(choice.id, e.target.value)}>
                       <option value="">-- No Phase Unlock --</option>
-                      {availableLevels.map((l: any) => <option key={l.id} value={l.id}>Phase {l.order_index}: {l.title}</option>)}
+                      {availablePhases.flatMap((p: any) => 
+                        p.levels?.map((l: any) => (
+                          <option key={l.id} value={l.id}>{p.title} - Lead {l.order_index}: {l.title}</option>
+                        ))
+                      )}
                     </select>
                   </div>
 
@@ -4299,6 +4458,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 
 .node-image {
   width: 200px;
+  flex-shrink: 0; /* <-- Forbids the image from squishing */
   background-size: cover;
   background-position: center;
   position: relative;
@@ -4338,6 +4498,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   font-size: 0.95rem;
   color: var(--text-secondary);
   line-height: 1.5;
+  overflow-wrap: anywhere; /* <-- Forces unbroken gibberish strings to wrap */
 }
 
 .active-badge {
@@ -4402,10 +4563,57 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   to { opacity: 1; transform: translateY(0); }
 }
 
+.phase-subnav {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 1rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.phase-subnav-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.phase-subnav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.phase-subnav-btn.active {
+  background: rgba(0, 229, 255, 0.1);
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.1);
+}
+
+.phase-subnav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.phase-lock-icon {
+  font-size: 0.8rem;
+}
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\CampaignTab.tsx
 ----------------------------------------
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRoomContext } from '../../../../context/RoomContext';
 import { useInvestigationPhase } from '../../../../hooks/useInvestigationPhase';
 import type { Question } from '../../../../types';
@@ -4418,7 +4626,8 @@ import './CampaignTab.css';
 export default function CampaignTab() {
   const { room, refreshRoomData } = useRoomContext();
   
-  const levels = room.game_case?.levels || [];
+  // Now iterating over phases instead of flat levels
+  const phases = room.game_case?.phases || [];
   const currentLevelId = room.current_level_id;
   const roomStatus = room.status;
 
@@ -4440,16 +4649,29 @@ export default function CampaignTab() {
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  // --- NARRATIVE VISIBILITY MASKING ---
+  // --- HIERARCHICAL MASKING ---
   const unlockedLevelIds = new Set(room.unlocked_levels?.map(l => l.id) || []);
-  const sortedLevels = [...levels].sort((a, b) => a.order_index - b.order_index);
+  const sortedPhases = [...phases].sort((a, b) => a.order_index - b.order_index);
+
+  // Auto-select the most relevant Phase on load
+  const [activePhaseId, setActivePhaseId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (activePhaseId === null && sortedPhases.length > 0) {
+      // Find the "highest" phase that contains at least one unlocked/initial level
+      const activeOrHighestUnlockedPhase = [...sortedPhases].reverse().find(p => 
+        p.levels?.some(l => l.is_initial || unlockedLevelIds.has(l.id))
+      );
+      setActivePhaseId(activeOrHighestUnlockedPhase?.id || sortedPhases[0].id);
+    }
+  }, [sortedPhases, unlockedLevelIds, activePhaseId]);
 
   const toggleExpand = (levelId: number, status: string) => {
     if (status === 'locked') return; 
     setExpandedId(expandedId === levelId ? null : levelId);
   };
 
-  // --- UPGRADED GLOBAL CONSENSUS ENGINE ---
+  // --- CONSENSUS ENGINE ---
   const totalPlayers = room.users?.length || 1; 
 
   const getQuestionConsensus = (question: Question) => {
@@ -4460,55 +4682,64 @@ export default function CampaignTab() {
     room.votes?.forEach(v => {
       if (v.question_id === question.id) {
         const role = participants.find(p => p.user_id === v.user_id)?.role || 'participant';
-        const weight = role === 'host' ? 2 : 1; // Host vote carries double weight
+        const weight = role === 'host' ? 2 : 1; 
         tally[v.choice_id] = (tally[v.choice_id] || 0) + weight;
         votesCast++;
       }
     });
 
-    // LOCATION PHASE EXCEPTION: Only requires the assigned user's vote
     if (question.assigned_user_id !== undefined && question.assigned_user_id !== null) {
       const assignedVote = room.votes?.find(v => v.question_id === question.id && v.user_id === question.assigned_user_id);
-      return {
-        votesCast,
-        isResolved: !!assignedVote,
-        isTie: false,
-        winningChoiceId: assignedVote ? assignedVote.choice_id : null
-      };
+      return { votesCast, isResolved: !!assignedVote, isTie: false, winningChoiceId: assignedVote ? assignedVote.choice_id : null };
     }
 
-    if (votesCast < totalPlayers) {
-      return { votesCast, isResolved: false, isTie: false, winningChoiceId: null };
-    }
+    if (votesCast < totalPlayers) return { votesCast, isResolved: false, isTie: false, winningChoiceId: null };
 
-    // Everyone voted. Check if it's a tie or a clear victory.
-    let maxWeight = -1;
-    let isTie = false;
-    let winningChoiceId = null;
-
+    let maxWeight = -1, isTie = false, winningChoiceId = null;
     for (const [cId, weight] of Object.entries(tally)) {
-      if (weight > maxWeight) {
-        maxWeight = weight;
-        winningChoiceId = Number(cId);
-        isTie = false;
-      } else if (weight === maxWeight) {
-        isTie = true;
-      }
+      if (weight > maxWeight) { maxWeight = weight; winningChoiceId = Number(cId); isTie = false; } 
+      else if (weight === maxWeight) { isTie = true; }
     }
-
-    return {
-      votesCast,
-      isResolved: !isTie, // It is ONLY resolved if everyone voted AND there's no tie
-      isTie,
-      winningChoiceId: isTie ? null : winningChoiceId
-    };
+    return { votesCast, isResolved: !isTie, isTie, winningChoiceId: isTie ? null : winningChoiceId };
   };
+
+  // Grab the currently active phase and its levels
+  const activePhaseData = sortedPhases.find(p => p.id === activePhaseId);
+  const sortedLevels = activePhaseData?.levels ? [...activePhaseData.levels].sort((a, b) => a.order_index - b.order_index) : [];
 
   return (
     <div className="campaign-roadmap-container">
-      <h2 className="section-title">Investigation Phases</h2>
       
-      {/* --- FEEDBACK MODAL (PERSONA INTERCEPT) --- */}
+      {/* PHASE SUB-NAVIGATION */}
+      <div className="phase-subnav">
+        {sortedPhases.map((phase) => {
+          // A phase is "unlocked" if ANY level inside it is initial or unlocked by a choice
+          const isPhaseUnlocked = phase.levels?.some(l => l.is_initial || unlockedLevelIds.has(l.id));
+
+          return (
+            <button
+              key={phase.id}
+              className={`phase-subnav-btn ${activePhaseId === phase.id ? 'active' : ''}`}
+              disabled={!isPhaseUnlocked}
+              onClick={() => { setActivePhaseId(phase.id); setExpandedId(null); }}
+            >
+              {!isPhaseUnlocked && <span className="phase-lock-icon">🔒</span>}
+              {phase.title}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ marginBottom: '2rem' }}>
+        <h2 className="section-title">{activePhaseData?.title || 'Unknown Phase'}</h2>
+        {activePhaseData?.description && (
+          <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+            {activePhaseData.description}
+          </p>
+        )}
+      </div>
+
+      {/* --- FEEDBACK MODAL --- */}
       {feedback && (
         <div className="feedback-modal-overlay">
           <div className={`feedback-modal-content ${feedback.type}`}>
@@ -4548,38 +4779,30 @@ export default function CampaignTab() {
         ))}
       </div>
 
-      {/* --- NON-LINEAR ROADMAP --- */}
+      {/* --- NON-LINEAR ROADMAP (Mapped to Active Phase's Levels) --- */}
       <div className="roadmap-timeline">
+        {sortedLevels.length === 0 && (
+          <div className="terminal-text" style={{ padding: 0, textAlign: 'left' }}>No leads currently available in this phase.</div>
+        )}
+        
         {sortedLevels.map((level) => {
-          // 1. Determine if the level is even discovered yet
           const isDiscovered = level.is_initial || unlockedLevelIds.has(level.id);
-          
-          // 2. State Machine
           const isCompleted = room.completed_levels?.some(cl => cl.id === level.id);
           const isActive = currentLevelId === level.id;
           const isAnotherPhaseRunning = currentLevelId !== null;
 
           let status = 'available';
-          if (!isDiscovered) {
-            status = 'locked'; // Undiscovered levels are strictly locked
-          } else if (roomStatus === 'solved' || isCompleted) {
-            status = 'completed'; 
-          } else if (isActive) {
-            status = 'active';
-          } else if (isAnotherPhaseRunning) {
-            status = 'locked'; 
-          }
+          if (!isDiscovered) status = 'locked'; 
+          else if (roomStatus === 'solved' || isCompleted) status = 'completed'; 
+          else if (isActive) status = 'active';
+          else if (isAnotherPhaseRunning) status = 'locked'; 
 
           const isExpanded = expandedId === level.id;
           const mandatoryQuestions = level.questions?.filter(q => q.is_mandatory) || [];
-          
-          // Button is only enabled when every mandatory question is fully resolved (no ties)
           const allMandatoryAnswered = mandatoryQuestions.every(q => getQuestionConsensus(q).isResolved);
 
-          // 3. UI Content Masking
           const displayTitle = isDiscovered ? level.title : 'Encounter Undiscovered';
           const displayDesc = isDiscovered ? level.details : 'This path remains hidden. You must deduce the correct narrative link in an available phase to unlock this lead.';
-          const displayPhase = isDiscovered ? `Phase ${level.order_index}` : 'Unknown Phase';
 
           return (
             <div key={level.id} className={`roadmap-node ${status}`}>
@@ -4600,7 +4823,7 @@ export default function CampaignTab() {
                     <div className="node-image-overlay"></div>
                   </div>
                   <div className="node-details">
-                    <span className="node-phase">{displayPhase}</span>
+                    <span className="node-phase">Lead {level.order_index}</span>
                     <h3 className="node-title">{displayTitle}</h3>
                     <p className="node-desc">{displayDesc}</p>
                     {status === 'active' && <div className="active-badge">Active Investigation</div>}
@@ -4610,7 +4833,6 @@ export default function CampaignTab() {
                 {isExpanded && isDiscovered && (
                   <div className="node-questions-drawer" onClick={(e) => e.stopPropagation()}>
                     
-                    {/* INITIATION BLOCK */}
                     {status === 'available' && (
                       <div style={{ textAlign: 'center', padding: '1rem' }}>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontFamily: 'var(--font-mono)' }}>
@@ -4626,7 +4848,6 @@ export default function CampaignTab() {
                       </div>
                     )}
 
-                    {/* DYNAMIC PRESENTATION ROUTER */}
                     {(status === 'active' || status === 'completed') && level.questions && (
                       <>
                         {level.presentation_type === 'interrogation' ? (
@@ -4648,16 +4869,35 @@ export default function CampaignTab() {
                           />
                         )}
 
-                        {/* UNIVERSAL SUBMIT BUTTON */}
+                        {/* UNIVERSAL SUBMIT BUTTON WITH LOCATION EXCEPTION */}
                         {status === 'active' && (
                           <div className="submit-theory-container">
-                            <button 
-                              className="btn-primary submit-theory-btn"
-                              disabled={!allMandatoryAnswered || isSubmitting}
-                              onClick={handleSubmitTheory}
-                            >
-                              {isSubmitting ? 'Evaluating...' : 'Submit Theory'}
-                            </button>
+                            {isHost ? (
+                              <button 
+                                className="btn-primary submit-theory-btn"
+                                disabled={
+                                  isSubmitting || 
+                                  (level.presentation_type !== 'location' && !allMandatoryAnswered)
+                                }
+                                onClick={handleSubmitTheory}
+                              >
+                                {isSubmitting 
+                                  ? 'Processing...' 
+                                  : level.presentation_type === 'location' 
+                                    ? 'Conclude Scene Sweep' 
+                                    : 'Submit Final Verdict'
+                                }
+                              </button>
+                            ) : (
+                              <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
+                                {level.presentation_type === 'location'
+                                  ? 'Sweep in progress. Awaiting Host to conclude the search...'
+                                  : allMandatoryAnswered 
+                                    ? 'Consensus reached. Awaiting Host to submit final verdict...' 
+                                    : 'Awaiting team consensus on all active leads...'
+                                }
+                              </div>
+                            )}
                           </div>
                         )}
                       </>
@@ -4779,42 +5019,43 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\InterrogationPhase.tsx
 ----------------------------------------
 import React, { useState, useEffect, useRef } from 'react';
+import { useRoomContext } from '../../../../../context/RoomContext';
 import type { Level, Choice, Question } from '@/types';
 import './InterrogationPhase.css';
 
-const Typewriter = ({ text, delay = 45, onComplete, skip = false }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean }) => {
-  const [currentText, setCurrentText] = useState(skip ? text : '');
-  const [currentIndex, setCurrentIndex] = useState(skip ? text.length : 0);
+// Module-level cache to remember which animations have already finished playing
+const playedAnimations = new Set<string>();
+
+const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
+  // Using substring logic prevents the text from stopping halfway due to React render cycles
+  const [visibleLength, setVisibleLength] = useState(() => {
+    return (skip || (cacheKey && playedAnimations.has(cacheKey))) ? text.length : 0;
+  });
+
   const savedOnComplete = useRef(onComplete);
-  
   useEffect(() => { savedOnComplete.current = onComplete; }, [onComplete]);
 
-  const onCompleteFired = useRef(false);
-
   useEffect(() => {
-    if (skip) {
-      setCurrentText(text);
-      if (savedOnComplete.current && !onCompleteFired.current) {
-        onCompleteFired.current = true;
-        savedOnComplete.current();
-      }
+    // Instantly complete if flagged to skip or already cached
+    if (skip || (cacheKey && playedAnimations.has(cacheKey))) {
+      setVisibleLength(text.length);
+      if (cacheKey) playedAnimations.add(cacheKey);
+      if (savedOnComplete.current) savedOnComplete.current();
       return;
     }
-    if (currentIndex < text.length) {
+
+    if (visibleLength < text.length) {
       const timeout = setTimeout(() => {
-        setCurrentText(prevText => prevText + text[currentIndex]);
-        setCurrentIndex(prevIndex => prevIndex + 1);
+        setVisibleLength(prev => prev + 1);
       }, delay);
       return () => clearTimeout(timeout);
-    } else if (currentIndex === text.length) {
-      if (savedOnComplete.current && !onCompleteFired.current) {
-        onCompleteFired.current = true;
-        savedOnComplete.current();
-      }
+    } else if (visibleLength === text.length) {
+      if (cacheKey) playedAnimations.add(cacheKey);
+      if (savedOnComplete.current) savedOnComplete.current();
     }
-  }, [currentIndex, delay, text, skip]);
+  }, [visibleLength, text.length, delay, skip, cacheKey]);
 
-  return <span>{currentText}</span>;
+  return <span>{text.substring(0, visibleLength)}</span>;
 };
 
 interface InterrogationPhaseProps {
@@ -4827,8 +5068,25 @@ interface InterrogationPhaseProps {
 }
 
 export default function InterrogationPhase({ level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice }: InterrogationPhaseProps) {
-  const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>({});
-  const [investigatorTypingComplete, setInvestigatorTypingComplete] = useState<Record<number, boolean>>({});
+  // THE FIX: Actually use the hook to get the room data for namespacing
+  const { room } = useRoomContext();
+
+  // Initialize state by checking the global cache with the Room ID tied to it
+  const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>(() => {
+    const initial: Record<number, boolean> = {};
+    level.questions?.forEach(q => {
+      if (playedAnimations.has(`room_${room.id}_suspect_${q.id}`)) initial[q.id] = true;
+    });
+    return initial;
+  });
+
+  const [investigatorTypingComplete, setInvestigatorTypingComplete] = useState<Record<number, boolean>>(() => {
+    const initial: Record<number, boolean> = {};
+    level.questions?.forEach(q => {
+      if (playedAnimations.has(`room_${room.id}_investigator_${q.id}`)) initial[q.id] = true;
+    });
+    return initial;
+  });
 
   if (!level.questions) return null;
 
@@ -4839,7 +5097,9 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
     <div className="interrogation-log">
       {level.questions.map((q, qIdx) => {
         const consensus = getQuestionConsensus(q);
-        const isVisible = status === 'completed' || qIdx === 0 || investigatorTypingComplete[level.questions![qIdx - 1].id];
+        const prevQ = qIdx > 0 ? level.questions![qIdx - 1] : null;
+        const isVisible = status === 'completed' || qIdx === 0 || (prevQ && investigatorTypingComplete[prevQ.id]);
+        
         if (!isVisible) return null;
 
         const isGloballyLocked = consensus.isResolved;
@@ -4852,7 +5112,15 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
             
             <div className="chat-bubble suspect-bubble">
               <span className="speaker-label suspect">SUSPECT</span>
-              <p><Typewriter text={q.text} skip={skipTyping} onComplete={() => handleSuspectDone(q.id)} /></p>
+              <p>
+                <Typewriter 
+                  text={q.text} 
+                  skip={skipTyping} 
+                  delay={15} 
+                  cacheKey={`room_${room.id}_suspect_${q.id}`} 
+                  onComplete={() => handleSuspectDone(q.id)} 
+                />
+              </p>
             </div>
 
             {isSuspectDone && (
@@ -4861,9 +5129,9 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
                   <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
                     <span className="speaker-label" style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
                       {consensus.isTie 
-                        ? '⚠️ TIE DETECTED: AWAITING TIE-BREAKER' 
+                        ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
                         : hasLocalVote 
-                          ? `AWAITING TEAM (${consensus.votesCast}/${totalPlayers})` 
+                          ? `VOTE CAST (${consensus.votesCast}/${totalPlayers}) - YOU MAY REASSIGN` 
                           : `SELECT RESPONSE (${consensus.votesCast}/${totalPlayers})`
                       }
                     </span>
@@ -4891,6 +5159,8 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
                         <Typewriter 
                           text={status === 'completed' ? (q.choices?.find(c => c.is_correct)?.text || '...') : (q.choices?.find(c => c.id === consensus.winningChoiceId)?.text || '...')} 
                           skip={skipTyping} 
+                          delay={15} 
+                          cacheKey={`room_${room.id}_investigator_${q.id}`} 
                           onComplete={() => handleInvestigatorDone(q.id)}
                         />
                       </p>
@@ -4954,7 +5224,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   position: fixed;
   inset: 0;
   background: rgba(10, 11, 13, 0.98);
-  z-index: 9999; /* Boosted z-index to ensure it sits over standard modals */
+  z-index: 9999;
   display: flex;
   flex-direction: column;
   animation: fadeIn 0.3s ease-out;
@@ -4979,12 +5249,12 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   justify-content: center;
   align-items: center;
   padding: 2rem;
-  overflow: auto; /* Allows scrolling if the user is on a very tiny screen */
+  overflow: auto;
 }
 
 .location-image-wrapper {
   position: relative;
-  display: block; /* Shrink-wraps the image so coordinates map correctly */
+  display: block; 
   box-shadow: 0 10px 40px rgba(0,0,0,0.8);
 }
 
@@ -5002,7 +5272,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 .loc-hover-zone {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 90px; /* Massively expanded hit area */
+  width: 90px; 
   height: 90px;
   border-radius: 50%;
   cursor: crosshair;
@@ -5011,7 +5281,6 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   justify-content: center;
   align-items: center;
   border: 1px solid transparent;
-  /* An invisible background forces the browser to register the hover early */
   background: rgba(255, 255, 255, 0.001); 
   transition: all 0.2s ease-out;
 }
@@ -5024,9 +5293,8 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-/* When the player enters the generous 90px zone */
 .loc-hover-zone:hover {
-  background: rgba(0, 229, 255, 0.05); /* Faint tactical radar ping effect */
+  background: rgba(0, 229, 255, 0.05); 
 }
 
 .loc-hover-zone:hover .loc-crosshair {
@@ -5037,7 +5305,6 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 
 .loc-tooltip {
   position: absolute;
-  /* Push it high enough so the mouse doesn't block it */
   bottom: 75%; 
   background: rgba(10, 11, 13, 0.95);
   color: var(--text-primary);
@@ -5060,62 +5327,24 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   transform: translateY(0);
 }
 
-/* --- INVESTIGATED STATE --- */
-.loc-hover-zone.investigated {
-  cursor: default;
+/* --- SELECTED STATE (Pre-Submit) --- */
+.loc-hover-zone.selected {
+  background: rgba(0, 229, 255, 0.15);
+  border: 1px solid var(--accent-cyan);
 }
 
-.loc-hover-zone.investigated .loc-crosshair {
-  background: rgba(255, 255, 255, 0.2);
-  width: 12px;
-  height: 12px;
+.loc-hover-zone.selected .loc-crosshair {
+  background: var(--accent-cyan);
+  transform: scale(1.5);
+  box-shadow: 0 0 15px 5px rgba(0, 229, 255, 0.4);
 }
 
-.loc-hover-zone.investigated:hover {
-  background: transparent;
+.loc-hover-zone.selected .loc-tooltip {
+  opacity: 1;
+  transform: translateY(0);
 }
 
-.loc-hover-zone.investigated:hover .loc-crosshair {
-  transform: scale(1);
-  box-shadow: none;
-}
-
-.loc-hover-zone.investigated .loc-tooltip {
-  border-color: rgba(255, 255, 255, 0.2);
-  color: var(--text-secondary);
-}
-
-/* --- FEEDBACK POPUP --- */
-.loc-feedback-modal {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--bg-panel);
-  padding: 2rem 3rem;
-  border-radius: var(--radius-md);
-  z-index: 50;
-  text-align: center;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.9);
-  animation: zoomIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  border: 1px solid;
-}
-
-.loc-feedback-modal.success {
-  border-color: var(--accent-cyan);
-  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.1), 0 20px 50px rgba(0,0,0,0.9);
-}
-
-.loc-feedback-modal.error {
-  border-color: var(--text-secondary);
-}
-
-@keyframes zoomIn {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
-}
-
-/* --- INVESTIGATED STATE --- */
+/* --- INVESTIGATED STATE (Post-Submit / Completed Phase) --- */
 .loc-hover-zone.investigated {
   border: 1px dashed rgba(255,255,255,0.2);
   cursor: default;
@@ -5183,12 +5412,16 @@ interface LocationPhaseProps {
 export default function LocationPhase({ level, status, localVotes, handleSelectChoice, currentUserId }: LocationPhaseProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
+  
+  const [clickedDeadEnds, setClickedDeadEnds] = useState<Set<number>>(() => {
+    const saved = sessionStorage.getItem(`level_${level.id}_dead_ends`);
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
 
   if (!level.questions || !level.img_url) return null;
 
   const isCompleted = status === 'completed';
   
-  // FALLBACK: If the backend fails to send 'assigned_user_id', show the point to everyone rather than hiding it.
   const displayQuestions = isCompleted 
     ? level.questions 
     : level.questions.filter(q => 
@@ -5197,27 +5430,38 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         q.assigned_user_id === null
       );
 
-  const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice, isInvestigated: boolean) => {
+  const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice) => {
     e.stopPropagation();
-    if (isInvestigated || status !== 'active') return;
+    
+    // Only block clicks entirely if the phase is no longer active
+    if (status !== 'active') return;
 
-    const hasUnlock = !!(choice.unlocks_evidence_id || choice.unlocks_level_id || choice.unlocks_suspect_id || choice.unlocks_victim_id);
+    const isCorrectFind = choice.is_correct || !!(choice.unlocks_evidence_id || choice.unlocks_level_id || choice.unlocks_suspect_id || choice.unlocks_victim_id);
 
-    if (hasUnlock) {
+    if (isCorrectFind) {
       setPopup({
         title: "LEAD DISCOVERED",
         message: "I found something useful here. Logging it to the board.",
         isSuccess: true
       });
+      // ONLY trigger the server call if they haven't already locked this clue
+      if (!localVotes[qId]) {
+        handleSelectChoice(e, qId, choice, status);
+      }
     } else {
-      setPopup({
-        title: "DEAD END",
-        message: "Nothing was found here, I will move on.",
-        isSuccess: false
-      });
-    }
+        setPopup({
+          title: "DEAD END",
+          message: "Nothing was found here. I should keep looking.",
+          isSuccess: false
+        });
+        // Mark this specific dead end as clicked so it turns grey locally
+        setClickedDeadEnds(prev => {
+          const newSet = new Set(prev).add(choice.id);
+          sessionStorage.setItem(`level_${level.id}_dead_ends`, JSON.stringify(Array.from(newSet)));
+          return newSet;
+        });
+      }
 
-    handleSelectChoice(e, qId, choice, status);
     setTimeout(() => setPopup(null), 2500);
   };
 
@@ -5247,39 +5491,44 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         <div className="location-image-wrapper">
           <img src={level.img_url} alt="Crime Scene" className="location-image-full" />
 
-          {displayQuestions.map(q => {
-            const choice = q.choices?.[0];
-            if (!choice) return null;
+          {displayQuestions.flatMap(q => {
+            return q.choices?.map(choice => {
+              
+              const parts = choice.text.split('|');
+              if (parts.length < 2) return null;
+              
+              const coords = parts[0].trim();
+              const title = parts[1].trim();
+              
+              const coordParts = coords.split(',');
+              if (coordParts.length < 2) return null;
 
-            // BULLETPROOF PARSING: Splits strictly by the pipe character and trims spaces later
-            const parts = choice.text.split('|');
-            if (parts.length < 2) {
-              console.warn(`[SYSTEM DIAGNOSTIC] Question ID ${q.id} is missing coordinate data. Expected format "X,Y | Title". Received: "${choice.text}"`);
-              return null;
-            }
-            
-            const coords = parts[0].trim();
-            const title = parts[1].trim();
-            
-            const coordParts = coords.split(',');
-            if (coordParts.length < 2) return null;
+              const x = coordParts[0].trim();
+              const y = coordParts[1].trim();
 
-            const x = coordParts[0].trim();
-            const y = coordParts[1].trim();
+              const isSelected = localVotes[q.id] === choice.id || (isCompleted && choice.is_correct);
+              const isDeadEndClicked = clickedDeadEnds.has(choice.id);
 
-            const isInvestigated = !!localVotes[q.id] || isCompleted;
+              let zoneClass = 'loc-hover-zone';
+              if (isSelected) {
+                zoneClass += ' selected'; 
+              } else if (isCompleted || isDeadEndClicked) {
+                // Now, dead ends only turn grey if the phase is over, OR if the user manually clicked them
+                zoneClass += ' investigated'; 
+              }
 
-            return (
-              <div
-                key={q.id}
-                className={`loc-hover-zone ${isInvestigated ? 'investigated' : ''}`}
-                style={{ top: `${y}%`, left: `${x}%` }}
-                onClick={(e) => handlePointClick(e, q.id, choice, isInvestigated)}
-              >
-                <div className="loc-crosshair"></div>
-                <div className="loc-tooltip">{title}</div>
-              </div>
-            );
+              return (
+                <div
+                  key={choice.id}
+                  className={zoneClass}
+                  style={{ top: `${y}%`, left: `${x}%` }}
+                  onClick={(e) => handlePointClick(e, q.id, choice)}
+                >
+                  <div className="loc-crosshair"></div>
+                  <div className="loc-tooltip">{title}</div>
+                </div>
+              );
+            });
           })}
         </div>
       </div>
@@ -5292,8 +5541,12 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
       <div className="location-thumbnail-container">
         <div className="location-thumbnail" style={{ backgroundImage: `url(${level.img_url})` }}>
           <div className="thumbnail-overlay">
-            <button className="btn-primary" onClick={() => setIsFullscreen(true)}>
-              <span className="forensic-icon" style={{ marginRight: '0.5rem' }}>👁️</span> Inspect Crime Scene
+            <button 
+              className="btn-primary" 
+              onClick={() => setIsFullscreen(true)}
+              style={{ flex: 'none', width: 'auto', padding: '0.75rem 2rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}
+            >
+              <span style={{ marginRight: '0.5rem'}}>👁️</span> Inspect Location
             </button>
           </div>
         </div>
@@ -5406,9 +5659,9 @@ export default function StandardPhase({ level, status, localVotes, totalPlayers,
           const isVisible = status === 'completed' || qIdx === 0 || (prevConsensus && prevConsensus.isResolved);
           if (!isVisible) return null;
 
-          const isGloballyLocked = consensus.isResolved;
-          const isSingleQuestionLevel = level.questions!.length === 1;
-          const isLocked = isGloballyLocked && !isSingleQuestionLevel;
+          // THE FIX: The question locks ONLY when all players have voted AND there is no tie.
+          const isLocked = consensus.isResolved; 
+          const hasLocalVote = !!localVotes[q.id];
 
           return (
             <div key={q.id} className="question-item">
@@ -5422,9 +5675,14 @@ export default function StandardPhase({ level, status, localVotes, totalPlayers,
               <div className="question-body">
                 <p className="question-text">
                   {q.text}
-                  {status === 'active' && !isGloballyLocked && (
+                  {status === 'active' && !isLocked && (
                     <span style={{ display: 'block', fontSize: '0.75rem', color: consensus.isTie ? 'var(--accent-crimson)' : 'var(--accent-amber)', marginTop: '0.5rem', fontFamily: 'var(--font-mono)' }}>
-                      ↳ {consensus.isTie ? 'TIE DETECTED: AWAITING TIE-BREAKER' : `Awaiting Agent consensus: ${consensus.votesCast} / ${totalPlayers} cast`}
+                      ↳ {consensus.isTie 
+                          ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
+                          : hasLocalVote 
+                            ? `Vote recorded (${consensus.votesCast} / ${totalPlayers}). You may still change your choice.` 
+                            : `Awaiting Agent consensus: ${consensus.votesCast} / ${totalPlayers} cast`
+                        }
                     </span>
                   )}
                 </p>
@@ -5613,7 +5871,6 @@ export default function CaseDetailsTab() {
                     position: 'relative', cursor: 'pointer', transition: 'all 0.2s ease'
                   }}
                   onClick={() => handleInspectVictim(victim)}
-                  onMouseEnter={() => markVictimAsViewed(victim.id)}
                 >
                   {isNew && <div className="unread-indicator" title="New Casualty Intel"></div>}
                   
@@ -5778,143 +6035,16 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   align-items: flex-start; 
 }
 
-/* --- Filing Tray Styles --- */
-.filing-tray {
-  margin-top: 1rem;
-  padding: 1.5rem;
-  border-color: rgba(var(--accent-amber-rgb), 0.3);
-  box-shadow: inset 0 0 20px rgba(var(--accent-amber-rgb), 0.05);
-}
-
-.tray-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px dashed rgba(255,255,255,0.1);
-  padding-bottom: 0.5rem;
-}
-
-.tray-header h3 {
-  margin: 0;
-  font-family: var(--font-mono);
-  color: var(--accent-amber);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-size: 1rem;
-}
-
-.tray-layout {
-  display: flex;
-  gap: 2rem;
-  align-items: stretch;
-}
-
-.tray-dropzone {
-  flex: 1;
-  border: 2px dashed rgba(255,255,255,0.1);
-  border-radius: var(--radius-sm);
-  background: rgba(0,0,0,0.3);
-  min-height: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  transition: all 0.2s ease;
-}
-
-.tray-placeholder {
-  font-family: var(--font-mono);
-  color: rgba(255,255,255,0.2);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.tray-items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  width: 100%;
-}
-
-.tray-item-pill {
-  display: flex;
-  align-items: center;
-  background: rgba(var(--accent-amber-rgb), 0.1);
-  border: 1px solid rgba(var(--accent-amber-rgb), 0.3);
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.tray-item-id {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  background: rgba(0,0,0,0.5);
-  padding: 0.5rem;
-  color: var(--accent-amber);
-}
-
-.tray-item-title {
-  padding: 0.5rem 1rem;
-  font-size: 0.85rem;
-  color: var(--text-primary);
-}
-
-.tray-item-remove {
-  background: rgba(163, 50, 50, 0.2);
-  border: none;
-  border-left: 1px solid rgba(163, 50, 50, 0.3);
-  color: var(--accent-crimson);
-  cursor: pointer;
-  padding: 0.5rem 0.75rem;
-  font-size: 1rem;
-  line-height: 1;
-  transition: background 0.2s;
-}
-
-.tray-item-remove:hover {
-  background: var(--accent-crimson);
-  color: var(--bg-dark);
-}
-
-.tray-actions {
-  width: 300px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-}
-
-@media (max-width: 768px) {
-  .acrylic-workspace {
-    padding: 1rem;
-  }
-  
-  .evidence-scatter-grid {
-    gap: 1rem;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .tray-layout {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .tray-actions {
-    width: 100%;
-  }
-}
-
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceBoardTab.tsx
 ----------------------------------------
 import { useState } from 'react';
 import { useRoomContext } from '@/context/RoomContext';
 import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
-import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
 import type { Evidence } from '@/types';
 import EvidenceCard from './EvidenceCard';
 import EvidenceModal from './EvidenceModal'; 
+import ProceduralRequestTray from './ProceduralRequestTray';
 import './EvidenceBoardTab.css';
 
 export default function EvidenceBoardTab() {
@@ -5931,7 +6061,8 @@ export default function EvidenceBoardTab() {
     feedback,
     toasts,
     clearFeedback,
-    submitRequest
+    submitRequest,
+    filedRequests
   } = useInvestigationRequest(room, refreshRoomData);
 
   const handleInspect = (evidence: Evidence) => {
@@ -5939,19 +6070,29 @@ export default function EvidenceBoardTab() {
     markEvidenceAsViewed(evidence.id);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDragOverContainer = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    const evidenceId = parseInt(e.dataTransfer.getData('evidenceId'), 10);
-    if (!isNaN(evidenceId)) addToTray(evidenceId);
+    const scrollContainer = e.currentTarget.closest('.tab-content-area');
+    if (!scrollContainer) return;
+
+    const rect = scrollContainer.getBoundingClientRect();
+    const threshold = 80; // Distance from edge in pixels to trigger scroll
+    const speed = 15;
+
+    if (e.clientY - rect.top < threshold) {
+      scrollContainer.scrollTop -= speed;
+    } else if (rect.bottom - e.clientY < threshold) {
+      scrollContainer.scrollTop += speed;
+    }
   };
 
   return (
-    <div className="evidence-board-container">
+    <div className="evidence-board-container" onDragOver={handleDragOverContainer}>
       <header className="board-header">
         <h2 className="section-title">The Evidence Board</h2>
         <span className="board-meta">Drag files to the tray below to request warrants or subpoenas.</span>
       </header>
-
+      
       {feedback && (
         <div className="feedback-modal-overlay" style={{ zIndex: 1000 }}>
           <div className={`feedback-modal-content ${feedback.type}`}>
@@ -5996,57 +6137,17 @@ export default function EvidenceBoardTab() {
         )}
       </div>
 
-      {/* TACTICAL FILING TRAY */}
-      <div className="filing-tray glass-panel" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
-        <div className="tray-header">
-          <span className="forensic-icon">⚖️</span>
-          <h3>Procedural Request Tray</h3>
-        </div>
-        
-        <div className="tray-layout">
-          <div className="tray-dropzone">
-            {trayEvidences.length === 0 ? (
-              <span className="tray-placeholder">Drag & Drop Evidence Here</span>
-            ) : (
-              <div className="tray-items">
-                {trayEvidences.map(id => {
-                  const ev = accumulatedEvidences.find(e => e.id === id);
-                  return (
-                    <div key={id} className="tray-item-pill">
-                      <span className="tray-item-id">EX-{id.toString().padStart(3, '0')}</span>
-                      <span className="tray-item-title">{ev?.title || 'Unknown File'}</span>
-                      <button className="tray-item-remove" onClick={() => removeFromTray(id)}>×</button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="tray-actions">
-            <select 
-              className="admin-input" 
-              value={requestType} 
-              onChange={(e) => setRequestType(e.target.value)}
-              style={{ width: '100%', marginBottom: '1rem', background: 'rgba(0,0,0,0.5)' }}
-            >
-              <option value="" disabled>-- Select Request Type --</option>
-              {Object.values(InvestigationRequestType).map(type => (
-                <option key={type} value={type}>{getInvestigationRequestLabel(type)}</option>
-              ))}
-            </select>
-            
-            <button 
-              className="btn-primary" 
-              disabled={trayEvidences.length < 2 || !requestType || isSubmitting}
-              onClick={() => submitRequest()}
-              style={{ width: '100%' }}
-            >
-              {isSubmitting ? 'Filing...' : 'Submit Request to DA'}
-            </button>
-          </div>
-        </div>
-      </div>
+      <ProceduralRequestTray 
+        accumulatedEvidences={accumulatedEvidences}
+        trayEvidences={trayEvidences}
+        requestType={requestType}
+        setRequestType={setRequestType}
+        addToTray={addToTray}
+        removeFromTray={removeFromTray}
+        isSubmitting={isSubmitting}
+        submitRequest={submitRequest}
+        filedRequests={filedRequests}
+      />
 
       <EvidenceModal evidence={inspectedEvidence} onClose={() => setInspectedEvidence(null)} />
     </div>
@@ -6518,6 +6619,413 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
 }
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\ProceduralRequestTray.css
+----------------------------------------
+.filing-tray {
+  margin-top: 1.5rem;
+  padding: 1.75rem;
+  background: linear-gradient(135deg, rgba(var(--bg-panel-rgb), 0.9) 0%, rgba(15, 16, 20, 0.95) 100%);
+  border: 1px solid rgba(var(--accent-amber-rgb), 0.25);
+  border-top: 3px solid var(--accent-amber);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+}
+
+.tray-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.75rem;
+}
+
+.tray-header h3 {
+  margin: 0;
+  font-family: var(--font-mono);
+  color: var(--accent-amber);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-size: 0.95rem;
+  text-shadow: 0 0 10px rgba(var(--accent-amber-rgb), 0.3);
+}
+
+.tray-layout {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 1.5rem;
+  align-items: stretch;
+}
+
+.tray-dropzone {
+  border: 1px dashed rgba(var(--accent-amber-rgb), 0.35);
+  border-radius: var(--radius-md);
+  background: rgba(0, 0, 0, 0.4);
+  min-height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  transition: all 0.25s cubic-bezier(0.25, 0.8, 0.25, 1);
+  position: relative;
+  overflow: hidden;
+}
+
+.tray-dropzone::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(var(--accent-amber-rgb), 0.03) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.tray-dropzone:hover {
+  border-color: rgba(var(--accent-amber-rgb), 0.6);
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: inset 0 0 15px rgba(var(--accent-amber-rgb), 0.05);
+}
+
+.tray-placeholder {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  opacity: 0.6;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tray-placeholder::before {
+  content: '⚡';
+  font-size: 0.9rem;
+  opacity: 0.7;
+}
+
+.tray-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  width: 100%;
+  z-index: 1;
+}
+
+.tray-item-pill {
+  display: flex;
+  align-items: center;
+  background: rgba(20, 21, 25, 0.9);
+  border: 1px solid rgba(var(--accent-amber-rgb), 0.3);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  animation: fadeInPill 0.2s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+@keyframes fadeInPill {
+  from { opacity: 0; transform: scale(0.95) translateY(4px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.tray-item-id {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  background: rgba(var(--accent-amber-rgb), 0.15);
+  padding: 0.5rem 0.65rem;
+  color: var(--accent-amber);
+  border-right: 1px solid rgba(var(--accent-amber-rgb), 0.2);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.tray-item-title {
+  padding: 0.5rem 0.85rem;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tray-item-remove {
+  background: transparent;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0.5rem 0.75rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: all 0.2s ease;
+}
+
+.tray-item-remove:hover {
+  background: rgba(163, 50, 50, 0.25);
+  color: var(--accent-crimson);
+}
+
+.tray-actions {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.tray-select {
+  background: rgba(10, 11, 13, 0.8) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  font-size: 0.85rem !important;
+  padding: 0.75rem !important;
+  color: var(--text-primary) !important;
+  border-radius: var(--radius-sm) !important;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.tray-select:focus {
+  border-color: var(--accent-amber) !important;
+  box-shadow: 0 0 10px rgba(var(--accent-amber-rgb), 0.15);
+}
+
+.tray-submit-btn {
+  background: var(--accent-amber) !important;
+  color: var(--bg-dark) !important;
+  border: 1px solid var(--accent-amber) !important;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 0.75rem 1rem !important;
+  box-shadow: 0 4px 15px rgba(var(--accent-amber-rgb), 0.25);
+  transition: all 0.2s ease;
+}
+
+.tray-submit-btn:hover:not(:disabled) {
+  background: var(--bg-dark) !important;
+  color: var(--accent-amber) !important;
+  box-shadow: inset 4px 0 0 0 var(--accent-amber), 0 6px 20px rgba(var(--accent-amber-rgb), 0.35);
+}
+
+.tray-submit-btn:disabled {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  color: rgba(255, 255, 255, 0.2) !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 768px) {
+  .tray-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tray-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.archive-toggle-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent-amber);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: opacity 0.2s;
+}
+
+.archive-toggle-btn:hover {
+  opacity: 0.8;
+  text-decoration: underline;
+}
+
+.filed-requests-drawer {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(var(--accent-amber-rgb), 0.2);
+  border-radius: var(--radius-md);
+  max-height: 180px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  animation: slideDown 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+.filed-request-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-left: 2px solid var(--accent-amber);
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.filed-request-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.filed-request-type {
+  color: var(--text-primary);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.filed-request-meta {
+  color: var(--text-secondary);
+  font-size: 0.7rem;
+}
+
+.filed-request-status {
+  color: var(--accent-success);
+  font-weight: 700;
+  background: rgba(var(--accent-success-rgb), 0.1);
+  padding: 0.2rem 0.5rem;
+  border-radius: 2px;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\ProceduralRequestTray.tsx
+----------------------------------------
+import React, { useState } from 'react';
+import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
+import type { Evidence } from '@/types';
+import type { FiledRequest } from '@/hooks/useInvestigationRequest';
+import './ProceduralRequestTray.css';
+
+interface ProceduralRequestTrayProps {
+  accumulatedEvidences: Evidence[];
+  trayEvidences: number[];
+  requestType: string;
+  setRequestType: (type: string) => void;
+  addToTray: (id: number) => void;
+  removeFromTray: (id: number) => void;
+  isSubmitting: boolean;
+  submitRequest: () => void;
+  filedRequests: FiledRequest[];
+}
+
+export default function ProceduralRequestTray({
+  accumulatedEvidences,
+  trayEvidences,
+  requestType,
+  setRequestType,
+  addToTray,
+  removeFromTray,
+  isSubmitting,
+  submitRequest,
+  filedRequests
+}: ProceduralRequestTrayProps) {
+  
+  const [showArchive, setShowArchive] = useState(false);
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const evidenceId = parseInt(e.dataTransfer.getData('evidenceId'), 10);
+    if (!isNaN(evidenceId)) addToTray(evidenceId);
+  };
+
+  return (
+    <div className="filing-tray glass-panel" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+      <div className="tray-header">
+        <span className="forensic-icon">⚖️</span>
+        <h3>Procedural Request Tray</h3>
+      </div>
+      
+      <div className="tray-layout">
+        <div className="tray-dropzone">
+          {trayEvidences.length === 0 ? (
+            <span className="tray-placeholder">Drag & Drop Evidence Here</span>
+          ) : (
+            <div className="tray-items">
+              {trayEvidences.map(id => {
+                const ev = accumulatedEvidences.find(e => e.id === id);
+                return (
+                  <div key={id} className="tray-item-pill">
+                    <span className="tray-item-id">EX-{id.toString().padStart(3, '0')}</span>
+                    <span className="tray-item-title">{ev?.title || 'Unknown File'}</span>
+                    <button className="tray-item-remove" onClick={() => removeFromTray(id)}>×</button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="tray-actions">
+          <select 
+            className="admin-input tray-select" 
+            value={requestType} 
+            onChange={(e) => setRequestType(e.target.value)}
+          >
+            <option value="" disabled>-- Select Request Type --</option>
+            {Object.values(InvestigationRequestType).map(type => (
+              <option key={type} value={type}>{getInvestigationRequestLabel(type)}</option>
+            ))}
+          </select>
+          
+          <button 
+            className="btn-primary tray-submit-btn" 
+            disabled={trayEvidences.length < 2 || !requestType || isSubmitting}
+            onClick={() => submitRequest()}
+          >
+            {isSubmitting ? 'Filing...' : 'Submit Request to DA'}
+          </button>
+        </div>
+      </div>
+
+      <div className="tray-footer-actions">
+        <button className="archive-toggle-btn" onClick={() => setShowArchive(!showArchive)}>
+          📁 {showArchive ? 'Hide Filed Requests' : `View Filed Requests (${filedRequests.length})`}
+        </button>
+      </div>
+
+      {showArchive && (
+        <div className="filed-requests-drawer">
+          {filedRequests.length === 0 ? (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.5rem' }}>
+              No procedural requests filed yet during this session.
+            </div>
+          ) : (
+            filedRequests.map(req => (
+              <div key={req.id} className="filed-request-row">
+                <div className="filed-request-info">
+                  <span className="filed-request-type">{getInvestigationRequestLabel(req.type)}</span>
+                  <span className="filed-request-meta">
+                    Cross-referenced: {req.evidenceIds.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>{req.timestamp}</span>
+                  <span className="filed-request-status">APPROVED</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceVariants\AudioEvidence.tsx
 ----------------------------------------
 import type { Evidence } from '../../../../types';
@@ -6616,7 +7124,6 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   background: var(--bg-dark);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-sm);
-  overflow: hidden;
   cursor: grab;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
   transition: transform 0.1s ease, box-shadow 0.1s ease;
@@ -6625,6 +7132,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   display: flex;
   flex-direction: column;
   min-height: 220px; 
+  position: relative;
 }
 
 .suspect-card:active {
@@ -6671,19 +7179,6 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   opacity: 0;
 }
 
-.suspect-card {
-  width: 160px;
-  background: var(--bg-dark);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--radius-sm);
-  cursor: grab;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
-  display: flex;
-  flex-direction: column;
-  min-height: 220px; 
-  position: relative;
-}
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Suspects\SuspectCard.tsx
@@ -6706,7 +7201,6 @@ export default function SuspectCard({ suspect, sourcePool, isDraggable, isNew, o
 
   const handleDragStart = (e: React.DragEvent) => {
     e.stopPropagation();
-    onInteract(suspect.id); // Mark as viewed the moment they grab it
     onDragStart(e, suspect.id, sourcePool);
     setTimeout(() => setIsDragging(true), 0);
   };
@@ -6717,7 +7211,7 @@ export default function SuspectCard({ suspect, sourcePool, isDraggable, isNew, o
       draggable={isDraggable}
       onDragStart={handleDragStart}
       onDragEnd={(e) => { e.stopPropagation(); setIsDragging(false); }}
-      onPointerDown={() => onInteract(suspect.id)} // Mark as viewed if they just click/tap it
+      onMouseEnter={() => onInteract(suspect.id)} // Triggers 'read' state exclusively on hover
     >
       {isNew && <div className="unread-indicator" title="Unread Suspect Intel"></div>}
       
@@ -7562,6 +8056,29 @@ export const createAdminInvestigationRequest = async (formData: FormData): Promi
   }
 };
 
+export const createAdminPhase = async (formData: FormData): Promise<Result<any>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/phases`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) handleUnauthorized();
+      const data = await response.json().catch(() => ({}));
+      return failure(data.message || 'Failed to create phase.');
+    }
+    
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\services\api.ts
 ----------------------------------------
@@ -7933,7 +8450,7 @@ export interface GameCase {
   author_name?: string;
   img_url?: string; 
   active_room_invite_code?: string; 
-  levels?: Level[]; 
+  phases?: Phase[]; 
   evidences?: Evidence[]; 
   suspects?: Suspect[];
   victims?: Victim[];
@@ -8022,9 +8539,18 @@ export const LevelPresentationType = {
 
 export type LevelPresentationType = typeof LevelPresentationType[keyof typeof LevelPresentationType];
 
-export interface Level {
+export interface Phase {
   id: number;
   case_id: number;
+  title: string;
+  description?: string;
+  order_index: number;
+  levels?: Level[]; 
+}
+
+export interface Level {
+  id: number;
+  phase_id: number;
   title: string;
   details: string;
   img_url?: string; 

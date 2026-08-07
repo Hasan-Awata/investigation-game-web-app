@@ -39,17 +39,23 @@ export default function CampaignTab() {
   const sortedPhases = [...phases].sort((a, b) => a.order_index - b.order_index);
 
   // Auto-select the most relevant Phase on load
-  const [activePhaseId, setActivePhaseId] = useState<number | null>(null);
+  const phaseStorageKey = `room_${room.id}_active_phase`;
+
+  const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
+    try {
+      const saved = sessionStorage.getItem(phaseStorageKey);
+      return saved ? parseInt(saved, 10) : null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
+    // Default strictly to the FIRST phase if no cache exists
     if (activePhaseId === null && sortedPhases.length > 0) {
-      // Find the "highest" phase that contains at least one unlocked/initial level
-      const activeOrHighestUnlockedPhase = [...sortedPhases].reverse().find(p => 
-        p.levels?.some(l => l.is_initial || unlockedLevelIds.has(l.id))
-      );
-      setActivePhaseId(activeOrHighestUnlockedPhase?.id || sortedPhases[0].id);
+      setActivePhaseId(sortedPhases[0].id);
     }
-  }, [sortedPhases, unlockedLevelIds, activePhaseId]);
+  }, [sortedPhases, activePhaseId]);
 
   const toggleExpand = (levelId: number, status: string) => {
     if (status === 'locked') return; 
@@ -106,7 +112,11 @@ export default function CampaignTab() {
               key={phase.id}
               className={`phase-subnav-btn ${activePhaseId === phase.id ? 'active' : ''}`}
               disabled={!isPhaseUnlocked}
-              onClick={() => { setActivePhaseId(phase.id); setExpandedId(null); }}
+              onClick={() => { 
+                setActivePhaseId(phase.id); 
+                setExpandedId(null); 
+                sessionStorage.setItem(phaseStorageKey, phase.id.toString());
+              }}
             >
               {!isPhaseUnlocked && <span className="phase-lock-icon">🔒</span>}
               {phase.title}

@@ -16,17 +16,28 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
   const storageKey = useRef(`notepad_fallback`);
 
   useEffect(() => {
-    // Dynamically generate a unique key for this specific player in this specific room
-    const storedUser = localStorage.getItem('auth_user');
-    const currentUser = storedUser ? JSON.parse(storedUser) : null;
-    
-    if (currentUser) {
-       storageKey.current = `room_${roomId}_user_${currentUser.id}_ledger`;
-       const savedNotes = localStorage.getItem(storageKey.current);
-       if (savedNotes) {
-         setNotes(savedNotes);
-       }
+    try {
+      const storedUser = localStorage.getItem('auth_user');
+      const currentUser = storedUser ? JSON.parse(storedUser) : null;
+      
+      if (currentUser) {
+         storageKey.current = `room_${roomId}_user_${currentUser.id}_ledger`;
+         const savedNotes = localStorage.getItem(storageKey.current);
+         if (savedNotes) setNotes(savedNotes);
+      }
+    } catch (e) {
+      console.error("Failed to parse user data", e);
     }
+
+    // Sync notes instantly if the user types in a different tab
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === storageKey.current && e.newValue !== null) {
+        setNotes(e.newValue);
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [roomId]);
 
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {

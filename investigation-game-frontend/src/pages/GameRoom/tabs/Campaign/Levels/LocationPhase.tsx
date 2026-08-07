@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useRoomContext } from '@/context/RoomContext';
 import type { Level, Choice } from '@/types';
 import './LocationPhase.css';
 
@@ -12,12 +13,18 @@ interface LocationPhaseProps {
 }
 
 export default function LocationPhase({ level, status, localVotes, handleSelectChoice, currentUserId }: LocationPhaseProps) {
+  const { room } = useRoomContext();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
   
+  // Tie the dead-end cache to the Room ID so a restart completely wipes the slate
+  const storageKey = `room_${room.id}_level_${level.id}_dead_ends`;
+  
   const [clickedDeadEnds, setClickedDeadEnds] = useState<Set<number>>(() => {
-    const saved = sessionStorage.getItem(`level_${level.id}_dead_ends`);
-    return saved ? new Set(JSON.parse(saved)) : new Set();
+    try {
+      const saved = sessionStorage.getItem(storageKey);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
   });
 
   if (!level.questions || !level.img_url) return null;
@@ -35,7 +42,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
   const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice) => {
     e.stopPropagation();
     
-    // Only block clicks entirely if the phase is no longer active
     if (status !== 'active') return;
 
     const isCorrectFind = choice.is_correct || !!(choice.unlocks_evidence_id || choice.unlocks_level_id || choice.unlocks_suspect_id || choice.unlocks_victim_id);
@@ -46,7 +52,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         message: "I found something useful here. Logging it to the board.",
         isSuccess: true
       });
-      // ONLY trigger the server call if they haven't already locked this clue
       if (!localVotes[qId]) {
         handleSelectChoice(e, qId, choice, status);
       }
@@ -56,10 +61,10 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
           message: "Nothing was found here. I should keep looking.",
           isSuccess: false
         });
-        // Mark this specific dead end as clicked so it turns grey locally
+        
         setClickedDeadEnds(prev => {
           const newSet = new Set(prev).add(choice.id);
-          sessionStorage.setItem(`level_${level.id}_dead_ends`, JSON.stringify(Array.from(newSet)));
+          sessionStorage.setItem(storageKey, JSON.stringify(Array.from(newSet)));
           return newSet;
         });
       }
@@ -115,7 +120,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
               if (isSelected) {
                 zoneClass += ' selected'; 
               } else if (isCompleted || isDeadEndClicked) {
-                // Now, dead ends only turn grey if the phase is over, OR if the user manually clicked them
                 zoneClass += ' investigated'; 
               }
 

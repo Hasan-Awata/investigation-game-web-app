@@ -16,7 +16,6 @@ export default function SuspectCard({ suspect, sourcePool, isDraggable, isNew, o
 
   const handleDragStart = (e: React.DragEvent) => {
     e.stopPropagation();
-    onInteract(suspect.id); // Mark as viewed the moment they grab it
     onDragStart(e, suspect.id, sourcePool);
     setTimeout(() => setIsDragging(true), 0);
   };
@@ -27,7 +26,7 @@ export default function SuspectCard({ suspect, sourcePool, isDraggable, isNew, o
       draggable={isDraggable}
       onDragStart={handleDragStart}
       onDragEnd={(e) => { e.stopPropagation(); setIsDragging(false); }}
-      onPointerDown={() => onInteract(suspect.id)} // Mark as viewed if they just click/tap it
+      onMouseEnter={() => onInteract(suspect.id)} // Triggers 'read' state exclusively on hover
     >
       {isNew && <div className="unread-indicator" title="Unread Suspect Intel"></div>}
       
