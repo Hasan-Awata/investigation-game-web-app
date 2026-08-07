@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
 import type { Evidence } from '@/types';
+import type { FiledRequest } from '@/hooks/useInvestigationRequest';
 import './ProceduralRequestTray.css';
 
 interface ProceduralRequestTrayProps {
@@ -12,6 +13,7 @@ interface ProceduralRequestTrayProps {
   removeFromTray: (id: number) => void;
   isSubmitting: boolean;
   submitRequest: () => void;
+  filedRequests: FiledRequest[];
 }
 
 export default function ProceduralRequestTray({
@@ -22,9 +24,12 @@ export default function ProceduralRequestTray({
   addToTray,
   removeFromTray,
   isSubmitting,
-  submitRequest
+  submitRequest,
+  filedRequests
 }: ProceduralRequestTrayProps) {
   
+  const [showArchive, setShowArchive] = useState(false);
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     const evidenceId = parseInt(e.dataTransfer.getData('evidenceId'), 10);
@@ -79,6 +84,37 @@ export default function ProceduralRequestTray({
           </button>
         </div>
       </div>
+
+      <div className="tray-footer-actions">
+        <button className="archive-toggle-btn" onClick={() => setShowArchive(!showArchive)}>
+          📁 {showArchive ? 'Hide Filed Requests' : `View Filed Requests (${filedRequests.length})`}
+        </button>
+      </div>
+
+      {showArchive && (
+        <div className="filed-requests-drawer">
+          {filedRequests.length === 0 ? (
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.5rem' }}>
+              No procedural requests filed yet during this session.
+            </div>
+          ) : (
+            filedRequests.map(req => (
+              <div key={req.id} className="filed-request-row">
+                <div className="filed-request-info">
+                  <span className="filed-request-type">{getInvestigationRequestLabel(req.type)}</span>
+                  <span className="filed-request-meta">
+                    Cross-referenced: {req.evidenceIds.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>{req.timestamp}</span>
+                  <span className="filed-request-status">APPROVED</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }

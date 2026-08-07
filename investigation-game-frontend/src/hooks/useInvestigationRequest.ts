@@ -4,11 +4,25 @@ import { submitInvestigationRequest } from '@/services/api';
 import type { GameRoom } from '@/types';
 import type { ToastNotification } from './useInvestigationPhase';
 
+export interface FiledRequest {
+  id: string;
+  type: string;
+  timestamp: string;
+  evidenceIds: number[];
+}
+
 export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => void) {
   const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
   const [requestType, setRequestType] = useState<string>('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+
+  // Persistent history in sessionStorage for this room
+  const historyStorageKey = `room_${room.id}_filed_requests`;
+  const [filedRequests, setFiledRequests] = useState<FiledRequest[]>(() => {
+    const saved = sessionStorage.getItem(historyStorageKey);
+    return saved ? JSON.parse(saved) : [];
+  });
 
   const requestMutation = useMutation({
     mutationFn: async () => {
@@ -18,11 +32,23 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
     },
     onSuccess: (data) => {
       setFeedback({ type: 'success', message: data.message });
+      
+      // Save to local filed requests history
+      const newRequest: FiledRequest = {
+        id: crypto.randomUUID(),
+        type: requestType,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        evidenceIds: [...trayEvidences]
+      };
+      
+      const updatedHistory = [newRequest, ...filedRequests];
+      setFiledRequests(updatedHistory);
+      sessionStorage.setItem(historyStorageKey, JSON.stringify(updatedHistory));
+
       setTrayEvidences([]);
       setRequestType('');
       refreshRoomData();
 
-      // Dispatch a tactical toast notification
       if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
         setTimeout(() => {
           const newToast: ToastNotification = { 
@@ -65,6 +91,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
     feedback,
     toasts,
     clearFeedback,
-    submitRequest: requestMutation.mutate
+    submitRequest: requestMutation.mutate,
+    filedRequests
   };
 }

@@ -21,7 +21,8 @@ export default function EvidenceBoardTab() {
     feedback,
     toasts,
     clearFeedback,
-    submitRequest
+    submitRequest,
+    filedRequests
   } = useInvestigationRequest(room, refreshRoomData);
 
   const handleInspect = (evidence: Evidence) => {
@@ -29,13 +30,29 @@ export default function EvidenceBoardTab() {
     markEvidenceAsViewed(evidence.id);
   };
 
+  const handleDragOverContainer = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const scrollContainer = e.currentTarget.closest('.tab-content-area');
+    if (!scrollContainer) return;
+
+    const rect = scrollContainer.getBoundingClientRect();
+    const threshold = 80; // Distance from edge in pixels to trigger scroll
+    const speed = 15;
+
+    if (e.clientY - rect.top < threshold) {
+      scrollContainer.scrollTop -= speed;
+    } else if (rect.bottom - e.clientY < threshold) {
+      scrollContainer.scrollTop += speed;
+    }
+  };
+
   return (
-    <div className="evidence-board-container">
+    <div className="evidence-board-container" onDragOver={handleDragOverContainer}>
       <header className="board-header">
         <h2 className="section-title">The Evidence Board</h2>
         <span className="board-meta">Drag files to the tray below to request warrants or subpoenas.</span>
       </header>
-
+      
       {feedback && (
         <div className="feedback-modal-overlay" style={{ zIndex: 1000 }}>
           <div className={`feedback-modal-content ${feedback.type}`}>
@@ -89,6 +106,7 @@ export default function EvidenceBoardTab() {
         removeFromTray={removeFromTray}
         isSubmitting={isSubmitting}
         submitRequest={submitRequest}
+        filedRequests={filedRequests}
       />
 
       <EvidenceModal evidence={inspectedEvidence} onClose={() => setInspectedEvidence(null)} />
