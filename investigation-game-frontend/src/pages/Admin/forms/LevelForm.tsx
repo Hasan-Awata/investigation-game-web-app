@@ -102,6 +102,7 @@ export default function LevelForm() {
             >
               <option value="standard">Standard Investigation</option>
               <option value="interrogation">Suspect Interrogation</option>
+              <option value="location">Location</option>
             </select>
           </div>
           

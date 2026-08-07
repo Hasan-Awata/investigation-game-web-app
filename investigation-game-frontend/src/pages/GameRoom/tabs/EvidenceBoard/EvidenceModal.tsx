@@ -1,6 +1,7 @@
 import ReactMarkdown from 'react-markdown'; 
-import type { Evidence } from '../../../types';
-import './EvidenceBoard.css';
+import type { Evidence } from '@/types';
+import './EvidenceBoardTab.css';
+import './EvidenceModal.css';
 
 interface EvidenceModalProps {
   evidence: Evidence | null;

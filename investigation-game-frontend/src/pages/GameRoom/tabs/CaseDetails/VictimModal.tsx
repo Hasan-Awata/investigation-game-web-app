@@ -1,4 +1,4 @@
-import type { Victim } from '../../../types';
+import type { Victim } from '@/types';
 
 interface VictimModalProps {
   victim: Victim | null;

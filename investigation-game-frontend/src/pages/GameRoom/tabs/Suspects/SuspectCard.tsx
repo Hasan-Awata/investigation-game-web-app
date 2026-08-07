@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Suspect } from '../../../types';
+import type { Suspect } from '@/types';
 import './SuspectCard.css';
 
 interface SuspectCardProps {

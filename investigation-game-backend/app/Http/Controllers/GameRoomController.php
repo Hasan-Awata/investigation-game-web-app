@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\GameCase;
 use App\Models\Level; 
+use App\Enums\LevelPresentationType; 
 use App\Services\GameRoomService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -106,7 +107,7 @@ class GameRoomController extends Controller
             'gameCase.evidences', 
             'gameCase.suspects', 
             'users.user', 
-            'currentLevel.questions.choices',
+            'currentLevel.questions.choices', 
             'unlockedEvidences',
             'unlockedLevels', 
             'unlockedSuspects',  
@@ -119,6 +120,8 @@ class GameRoomController extends Controller
                 });
             }
         ]);
+
+        $this->roomService->distributeLocationQuestions($room);
 
         return response()->json(['room' => $room], 200);
     }

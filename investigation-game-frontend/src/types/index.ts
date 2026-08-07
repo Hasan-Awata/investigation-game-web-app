@@ -136,11 +136,13 @@ export interface Question {
   msg_when_wrong?: string;
   choices?: Choice[];
   is_mandatory: boolean; 
+  assigned_user_id?: number; 
 }
 
 export const LevelPresentationType = {
   Standard: 'standard',
   Interrogation: 'interrogation',
+  Location: 'location',
 } as const;
 
 export type LevelPresentationType = typeof LevelPresentationType[keyof typeof LevelPresentationType];

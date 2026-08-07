@@ -1,8 +1,12 @@
 import { useState } from 'react';
-import { useRoomContext } from '../../../context/RoomContext';
-import { useInvestigationPhase } from '../../../hooks/useInvestigationPhase';
-import InterrogationPhase from './InterrogationPhase';
-import './Tabs.css';
+import { useRoomContext } from '../../../../context/RoomContext';
+import { useInvestigationPhase } from '../../../../hooks/useInvestigationPhase';
+import type { Question } from '../../../../types';
+import InterrogationPhase from './Levels/InterrogationPhase';
+import StandardPhase from './Levels/StandardPhase'; 
+import LocationPhase from './Levels/LocationPhase';
+import '../SharedOverlay.css';
+import './CampaignTab.css';
 
 export default function CampaignTab() {
   const { room, refreshRoomData } = useRoomContext();
@@ -41,19 +45,30 @@ export default function CampaignTab() {
   // --- UPGRADED GLOBAL CONSENSUS ENGINE ---
   const totalPlayers = room.users?.length || 1; 
 
-  const getQuestionConsensus = (questionId: number) => {
+  const getQuestionConsensus = (question: Question) => {
     const tally: Record<number, number> = {};
     let votesCast = 0;
     const participants = room.users || [];
 
     room.votes?.forEach(v => {
-      if (v.question_id === questionId) {
+      if (v.question_id === question.id) {
         const role = participants.find(p => p.user_id === v.user_id)?.role || 'participant';
         const weight = role === 'host' ? 2 : 1; // Host vote carries double weight
         tally[v.choice_id] = (tally[v.choice_id] || 0) + weight;
         votesCast++;
       }
     });
+
+    // LOCATION PHASE EXCEPTION: Only requires the assigned user's vote
+    if (question.assigned_user_id !== undefined && question.assigned_user_id !== null) {
+      const assignedVote = room.votes?.find(v => v.question_id === question.id && v.user_id === question.assigned_user_id);
+      return {
+        votesCast,
+        isResolved: !!assignedVote,
+        isTie: false,
+        winningChoiceId: assignedVote ? assignedVote.choice_id : null
+      };
+    }
 
     if (votesCast < totalPlayers) {
       return { votesCast, isResolved: false, isTie: false, winningChoiceId: null };
@@ -152,7 +167,7 @@ export default function CampaignTab() {
           const mandatoryQuestions = level.questions?.filter(q => q.is_mandatory) || [];
           
           // Button is only enabled when every mandatory question is fully resolved (no ties)
-          const allMandatoryAnswered = mandatoryQuestions.every(q => getQuestionConsensus(q.id).isResolved);
+          const allMandatoryAnswered = mandatoryQuestions.every(q => getQuestionConsensus(q).isResolved);
 
           // 3. UI Content Masking
           const displayTitle = isDiscovered ? level.title : 'Encounter Undiscovered';
@@ -197,9 +212,7 @@ export default function CampaignTab() {
                             : 'Awaiting Host authorization to commence this investigation phase.'}
                         </p>
                         {isHost && (
-                          <button 
-                            className="btn-primary" onClick={() => initiatePhase(level.id)} disabled={isInitiating}
-                          >
+                          <button className="btn-primary" onClick={() => initiatePhase(level.id)} disabled={isInitiating}>
                             {isInitiating ? 'Locking Coordinator...' : 'Commence Investigation'}
                           </button>
                         )}
@@ -211,95 +224,32 @@ export default function CampaignTab() {
                       <>
                         {level.presentation_type === 'interrogation' ? (
                           <InterrogationPhase 
-                            level={level}
-                            status={status}
-                            localVotes={localVotes}
-                            totalPlayers={totalPlayers}
-                            getQuestionConsensus={getQuestionConsensus}
+                            level={level} status={status} localVotes={localVotes} 
+                            totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} 
                             handleSelectChoice={handleSelectChoice}
                           />
+                        ) : level.presentation_type === 'location' ? (
+                          <LocationPhase 
+                            level={level} status={status} localVotes={localVotes} 
+                            handleSelectChoice={handleSelectChoice} currentUserId={currentUser.id}
+                          />
                         ) : (
-                          <>
-                            <h4 className="drawer-title">Required Verdicts</h4>
-                            <div className="questions-list">
-                              {level.questions.map((q, qIdx) => {
-                                
-                                const consensus = getQuestionConsensus(q.id);
-                                const prevConsensus = qIdx > 0 ? getQuestionConsensus(level.questions![qIdx - 1].id) : null;
-                                
-                                const isVisible = 
-                                  status === 'completed' || 
-                                  qIdx === 0 || 
-                                  (prevConsensus && prevConsensus.isResolved);
-
-                                if (!isVisible) return null;
-
-                                const isGloballyLocked = consensus.isResolved;
-                                const isSingleQuestionLevel = level.questions!.length === 1;
-                                const isLocked = isGloballyLocked && !isSingleQuestionLevel;
-
-                                return (
-                                  <div key={q.id} className="question-item" style={{ animation: 'fadeIn 0.4s ease-out forwards' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                      <span className="question-number">Q{qIdx + 1}</span>
-                                      {!q.is_mandatory && (
-                                        <span title="Optional narrative evidence." style={{ color: 'var(--accent-amber)', marginTop: '0.35rem', fontSize: '1.1rem', cursor: 'help', animation: 'pulse-icon 2s infinite' }}>📄</span>
-                                      )}
-                                    </div>
-
-                                    <div className="question-body">
-                                      <p className="question-text">
-                                        {q.text}
-                                        {status === 'active' && !isGloballyLocked && (
-                                          <span style={{ display: 'block', fontSize: '0.75rem', color: consensus.isTie ? 'var(--accent-crimson)' : 'var(--accent-amber)', marginTop: '0.5rem', fontFamily: 'var(--font-mono)' }}>
-                                            ↳ {consensus.isTie ? 'TIE DETECTED: AWAITING TIE-BREAKER' : `Awaiting Agent consensus: ${consensus.votesCast} / ${totalPlayers} cast`}
-                                          </span>
-                                        )}
-                                      </p>
-                                      <div className="choices-preview">
-                                        {q.choices?.map(c => {
-                                          const isSelected = localVotes[q.id] === c.id;
-                                          const isHistoricalCorrect = status === 'completed' && c.is_correct;
-                                          
-                                          let pillClass = 'choice-pill';
-                                          if (isSelected) pillClass += ' selected';
-                                          if (isHistoricalCorrect) pillClass += ' historical-correct';
-                                          
-                                          if (status === 'active' && !isLocked) {
-                                            pillClass += ' interactable';
-                                          }
-
-                                          return (
-                                            <span 
-                                              key={c.id} 
-                                              className={pillClass}
-                                              style={isSelected && status === 'active' && !isLocked ? { 
-                                                background: 'var(--bg-dark)', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)', boxShadow: 'inset 3px 0 0 0 var(--accent-cyan)' 
-                                              } : {}}
-                                              onClick={(e) => {
-                                                if (status === 'active' && !isLocked) {
-                                                  handleSelectChoice(e, q.id, c, status);
-                                                }
-                                              }}
-                                            >
-                                              {c.text}
-                                            </span>
-                                          );
-                                        })}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </>
+                          <StandardPhase 
+                            level={level} status={status} localVotes={localVotes} 
+                            totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} 
+                            handleSelectChoice={handleSelectChoice}
+                          />
                         )}
 
+                        {/* UNIVERSAL SUBMIT BUTTON */}
                         {status === 'active' && (
                           <div className="submit-theory-container">
                             <button 
                               className="btn-primary submit-theory-btn"
-                              disabled={!allMandatoryAnswered || isSubmitting}
+                              disabled={
+                                isSubmitting || 
+                                (level.presentation_type !== 'location' && !allMandatoryAnswered)
+                              }
                               onClick={handleSubmitTheory}
                             >
                               {isSubmitting ? 'Evaluating...' : 'Submit Theory'}

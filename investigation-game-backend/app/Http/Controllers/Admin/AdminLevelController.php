@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Level;
+use App\Enums\LevelPresentationType; 
+use Illuminate\Validation\Rules\Enum; 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Cloudinary\Cloudinary;
@@ -17,7 +19,7 @@ class AdminLevelController extends Controller
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
-            'presentation_type' => 'required|string|in:standard,interrogation', 
+            'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 

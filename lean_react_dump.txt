@@ -1577,8 +1577,47 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       refreshRoomData();
+      
+      if (data.unlocked_evidence?.length || data.unlocked_levels?.length || data.unlocked_suspects?.length || data.unlocked_victims?.length) {
+        setTimeout(() => {
+          const newToasts: ToastNotification[] = [];
+          
+          if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
+            newToasts.push({ 
+              id: crypto.randomUUID(), type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${data.unlocked_evidence.length} new piece(s) of physical evidence secured.`, 
+              icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
+            });
+          }
+          if (data.unlocked_levels && data.unlocked_levels.length > 0) {
+            newToasts.push({ 
+              id: crypto.randomUUID(), type: 'level', title: 'PHASE UNLOCKED', message: 'A new narrative path is now available.', 
+              icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
+            });
+          }
+          if (data.unlocked_suspects && data.unlocked_suspects.length > 0) {
+            newToasts.push({ 
+              id: crypto.randomUUID(), type: 'suspect', title: 'PERSON OF INTEREST', message: 'New suspect added to the board.', 
+              icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232' 
+            });
+          }
+          if (data.unlocked_victims && data.unlocked_victims.length > 0) {
+            newToasts.push({ 
+              id: crypto.randomUUID(), type: 'victim', title: 'CASUALTY IDENTIFIED', message: 'New victim details have been verified.', 
+              icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91' 
+            });
+          }
+
+          // Append all generated toasts at once
+          setToasts((prev) => [...prev, ...newToasts]);
+
+          // Automatically sweep them off the screen after 5 seconds
+          setTimeout(() => {
+            setToasts((prev) => prev.filter((t) => !newToasts.some((nt) => nt.id === t.id)));
+          }, 5000);
+        }, 500);
+      }
     }
   });
 
@@ -1591,49 +1630,12 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     onSuccess: async (data) => {
       if (data.status === 'success' || data.status === 'failed_final') {
         setFeedback({ type: data.status === 'success' ? 'success' : 'error', message: data.message });
+        
+        // Wait for the players to read the feedback before sweeping the board
         setTimeout(() => {
           setFeedback(null);
           setLocalVotes({}); 
           refreshRoomData(); 
-          
-          if (data.unlocked_evidence?.length || data.unlocked_levels?.length || data.unlocked_suspects?.length || data.unlocked_victims?.length) {
-            setTimeout(() => {
-              const newToasts: ToastNotification[] = [];
-              
-              if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
-                newToasts.push({ 
-                  id: crypto.randomUUID(), type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${data.unlocked_evidence.length} new piece(s) of physical evidence secured.`, 
-                  icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
-                });
-              }
-              if (data.unlocked_levels && data.unlocked_levels.length > 0) {
-                newToasts.push({ 
-                  id: crypto.randomUUID(), type: 'level', title: 'PHASE UNLOCKED', message: 'A new narrative path is now available.', 
-                  icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
-                });
-              }
-              if (data.unlocked_suspects && data.unlocked_suspects.length > 0) {
-                newToasts.push({ 
-                  id: crypto.randomUUID(), type: 'suspect', title: 'PERSON OF INTEREST', message: 'New suspect added to the board.', 
-                  icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232' 
-                });
-              }
-              if (data.unlocked_victims && data.unlocked_victims.length > 0) {
-                newToasts.push({ 
-                  id: crypto.randomUUID(), type: 'victim', title: 'CASUALTY IDENTIFIED', message: 'New victim details have been verified.', 
-                  icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91' 
-                });
-              }
-
-              // Append all generated toasts at once
-              setToasts((prev) => [...prev, ...newToasts]);
-
-              // Automatically sweep them off the screen after 5 seconds
-              setTimeout(() => {
-                setToasts((prev) => prev.filter((t) => !newToasts.some((nt) => nt.id === t.id)));
-              }, 5000);
-            }, 500);
-          }
         }, 2000);
       } else {
         setFeedback({ type: 'error', message: data.message });
@@ -1954,6 +1956,68 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\
     flex: 1 1 calc(50% - 0.5rem);
     padding: 0.5rem;
   }
+}
+
+/* Visual Coordinate Picker */
+.coordinate-picker-container {
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: rgba(0, 229, 255, 0.05);
+  border: 1px dashed var(--accent-cyan);
+  border-radius: 8px;
+}
+
+.coordinate-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.coordinate-picker-image-wrapper {
+  position: relative;
+  width: 100%;
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: crosshair;
+}
+
+.coordinate-picker-image-wrapper img {
+  width: 100%;
+  display: block;
+  pointer-events: none; /* Let the wrapper handle the clicks */
+}
+
+/* The active target state */
+.choice-row.picking-target {
+  box-shadow: inset 0 0 0 2px var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.1) !important;
+}
+
+.pick-point-btn {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid var(--text-secondary);
+  color: var(--text-secondary);
+  padding: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pick-point-btn:hover {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+}
+
+.pick-point-btn.active {
+  background: var(--accent-cyan);
+  color: var(--bg-dark);
+  border-color: var(--accent-cyan);
+  animation: pulse-icon 1.5s infinite;
 }
 
 
@@ -2647,6 +2711,7 @@ export default function LevelForm() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isInitial, setIsInitial] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [presentationType, setPresentationType] = useState<string>('standard');
 
   // Fetch cases for the dropdown
   const { data: cases = [], isLoading: isFetchingCases } = useQuery({
@@ -2687,6 +2752,7 @@ export default function LevelForm() {
     formData.append('details', details);
     formData.append('order_index', orderIndex);
     formData.append('is_initial', isInitial.toString());
+    formData.append('presentation_type', presentationType);
     if (image) {
       formData.append('image', image);
     }
@@ -2726,6 +2792,20 @@ export default function LevelForm() {
               value={orderIndex} onChange={(e) => setOrderIndex(e.target.value)} 
             />
           </div>
+
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Presentation Format</label>
+            <select 
+              className="admin-input" 
+              value={presentationType} 
+              onChange={(e) => setPresentationType(e.target.value)} 
+            >
+              <option value="standard">Standard Investigation</option>
+              <option value="interrogation">Suspect Interrogation</option>
+              <option value="location">Location</option>
+            </select>
+          </div>
+          
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
@@ -2801,6 +2881,9 @@ export default function QuestionForm() {
   const [isMandatory, setIsMandatory] = useState(true); 
   const [image, setImage] = useState<File | null>(null);
   
+  // NEW: State to track which choice is currently listening for an image click
+  const [activeCoordinateTarget, setActiveCoordinateTarget] = useState<string | null>(null);
+  
   const [choices, setChoices] = useState<ChoiceState[]>([
     { id: crypto.randomUUID(), text: '', is_correct: true, unlocks_evidence_id: '', unlocks_level_id: '' },
     { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '', unlocks_level_id: '' }
@@ -2820,9 +2903,11 @@ export default function QuestionForm() {
 
   const selectedCase = cases.find((c: any) => c.id.toString() === selectedCaseId);
   const availableLevels = selectedCase?.levels || [];
-  
-  // CLEAN ARCHITECTURE: Pull evidence directly from the case, bypassing levels entirely.
   const availableEvidences = selectedCase?.evidences || []; 
+
+  // Look up the selected level to check its presentation_type and grab its image
+  const selectedLevel = availableLevels.find((l: any) => l.id.toString() === levelId);
+  const isLocationPhase = selectedLevel?.presentation_type === 'location';
 
   const mutation = useMutation({
     mutationFn: async (formData: FormData) => {
@@ -2836,9 +2921,10 @@ export default function QuestionForm() {
       setMsgWhenWrong('');
       setIsMandatory(true);
       setImage(null);
+      setActiveCoordinateTarget(null);
       setChoices([
-        { id: crypto.randomUUID(), text: '', is_correct: true, unlocks_evidence_id: '' },
-        { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '' }
+        { id: crypto.randomUUID(), text: '', is_correct: true, unlocks_evidence_id: '', unlocks_level_id: '' },
+        { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '', unlocks_level_id: '' }
       ]);
       if (imageInputRef.current) imageInputRef.current.value = '';
     },
@@ -2847,29 +2933,51 @@ export default function QuestionForm() {
     }
   });
 
-  const addChoice = () => {
-    setChoices([...choices, { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '', unlocks_level_id: '' }]);
+  // --- NEW: THE MATH FOR THE VISUAL PICKER ---
+  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!activeCoordinateTarget) return;
+
+    // Get the exact dimensions and position of the image container on the screen
+    const rect = e.currentTarget.getBoundingClientRect();
+    
+    // Calculate the click position relative to the image boundaries
+    const xRelative = e.clientX - rect.left;
+    const yRelative = e.clientY - rect.top;
+    
+    // Convert to strict percentages (0 to 100) and round to 1 decimal for clean coordinates
+    const xPercent = ((xRelative / rect.width) * 100).toFixed(1);
+    const yPercent = ((yRelative / rect.height) * 100).toFixed(1);
+
+    // Grab the existing title if one exists, otherwise default to 'New Point'
+    const targetChoice = choices.find(c => c.id === activeCoordinateTarget);
+    let title = 'New Point';
+    if (targetChoice && targetChoice.text.includes('|')) {
+      title = targetChoice.text.split('|')[1].trim();
+    } else if (targetChoice && targetChoice.text.trim() !== '') {
+      title = targetChoice.text.trim();
+    }
+
+    // Format and save the string
+    updateChoiceText(activeCoordinateTarget, `${xPercent},${yPercent} | ${title}`);
+    
+    // Disengage the targeting system
+    setActiveCoordinateTarget(null);
   };
 
+  const addChoice = () => setChoices([...choices, { id: crypto.randomUUID(), text: '', is_correct: false, unlocks_evidence_id: '', unlocks_level_id: '' }]);
+  
   const removeChoice = (id: string) => {
     if (choices.length <= 2) {
       setFeedback({ type: 'error', message: 'A question must have at least two choices.' });
       return;
     }
     setChoices(choices.filter(c => c.id !== id));
+    if (activeCoordinateTarget === id) setActiveCoordinateTarget(null);
   };
 
-  const updateChoiceText = (id: string, newText: string) => {
-    setChoices(choices.map(c => c.id === id ? { ...c, text: newText } : c));
-  };
-
-  const updateChoiceEvidence = (id: string, evidenceId: string) => {
-    setChoices(choices.map(c => c.id === id ? { ...c, unlocks_evidence_id: evidenceId } : c));
-  };
-
-  const setCorrectChoice = (id: string) => {
-    setChoices(choices.map(c => ({ ...c, is_correct: c.id === id })));
-  };
+  const updateChoiceText = (id: string, newText: string) => setChoices(choices.map(c => c.id === id ? { ...c, text: newText } : c));
+  const updateChoiceEvidence = (id: string, evidenceId: string) => setChoices(choices.map(c => c.id === id ? { ...c, unlocks_evidence_id: evidenceId } : c));
+  const setCorrectChoice = (id: string) => setChoices(choices.map(c => ({ ...c, is_correct: c.id === id })));
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -2890,12 +2998,8 @@ export default function QuestionForm() {
     choices.forEach((choice, index) => {
       formData.append(`choices[${index}][text]`, choice.text);
       formData.append(`choices[${index}][is_correct]`, choice.is_correct ? '1' : '0');
-      if (choice.unlocks_evidence_id) {
-        formData.append(`choices[${index}][unlocks_evidence_id]`, choice.unlocks_evidence_id);
-      }
-      if (choice.unlocks_level_id) {
-      formData.append(`choices[${index}][unlocks_level_id]`, choice.unlocks_level_id);
-      }
+      if (choice.unlocks_evidence_id) formData.append(`choices[${index}][unlocks_evidence_id]`, choice.unlocks_evidence_id);
+      if (choice.unlocks_level_id) formData.append(`choices[${index}][unlocks_level_id]`, choice.unlocks_level_id);
     });
 
     mutation.mutate(formData);
@@ -2903,169 +3007,148 @@ export default function QuestionForm() {
 
   return (
     <div className="admin-form-container glass-panel">
-      {feedback && (
-        <div className={`status-message ${feedback.type}`}>
-          {feedback.message}
-        </div>
-      )}
+      {feedback && <div className={`status-message ${feedback.type}`}>{feedback.message}</div>}
 
       <form onSubmit={handleSubmit} className="admin-form">
         
         <div className="admin-form-row" style={{ marginBottom: '1rem' }}>
           <div className="form-group" style={{ flex: 1 }}>
             <label>Target Case</label>
-            <select 
-              className="admin-input" required
-              value={selectedCaseId} 
-              onChange={(e) => {
-                setSelectedCaseId(e.target.value);
-                setLevelId('');
-              }} 
-              disabled={isFetchingCases}
+            <select className="admin-input" required value={selectedCaseId} disabled={isFetchingCases}
+              onChange={(e) => { setSelectedCaseId(e.target.value); setLevelId(''); setActiveCoordinateTarget(null); }} 
             >
               <option value="" disabled>-- Select a Case --</option>
-              {cases.map((c: any) => (
-                <option key={c.id} value={c.id}>{c.title}</option>
-              ))}
+              {cases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
 
           <div className="form-group" style={{ flex: 1 }}>
             <label>Target Level</label>
-            <select 
-              className="admin-input" required
-              value={levelId} 
-              onChange={(e) => setLevelId(e.target.value)}
-              disabled={!selectedCaseId}
-            >
+            <select className="admin-input" required value={levelId} onChange={(e) => { setLevelId(e.target.value); setActiveCoordinateTarget(null); }} disabled={!selectedCaseId}>
               <option value="" disabled>-- Select a Phase --</option>
-              {availableLevels.map((l: any) => (
-                <option key={l.id} value={l.id}>Phase {l.order_index}: {l.title}</option>
-              ))}
+              {availableLevels.map((l: any) => <option key={l.id} value={l.id}>Phase {l.order_index}: {l.title}</option>)}
             </select>
           </div>
         </div>
 
+        {/* NEW: THE VISUAL LOCATION PICKER */}
+        {isLocationPhase && selectedLevel?.img_url && (
+          <div className="coordinate-picker-container">
+            <div className="coordinate-picker-header">
+              <div>
+                <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>Visual Coordinate Mapping</label>
+                <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                  {activeCoordinateTarget 
+                    ? "TARGET LOCKED: Click anywhere on the image below to record coordinates." 
+                    : "Click the crosshair icon next to a choice below to arm the targeter."}
+                </p>
+              </div>
+              {activeCoordinateTarget && (
+                <button type="button" className="btn-secondary" style={{ flex: 'none', padding: '0.5rem 1rem' }} onClick={() => setActiveCoordinateTarget(null)}>Cancel Targeting</button>
+              )}
+            </div>
+            
+            <div 
+              className="coordinate-picker-image-wrapper" 
+              onClick={handleImageClick}
+              style={{ cursor: activeCoordinateTarget ? 'crosshair' : 'default', opacity: activeCoordinateTarget ? 1 : 0.5 }}
+            >
+              <img src={selectedLevel.img_url} alt="Level Map" />
+            </div>
+          </div>
+        )}
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px' }}>
-          <input 
-            type="checkbox" 
-            id="mandatory-toggle"
-            checked={isMandatory}
-            onChange={(e) => setIsMandatory(e.target.checked)}
-            style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }}
-          />
+          <input type="checkbox" id="mandatory-toggle" checked={isMandatory} onChange={(e) => setIsMandatory(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }} />
           <label htmlFor="mandatory-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
-            <strong>Mandatory Verdict:</strong> Players must answer this correctly to progress to the next phase. (Uncheck for optional narrative paths).
+            <strong>Mandatory Verdict:</strong> Players must answer this correctly to progress to the next phase.
           </label>
         </div>
 
         <div className="form-group">
-          <label>The Verdict (Question Text)</label>
-          <textarea 
-            className="admin-textarea" required
-            value={text} onChange={(e) => setText(e.target.value)} 
-          />
+          <label>{isLocationPhase ? "Location Clue / Point Description" : "The Verdict (Question Text)"}</label>
+          <textarea className="admin-textarea" required value={text} onChange={(e) => setText(e.target.value)} />
         </div>
 
         <div className="form-group">
           <label>Persona Hint (Message when wrong)</label>
-          <input 
-            type="text" className="admin-input"
-            value={msgWhenWrong} onChange={(e) => setMsgWhenWrong(e.target.value)} 
-          />
-        </div>
-
-        <div className="form-group">
-          <label>Supporting Image (Optional)</label>
-          <input 
-            type="file" className="admin-file-input" accept="image/*"
-            ref={imageInputRef}
-            onChange={(e) => setImage(e.target.files?.[0] || null)} 
-          />
+          <input type="text" className="admin-input" value={msgWhenWrong} onChange={(e) => setMsgWhenWrong(e.target.value)} />
         </div>
 
         <div style={{ margin: '1.5rem 0', padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>Multiple Choices & Narrative Unlocks</label>
-            <button type="button" onClick={addChoice} className="btn-secondary" style={{ padding: '0.5rem 1rem', flex: 'none' }}>
-              + Add Choice
-            </button>
+            <button type="button" onClick={addChoice} className="btn-secondary" style={{ padding: '0.5rem 1rem', flex: 'none' }}>+ Add Choice</button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {choices.map((choice, index) => (
-              <div key={choice.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '6px', border: '1px dashed rgba(255,255,255,0.1)' }}>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <input 
-                    type="radio" 
-                    name="correct_choice" 
-                    checked={choice.is_correct}
-                    onChange={() => setCorrectChoice(choice.id)}
-                    style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-success)' }}
-                    title="Mark as correct answer"
-                  />
-                  <input 
-                    type="text" className="admin-input" required style={{ flex: 1 }}
-                    placeholder={`Choice ${index + 1}`}
-                    value={choice.text} onChange={(e) => updateChoiceText(choice.id, e.target.value)} 
-                  />
-                  <button 
-                    type="button" onClick={() => removeChoice(choice.id)}
-                    style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.5rem' }}
-                    title="Remove choice"
-                  >
-                    ×
-                  </button>
-                </div>
-                
-                {/* Evidence Unlock Dropdown */}            
-                <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '2.5rem' }}>
-                  <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Evidence:</label>
-                  <select 
-                    className="admin-input" 
-                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }}
-                    value={choice.unlocks_evidence_id || ''} 
-                    onChange={(e) => updateChoiceEvidence(choice.id, e.target.value)}
-                    disabled={!selectedCaseId}
-                  >
-                    <option value="">-- No Narrative Unlock --</option>
-                    {availableEvidences.map((ev: any) => (
-                      <option key={ev.id} value={ev.id}>EX-{ev.id.toString().padStart(3, '0')} : {ev.title}</option>
-                    ))}
-                  </select>
-                </div>
+            {choices.map((choice, index) => {
+              const isTargeting = activeCoordinateTarget === choice.id;
 
-                {/* Phase Unlock Dropdown */}
-                <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '2.5rem', marginTop: '0.5rem' }}>
-                  <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Phase:</label>
-                  <select 
-                    className="admin-input" 
-                    style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }}
-                    value={choice.unlocks_level_id || ''} 
-                    onChange={(e) => {
-                      const newChoices = choices.map(c => c.id === choice.id ? { ...c, unlocks_level_id: e.target.value } : c);
-                      setChoices(newChoices);
-                    }}
-                    disabled={!selectedCaseId}
-                  >
-                    <option value="">-- No Phase Unlock --</option>
-                    {availableLevels.map((l: any) => (
-                      <option key={l.id} value={l.id}>Phase {l.order_index}: {l.title}</option>
-                    ))}
-                  </select>
-                </div>
+              return (
+                <div key={choice.id} className={`choice-row ${isTargeting ? 'picking-target' : ''}`} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '6px', border: '1px dashed rgba(255,255,255,0.1)', transition: 'all 0.2s' }}>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    
+                    {!isLocationPhase && (
+                      <input 
+                        type="radio" name="correct_choice" checked={choice.is_correct}
+                        onChange={() => setCorrectChoice(choice.id)}
+                        style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-success)' }}
+                        title="Mark as correct answer"
+                      />
+                    )}
+                    
+                    <input 
+                      type="text" className="admin-input" required style={{ flex: 1 }}
+                      placeholder={isLocationPhase ? `X,Y | Location Title` : `Choice ${index + 1}`}
+                      value={choice.text} onChange={(e) => updateChoiceText(choice.id, e.target.value)} 
+                    />
 
-              </div>
-            ))}
+                    {/* NEW: THE CROSSHAIR TARGETING BUTTON */}
+                    {isLocationPhase && selectedLevel?.img_url && (
+                      <button 
+                        type="button" 
+                        className={`pick-point-btn ${isTargeting ? 'active' : ''}`} 
+                        onClick={() => setActiveCoordinateTarget(isTargeting ? null : choice.id)}
+                        title="Pick coordinates from image"
+                      >
+                        🎯
+                      </button>
+                    )}
+
+                    <button 
+                      type="button" onClick={() => removeChoice(choice.id)}
+                      style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.5rem' }}
+                      title="Remove choice"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  
+                  {/* ... unlock dropdowns ... */}            
+                  <div style={{ display: 'flex', alignItems: 'center', paddingLeft: isLocationPhase ? '0' : '2.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Evidence:</label>
+                    <select className="admin-input" style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }} value={choice.unlocks_evidence_id || ''} onChange={(e) => updateChoiceEvidence(choice.id, e.target.value)}>
+                      <option value="">-- No Narrative Unlock --</option>
+                      {availableEvidences.map((ev: any) => <option key={ev.id} value={ev.id}>EX-{ev.id.toString().padStart(3, '0')} : {ev.title}</option>)}
+                    </select>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', paddingLeft: isLocationPhase ? '0' : '2.5rem', marginTop: '0.5rem' }}>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Phase:</label>
+                    <select className="admin-input" style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }} value={choice.unlocks_level_id || ''} onChange={(e) => updateChoiceText(choice.id, e.target.value)}>
+                      <option value="">-- No Phase Unlock --</option>
+                      {availableLevels.map((l: any) => <option key={l.id} value={l.id}>Phase {l.order_index}: {l.title}</option>)}
+                    </select>
+                  </div>
+
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        <button 
-          type="submit" 
-          className="btn-primary" 
-          disabled={mutation.isPending}
-          style={{ background: 'var(--accent-crimson)' }}
-        >
+        <button type="submit" className="btn-primary" disabled={mutation.isPending} style={{ background: 'var(--accent-crimson)' }}>
           {mutation.isPending ? 'Encrypting Data...' : 'Commit Question to Database'}
         </button>
       </form>
@@ -3715,10 +3798,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useGameRoom } from '../../hooks/useGameRoom';
 import { useViewedItems } from '../../hooks/useViewedItems'; 
 import { RoomProvider } from '../../context/RoomContext';
-import CaseDetailsTab from './tabs/CaseDetailsTab';
-import EvidenceBoardTab from './tabs/EvidenceBoardTab';
-import SuspectsTab from './tabs/SuspectsTab';
-import CampaignTab from './tabs/CampaignTab';
+import CaseDetailsTab from './tabs/CaseDetails/CaseDetailsTab';
+import EvidenceBoardTab from './tabs/EvidenceBoard/EvidenceBoardTab';
+import SuspectsTab from './tabs/Suspects/SuspectsTab';
+import CampaignTab from './tabs/Campaign/CampaignTab';
 import AgentNotepad from '../../components/AgentNotepad/AgentNotepad'; 
 import './GameRoom.css';
 
@@ -3967,12 +4050,370 @@ export default function GameRoom() {
 }
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\CampaignTab.tsx
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\SharedOverlay.css
+----------------------------------------
+/* --- Feedback Overlay Modal (Persona Screen) --- */
+.feedback-modal-overlay {
+  position: absolute; 
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(18, 18, 18, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease-out forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.feedback-modal-content {
+  background: var(--bg-panel);
+  padding: 3rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+  max-width: 500px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+}
+
+.feedback-modal-content.error {
+  border-color: rgba(255, 51, 102, 0.4);
+  box-shadow: inset 0 0 30px rgba(255, 51, 102, 0.1), 0 20px 40px rgba(0, 0, 0, 0.8);
+}
+
+.feedback-modal-content.success {
+  border-color: rgba(0, 229, 255, 0.4);
+  box-shadow: inset 0 0 30px rgba(0, 229, 255, 0.1), 0 20px 40px rgba(0, 0, 0, 0.8);
+}
+
+.feedback-title {
+  margin: 0 0 1rem 0;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.feedback-modal-content.error .feedback-title { color: #FF3366; }
+.feedback-modal-content.success .feedback-title { color: var(--accent-cyan); }
+
+.feedback-message {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--text-primary);
+  margin: 0 0 1.5rem 0;
+}
+
+.mt-1 { margin-top: 1rem; }
+
+/* --- Tactical Toast Notification --- */
+.toast-container {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  z-index: 9999;
+  pointer-events: none; 
+}
+
+.system-toast-notification {
+  background: rgba(15, 15, 20, 0.95);
+  border: 1px solid var(--accent-amber);
+  border-left: 4px solid var(--accent-amber);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 170, 0, 0.15);
+  padding: 1rem 1.5rem;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  pointer-events: auto; 
+  animation: slide-in-toast 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.toast-icon { font-size: 1.5rem; color: var(--accent-amber); }
+.toast-text-block { display: flex; flex-direction: column; }
+
+.toast-header {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--accent-amber);
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+}
+
+.toast-message {
+  font-family: var(--font-primary);
+  font-size: 0.9rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.toast-svg-graphic {
+  width: 28px;
+  height: 28px;
+  display: block;
+  filter: brightness(1.2) drop-shadow(0 0 6px currentColor);
+}
+
+@keyframes slide-in-toast {
+  0% { opacity: 0; transform: translateX(50px) translateY(10px); }
+  100% { opacity: 1; transform: translateX(0) translateY(0); }
+}
+
+/* --- PERSONA SILHOUETTE --- */
+.persona-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 51, 102, 0.2);
+  padding-bottom: 1.5rem;
+}
+
+.persona-silhouette {
+  height: 120px; 
+  width: auto;
+  object-fit: contain;
+  filter: grayscale(100%) contrast(1000%) brightness(0) drop-shadow(0 15px 15px rgba(0,0,0,0.8));
+  opacity: 0.95;
+  animation: fade-in-persona 0.5s ease-out forwards;
+}
+
+@keyframes fade-in-persona {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 0.95; transform: translateY(0); }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\CampaignTab.css
+----------------------------------------
+.campaign-roadmap-container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.roadmap-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 2rem;
+  padding-left: 1rem;
+}
+
+.roadmap-node {
+  display: flex;
+  gap: 2rem;
+  min-height: 160px;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.roadmap-node.locked {
+  opacity: 0.5;
+  filter: grayscale(100%);
+  pointer-events: none;
+}
+
+.timeline-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 40px;
+}
+
+.node-indicator {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--bg-panel);
+  border: 2px solid var(--text-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  color: var(--text-secondary);
+  z-index: 2;
+  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+}
+
+.roadmap-node.active .node-indicator {
+  border-color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.1);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
+}
+
+.roadmap-node.completed .node-indicator {
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+}
+
+.node-line {
+  width: 2px;
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  margin-top: -5px; 
+  margin-bottom: -5px;
+  z-index: 1;
+}
+
+.node-line.active-line {
+  background: var(--accent-amber);
+  box-shadow: 0 0 10px rgba(255, 179, 0, 0.5);
+}
+
+.node-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: rgba(30, 30, 30, 0.6);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-bottom: 2.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.roadmap-node.active .node-content {
+  border-color: rgba(0, 229, 255, 0.3);
+  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05);
+}
+
+.node-content.clickable {
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.node-content.clickable:hover {
+  border-color: rgba(0, 229, 255, 0.4);
+}
+
+.node-main-card {
+  display: flex;
+  width: 100%;
+}
+
+.node-image {
+  width: 200px;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+}
+
+.node-image-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(18,18,18,0.1), rgba(30,30,30,1));
+}
+
+.node-details {
+  flex: 1;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.node-phase {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+}
+
+.node-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+.node-desc {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.active-badge {
+  margin-top: 1rem;
+  align-self: flex-start;
+  background: rgba(0, 229, 255, 0.1);
+  color: var(--accent-cyan);
+  border: 1px solid var(--accent-cyan);
+  padding: 0.25rem 0.75rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  animation: pulse-border 2s infinite;
+}
+
+.node-questions-drawer {
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+  background: rgba(18, 18, 18, 0.6);
+  padding: 1.5rem;
+  animation: slideDown 0.3s ease-out forwards;
+}
+
+.drawer-title {
+  margin: 0 0 1rem 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-amber);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.submit-theory-container {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.submit-theory-btn {
+  width: auto;
+  padding: 1rem 2rem;
+}
+
+.submit-theory-btn:disabled {
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.3);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+@keyframes pulse-border {
+  0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(0, 229, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\CampaignTab.tsx
 ----------------------------------------
 import { useState } from 'react';
-import { useRoomContext } from '../../../context/RoomContext';
-import { useInvestigationPhase } from '../../../hooks/useInvestigationPhase';
-import './Tabs.css';
+import { useRoomContext } from '../../../../context/RoomContext';
+import { useInvestigationPhase } from '../../../../hooks/useInvestigationPhase';
+import type { Question } from '../../../../types';
+import InterrogationPhase from './Levels/InterrogationPhase';
+import StandardPhase from './Levels/StandardPhase'; 
+import LocationPhase from './Levels/LocationPhase';
+import '../SharedOverlay.css';
+import './CampaignTab.css';
 
 export default function CampaignTab() {
   const { room, refreshRoomData } = useRoomContext();
@@ -4000,7 +4441,6 @@ export default function CampaignTab() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   // --- NARRATIVE VISIBILITY MASKING ---
-  // Instead of filtering the array, we track what's unlocked and map everything.
   const unlockedLevelIds = new Set(room.unlocked_levels?.map(l => l.id) || []);
   const sortedLevels = [...levels].sort((a, b) => a.order_index - b.order_index);
 
@@ -4009,16 +4449,59 @@ export default function CampaignTab() {
     setExpandedId(expandedId === levelId ? null : levelId);
   };
 
-  // --- GLOBAL VOTE TALLY LOGIC ---
+  // --- UPGRADED GLOBAL CONSENSUS ENGINE ---
   const totalPlayers = room.users?.length || 1; 
-  const globalVoteCounts: Record<number, number> = {};
-  
-  room.votes?.forEach(v => {
-    globalVoteCounts[v.question_id] = (globalVoteCounts[v.question_id] || 0) + 1;
-  });
 
-  const isQuestionGloballyResolved = (questionId: number) => {
-    return (globalVoteCounts[questionId] || 0) >= totalPlayers;
+  const getQuestionConsensus = (question: Question) => {
+    const tally: Record<number, number> = {};
+    let votesCast = 0;
+    const participants = room.users || [];
+
+    room.votes?.forEach(v => {
+      if (v.question_id === question.id) {
+        const role = participants.find(p => p.user_id === v.user_id)?.role || 'participant';
+        const weight = role === 'host' ? 2 : 1; // Host vote carries double weight
+        tally[v.choice_id] = (tally[v.choice_id] || 0) + weight;
+        votesCast++;
+      }
+    });
+
+    // LOCATION PHASE EXCEPTION: Only requires the assigned user's vote
+    if (question.assigned_user_id !== undefined && question.assigned_user_id !== null) {
+      const assignedVote = room.votes?.find(v => v.question_id === question.id && v.user_id === question.assigned_user_id);
+      return {
+        votesCast,
+        isResolved: !!assignedVote,
+        isTie: false,
+        winningChoiceId: assignedVote ? assignedVote.choice_id : null
+      };
+    }
+
+    if (votesCast < totalPlayers) {
+      return { votesCast, isResolved: false, isTie: false, winningChoiceId: null };
+    }
+
+    // Everyone voted. Check if it's a tie or a clear victory.
+    let maxWeight = -1;
+    let isTie = false;
+    let winningChoiceId = null;
+
+    for (const [cId, weight] of Object.entries(tally)) {
+      if (weight > maxWeight) {
+        maxWeight = weight;
+        winningChoiceId = Number(cId);
+        isTie = false;
+      } else if (weight === maxWeight) {
+        isTie = true;
+      }
+    }
+
+    return {
+      votesCast,
+      isResolved: !isTie, // It is ONLY resolved if everyone voted AND there's no tie
+      isTie,
+      winningChoiceId: isTie ? null : winningChoiceId
+    };
   };
 
   return (
@@ -4090,7 +4573,8 @@ export default function CampaignTab() {
           const isExpanded = expandedId === level.id;
           const mandatoryQuestions = level.questions?.filter(q => q.is_mandatory) || [];
           
-          const allMandatoryAnswered = mandatoryQuestions.every(q => isQuestionGloballyResolved(q.id));
+          // Button is only enabled when every mandatory question is fully resolved (no ties)
+          const allMandatoryAnswered = mandatoryQuestions.every(q => getQuestionConsensus(q).isResolved);
 
           // 3. UI Content Masking
           const displayTitle = isDiscovered ? level.title : 'Encounter Undiscovered';
@@ -4135,85 +4619,36 @@ export default function CampaignTab() {
                             : 'Awaiting Host authorization to commence this investigation phase.'}
                         </p>
                         {isHost && (
-                          <button 
-                            className="btn-primary" onClick={() => initiatePhase(level.id)} disabled={isInitiating}
-                          >
+                          <button className="btn-primary" onClick={() => initiatePhase(level.id)} disabled={isInitiating}>
                             {isInitiating ? 'Locking Coordinator...' : 'Commence Investigation'}
                           </button>
                         )}
                       </div>
                     )}
 
-                    {/* QUESTIONS BLOCK */}
+                    {/* DYNAMIC PRESENTATION ROUTER */}
                     {(status === 'active' || status === 'completed') && level.questions && (
                       <>
-                        <h4 className="drawer-title">Required Verdicts</h4>
-                        <div className="questions-list">
-                          {level.questions.map((q, qIdx) => {
-                            
-                            const isVisible = 
-                              status === 'completed' || 
-                              qIdx === 0 || 
-                              isQuestionGloballyResolved(level.questions![qIdx - 1].id);
+                        {level.presentation_type === 'interrogation' ? (
+                          <InterrogationPhase 
+                            level={level} status={status} localVotes={localVotes} 
+                            totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} 
+                            handleSelectChoice={handleSelectChoice}
+                          />
+                        ) : level.presentation_type === 'location' ? (
+                          <LocationPhase 
+                            level={level} status={status} localVotes={localVotes} 
+                            handleSelectChoice={handleSelectChoice} currentUserId={currentUser.id}
+                          />
+                        ) : (
+                          <StandardPhase 
+                            level={level} status={status} localVotes={localVotes} 
+                            totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} 
+                            handleSelectChoice={handleSelectChoice}
+                          />
+                        )}
 
-                            if (!isVisible) return null;
-
-                            const isGloballyLocked = isQuestionGloballyResolved(q.id);
-                            const isSingleQuestionLevel = level.questions!.length === 1;
-                            const isLocked = isGloballyLocked && !isSingleQuestionLevel;
-
-                            return (
-                              <div key={q.id} className="question-item" style={{ animation: 'fadeIn 0.4s ease-out forwards' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                  <span className="question-number">Q{qIdx + 1}</span>
-                                  {!q.is_mandatory && (
-                                    <span title="This question provides additional narrative evidence." style={{ color: 'var(--accent-amber)', marginTop: '0.35rem', fontSize: '1.1rem', cursor: 'help', animation: 'pulse-icon 2s infinite' }}>📄</span>
-                                  )}
-                                </div>
-
-                                <div className="question-body">
-                                  <p className="question-text">
-                                    {q.text}
-                                    {status === 'active' && !isGloballyLocked && (
-                                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-amber)', marginTop: '0.5rem', fontFamily: 'var(--font-mono)' }}>
-                                        ↳ Awaiting Agent consensus: {(globalVoteCounts[q.id] || 0)} / {totalPlayers} cast
-                                      </span>
-                                    )}
-                                  </p>
-                                  <div className="choices-preview">
-                                    {q.choices?.map(c => {
-                                      const isSelected = localVotes[q.id] === c.id;
-                                      const isHistoricalCorrect = status === 'completed' && c.is_correct;
-                                      
-                                      let pillClass = 'choice-pill';
-                                      if (isSelected) pillClass += ' selected';
-                                      if (isHistoricalCorrect) pillClass += ' historical-correct';
-                                      
-                                      if (status === 'active' && !isLocked) {
-                                        pillClass += ' interactable';
-                                      }
-
-                                      return (
-                                        <span 
-                                          key={c.id} 
-                                          className={pillClass}
-                                          onClick={(e) => {
-                                            if (status === 'active' && !isLocked) {
-                                              handleSelectChoice(e, q.id, c, status);
-                                            }
-                                          }}
-                                        >
-                                          {c.text}
-                                        </span>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-
+                        {/* UNIVERSAL SUBMIT BUTTON */}
                         {status === 'active' && (
                           <div className="submit-theory-container">
                             <button 
@@ -4239,13 +4674,881 @@ export default function CampaignTab() {
 }
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\CaseDetailsTab.tsx
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\InterrogationPhase.css
+----------------------------------------
+.interrogation-log {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding-bottom: 2rem;
+}
+
+.chat-exchange {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.chat-bubble {
+  padding: 1rem;
+  border-radius: 4px;
+  max-width: 85%;
+}
+
+.chat-bubble p {
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.speaker-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Suspect Styles */
+.suspect-bubble {
+  align-self: flex-start;
+  background: rgba(20, 21, 24, 0.8);
+  border-left: 3px solid var(--accent-crimson);
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+}
+
+.speaker-label.suspect {
+  color: var(--accent-crimson);
+}
+
+/* Investigator Styles */
+.agent-bubble {
+  background: rgba(90, 138, 158, 0.1);
+  border-right: 3px solid var(--accent-cyan);
+  box-shadow: -4px 4px 0px rgba(0,0,0,0.3);
+  width: 100%;
+}
+
+.speaker-label.investigator {
+  color: var(--accent-cyan);
+  text-align: left;
+}
+
+/* Interactive Area */
+.investigator-interaction-area {
+  align-self: flex-end;
+  max-width: 85%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.vote-status-box {
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  transition: all 0.3s ease;
+}
+
+.vote-status-box.has-vote {
+  background: rgba(255, 179, 0, 0.05);
+  border: 1px dashed var(--accent-amber);
+  padding: 1rem;
+}
+
+.vote-status-box.no-vote {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0;
+}
+
+.vote-choices-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\InterrogationPhase.tsx
+----------------------------------------
+import React, { useState, useEffect, useRef } from 'react';
+import type { Level, Choice, Question } from '@/types';
+import './InterrogationPhase.css';
+
+const Typewriter = ({ text, delay = 45, onComplete, skip = false }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean }) => {
+  const [currentText, setCurrentText] = useState(skip ? text : '');
+  const [currentIndex, setCurrentIndex] = useState(skip ? text.length : 0);
+  const savedOnComplete = useRef(onComplete);
+  
+  useEffect(() => { savedOnComplete.current = onComplete; }, [onComplete]);
+
+  const onCompleteFired = useRef(false);
+
+  useEffect(() => {
+    if (skip) {
+      setCurrentText(text);
+      if (savedOnComplete.current && !onCompleteFired.current) {
+        onCompleteFired.current = true;
+        savedOnComplete.current();
+      }
+      return;
+    }
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setCurrentText(prevText => prevText + text[currentIndex]);
+        setCurrentIndex(prevIndex => prevIndex + 1);
+      }, delay);
+      return () => clearTimeout(timeout);
+    } else if (currentIndex === text.length) {
+      if (savedOnComplete.current && !onCompleteFired.current) {
+        onCompleteFired.current = true;
+        savedOnComplete.current();
+      }
+    }
+  }, [currentIndex, delay, text, skip]);
+
+  return <span>{currentText}</span>;
+};
+
+interface InterrogationPhaseProps {
+  level: Level;
+  status: string;
+  localVotes: Record<number, number>;
+  totalPlayers: number;
+  getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
+  handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
+}
+
+export default function InterrogationPhase({ level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice }: InterrogationPhaseProps) {
+  const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>({});
+  const [investigatorTypingComplete, setInvestigatorTypingComplete] = useState<Record<number, boolean>>({});
+
+  if (!level.questions) return null;
+
+  const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
+  const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
+
+  return (
+    <div className="interrogation-log">
+      {level.questions.map((q, qIdx) => {
+        const consensus = getQuestionConsensus(q);
+        const isVisible = status === 'completed' || qIdx === 0 || investigatorTypingComplete[level.questions![qIdx - 1].id];
+        if (!isVisible) return null;
+
+        const isGloballyLocked = consensus.isResolved;
+        const skipTyping = status === 'completed'; 
+        const isSuspectDone = suspectTypingComplete[q.id] || skipTyping;
+        const hasLocalVote = !!localVotes[q.id];
+
+        return (
+          <div key={q.id} className="chat-exchange">
+            
+            <div className="chat-bubble suspect-bubble">
+              <span className="speaker-label suspect">SUSPECT</span>
+              <p><Typewriter text={q.text} skip={skipTyping} onComplete={() => handleSuspectDone(q.id)} /></p>
+            </div>
+
+            {isSuspectDone && (
+              <div className="investigator-interaction-area">
+                {status === 'active' && !isGloballyLocked ? (
+                  <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
+                    <span className="speaker-label" style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
+                      {consensus.isTie 
+                        ? '⚠️ TIE DETECTED: AWAITING TIE-BREAKER' 
+                        : hasLocalVote 
+                          ? `AWAITING TEAM (${consensus.votesCast}/${totalPlayers})` 
+                          : `SELECT RESPONSE (${consensus.votesCast}/${totalPlayers})`
+                      }
+                    </span>
+                    <div className="vote-choices-grid">
+                      {q.choices?.map(c => {
+                        const isSelected = localVotes[q.id] === c.id;
+                        return (
+                          <span 
+                            key={c.id} 
+                            className={`choice-pill interactable ${isSelected ? 'selected' : ''}`}
+                            onClick={(e) => handleSelectChoice(e, q.id, c, status)}
+                            style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}
+                          >
+                            {c.text}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  (isGloballyLocked || status === 'completed') && (
+                    <div className="chat-bubble agent-bubble">
+                      <span className="speaker-label investigator">INVESTIGATORS</span>
+                      <p>
+                        <Typewriter 
+                          text={status === 'completed' ? (q.choices?.find(c => c.is_correct)?.text || '...') : (q.choices?.find(c => c.id === consensus.winningChoiceId)?.text || '...')} 
+                          skip={skipTyping} 
+                          onComplete={() => handleInvestigatorDone(q.id)}
+                        />
+                      </p>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\LocationPhase.css
+----------------------------------------
+.location-thumbnail-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.location-thumbnail {
+  width: 100%;
+  height: 200px;
+  background-size: cover;
+  background-position: center;
+  border-radius: var(--radius-md);
+  position: relative;
+  border: 1px solid rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+
+.thumbnail-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.location-thumbnail:hover .thumbnail-overlay {
+  opacity: 1;
+}
+
+.location-hint {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin: 0;
+}
+
+/* --- THE FULL SCREEN VIEWER --- */
+.location-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 11, 13, 0.98);
+  z-index: 9999; /* Boosted z-index to ensure it sits over standard modals */
+  display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.location-header {
+  padding: 1rem 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 0;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  background: rgba(20, 21, 24, 0.9);
+  flex-shrink: 0;
+}
+
+.location-image-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 2rem;
+  overflow: auto; /* Allows scrolling if the user is on a very tiny screen */
+}
+
+.location-image-wrapper {
+  position: relative;
+  display: block; /* Shrink-wraps the image so coordinates map correctly */
+  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+}
+
+.location-image-full {
+  display: block;
+  max-width: 100%;
+  max-height: calc(100vh - 120px);
+  width: auto;
+  height: auto;
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 4px;
+}
+
+/* --- INVISIBLE HOVER ZONES --- */
+.loc-hover-zone {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 90px; /* Massively expanded hit area */
+  height: 90px;
+  border-radius: 50%;
+  cursor: crosshair;
+  z-index: 10;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: 1px solid transparent;
+  /* An invisible background forces the browser to register the hover early */
+  background: rgba(255, 255, 255, 0.001); 
+  transition: all 0.2s ease-out;
+}
+
+.loc-crosshair {
+  width: 8px;
+  height: 8px;
+  background: rgba(0, 229, 255, 0.3);
+  border-radius: 50%;
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+/* When the player enters the generous 90px zone */
+.loc-hover-zone:hover {
+  background: rgba(0, 229, 255, 0.05); /* Faint tactical radar ping effect */
+}
+
+.loc-hover-zone:hover .loc-crosshair {
+  background: var(--accent-cyan);
+  box-shadow: 0 0 15px 5px rgba(0, 229, 255, 0.4);
+  transform: scale(1.5);
+}
+
+.loc-tooltip {
+  position: absolute;
+  /* Push it high enough so the mouse doesn't block it */
+  bottom: 75%; 
+  background: rgba(10, 11, 13, 0.95);
+  color: var(--text-primary);
+  padding: 0.5rem 1rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  border: 1px solid var(--accent-cyan);
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  z-index: 20;
+}
+
+.loc-hover-zone:hover .loc-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --- INVESTIGATED STATE --- */
+.loc-hover-zone.investigated {
+  cursor: default;
+}
+
+.loc-hover-zone.investigated .loc-crosshair {
+  background: rgba(255, 255, 255, 0.2);
+  width: 12px;
+  height: 12px;
+}
+
+.loc-hover-zone.investigated:hover {
+  background: transparent;
+}
+
+.loc-hover-zone.investigated:hover .loc-crosshair {
+  transform: scale(1);
+  box-shadow: none;
+}
+
+.loc-hover-zone.investigated .loc-tooltip {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--text-secondary);
+}
+
+/* --- FEEDBACK POPUP --- */
+.loc-feedback-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-panel);
+  padding: 2rem 3rem;
+  border-radius: var(--radius-md);
+  z-index: 50;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+  animation: zoomIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid;
+}
+
+.loc-feedback-modal.success {
+  border-color: var(--accent-cyan);
+  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.1), 0 20px 50px rgba(0,0,0,0.9);
+}
+
+.loc-feedback-modal.error {
+  border-color: var(--text-secondary);
+}
+
+@keyframes zoomIn {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+/* --- INVESTIGATED STATE --- */
+.loc-hover-zone.investigated {
+  border: 1px dashed rgba(255,255,255,0.2);
+  cursor: default;
+}
+
+.loc-hover-zone.investigated .loc-crosshair {
+  background: var(--text-secondary);
+}
+
+.loc-hover-zone.investigated:hover {
+  background: transparent;
+}
+
+.loc-hover-zone.investigated .loc-tooltip {
+  border-color: rgba(255,255,255,0.2);
+  color: var(--text-secondary);
+}
+
+/* --- FEEDBACK POPUP --- */
+.loc-feedback-modal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--bg-panel);
+  padding: 2rem 3rem;
+  border-radius: var(--radius-md);
+  z-index: 50;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.9);
+  animation: zoomIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  border: 1px solid;
+}
+
+.loc-feedback-modal.success {
+  border-color: var(--accent-cyan);
+  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.1), 0 20px 50px rgba(0,0,0,0.9);
+}
+
+.loc-feedback-modal.error {
+  border-color: var(--text-secondary);
+}
+
+@keyframes zoomIn {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
+  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\LocationPhase.tsx
+----------------------------------------
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
+import type { Level, Choice } from '@/types';
+import './LocationPhase.css';
+
+interface LocationPhaseProps {
+  level: Level;
+  status: string;
+  localVotes: Record<number, number>;
+  handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
+  currentUserId: number;
+}
+
+export default function LocationPhase({ level, status, localVotes, handleSelectChoice, currentUserId }: LocationPhaseProps) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
+
+  if (!level.questions || !level.img_url) return null;
+
+  const isCompleted = status === 'completed';
+  
+  // FALLBACK: If the backend fails to send 'assigned_user_id', show the point to everyone rather than hiding it.
+  const displayQuestions = isCompleted 
+    ? level.questions 
+    : level.questions.filter(q => 
+        q.assigned_user_id === currentUserId || 
+        q.assigned_user_id === undefined || 
+        q.assigned_user_id === null
+      );
+
+  const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice, isInvestigated: boolean) => {
+    e.stopPropagation();
+    if (isInvestigated || status !== 'active') return;
+
+    const hasUnlock = !!(choice.unlocks_evidence_id || choice.unlocks_level_id || choice.unlocks_suspect_id || choice.unlocks_victim_id);
+
+    if (hasUnlock) {
+      setPopup({
+        title: "LEAD DISCOVERED",
+        message: "I found something useful here. Logging it to the board.",
+        isSuccess: true
+      });
+    } else {
+      setPopup({
+        title: "DEAD END",
+        message: "Nothing was found here, I will move on.",
+        isSuccess: false
+      });
+    }
+
+    handleSelectChoice(e, qId, choice, status);
+    setTimeout(() => setPopup(null), 2500);
+  };
+
+  const fullScreenViewer = isFullscreen ? createPortal(
+    <div className="location-fullscreen-overlay">
+      <div className="location-header glass-panel">
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <h2 className="section-title" style={{ margin: 0, border: 'none', padding: 0 }}>{level.title}</h2>
+          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Active Scene Sweep</span>
+        </div>
+        <button className="btn-secondary" style={{ flex: 'none', padding: '0.5rem 1.5rem' }} onClick={() => setIsFullscreen(false)}>
+          Close Viewer
+        </button>
+      </div>
+
+      <div className="location-image-container">
+        
+        {popup && (
+          <div className={`loc-feedback-modal ${popup.isSuccess ? 'success' : 'error'}`}>
+            <h3 style={{ margin: '0 0 0.5rem 0', color: popup.isSuccess ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em' }}>
+              {popup.title}
+            </h3>
+            <p style={{ margin: 0, color: 'var(--text-primary)' }}>{popup.message}</p>
+          </div>
+        )}
+
+        <div className="location-image-wrapper">
+          <img src={level.img_url} alt="Crime Scene" className="location-image-full" />
+
+          {displayQuestions.map(q => {
+            const choice = q.choices?.[0];
+            if (!choice) return null;
+
+            // BULLETPROOF PARSING: Splits strictly by the pipe character and trims spaces later
+            const parts = choice.text.split('|');
+            if (parts.length < 2) {
+              console.warn(`[SYSTEM DIAGNOSTIC] Question ID ${q.id} is missing coordinate data. Expected format "X,Y | Title". Received: "${choice.text}"`);
+              return null;
+            }
+            
+            const coords = parts[0].trim();
+            const title = parts[1].trim();
+            
+            const coordParts = coords.split(',');
+            if (coordParts.length < 2) return null;
+
+            const x = coordParts[0].trim();
+            const y = coordParts[1].trim();
+
+            const isInvestigated = !!localVotes[q.id] || isCompleted;
+
+            return (
+              <div
+                key={q.id}
+                className={`loc-hover-zone ${isInvestigated ? 'investigated' : ''}`}
+                style={{ top: `${y}%`, left: `${x}%` }}
+                onClick={(e) => handlePointClick(e, q.id, choice, isInvestigated)}
+              >
+                <div className="loc-crosshair"></div>
+                <div className="loc-tooltip">{title}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>,
+    document.body
+  ) : null;
+
+  return (
+    <div className="location-phase-wrapper">
+      <div className="location-thumbnail-container">
+        <div className="location-thumbnail" style={{ backgroundImage: `url(${level.img_url})` }}>
+          <div className="thumbnail-overlay">
+            <button className="btn-primary" onClick={() => setIsFullscreen(true)}>
+              <span className="forensic-icon" style={{ marginRight: '0.5rem' }}>👁️</span> Inspect Crime Scene
+            </button>
+          </div>
+        </div>
+        <p className="location-hint">Enter the full-screen viewer to sweep the scene for evidence.</p>
+      </div>
+
+      {fullScreenViewer}
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\StandardPhase.css
+----------------------------------------
+.questions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.question-item {
+  display: flex;
+  gap: 1rem;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.question-number {
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.question-text {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.choices-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.choice-pill {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 0.85rem;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.choice-pill.interactable {
+  cursor: pointer;
+}
+
+.choice-pill.interactable:hover {
+  background: rgba(var(--border-light-rgb), 0.1);
+  border-color: rgba(var(--border-light-rgb), 0.4);
+  color: var(--text-primary);
+  box-shadow: inset 3px 0 0 0 var(--text-secondary); 
+}
+
+.choice-pill.selected {
+  background: rgba(var(--bg-dark-rgb), 1);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: inset 3px 0 0 0 var(--accent-cyan); 
+}
+
+.choice-pill.historical-correct {
+  background: rgba(0, 255, 128, 0.1);
+  border-color: #00FF80;
+  color: #00FF80;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\StandardPhase.tsx
+----------------------------------------
+import React from 'react';
+import type { Level, Choice, Question } from '@/types';
+import './StandardPhase.css';
+
+interface StandardPhaseProps {
+  level: Level;
+  status: string;
+  localVotes: Record<number, number>;
+  totalPlayers: number;
+  getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
+  handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
+}
+
+export default function StandardPhase({ level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice }: StandardPhaseProps) {
+  if (!level.questions) return null;
+
+  return (
+    <>
+      <h4 className="drawer-title">Required Verdicts</h4>
+      <div className="questions-list">
+        {level.questions.map((q, qIdx) => {
+          
+          const consensus = getQuestionConsensus(q);
+          const prevConsensus = qIdx > 0 ? getQuestionConsensus(level.questions![qIdx - 1]) : null;
+          
+          const isVisible = status === 'completed' || qIdx === 0 || (prevConsensus && prevConsensus.isResolved);
+          if (!isVisible) return null;
+
+          const isGloballyLocked = consensus.isResolved;
+          const isSingleQuestionLevel = level.questions!.length === 1;
+          const isLocked = isGloballyLocked && !isSingleQuestionLevel;
+
+          return (
+            <div key={q.id} className="question-item">
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <span className="question-number">Q{qIdx + 1}</span>
+                {!q.is_mandatory && (
+                  <span title="Optional narrative evidence." style={{ color: 'var(--accent-amber)', marginTop: '0.35rem', fontSize: '1.1rem', cursor: 'help', animation: 'pulse-icon 2s infinite' }}>📄</span>
+                )}
+              </div>
+
+              <div className="question-body">
+                <p className="question-text">
+                  {q.text}
+                  {status === 'active' && !isGloballyLocked && (
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: consensus.isTie ? 'var(--accent-crimson)' : 'var(--accent-amber)', marginTop: '0.5rem', fontFamily: 'var(--font-mono)' }}>
+                      ↳ {consensus.isTie ? 'TIE DETECTED: AWAITING TIE-BREAKER' : `Awaiting Agent consensus: ${consensus.votesCast} / ${totalPlayers} cast`}
+                    </span>
+                  )}
+                </p>
+                <div className="choices-preview">
+                  {q.choices?.map(c => {
+                    const isSelected = localVotes[q.id] === c.id;
+                    const isHistoricalCorrect = status === 'completed' && c.is_correct;
+                    
+                    let pillClass = 'choice-pill';
+                    if (isSelected) pillClass += ' selected';
+                    if (isHistoricalCorrect) pillClass += ' historical-correct';
+                    if (status === 'active' && !isLocked) pillClass += ' interactable';
+
+                    return (
+                      <span 
+                        key={c.id} 
+                        className={pillClass}
+                        onClick={(e) => {
+                          if (status === 'active' && !isLocked) handleSelectChoice(e, q.id, c, status);
+                        }}
+                      >
+                        {c.text}
+                      </span>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\CaseDetails\CaseDetailsTab.css
+----------------------------------------
+.case-details-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 2.5rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.case-hero-header {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.case-hero-background {
+  position: absolute;
+  inset: -10px; 
+  background-size: cover;
+  background-position: center;
+  filter: blur(6px);
+  transform: scale(1.05); 
+}
+
+.case-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(18, 18, 18, 0.3) 0%, rgba(18, 18, 18, 0.85) 100%);
+  display: flex;
+  align-items: flex-end;
+  padding: 2.5rem;
+}
+
+.case-hero-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  width: 100%;
+}
+
+.case-hero-title {
+  margin: 0;
+  font-size: 3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  text-shadow: 0 4px 12px rgba(0,0,0,0.8);
+  letter-spacing: -0.02em;
+}
+
+.case-hero-badges {
+  display: flex;
+  gap: 1rem;
+}
+
+.section-title {
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  font-size: 1.1rem;
+  letter-spacing: 0.1em;
+  border-left: 3px solid var(--accent-cyan);
+  padding-left: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.story-text-block {
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: var(--text-secondary);
+}
+
+.story-text-block p {
+  margin-bottom: 1.5rem;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\CaseDetails\CaseDetailsTab.tsx
 ----------------------------------------
 import { useState } from 'react';
-import { useRoomContext } from '../../../context/RoomContext';
+import { useRoomContext } from '../../../../context/RoomContext';
 import VictimModal from './VictimModal';
-import type { Victim } from '../../../types';
-import './Tabs.css';
+import type { Victim } from '../../../../types';
+import '../SharedOverlay.css';
+import './CaseDetailsTab.css';
 
 export default function CaseDetailsTab() {
   const { room, accumulatedVictims, viewedVictims, markVictimAsViewed } = useRoomContext();
@@ -4356,12 +5659,105 @@ export default function CaseDetailsTab() {
 }
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard.css
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\CaseDetails\VictimModal.tsx
 ----------------------------------------
-/* Container rules remain identical */
-.evidence-board-container { display: flex; flex-direction: column; gap: 1.5rem; /*height: 100%;*/ }
-.board-header { display: flex; justify-content: space-between; align-items: flex-end; }
-.board-meta { font-family: var(--font-mono); color: var(--text-secondary); font-size: 0.85rem; opacity: 0.7; }
+import type { Victim } from '@/types';
+
+interface VictimModalProps {
+  victim: Victim | null;
+  onClose: () => void;
+}
+
+export default function VictimModal({ victim, onClose }: VictimModalProps) {
+  if (!victim) return null;
+
+  return (
+    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 2000 }}>
+      <div 
+        className="modal-content glass-panel" 
+        style={{ maxWidth: '650px', padding: '2.5rem' }} 
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button className="close-btn" onClick={onClose}>✕</button>
+        
+        <div style={{ display: 'flex', gap: '2rem', marginTop: '0.5rem' }}>
+          {/* Left Column: Image */}
+          <div 
+            style={{ 
+              width: '180px', 
+              height: '180px', 
+              backgroundImage: `url(${victim.img_url || '/placeholder-mugshot.jpg'})`, 
+              backgroundSize: 'cover', 
+              backgroundPosition: 'center', 
+              borderRadius: '8px', 
+              border: '1px solid rgba(255,255,255,0.1)',
+              flexShrink: 0,
+              boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
+            }}
+          />
+          
+          {/* Right Column: Details */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <h2 style={{ 
+              margin: '0 0 0.25rem 0', 
+              color: 'var(--text-primary)', 
+              textTransform: 'uppercase',
+              fontSize: '2rem',
+              letterSpacing: '0.05em'
+            }}>
+              {victim.name}
+            </h2>
+            
+            <div style={{ 
+              fontFamily: 'var(--font-mono)', 
+              color: 'var(--accent-crimson)', 
+              fontSize: '0.9rem', 
+              marginBottom: '1.5rem',
+              paddingBottom: '0.75rem',
+              borderBottom: '1px solid rgba(255,255,255,0.1)'
+            }}>
+              IDENTIFICATION CODE: VIC-{victim.id.toString().padStart(4, '0')}
+            </div>
+            
+            <div style={{ 
+              color: 'var(--text-secondary)', 
+              lineHeight: '1.7', 
+              whiteSpace: 'pre-wrap',
+              maxHeight: '40vh',
+              overflowY: 'auto',
+              paddingRight: '1rem',
+              fontFamily: 'var(--font-mono)'
+            }}>
+              {victim.background || 'No background information available in the official records.'}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceBoardTab.css
+----------------------------------------
+.evidence-board-container { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 1.5rem; 
+}
+
+.board-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: flex-end; 
+}
+
+.board-meta { 
+  font-family: var(--font-mono); 
+  color: var(--text-secondary); 
+  font-size: 0.85rem; 
+  opacity: 0.7; 
+}
 
 .acrylic-workspace {
   flex: 1;
@@ -4370,396 +5766,16 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   border: var(--border-thin);
   border-radius: var(--radius-xl);
   padding: 3rem;
-  /* overflow-y: auto; */
   position: relative;
   box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.5);
 }
 
-.evidence-scatter-grid { display: flex; flex-wrap: wrap; gap: 2rem; justify-content: center; align-items: flex-start; }
-.evidence-card-wrapper { position: relative; cursor: pointer; transition: transform 0.2s ease, z-index 0s; z-index: 1; }
-.evidence-card-wrapper:hover { transform: scale(1.05) rotate(0deg) !important; z-index: 10; }
-.item-0 { transform: rotate(-3deg); }
-.item-1 { transform: rotate(2deg); margin-top: 2rem; }
-.item-2 { transform: rotate(-1deg); }
-.item-3 { transform: rotate(4deg); margin-top: 1rem; }
-.item-4 { transform: rotate(-2deg); margin-top: -1rem; }
-
-.evidence-variant {
-  width: 240px;
-  padding: 1.5rem;
-  border-radius: var(--radius-md);
-  background: rgba(var(--bg-panel-rgb), 0.8);
-  border: var(--border-thin);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(8px);
-  position: relative;
-}
-
-.evidence-title { margin: 0 0 0.5rem 0; font-size: 1.1rem; color: var(--text-primary); }
-.evidence-id { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-secondary); display: block; }
-.evidence-desc { font-size: 0.9rem; color: var(--text-secondary); margin-top: 1rem; line-height: 1.4; }
-
-.digital-pin { 
-  position: absolute; 
-  top: 12px; 
-  left: 50%; 
-  transform: translateX(-50%); 
-  width: 10px; 
-  height: 10px; 
-  border-radius: 50%; 
-  border: 1px solid rgba(255,255,255,0.3);
-  box-shadow: 1px 2px 3px rgba(0,0,0,0.8), inset -2px -2px 4px rgba(0,0,0,0.5); 
-}
-
-.digital-pin.amber { color: var(--accent-amber); background: var(--accent-amber); }
-.digital-pin.cyan { color: var(--accent-cyan); background: var(--accent-cyan); }
-.digital-pin.crimson { color: var(--accent-crimson); background: var(--accent-crimson); }
-
-.digital-tape {
-  position: absolute; 
-  top: -12px; 
-  left: 50%; 
-  transform: translateX(-50%) rotate(-3deg); 
-  width: 70px; 
-  height: 25px;
-  background: rgba(220, 215, 200, 0.8); /* Manila/tape color */
-  border: none;
-  box-shadow: 1px 2px 3px rgba(0,0,0,0.3);
-  /* Add subtle torn edges if you want to get creative */
-  clip-path: polygon(2% 5%, 98% 0%, 100% 95%, 0% 100%);
-}
-
-/* --- PHYSICAL PROP: MANILA FOLDER --- */
-.document-variant {
-  /* Solid manila/cardboard color */
-  background: var(--accent-amber);
-  /* Dark ink text for contrast against the folder */
-  color: #1a1a1a; 
-  border-top-left-radius: 0;
-  border: 1px solid rgba(0, 0, 0, 0.4);
-  /* Inner shadow to simulate the folder flap */
-  box-shadow: inset -4px 0 10px rgba(0, 0, 0, 0.1), 4px 4px 8px rgba(0, 0, 0, 0.4);
-}
-
-/* Force inner text to use the dark ink color */
-.document-variant .evidence-title,
-.document-variant .evidence-desc,
-.document-variant .evidence-id {
-  color: #1a1a1a;
-}
-
-.folder-tab {
-  position: absolute; 
-  top: -14px; 
-  left: -1px; 
-  width: 45%; 
-  height: 14px; 
-  background: var(--accent-amber);
-  border: 1px solid rgba(0, 0, 0, 0.4);
-  border-bottom: none; 
-  border-radius: 4px 4px 0 0;
-  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.1);
-}
-
-/* Simulate the crease of the folder */
-.document-variant::after {
-  content: '';
-  position: absolute;
-  top: 0; left: 8px; bottom: 0;
-  width: 2px;
-  background: rgba(0, 0, 0, 0.05);
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-  pointer-events: none;
-}
-
-/* --- PHYSICAL PROP: TYPED TRANSCRIPT --- */
-.testimony-variant {
-  background: #dcdacc; /* Aged, rough paper color */
-  border-radius: 2px;
-  border: none;
-  padding: 2.5rem 1.5rem 1.5rem;
-  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.4);
-  /* Force a typewriter aesthetic */
-  color: #1a1a1a;
-  font-family: var(--font-mono);
-}
-
-.testimony-variant .evidence-title,
-.testimony-variant .evidence-id {
-  color: #1a1a1a;
-  font-family: var(--font-mono);
-}
-
-/* Create a physical metallic paperclip at the top */
-.testimony-variant::after {
-  content: '';
-  position: absolute;
-  top: -12px;
-  left: 25px;
-  width: 14px;
-  height: 45px;
-  border: 2px solid #999;
-  border-radius: 12px;
-  background: transparent;
-  box-shadow: 2px 2px 3px rgba(0,0,0,0.3), inset 1px 1px 2px rgba(255,255,255,0.5);
-  transform: rotate(5deg);
-  z-index: 5;
-}
-
-/* Faded typewriter ink for the quote mark */
-.quote-mark { 
-  position: absolute; 
-  top: 15px; 
-  left: 15px; 
-  font-size: 3rem; 
-  color: rgba(0, 0, 0, 0.1); 
-  font-family: 'Courier New', Courier, monospace; 
-}
-
-/* Rendered lines on the paper */
-.testimony-lines { 
-  margin-top: 1rem; 
-  height: 40px; 
-  background: repeating-linear-gradient(
-    transparent, 
-    transparent 18px, 
-    rgba(0, 0, 0, 0.1) 19px
-  ); 
-}
-
-/* --- PHYSICAL PROP: CASSETTE TAPE --- */
-.audio-variant { 
-  background: #222; /* Dark plastic */
-  border: 1px solid #111; 
-  border-radius: 8px;
-  /* Beveled edges to look like a molded plastic shell */
-  box-shadow: inset 2px 2px 0px rgba(255,255,255,0.05), inset -2px -2px 5px rgba(0,0,0,0.8), 4px 4px 8px rgba(0,0,0,0.5);
-}
-
-.audio-tape-ui { 
+.evidence-scatter-grid { 
   display: flex; 
-  justify-content: center; 
+  flex-wrap: wrap; 
   gap: 2rem; 
-  background: #0a0a0a; /* The dark recess of the tape window */
-  padding: 0.75rem 2rem; 
-  border-radius: 4px; 
-  margin: 1.5rem 0; 
-  border: 1px solid #000;
-  position: relative;
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
-}
-
-/* The visible magnetic tape line running between spools */
-.audio-tape-ui::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 20%;
-  right: 20%;
-  height: 2px;
-  background: #111;
-  transform: translateY(-50%);
-}
-
-.audio-spool { 
-  width: 28px; 
-  height: 28px; 
-  border-radius: var(--radius-full); 
-  background: #e0e0e0; /* White plastic wheel */
-  border: 3px solid #111;
-  position: relative;
-  z-index: 2;
-  /* Creates the spokes/teeth of the tape reel */
-  background-image: radial-gradient(circle, #111 20%, transparent 20%), 
-                    conic-gradient(#444 0 25%, #e0e0e0 25% 50%, #444 50% 75%, #e0e0e0 75% 100%);
-}
-
-.image-variant { background: #E0E0E0; padding: 10px 10px 40px 10px; width: 220px; }
-.image-frame { width: 100%; aspect-ratio: 1 / 1; background-color: var(--bg-dark); background-size: cover; background-position: center; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); }
-.image-caption .evidence-title { color: #121212; font-family: var(--font-mono); font-size: 0.85rem; margin-top: 15px; text-align: center; }
-
-/* --- PHYSICAL PROP: FORENSIC EVIDENCE TAG --- */
-.forensic-variant {
-  background: #d9d9d9; /* Stark, sterile grey/white cardstock */
-  border: 1px solid #999;
-  border-top: 12px solid var(--accent-crimson); /* Hazard red top border */
-  border-radius: 2px;
-  box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.5);
-  position: relative;
-  padding: 2rem 1.5rem 1.5rem;
-}
-
-/* Force text to use dark ink for realism */
-.forensic-variant .evidence-title,
-.forensic-variant .evidence-id,
-.forensic-variant .evidence-desc {
-  color: #121212;
-  font-family: var(--font-mono);
-}
-
-.forensic-header { 
-  display: flex; 
-  align-items: center; 
-  gap: 0.5rem; 
-  margin-bottom: 1rem; 
-  border-bottom: 2px dashed #999;
-  padding-bottom: 0.5rem;
-}
-
-.forensic-icon { 
-  color: var(--accent-crimson); 
-  font-size: 1.2rem; 
-}
-
-/* The reinforced punch-hole for the wire/string */
-.forensic-variant::before {
-  content: '';
-  position: absolute;
-  top: -6px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 12px;
-  height: 12px;
-  background: var(--bg-dark); /* Shows the board background through the hole */
-  border: 3px solid #b3b3b3;
-  border-radius: 50%;
-  box-shadow: inset 1px 1px 4px rgba(0,0,0,0.8);
-  z-index: 5;
-}
-
-/* Evidence Modal */
-.evidence-modal-overlay {
-  position: absolute; inset: 0; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(10px);
-  z-index: 100; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s ease-out forwards;
-}
-
-.evidence-modal-content {
-  width: 90%; max-width: 600px; max-height: 85%;
-  background: var(--bg-panel); border: var(--border-thin);
-  border-radius: var(--radius-lg); padding: 2rem; display: flex; flex-direction: column;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8); overflow-y: auto;
-}
-
-.modal-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; border-bottom: 1px dashed rgba(var(--border-light-rgb), 0.1); padding-bottom: 1rem; }
-.modal-meta { display: flex; align-items: center; gap: 1rem; }
-.evidence-type-badge { font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; background: rgba(var(--border-light-rgb), 0.05); padding: 0.2rem 0.6rem; border-radius: var(--radius-sm); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); }
-.modal-close-btn { background: transparent; border: none; color: var(--text-secondary); font-size: 2rem; line-height: 1; cursor: pointer; padding: 0; transition: color 0.2s; }
-.modal-close-btn:hover { color: var(--accent-crimson); }
-.modal-desc { margin: 0 0 1.5rem 0; color: var(--text-secondary); font-size: 1rem; }
-
-.evidence-text-content { 
-  background: rgba(0, 0, 0, 0.4); 
-  padding: 1.5rem; 
-  border-radius: var(--radius-md); 
-  font-size: 1.1rem; 
-  line-height: 1.7; 
-  color: var(--text-primary); 
-  border-left: 3px solid var(--text-secondary); 
-  white-space: pre-wrap; 
-}
-
-.evidence-text-content.type-document { border-left-color: var(--accent-amber); }
-.evidence-text-content.type-testimony { border-left-color: var(--accent-cyan); font-style: italic; }
-.evidence-text-content.type-forensic { border-left-color: var(--accent-crimson); font-family: var(--font-mono); font-size: 0.95rem; }
-
-.evidence-media-container { margin-top: 1rem; background: rgba(0, 0, 0, 0.5); border-radius: var(--radius-md); overflow: hidden; border: var(--border-thin); }
-.evidence-full-image { width: 100%; height: auto; display: block; }
-.audio-container { padding: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1.5rem; }
-.audio-visualizer-mock { height: 40px; width: 100%; background: repeating-linear-gradient(90deg, var(--accent-cyan), var(--accent-cyan) 2px, transparent 2px, transparent 6px); opacity: 0.3; }
-.evidence-audio-player { width: 100%; outline: none; }
-
-
-@media (max-width: 768px) {
-  .acrylic-workspace {
-    padding: 1rem;
-  }
-  
-  .evidence-scatter-grid {
-    gap: 1rem;
-    flex-direction: column;
-    align-items: center;
-  }
-
-  .evidence-card-wrapper {
-    width: 100%;
-    /* Reset the desktop scatter rotations for a cleaner mobile stack */
-    transform: none !important;
-    margin: 0 !important;
-  }
-
-  .evidence-variant {
-    width: 100%;
-    max-width: 100%;
-    padding: 1.25rem;
-  }
-
-  .evidence-modal-content {
-    width: 95%;
-    padding: 1.5rem;
-    max-height: 90vh;
-  }
-  
-  .modal-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
-}
-
-/* --- MARKDOWN FORMATTING SUPPORT --- */
-.evidence-text-content p {
-  margin-top: 0;
-  margin-bottom: 1rem;
-}
-.evidence-text-content p:last-child {
-  margin-bottom: 0;
-}
-
-/* Base emphasis */
-.evidence-text-content strong {
-  color: var(--accent-cyan);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
-/* Physical Document Variant Overrides */
-.evidence-text-content.type-document strong,
-.evidence-text-content.type-forensic strong,
-.evidence-text-content.type-testimony strong {
-  color: #000;
-  font-weight: 800;
-  background: rgba(0, 0, 0, 0.08); /* Simulates a highlighter or heavy ink press */
-  padding: 0 2px;
-}
-
-/* Bullet Points */
-.evidence-text-content ul {
-  margin: 0.5rem 0 1.5rem 1.5rem;
-  padding: 0;
-  list-style-type: square;
-}
-.evidence-text-content li {
-  margin-bottom: 0.5rem;
-}
-
-/* Blockquotes (Great for quoted speech inside a larger document) */
-.evidence-text-content blockquote {
-  border-left: 3px solid var(--accent-crimson);
-  margin: 1rem 0;
-  padding-left: 1rem;
-  font-style: italic;
-  background: rgba(163, 50, 50, 0.05);
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-}
-
-/* REDACTED TEXT TRICK (Authors can use HTML <mark> tags or backticks) */
-.evidence-text-content code {
-  background: #111;
-  color: #111; /* Hides the text */
-  padding: 0 6px;
-  border-radius: 2px;
-  user-select: none; /* Prevents players from highlighting to reveal */
+  justify-content: center; 
+  align-items: flex-start; 
 }
 
 /* --- Filing Tray Styles --- */
@@ -4869,26 +5885,37 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 }
 
 @media (max-width: 768px) {
+  .acrylic-workspace {
+    padding: 1rem;
+  }
+  
+  .evidence-scatter-grid {
+    gap: 1rem;
+    flex-direction: column;
+    align-items: center;
+  }
+
   .tray-layout {
     flex-direction: column;
     gap: 1rem;
   }
+  
   .tray-actions {
     width: 100%;
   }
 }
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoardTab.tsx
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceBoardTab.tsx
 ----------------------------------------
 import { useState } from 'react';
-import type { Evidence } from '../../../types';
-import { useRoomContext } from '../../../context/RoomContext';
-import { useInvestigationRequest } from '../../../hooks/useInvestigationRequest';
-import { InvestigationRequestType, getInvestigationRequestLabel } from '../../../types';
+import { useRoomContext } from '@/context/RoomContext';
+import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
+import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
+import type { Evidence } from '@/types';
 import EvidenceCard from './EvidenceCard';
 import EvidenceModal from './EvidenceModal'; 
-import './EvidenceBoard.css';
+import './EvidenceBoardTab.css';
 
 export default function EvidenceBoardTab() {
   const { room, accumulatedEvidences, viewedEvidences, markEvidenceAsViewed, refreshRoomData } = useRoomContext();
@@ -5027,15 +6054,241 @@ export default function EvidenceBoardTab() {
 }
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceCard.tsx
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceCard.css
 ----------------------------------------
-import type { Evidence } from '../../../types';
+.evidence-card-wrapper { 
+  position: relative; 
+  cursor: pointer; 
+  transition: transform 0.2s ease, z-index 0s; 
+  z-index: 1; 
+}
+
+.evidence-card-wrapper:hover { 
+  transform: scale(1.05) rotate(0deg) !important; 
+  z-index: 10; 
+}
+
+/* Pseudo-random scatter rotation */
+.item-0 { transform: rotate(-3deg); }
+.item-1 { transform: rotate(2deg); margin-top: 2rem; }
+.item-2 { transform: rotate(-1deg); }
+.item-3 { transform: rotate(4deg); margin-top: 1rem; }
+.item-4 { transform: rotate(-2deg); margin-top: -1rem; }
+
+.evidence-variant {
+  width: 240px;
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+  background: rgba(var(--bg-panel-rgb), 0.8);
+  border: var(--border-thin);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(8px);
+  position: relative;
+}
+
+.evidence-title { 
+  margin: 0 0 0.5rem 0; 
+  font-size: 1.1rem; 
+  color: var(--text-primary); 
+}
+
+.evidence-id { 
+  font-family: var(--font-mono); 
+  font-size: 0.75rem; 
+  color: var(--text-secondary); 
+  display: block; 
+}
+
+.evidence-desc { 
+  font-size: 0.9rem; 
+  color: var(--text-secondary); 
+  margin-top: 1rem; 
+  line-height: 1.4; 
+}
+
+/* --- UNIVERSAL PROPS --- */
+.digital-pin { 
+  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); 
+  width: 10px; height: 10px; border-radius: 50%; 
+  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 1px 2px 3px rgba(0,0,0,0.8), inset -2px -2px 4px rgba(0,0,0,0.5); 
+}
+
+.digital-pin.amber { color: var(--accent-amber); background: var(--accent-amber); }
+.digital-pin.cyan { color: var(--accent-cyan); background: var(--accent-cyan); }
+.digital-pin.crimson { color: var(--accent-crimson); background: var(--accent-crimson); }
+
+.digital-tape {
+  position: absolute; top: -12px; left: 50%; 
+  transform: translateX(-50%) rotate(-3deg); 
+  width: 70px; height: 25px;
+  background: rgba(220, 215, 200, 0.8);
+  border: none;
+  box-shadow: 1px 2px 3px rgba(0,0,0,0.3);
+  clip-path: polygon(2% 5%, 98% 0%, 100% 95%, 0% 100%);
+}
+
+/* --- PHYSICAL PROP: MANILA FOLDER --- */
+.document-variant {
+  background: var(--accent-amber);
+  color: #1a1a1a; 
+  border-top-left-radius: 0;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  box-shadow: inset -4px 0 10px rgba(0, 0, 0, 0.1), 4px 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+.document-variant .evidence-title,
+.document-variant .evidence-desc,
+.document-variant .evidence-id {
+  color: #1a1a1a;
+}
+
+.folder-tab {
+  position: absolute; top: -14px; left: -1px; 
+  width: 45%; height: 14px; 
+  background: var(--accent-amber);
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  border-bottom: none; 
+  border-radius: 4px 4px 0 0;
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.1);
+}
+
+.document-variant::after {
+  content: '';
+  position: absolute; top: 0; left: 8px; bottom: 0;
+  width: 2px;
+  background: rgba(0, 0, 0, 0.05);
+  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  pointer-events: none;
+}
+
+/* --- PHYSICAL PROP: TYPED TRANSCRIPT --- */
+.testimony-variant {
+  background: #dcdacc;
+  border-radius: 2px;
+  border: none;
+  padding: 2.5rem 1.5rem 1.5rem;
+  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.4);
+  color: #1a1a1a;
+  font-family: var(--font-mono);
+}
+
+.testimony-variant .evidence-title,
+.testimony-variant .evidence-id {
+  color: #1a1a1a;
+  font-family: var(--font-mono);
+}
+
+.testimony-variant::after {
+  content: '';
+  position: absolute; top: -12px; left: 25px;
+  width: 14px; height: 45px;
+  border: 2px solid #999;
+  border-radius: 12px;
+  background: transparent;
+  box-shadow: 2px 2px 3px rgba(0,0,0,0.3), inset 1px 1px 2px rgba(255,255,255,0.5);
+  transform: rotate(5deg);
+  z-index: 5;
+}
+
+.quote-mark { 
+  position: absolute; top: 15px; left: 15px; 
+  font-size: 3rem; color: rgba(0, 0, 0, 0.1); 
+  font-family: 'Courier New', Courier, monospace; 
+}
+
+/* --- PHYSICAL PROP: CASSETTE TAPE --- */
+.audio-variant { 
+  background: #222;
+  border: 1px solid #111; 
+  border-radius: 8px;
+  box-shadow: inset 2px 2px 0px rgba(255,255,255,0.05), inset -2px -2px 5px rgba(0,0,0,0.8), 4px 4px 8px rgba(0,0,0,0.5);
+}
+
+.audio-tape-ui { 
+  display: flex; justify-content: center; gap: 2rem; 
+  background: #0a0a0a;
+  padding: 0.75rem 2rem; border-radius: 4px; 
+  margin: 1.5rem 0; border: 1px solid #000;
+  position: relative;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
+}
+
+.audio-tape-ui::before {
+  content: ''; position: absolute; top: 50%; left: 20%; right: 20%;
+  height: 2px; background: #111; transform: translateY(-50%);
+}
+
+.audio-spool { 
+  width: 28px; height: 28px; border-radius: var(--radius-full); 
+  background: #e0e0e0; border: 3px solid #111;
+  position: relative; z-index: 2;
+  background-image: radial-gradient(circle, #111 20%, transparent 20%), 
+                    conic-gradient(#444 0 25%, #e0e0e0 25% 50%, #444 50% 75%, #e0e0e0 75% 100%);
+}
+
+/* --- PHYSICAL PROP: PHOTOGRAPH --- */
+.image-variant { background: #E0E0E0; padding: 10px 10px 40px 10px; width: 220px; }
+.image-frame { width: 100%; aspect-ratio: 1 / 1; background-color: var(--bg-dark); background-size: cover; background-position: center; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); }
+.image-caption .evidence-title { color: #121212; font-family: var(--font-mono); font-size: 0.85rem; margin-top: 15px; text-align: center; }
+
+/* --- PHYSICAL PROP: FORENSIC EVIDENCE TAG --- */
+.forensic-variant {
+  background: #d9d9d9;
+  border: 1px solid #999;
+  border-top: 12px solid var(--accent-crimson);
+  border-radius: 2px;
+  box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.5);
+  position: relative;
+  padding: 2rem 1.5rem 1.5rem;
+}
+
+.forensic-variant .evidence-title,
+.forensic-variant .evidence-id,
+.forensic-variant .evidence-desc {
+  color: #121212;
+  font-family: var(--font-mono);
+}
+
+.forensic-header { 
+  display: flex; align-items: center; gap: 0.5rem; 
+  margin-bottom: 1rem; border-bottom: 2px dashed #999; padding-bottom: 0.5rem;
+}
+
+.forensic-icon { color: var(--accent-crimson); font-size: 1.2rem; }
+
+.forensic-variant::before {
+  content: ''; position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
+  width: 12px; height: 12px;
+  background: var(--bg-dark); border: 3px solid #b3b3b3; border-radius: 50%;
+  box-shadow: inset 1px 1px 4px rgba(0,0,0,0.8); z-index: 5;
+}
+
+@media (max-width: 768px) {
+  .evidence-card-wrapper {
+    width: 100%;
+    transform: none !important;
+    margin: 0 !important;
+  }
+
+  .evidence-variant {
+    width: 100%;
+    max-width: 100%;
+    padding: 1.25rem;
+  }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceCard.tsx
+----------------------------------------
+import type { Evidence } from '@/types';
 import DocumentEvidence from './EvidenceVariants/DocumentEvidence';
 import TestimonyEvidence from './EvidenceVariants/TestimonyEvidence';
 import AudioEvidence from './EvidenceVariants/AudioEvidence';
 import ImageEvidence from './EvidenceVariants/ImageEvidence';
 import ForensicEvidence from './EvidenceVariants/ForensicEvidence';
-import './EvidenceBoard.css';
+import './EvidenceBoardTab.css';
+import './EvidenceCard.css';
 
 const EvidenceComponents: Record<string, React.FC<{ evidence: Evidence }>> = {
   document: DocumentEvidence,
@@ -5077,11 +6330,135 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
 }
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceModal.tsx
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceModal.css
+----------------------------------------
+.evidence-modal-overlay {
+  position: absolute; inset: 0; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(10px);
+  z-index: 100; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s ease-out forwards;
+}
+
+.evidence-modal-content {
+  width: 90%; max-width: 600px; max-height: 85%;
+  background: var(--bg-panel); border: var(--border-thin);
+  border-radius: var(--radius-lg); padding: 2rem; display: flex; flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8); overflow-y: auto;
+}
+
+.modal-header { 
+  display: flex; justify-content: space-between; align-items: flex-start; 
+  margin-bottom: 1rem; border-bottom: 1px dashed rgba(var(--border-light-rgb), 0.1); padding-bottom: 1rem; 
+}
+
+.modal-meta { display: flex; align-items: center; gap: 1rem; }
+.evidence-type-badge { 
+  font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; 
+  background: rgba(var(--border-light-rgb), 0.05); padding: 0.2rem 0.6rem; 
+  border-radius: var(--radius-sm); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); 
+}
+
+.modal-close-btn { 
+  background: transparent; border: none; color: var(--text-secondary); 
+  font-size: 2rem; line-height: 1; cursor: pointer; padding: 0; transition: color 0.2s; 
+}
+
+.modal-close-btn:hover { color: var(--accent-crimson); }
+.modal-desc { margin: 0 0 1.5rem 0; color: var(--text-secondary); font-size: 1rem; }
+
+.evidence-text-content { 
+  background: rgba(0, 0, 0, 0.4); 
+  padding: 1.5rem; border-radius: var(--radius-md); 
+  font-size: 1.1rem; line-height: 1.7; 
+  color: var(--text-primary); border-left: 3px solid var(--text-secondary); 
+  white-space: pre-wrap; 
+}
+
+.evidence-text-content.type-document { border-left-color: var(--accent-amber); }
+.evidence-text-content.type-testimony { border-left-color: var(--accent-cyan); font-style: italic; }
+.evidence-text-content.type-forensic { border-left-color: var(--accent-crimson); font-family: var(--font-mono); font-size: 0.95rem; }
+
+.evidence-media-container { 
+  margin-top: 1rem; background: rgba(0, 0, 0, 0.5); 
+  border-radius: var(--radius-md); overflow: hidden; border: var(--border-thin); 
+}
+
+.evidence-full-image { width: 100%; height: auto; display: block; }
+
+.audio-container { padding: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1.5rem; }
+.audio-visualizer-mock { height: 40px; width: 100%; background: repeating-linear-gradient(90deg, var(--accent-cyan), var(--accent-cyan) 2px, transparent 2px, transparent 6px); opacity: 0.3; }
+.evidence-audio-player { width: 100%; outline: none; }
+
+/* --- MARKDOWN FORMATTING SUPPORT --- */
+.evidence-text-content p {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+.evidence-text-content p:last-child {
+  margin-bottom: 0;
+}
+
+.evidence-text-content strong {
+  color: var(--accent-cyan);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.evidence-text-content.type-document strong,
+.evidence-text-content.type-forensic strong,
+.evidence-text-content.type-testimony strong {
+  color: #000;
+  font-weight: 800;
+  background: rgba(0, 0, 0, 0.08); 
+  padding: 0 2px;
+}
+
+.evidence-text-content ul {
+  margin: 0.5rem 0 1.5rem 1.5rem;
+  padding: 0;
+  list-style-type: square;
+}
+.evidence-text-content li {
+  margin-bottom: 0.5rem;
+}
+
+.evidence-text-content blockquote {
+  border-left: 3px solid var(--accent-crimson);
+  margin: 1rem 0;
+  padding-left: 1rem;
+  font-style: italic;
+  background: rgba(163, 50, 50, 0.05);
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.evidence-text-content code {
+  background: #111;
+  color: #111; 
+  padding: 0 6px;
+  border-radius: 2px;
+  user-select: none; 
+}
+
+@media (max-width: 768px) {
+  .evidence-modal-content {
+    width: 95%;
+    padding: 1.5rem;
+    max-height: 90vh;
+  }
+  
+  .modal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceModal.tsx
 ----------------------------------------
 import ReactMarkdown from 'react-markdown'; 
-import type { Evidence } from '../../../types';
-import './EvidenceBoard.css';
+import type { Evidence } from '@/types';
+import './EvidenceBoardTab.css';
+import './EvidenceModal.css';
 
 interface EvidenceModalProps {
   evidence: Evidence | null;
@@ -5141,7 +6518,98 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
 }
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\SuspectCard.css
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceVariants\AudioEvidence.tsx
+----------------------------------------
+import type { Evidence } from '../../../../types';
+
+export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
+  return (
+    <div className="evidence-variant audio-variant">
+      <div className="audio-tape-ui">
+        <div className="audio-spool"></div>
+        <div className="audio-spool"></div>
+      </div>
+      <h4 className="evidence-title">{evidence.title}</h4>
+      <span className="evidence-id">Voice Record</span>
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceVariants\DocumentEvidence.tsx
+----------------------------------------
+import type { Evidence } from '../../../../types';
+
+export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
+  return (
+    <div className="evidence-variant document-variant">
+      <div className="folder-tab"></div>
+      <h4 className="evidence-title">{evidence.title}</h4>
+      <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
+      <p className="evidence-desc">{evidence.description}</p>
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceVariants\ForensicEvidence.tsx
+----------------------------------------
+import type { Evidence } from '../../../../types';
+
+export default function ForensicEvidence({ evidence }: { evidence: Evidence }) {
+  return (
+    <div className="evidence-variant forensic-variant">
+      <div className="forensic-header">
+        <span className="forensic-icon">✧</span>
+        <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
+      </div>
+      <h4 className="evidence-title">{evidence.title}</h4>
+      <p className="evidence-desc">{evidence.description}</p>
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceVariants\ImageEvidence.tsx
+----------------------------------------
+import type { Evidence } from '../../../../types';
+
+export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
+  return (
+    <div className="evidence-variant image-variant">
+      <div className="digital-tape"></div>
+      <div 
+        className="image-frame" 
+        style={{ backgroundImage: `url(${evidence.img_url || '/placeholder-crime-scene.jpg'})` }}
+      ></div>
+      <div className="image-caption">
+        <h4 className="evidence-title">{evidence.title}</h4>
+      </div>
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceVariants\TestimonyEvidence.tsx
+----------------------------------------
+import type { Evidence } from '../../../../types';
+
+export default function TestimonyEvidence({ evidence }: { evidence: Evidence }) {
+  return (
+    <div className="evidence-variant testimony-variant">
+      <div className="quote-mark">“</div>
+      <h4 className="evidence-title">{evidence.title}</h4>
+      <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
+      {evidence.description && (
+        <p className="evidence-desc">{evidence.description}</p>
+      )}
+      {/* <div className="testimony-lines"></div> */}
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Suspects\SuspectCard.css
 ----------------------------------------
 .suspect-card {
   width: 160px;
@@ -5218,10 +6686,10 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 }
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\SuspectCard.tsx
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Suspects\SuspectCard.tsx
 ----------------------------------------
 import { useState } from 'react';
-import type { Suspect } from '../../../types';
+import type { Suspect } from '@/types';
 import './SuspectCard.css';
 
 interface SuspectCardProps {
@@ -5266,7 +6734,7 @@ export default function SuspectCard({ suspect, sourcePool, isDraggable, isNew, o
 }
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\SuspectsTab.css
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Suspects\SuspectsTab.css
 ----------------------------------------
 .suspects-tab-container {
   display: flex;
@@ -5429,11 +6897,11 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 }
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\SuspectsTab.tsx
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Suspects\SuspectsTab.tsx
 ----------------------------------------
 import { useState } from 'react';
-import { useRoomContext } from '../../../context/RoomContext';
-import { submitSuspectVerdict } from '../../../services/api';
+import { useRoomContext } from '../../../../context/RoomContext';
+import { submitSuspectVerdict } from '../../../../services/api';
 import { useMutation } from '@tanstack/react-query';
 import SuspectCard from './SuspectCard'; 
 import './SuspectsTab.css';
@@ -5651,720 +7119,6 @@ export default function SuspectsTab() {
           {verdictMutation.isPending ? 'Filing Indictment...' : 'Submit Final Verdict'}
         </button>
       </div>
-    </div>
-  );
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Tabs.css
-----------------------------------------
-.case-details-tab {
-  display: flex;
-  flex-direction: column;
-  gap: 2.5rem;
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-/* The Blurred Landscape Hero */
-.case-hero-header {
-  position: relative;
-  width: 100%;
-  height: 300px;
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.case-hero-background {
-  position: absolute;
-  inset: -10px; /* Slight overflow to prevent blurred edges from showing background */
-  background-size: cover;
-  background-position: center;
-  filter: blur(6px);
-  transform: scale(1.05); /* Counteract the inset */
-}
-
-.case-hero-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    to bottom,
-    rgba(18, 18, 18, 0.3) 0%,
-    rgba(18, 18, 18, 0.85) 100%
-  );
-  display: flex;
-  align-items: flex-end;
-  padding: 2.5rem;
-}
-
-.case-hero-content {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  width: 100%;
-}
-
-.case-hero-title {
-  margin: 0;
-  font-size: 3rem;
-  font-weight: 700;
-  color: var(--text-primary);
-  text-shadow: 0 4px 12px rgba(0,0,0,0.8);
-  letter-spacing: -0.02em;
-}
-
-.case-hero-badges {
-  display: flex;
-  gap: 1rem;
-}
-
-/* Official Briefing Typography */
-.section-title {
-  font-family: var(--font-mono);
-  color: var(--accent-cyan);
-  text-transform: uppercase;
-  font-size: 1.1rem;
-  letter-spacing: 0.1em;
-  border-left: 3px solid var(--accent-cyan);
-  padding-left: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.story-text-block {
-  font-size: 1.1rem;
-  line-height: 1.8;
-  color: var(--text-secondary);
-}
-
-.story-text-block p {
-  margin-bottom: 1.5rem;
-}
-
-/* --- Campaign Roadmap --- */
-.campaign-roadmap-container {
-  max-width: 800px;
-  margin: 0 auto;
-}
-
-.roadmap-timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  margin-top: 2rem;
-  padding-left: 1rem;
-}
-
-.roadmap-node {
-  display: flex;
-  gap: 2rem;
-  min-height: 160px;
-  opacity: 1;
-  transition: opacity 0.3s ease;
-}
-
-.roadmap-node.locked {
-  opacity: 0.5;
-  filter: grayscale(100%);
-  pointer-events: none;
-}
-
-/* Vertical Timeline Line & Indicators */
-.timeline-connector {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  position: relative;
-  width: 40px;
-}
-
-.node-indicator {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: var(--bg-panel);
-  border: 2px solid var(--text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1rem;
-  color: var(--text-secondary);
-  z-index: 2;
-  box-shadow: 0 0 15px rgba(0,0,0,0.5);
-}
-
-.roadmap-node.active .node-indicator {
-  border-color: var(--accent-cyan);
-  background: rgba(0, 229, 255, 0.1);
-  box-shadow: 0 0 20px rgba(0, 229, 255, 0.4);
-}
-
-.roadmap-node.completed .node-indicator {
-  border-color: var(--accent-amber);
-  color: var(--accent-amber);
-}
-
-.node-line {
-  width: 2px;
-  flex: 1;
-  background: rgba(255, 255, 255, 0.1);
-  margin-top: -5px; /* Tuck under the circle */
-  margin-bottom: -5px;
-  z-index: 1;
-}
-
-.node-line.active-line {
-  background: var(--accent-amber);
-  box-shadow: 0 0 10px rgba(255, 179, 0, 0.5);
-}
-
-/* Roadmap Content Cards */
-.node-content {
-  flex: 1;
-  display: flex;
-  background: rgba(30, 30, 30, 0.6);
-  border-radius: 8px;
-  overflow: hidden;
-  margin-bottom: 2.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.roadmap-node.active .node-content {
-  border-color: rgba(0, 229, 255, 0.3);
-  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05);
-}
-
-.node-image {
-  width: 200px;
-  background-size: cover;
-  background-position: center;
-  position: relative;
-}
-
-.node-image-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to right, rgba(18,18,18,0.1), rgba(30,30,30,1));
-}
-
-.node-details {
-  flex: 1;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
-.node-phase {
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 0.5rem;
-}
-
-.node-title {
-  margin: 0 0 0.5rem 0;
-  font-size: 1.5rem;
-  color: var(--text-primary);
-}
-
-.node-desc {
-  margin: 0;
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
-}
-
-.active-badge {
-  margin-top: 1rem;
-  align-self: flex-start;
-  background: rgba(0, 229, 255, 0.1);
-  color: var(--accent-cyan);
-  border: 1px solid var(--accent-cyan);
-  padding: 0.25rem 0.75rem;
-  border-radius: 4px;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  animation: pulse-border 2s infinite;
-}
-
-@keyframes pulse-border {
-  0% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0.4); }
-  70% { box-shadow: 0 0 0 6px rgba(0, 229, 255, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(0, 229, 255, 0); }
-}
-
-/* --- Expandable Drawer Additions --- */
-.node-content.clickable {
-  cursor: pointer;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.node-content.clickable:hover {
-  border-color: rgba(0, 229, 255, 0.4);
-}
-
-.node-content {
-  flex-direction: column; /* Changed to allow vertical stacking of the drawer */
-}
-
-.node-main-card {
-  display: flex;
-  width: 100%;
-}
-
-.node-questions-drawer {
-  border-top: 1px dashed rgba(255, 255, 255, 0.1);
-  background: rgba(18, 18, 18, 0.6);
-  padding: 1.5rem;
-  animation: slideDown 0.3s ease-out forwards;
-}
-
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.drawer-title {
-  margin: 0 0 1rem 0;
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  color: var(--accent-amber);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.questions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.question-item {
-  display: flex;
-  gap: 1rem;
-}
-
-.question-number {
-  font-family: var(--font-mono);
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.2);
-}
-
-.question-text {
-  margin: 0 0 0.75rem 0;
-  font-size: 1rem;
-  color: var(--text-primary);
-  line-height: 1.4;
-}
-
-.choices-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.choice-pill {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.3rem 0.6rem;
-  border-radius: 4px;
-  color: var(--text-secondary);
-}
-
-/* --- Interactive Choice Pills --- */
-.choice-pill {
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.5rem 0.85rem;
-  border-radius: 4px;
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-}
-
-.choice-pill.interactable {
-  cursor: pointer;
-}
-
-.choice-pill.interactable:hover {
-  background: rgba(var(--border-light-rgb), 0.1);
-  border-color: rgba(var(--border-light-rgb), 0.4);
-  color: var(--text-primary);
-  box-shadow: inset 3px 0 0 0 var(--text-secondary); 
-}
-
-.choice-pill.selected {
-  background: rgba(var(--bg-dark-rgb), 1);
-  border-color: var(--accent-cyan);
-  color: var(--accent-cyan);
-  box-shadow: inset 3px 0 0 0 var(--accent-cyan); 
-}
-
-/* For looking back at old levels */
-.choice-pill.historical-correct {
-  background: rgba(0, 255, 128, 0.1);
-  border-color: #00FF80;
-  color: #00FF80;
-}
-
-/* --- Submit Theory Button --- */
-.submit-theory-container {
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  display: flex;
-  justify-content: flex-end;
-}
-
-.submit-theory-btn {
-  width: auto;
-  padding: 1rem 2rem;
-}
-
-.submit-theory-btn:disabled {
-  background: rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.3);
-  box-shadow: none;
-  cursor: not-allowed;
-}
-
-/* --- Feedback Overlay Modal (Persona Screen) --- */
-.feedback-modal-overlay {
-  position: absolute; /* Absolute to the tab content area */
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(18, 18, 18, 0.85);
-  backdrop-filter: blur(8px);
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.2s ease-out forwards;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.feedback-modal-content {
-  background: var(--bg-panel);
-  padding: 3rem;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  text-align: center;
-  max-width: 500px;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
-}
-
-.feedback-modal-content.error {
-  border-color: rgba(255, 51, 102, 0.4);
-  box-shadow: inset 0 0 30px rgba(255, 51, 102, 0.1), 0 20px 40px rgba(0, 0, 0, 0.8);
-}
-
-.feedback-modal-content.success {
-  border-color: rgba(0, 229, 255, 0.4);
-  box-shadow: inset 0 0 30px rgba(0, 229, 255, 0.1), 0 20px 40px rgba(0, 0, 0, 0.8);
-}
-
-.feedback-title {
-  margin: 0 0 1rem 0;
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-
-.feedback-modal-content.error .feedback-title { color: #FF3366; }
-.feedback-modal-content.success .feedback-title { color: var(--accent-cyan); }
-
-.feedback-message {
-  font-size: 1.1rem;
-  line-height: 1.6;
-  color: var(--text-primary);
-  margin: 0 0 1.5rem 0;
-}
-
-.mt-1 {
-  margin-top: 1rem;
-}
-
-/* --- Tactical Toast Notification --- */
-.toast-container {
-  position: fixed;
-  bottom: 2rem;
-  right: 2rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  z-index: 9999;
-  pointer-events: none; /* Lets clicks pass through the gaps */
-}
-
-.system-toast-notification {
-  background: rgba(15, 15, 20, 0.95);
-  border: 1px solid var(--accent-amber);
-  border-left: 4px solid var(--accent-amber);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 170, 0, 0.15);
-  padding: 1rem 1.5rem;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  pointer-events: auto; /* Restores clicks for the notification itself */
-  animation: slide-in-toast 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
-}
-
-.toast-icon {
-  font-size: 1.5rem;
-  color: var(--accent-amber);
-}
-
-.toast-text-block {
-  display: flex;
-  flex-direction: column;
-}
-
-.toast-header {
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--accent-amber);
-  letter-spacing: 0.1em;
-  margin-bottom: 0.25rem;
-}
-
-.toast-message {
-  font-family: var(--font-primary);
-  font-size: 0.9rem;
-  color: var(--text-primary);
-  margin: 0;
-}
-
-.toast-svg-graphic {
-  width: 28px;
-  height: 28px;
-  display: block;
-  filter: brightness(1.2) drop-shadow(0 0 6px currentColor);
-}
-
-@keyframes slide-in-toast {
-  0% {
-    opacity: 0;
-    transform: translateX(50px) translateY(10px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(0) translateY(0);
-  }
-}
-
-/* --- PERSONA SILHOUETTE --- */
-.persona-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(255, 51, 102, 0.2);
-  padding-bottom: 1.5rem;
-}
-
-.persona-silhouette {
-  height: 120px; 
-  width: auto;
-  object-fit: contain;
-  /* This filter forces ANY image into a solid black silhouette */
-  filter: grayscale(100%) contrast(1000%) brightness(0) drop-shadow(0 15px 15px rgba(0,0,0,0.8));
-  opacity: 0.95;
-  animation: fade-in-persona 0.5s ease-out forwards;
-}
-
-@keyframes fade-in-persona {
-  from { 
-    opacity: 0; 
-    transform: translateY(15px); 
-  }
-  to { 
-    opacity: 0.95; 
-    transform: translateY(0); 
-  }
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\VictimModal.tsx
-----------------------------------------
-import type { Victim } from '../../../types';
-
-interface VictimModalProps {
-  victim: Victim | null;
-  onClose: () => void;
-}
-
-export default function VictimModal({ victim, onClose }: VictimModalProps) {
-  if (!victim) return null;
-
-  return (
-    <div className="modal-backdrop" onClick={onClose} style={{ zIndex: 2000 }}>
-      <div 
-        className="modal-content glass-panel" 
-        style={{ maxWidth: '650px', padding: '2.5rem' }} 
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button className="close-btn" onClick={onClose}>✕</button>
-        
-        <div style={{ display: 'flex', gap: '2rem', marginTop: '0.5rem' }}>
-          {/* Left Column: Image */}
-          <div 
-            style={{ 
-              width: '180px', 
-              height: '180px', 
-              backgroundImage: `url(${victim.img_url || '/placeholder-mugshot.jpg'})`, 
-              backgroundSize: 'cover', 
-              backgroundPosition: 'center', 
-              borderRadius: '8px', 
-              border: '1px solid rgba(255,255,255,0.1)',
-              flexShrink: 0,
-              boxShadow: '0 4px 15px rgba(0,0,0,0.5)'
-            }}
-          />
-          
-          {/* Right Column: Details */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-            <h2 style={{ 
-              margin: '0 0 0.25rem 0', 
-              color: 'var(--text-primary)', 
-              textTransform: 'uppercase',
-              fontSize: '2rem',
-              letterSpacing: '0.05em'
-            }}>
-              {victim.name}
-            </h2>
-            
-            <div style={{ 
-              fontFamily: 'var(--font-mono)', 
-              color: 'var(--accent-crimson)', 
-              fontSize: '0.9rem', 
-              marginBottom: '1.5rem',
-              paddingBottom: '0.75rem',
-              borderBottom: '1px solid rgba(255,255,255,0.1)'
-            }}>
-              IDENTIFICATION CODE: VIC-{victim.id.toString().padStart(4, '0')}
-            </div>
-            
-            <div style={{ 
-              color: 'var(--text-secondary)', 
-              lineHeight: '1.7', 
-              whiteSpace: 'pre-wrap',
-              maxHeight: '40vh',
-              overflowY: 'auto',
-              paddingRight: '1rem',
-              fontFamily: 'var(--font-mono)'
-            }}>
-              {victim.background || 'No background information available in the official records.'}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceVariants\AudioEvidence.tsx
-----------------------------------------
-import type { Evidence } from '../../../../types';
-
-export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
-  return (
-    <div className="evidence-variant audio-variant">
-      <div className="audio-tape-ui">
-        <div className="audio-spool"></div>
-        <div className="audio-spool"></div>
-      </div>
-      <h4 className="evidence-title">{evidence.title}</h4>
-      <span className="evidence-id">Voice Record</span>
-    </div>
-  );
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceVariants\DocumentEvidence.tsx
-----------------------------------------
-import type { Evidence } from '../../../../types';
-
-export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
-  return (
-    <div className="evidence-variant document-variant">
-      <div className="folder-tab"></div>
-      <h4 className="evidence-title">{evidence.title}</h4>
-      <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
-      <p className="evidence-desc">{evidence.description}</p>
-    </div>
-  );
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceVariants\ForensicEvidence.tsx
-----------------------------------------
-import type { Evidence } from '../../../../types';
-
-export default function ForensicEvidence({ evidence }: { evidence: Evidence }) {
-  return (
-    <div className="evidence-variant forensic-variant">
-      <div className="forensic-header">
-        <span className="forensic-icon">✧</span>
-        <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
-      </div>
-      <h4 className="evidence-title">{evidence.title}</h4>
-      <p className="evidence-desc">{evidence.description}</p>
-    </div>
-  );
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceVariants\ImageEvidence.tsx
-----------------------------------------
-import type { Evidence } from '../../../../types';
-
-export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
-  return (
-    <div className="evidence-variant image-variant">
-      <div className="digital-tape"></div>
-      <div 
-        className="image-frame" 
-        style={{ backgroundImage: `url(${evidence.img_url || '/placeholder-crime-scene.jpg'})` }}
-      ></div>
-      <div className="image-caption">
-        <h4 className="evidence-title">{evidence.title}</h4>
-      </div>
-    </div>
-  );
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceVariants\TestimonyEvidence.tsx
-----------------------------------------
-import type { Evidence } from '../../../../types';
-
-export default function TestimonyEvidence({ evidence }: { evidence: Evidence }) {
-  return (
-    <div className="evidence-variant testimony-variant">
-      <div className="quote-mark">“</div>
-      <h4 className="evidence-title">{evidence.title}</h4>
-      <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
-      {evidence.description && (
-        <p className="evidence-desc">{evidence.description}</p>
-      )}
-      {/* <div className="testimony-lines"></div> */}
     </div>
   );
 }
@@ -6954,10 +7708,6 @@ export const lockVote = async (roomId: number, questionId: number, choiceId: num
 export const submitAssessment = async (roomId: number): Promise<Result<{ 
   status: string; 
   message: string; 
-  unlocked_evidence?: number[]; 
-  unlocked_levels?: number[];
-  unlocked_suspects?: number[];
-  unlocked_victims?: number[]; 
 }>> => {  
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/submit`, {
@@ -7261,7 +8011,16 @@ export interface Question {
   msg_when_wrong?: string;
   choices?: Choice[];
   is_mandatory: boolean; 
+  assigned_user_id?: number; 
 }
+
+export const LevelPresentationType = {
+  Standard: 'standard',
+  Interrogation: 'interrogation',
+  Location: 'location',
+} as const;
+
+export type LevelPresentationType = typeof LevelPresentationType[keyof typeof LevelPresentationType];
 
 export interface Level {
   id: number;
@@ -7271,6 +8030,7 @@ export interface Level {
   img_url?: string; 
   order_index: number;
   is_initial: boolean; 
+  presentation_type?: LevelPresentationType; 
   questions?: Question[]; 
 }
 

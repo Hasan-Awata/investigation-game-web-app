@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useRoomContext } from '../../../context/RoomContext';
+import { useRoomContext } from '../../../../context/RoomContext';
 import VictimModal from './VictimModal';
-import type { Victim } from '../../../types';
-import './Tabs.css';
+import type { Victim } from '../../../../types';
+import '../SharedOverlay.css';
+import './CaseDetailsTab.css';
 
 export default function CaseDetailsTab() {
   const { room, accumulatedVictims, viewedVictims, markVictimAsViewed } = useRoomContext();

@@ -588,10 +588,6 @@ class AssessmentController extends Controller
         return response()->json([
             'status' => $result->value['status'],    
             'message' => $result->value['message'], 
-            'unlocked_evidence' => $result->value['unlocked_evidence'] ?? [], 
-            'unlocked_levels' => $result->value['unlocked_levels'] ?? [],
-            'unlocked_suspects' => $result->value['unlocked_suspects'] ?? [],
-            'unlocked_victims' => $result->value['unlocked_victims'] ?? [],  
             'room' => $room->load('currentLevel'),  
         ], 200);
     }
@@ -997,7 +993,6 @@ class VoteController extends Controller
 
     public function store(Request $request, GameRoom $room, Question $question): JsonResponse
     {
-        // 1. Basic Laravel Form Validation
         $validated = $request->validate([
             'choice_id' => 'required|exists:choices,id',
         ]);
@@ -1005,10 +1000,8 @@ class VoteController extends Controller
         $choice = Choice::find($validated['choice_id']);
         $user = $request->user();
 
-        // 2. Execute Domain Logic
         $result = $this->votingService->lockInVote($room, $user, $question, $choice);
 
-        // 3. Handle the Result
         if ($result->isFailure()) {
             return response()->json([
                 'error' => 'Validation Failed',
@@ -1018,7 +1011,11 @@ class VoteController extends Controller
 
         return response()->json([
             'message' => 'Vote locked in successfully.',
-            'data' => $result->value
+            'data' => $result->value['vote'],
+            'unlocked_evidence' => $result->value['unlocked']['evidence'], 
+            'unlocked_levels' => $result->value['unlocked']['levels'],     
+            'unlocked_suspects' => $result->value['unlocked']['suspects'], 
+            'unlocked_victims' => $result->value['unlocked']['victims']    
         ], 200);
     }
 }
@@ -1323,6 +1320,7 @@ class AdminLevelController extends Controller
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
+            'presentation_type' => 'required|string|in:standard,interrogation', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
@@ -1350,6 +1348,7 @@ class AdminLevelController extends Controller
             'title' => $validated['title'],
             'details' => $validated['details'],
             'order_index' => $validated['order_index'],
+            'presentation_type' => $validated['presentation_type'], 
             'img_url' => $imageUrl,
         ]);
 
@@ -1882,7 +1881,8 @@ class Level extends Model
         'details',
         'img_url', 
         'order_index',
-        'is_initial', // NEW
+        'is_initial',
+        'presentation_type', 
     ];
 
     protected function casts(): array
@@ -2238,7 +2238,6 @@ class AssessmentService
             $consensus = $this->votingService->calculateLevelConsensus($room, $level->id);
             
             $mandatoryQuestions = $level->questions()->where('is_mandatory', true)->get();
-            $optionalQuestions = $level->questions()->where('is_mandatory', false)->get();
 
             // 1. Check Mandatory Progression
             foreach ($mandatoryQuestions as $question) {
@@ -2282,69 +2281,12 @@ class AssessmentService
                     // Return standard failure, embedding the hint directly into the message
                     return \App\Support\Result::success([
                         'status' => 'success', 
-                        'message' => $responseMessage,  
+                        'message' => $hint,  
                     ]);
                 }
             }
 
-            // 2. Process Narrative Unlocks (Evidence, Levels, & Suspects)
-            $newlyUnlockedEvidences = [];
-            $newlyUnlockedLevels = [];
-            $newlyUnlockedSuspects = [];
-            $newlyUnlockedVictims = [];
-
-            foreach ($consensus as $questionId => $chosenId) {
-                $choice = Choice::find($chosenId);
-
-                if ($choice && $choice->unlocks_evidence_id) {
-                    DB::table('room_evidences')->updateOrInsert([
-                        'room_id' => $room->id,
-                        'evidence_id' => $choice->unlocks_evidence_id
-                    ]);
-                    $newlyUnlockedEvidences[] = $choice->unlocks_evidence_id;
-                }
-
-                if ($choice && $choice->unlocks_level_id) {
-                    DB::table('room_unlocked_levels')->updateOrInsert([
-                        'room_id' => $room->id,
-                        'level_id' => $choice->unlocks_level_id
-                    ]);
-                    $newlyUnlockedLevels[] = $choice->unlocks_level_id;
-                }
-                
-                if ($choice && $choice->unlocks_suspect_id) {
-                    DB::table('room_suspects')->updateOrInsert([
-                        'room_id' => $room->id,
-                        'suspect_id' => $choice->unlocks_suspect_id
-                    ]);
-                    $newlyUnlockedSuspects[] = $choice->unlocks_suspect_id;
-                }
-
-                if ($choice && $choice->unlocks_victim_id) {
-                    DB::table('room_victims')->updateOrInsert([
-                        'room_id' => $room->id,
-                        'victim_id' => $choice->unlocks_victim_id
-                    ]);
-                    $newlyUnlockedVictims[] = $choice->unlocks_victim_id;
-                }
-            }
-
-            // Dispatch Evidences and Levels Events
-            if (!empty($newlyUnlockedEvidences) || !empty($newlyUnlockedLevels)) {
-                \App\Events\EvidenceDiscovered::dispatch($room, $newlyUnlockedEvidences);
-            }
-
-            // Dispatch Suspect Event
-            if (!empty($newlyUnlockedSuspects)) {
-                \App\Events\SuspectDiscovered::dispatch($room, $newlyUnlockedSuspects);
-            }
-            
-            // Dispatch Victim Event
-            if (!empty($newlyUnlockedVictims)) {
-                \App\Events\VictimDiscovered::dispatch($room, $newlyUnlockedVictims);
-            }
-
-            // 3. Mark Phase Complete & Check Suspension Condition
+            // 2. Mark Phase Complete & Check Suspension Condition
             $room->completedLevels()->syncWithoutDetaching([$level->id]);
             
             $completedCount = $room->completedLevels()->count();
@@ -2363,16 +2305,12 @@ class AssessmentService
 
             LevelTransitioned::dispatch($room, $responseMessage);
             
+            // Removed the unlocked arrays payload entirely
             return Result::success([
                 'status' => 'success', 
-                'message' => $responseMessage,
-                'unlocked_evidence' => $newlyUnlockedEvidences,
-                'unlocked_levels' => $newlyUnlockedLevels,
-                'unlocked_suspects' => $newlyUnlockedSuspects,
-                'unlocked_victims' => $newlyUnlockedVictims
+                'message' => $responseMessage
             ]);
-           }
-       );
+        });
     }
 
     /**
@@ -2797,10 +2735,44 @@ class VotingService
             ]
         );
 
-        // Broadcast the real-time update to the rest of the room
+        // --- INSTANT NARRATIVE UNLOCKS ---
+        $unlocked = [
+            'evidence' => [],
+            'levels' => [],
+            'suspects' => [],
+            'victims' => []
+        ];
+
+        if ($choice->unlocks_evidence_id) {
+            $room->unlockedEvidences()->syncWithoutDetaching([$choice->unlocks_evidence_id]);
+            $unlocked['evidence'][] = $choice->unlocks_evidence_id;
+            \App\Events\EvidenceDiscovered::dispatch($room, [$choice->unlocks_evidence_id]);
+        }
+
+        if ($choice->unlocks_level_id) {
+            $room->unlockedLevels()->syncWithoutDetaching([$choice->unlocks_level_id]);
+            $unlocked['levels'][] = $choice->unlocks_level_id;
+        }
+
+        if ($choice->unlocks_suspect_id) {
+            $room->unlockedSuspects()->syncWithoutDetaching([$choice->unlocks_suspect_id]);
+            $unlocked['suspects'][] = $choice->unlocks_suspect_id;
+            \App\Events\SuspectDiscovered::dispatch($room, [$choice->unlocks_suspect_id]);
+        }
+
+        if ($choice->unlocks_victim_id) {
+            $room->unlockedVictims()->syncWithoutDetaching([$choice->unlocks_victim_id]);
+            $unlocked['victims'][] = $choice->unlocks_victim_id;
+            \App\Events\VictimDiscovered::dispatch($room, [$choice->unlocks_victim_id]);
+        }
+
+        // Broadcast the real-time vote update
         VoteLockedIn::dispatch($room, $vote);
 
-        return Result::success($vote);
+        return Result::success([
+            'vote' => $vote,
+            'unlocked' => $unlocked
+        ]);
     }
 
     /**
@@ -5570,6 +5542,29 @@ return new class extends Migration {
 };
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_06_132055_add_presentation_type_to_levels_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('levels', function (Blueprint $table) {
+            $table->string('presentation_type')->default('standard')->after('is_initial');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('levels', function (Blueprint $table) {
+            $table->dropColumn('presentation_type');
+        });
+    }
+};
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\DatabaseSeeder.php
 ----------------------------------------
 <?php
@@ -5710,7 +5705,7 @@ class GameCaseSeeder extends Seeder
             'img_url' => '/assets/placeholder-mugshot.jpg',
         ]);
 
-        // 2. Create the Non-Linear Phases (Levels) - Now with 3 Initial Phases
+        // 2. Create the Non-Linear Phases (Levels)
         $phase1 = Level::create([
             'case_id' => $case->id,
             'title' => 'The Crime Scene',
@@ -5747,7 +5742,17 @@ class GameCaseSeeder extends Seeder
             'img_url' => '/assets/cases/Level4.png',
         ]);
 
-        // 3. Create Case Evidence - Expanded to 5 Initial Pieces
+        $phase5 = Level::create([
+            'case_id' => $case->id,
+            'title' => 'The Confession',
+            'details' => 'Anton Varga has been detained and brought into Interrogation Room B. Break his alibi and secure a confession.',
+            'order_index' => 5,
+            'is_initial' => false, // Hidden until unlocked by Phase 4
+            'img_url' => '/assets/cases/Level5.png',
+            'presentation_type' => 'interrogation', // Testing the new feature
+        ]);
+
+        // 3. Create Case Evidence
         $evidence1 = Evidence::create([
             'case_id' => $case->id,
             'is_initial' => true,
@@ -5881,8 +5886,35 @@ class GameCaseSeeder extends Seeder
             'msg_when_wrong' => 'Review EX-001. Someone had legitimate access to the floor hours before the murder.',
             'is_mandatory' => true,
         ]);
-        Choice::create(['question_id' => $p4q1->id, 'text' => 'The "Janitor" who badged in at 11:30 PM, whose employer is a shell company quietly owned by Thorne.', 'is_correct' => true]);
-        Choice::create(['question_id' => $p4q1->id, 'text' => 'The precinct detective who immediately ruled it a suicide.', 'is_correct' => false]);
+        Choice::create([
+            'question_id' => $p4q1->id, 
+            'text' => 'The "Janitor" who badged in at 11:30 PM, whose employer is a shell company quietly owned by Thorne.', 
+            'is_correct' => true,
+            'unlocks_level_id' => $phase5->id // Instantly unlocks the Phase 5 Interrogation Log
+        ]);
+        Choice::create([
+            'question_id' => $p4q1->id, 
+            'text' => 'The precinct detective who immediately ruled it a suicide.', 
+            'is_correct' => false
+        ]);
+
+        // PHASE 5 VERDICTS (The Confession - Interrogation Phase)
+        $p5q1 = Question::create([
+            'level_id' => $phase5->id,
+            'text' => "I already told the uniforms, I just empty the trash. I don't know anything about a hanging.",
+            'msg_when_wrong' => "He is playing dumb. Confront him with hard evidence of his specialized skills and access.",
+            'is_mandatory' => true,
+        ]);
+        Choice::create([
+            'question_id' => $p5q1->id, 
+            'text' => 'We know Thorne paid you. Just admit it.', 
+            'is_correct' => false
+        ]);
+        Choice::create([
+            'question_id' => $p5q1->id, 
+            'text' => 'A janitor doesn\'t know how to bypass an HVAC return vent without leaving a trace. But a former infiltration specialist does.', 
+            'is_correct' => true
+        ]);
     }
 }
 

@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { useRoomContext } from '../../../context/RoomContext';
-import { submitSuspectVerdict } from '../../../services/api';
+import { useRoomContext } from '../../../../context/RoomContext';
+import { submitSuspectVerdict } from '../../../../services/api';
 import { useMutation } from '@tanstack/react-query';
 import SuspectCard from './SuspectCard'; 
 import './SuspectsTab.css';

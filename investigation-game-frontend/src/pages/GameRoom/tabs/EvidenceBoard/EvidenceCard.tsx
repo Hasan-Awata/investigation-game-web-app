@@ -1,10 +1,11 @@
-import type { Evidence } from '../../../types';
+import type { Evidence } from '@/types';
 import DocumentEvidence from './EvidenceVariants/DocumentEvidence';
 import TestimonyEvidence from './EvidenceVariants/TestimonyEvidence';
 import AudioEvidence from './EvidenceVariants/AudioEvidence';
 import ImageEvidence from './EvidenceVariants/ImageEvidence';
 import ForensicEvidence from './EvidenceVariants/ForensicEvidence';
-import './EvidenceBoard.css';
+import './EvidenceBoardTab.css';
+import './EvidenceCard.css';
 
 const EvidenceComponents: Record<string, React.FC<{ evidence: Evidence }>> = {
   document: DocumentEvidence,

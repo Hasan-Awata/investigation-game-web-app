@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Enums\RoomStatus;
+use App\Enums\LevelPresentationType; 
 use App\Support\Result;
 
 class GameRoomService
@@ -81,5 +82,34 @@ class GameRoomService
         } while (GameRoom::where('invite_code', $code)->exists());
 
         return $code;
+    }
+
+    /**
+     * Dynamically assigns location points (questions) to players evenly.
+     */
+    public function distributeLocationQuestions(GameRoom $room): void
+    {
+        // Only run this logic if the current level is a Location type
+        if ($room->currentLevel?->presentation_type !== LevelPresentationType::Location) {
+            return;
+        }
+
+        // Get all active users in the room, sorted reliably by their ID
+        $participants = $room->users()->orderBy('id')->get();
+        $playerCount = $participants->count();
+
+        if ($playerCount === 0) return;
+
+        // Sort questions reliably
+        $questions = $room->currentLevel->questions->sortBy('id')->values();
+
+        foreach ($questions as $index => $question) {
+            // Modulo arithmetic ensures an even, deterministic split
+            $assignedParticipant = $participants[$index % $playerCount];
+            
+            // Dynamically append the assigned user ID to the model
+            // This won't save to the DB, it just attaches to the JSON payload
+            $question->setAttribute('assigned_user_id', $assignedParticipant->user_id);
+        }
     }
 }

@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Casts\Attribute; 
+use App\Enums\LevelPresentationType; 
 
 class Level extends Model
 {
@@ -28,6 +29,7 @@ class Level extends Model
     {
         return [
             'is_initial' => 'boolean',
+            'presentation_type' => LevelPresentationType::class, 
         ];
     }
     

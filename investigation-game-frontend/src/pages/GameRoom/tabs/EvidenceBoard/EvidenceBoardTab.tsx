@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import type { Evidence } from '../../../types';
-import { useRoomContext } from '../../../context/RoomContext';
-import { useInvestigationRequest } from '../../../hooks/useInvestigationRequest';
-import { InvestigationRequestType, getInvestigationRequestLabel } from '../../../types';
+import { useRoomContext } from '@/context/RoomContext';
+import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
+import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
+import type { Evidence } from '@/types';
 import EvidenceCard from './EvidenceCard';
 import EvidenceModal from './EvidenceModal'; 
-import './EvidenceBoard.css';
+import './EvidenceBoardTab.css';
 
 export default function EvidenceBoardTab() {
   const { room, accumulatedEvidences, viewedEvidences, markEvidenceAsViewed, refreshRoomData } = useRoomContext();

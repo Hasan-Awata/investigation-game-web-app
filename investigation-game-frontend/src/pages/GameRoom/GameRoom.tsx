@@ -3,10 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useGameRoom } from '../../hooks/useGameRoom';
 import { useViewedItems } from '../../hooks/useViewedItems'; 
 import { RoomProvider } from '../../context/RoomContext';
-import CaseDetailsTab from './tabs/CaseDetailsTab';
-import EvidenceBoardTab from './tabs/EvidenceBoardTab';
-import SuspectsTab from './tabs/SuspectsTab';
-import CampaignTab from './tabs/CampaignTab';
+import CaseDetailsTab from './tabs/CaseDetails/CaseDetailsTab';
+import EvidenceBoardTab from './tabs/EvidenceBoard/EvidenceBoardTab';
+import SuspectsTab from './tabs/Suspects/SuspectsTab';
+import CampaignTab from './tabs/Campaign/CampaignTab';
 import AgentNotepad from '../../components/AgentNotepad/AgentNotepad'; 
 import './GameRoom.css';
 
