@@ -54,8 +54,47 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       refreshRoomData();
+      
+      if (data.unlocked_evidence?.length || data.unlocked_levels?.length || data.unlocked_suspects?.length || data.unlocked_victims?.length) {
+        setTimeout(() => {
+          const newToasts: ToastNotification[] = [];
+          
+          if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
+            newToasts.push({ 
+              id: crypto.randomUUID(), type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${data.unlocked_evidence.length} new piece(s) of physical evidence secured.`, 
+              icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
+            });
+          }
+          if (data.unlocked_levels && data.unlocked_levels.length > 0) {
+            newToasts.push({ 
+              id: crypto.randomUUID(), type: 'level', title: 'PHASE UNLOCKED', message: 'A new narrative path is now available.', 
+              icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
+            });
+          }
+          if (data.unlocked_suspects && data.unlocked_suspects.length > 0) {
+            newToasts.push({ 
+              id: crypto.randomUUID(), type: 'suspect', title: 'PERSON OF INTEREST', message: 'New suspect added to the board.', 
+              icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232' 
+            });
+          }
+          if (data.unlocked_victims && data.unlocked_victims.length > 0) {
+            newToasts.push({ 
+              id: crypto.randomUUID(), type: 'victim', title: 'CASUALTY IDENTIFIED', message: 'New victim details have been verified.', 
+              icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91' 
+            });
+          }
+
+          // Append all generated toasts at once
+          setToasts((prev) => [...prev, ...newToasts]);
+
+          // Automatically sweep them off the screen after 5 seconds
+          setTimeout(() => {
+            setToasts((prev) => prev.filter((t) => !newToasts.some((nt) => nt.id === t.id)));
+          }, 5000);
+        }, 500);
+      }
     }
   });
 
@@ -68,49 +107,12 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     onSuccess: async (data) => {
       if (data.status === 'success' || data.status === 'failed_final') {
         setFeedback({ type: data.status === 'success' ? 'success' : 'error', message: data.message });
+        
+        // Wait for the players to read the feedback before sweeping the board
         setTimeout(() => {
           setFeedback(null);
           setLocalVotes({}); 
           refreshRoomData(); 
-          
-          if (data.unlocked_evidence?.length || data.unlocked_levels?.length || data.unlocked_suspects?.length || data.unlocked_victims?.length) {
-            setTimeout(() => {
-              const newToasts: ToastNotification[] = [];
-              
-              if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
-                newToasts.push({ 
-                  id: crypto.randomUUID(), type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${data.unlocked_evidence.length} new piece(s) of physical evidence secured.`, 
-                  icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
-                });
-              }
-              if (data.unlocked_levels && data.unlocked_levels.length > 0) {
-                newToasts.push({ 
-                  id: crypto.randomUUID(), type: 'level', title: 'PHASE UNLOCKED', message: 'A new narrative path is now available.', 
-                  icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
-                });
-              }
-              if (data.unlocked_suspects && data.unlocked_suspects.length > 0) {
-                newToasts.push({ 
-                  id: crypto.randomUUID(), type: 'suspect', title: 'PERSON OF INTEREST', message: 'New suspect added to the board.', 
-                  icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232' 
-                });
-              }
-              if (data.unlocked_victims && data.unlocked_victims.length > 0) {
-                newToasts.push({ 
-                  id: crypto.randomUUID(), type: 'victim', title: 'CASUALTY IDENTIFIED', message: 'New victim details have been verified.', 
-                  icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91' 
-                });
-              }
-
-              // Append all generated toasts at once
-              setToasts((prev) => [...prev, ...newToasts]);
-
-              // Automatically sweep them off the screen after 5 seconds
-              setTimeout(() => {
-                setToasts((prev) => prev.filter((t) => !newToasts.some((nt) => nt.id === t.id)));
-              }, 5000);
-            }, 500);
-          }
         }, 2000);
       } else {
         setFeedback({ type: 'error', message: data.message });

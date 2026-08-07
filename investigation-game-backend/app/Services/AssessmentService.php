@@ -26,7 +26,6 @@ class AssessmentService
             $consensus = $this->votingService->calculateLevelConsensus($room, $level->id);
             
             $mandatoryQuestions = $level->questions()->where('is_mandatory', true)->get();
-            $optionalQuestions = $level->questions()->where('is_mandatory', false)->get();
 
             // 1. Check Mandatory Progression
             foreach ($mandatoryQuestions as $question) {
@@ -70,69 +69,12 @@ class AssessmentService
                     // Return standard failure, embedding the hint directly into the message
                     return \App\Support\Result::success([
                         'status' => 'success', 
-                        'message' => $responseMessage,  
+                        'message' => $hint,  
                     ]);
                 }
             }
 
-            // 2. Process Narrative Unlocks (Evidence, Levels, & Suspects)
-            $newlyUnlockedEvidences = [];
-            $newlyUnlockedLevels = [];
-            $newlyUnlockedSuspects = [];
-            $newlyUnlockedVictims = [];
-
-            foreach ($consensus as $questionId => $chosenId) {
-                $choice = Choice::find($chosenId);
-
-                if ($choice && $choice->unlocks_evidence_id) {
-                    DB::table('room_evidences')->updateOrInsert([
-                        'room_id' => $room->id,
-                        'evidence_id' => $choice->unlocks_evidence_id
-                    ]);
-                    $newlyUnlockedEvidences[] = $choice->unlocks_evidence_id;
-                }
-
-                if ($choice && $choice->unlocks_level_id) {
-                    DB::table('room_unlocked_levels')->updateOrInsert([
-                        'room_id' => $room->id,
-                        'level_id' => $choice->unlocks_level_id
-                    ]);
-                    $newlyUnlockedLevels[] = $choice->unlocks_level_id;
-                }
-                
-                if ($choice && $choice->unlocks_suspect_id) {
-                    DB::table('room_suspects')->updateOrInsert([
-                        'room_id' => $room->id,
-                        'suspect_id' => $choice->unlocks_suspect_id
-                    ]);
-                    $newlyUnlockedSuspects[] = $choice->unlocks_suspect_id;
-                }
-
-                if ($choice && $choice->unlocks_victim_id) {
-                    DB::table('room_victims')->updateOrInsert([
-                        'room_id' => $room->id,
-                        'victim_id' => $choice->unlocks_victim_id
-                    ]);
-                    $newlyUnlockedVictims[] = $choice->unlocks_victim_id;
-                }
-            }
-
-            // Dispatch Evidences and Levels Events
-            if (!empty($newlyUnlockedEvidences) || !empty($newlyUnlockedLevels)) {
-                \App\Events\EvidenceDiscovered::dispatch($room, $newlyUnlockedEvidences);
-            }
-
-            // Dispatch Suspect Event
-            if (!empty($newlyUnlockedSuspects)) {
-                \App\Events\SuspectDiscovered::dispatch($room, $newlyUnlockedSuspects);
-            }
-            
-            // Dispatch Victim Event
-            if (!empty($newlyUnlockedVictims)) {
-                \App\Events\VictimDiscovered::dispatch($room, $newlyUnlockedVictims);
-            }
-
-            // 3. Mark Phase Complete & Check Suspension Condition
+            // 2. Mark Phase Complete & Check Suspension Condition
             $room->completedLevels()->syncWithoutDetaching([$level->id]);
             
             $completedCount = $room->completedLevels()->count();
@@ -151,16 +93,12 @@ class AssessmentService
 
             LevelTransitioned::dispatch($room, $responseMessage);
             
+            // Removed the unlocked arrays payload entirely
             return Result::success([
                 'status' => 'success', 
-                'message' => $responseMessage,
-                'unlocked_evidence' => $newlyUnlockedEvidences,
-                'unlocked_levels' => $newlyUnlockedLevels,
-                'unlocked_suspects' => $newlyUnlockedSuspects,
-                'unlocked_victims' => $newlyUnlockedVictims
+                'message' => $responseMessage
             ]);
-           }
-       );
+        });
     }
 
     /**

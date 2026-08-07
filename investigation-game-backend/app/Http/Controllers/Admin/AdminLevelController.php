@@ -17,6 +17,7 @@ class AdminLevelController extends Controller
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
+            'presentation_type' => 'required|string|in:standard,interrogation', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
@@ -44,6 +45,7 @@ class AdminLevelController extends Controller
             'title' => $validated['title'],
             'details' => $validated['details'],
             'order_index' => $validated['order_index'],
+            'presentation_type' => $validated['presentation_type'], 
             'img_url' => $imageUrl,
         ]);
 

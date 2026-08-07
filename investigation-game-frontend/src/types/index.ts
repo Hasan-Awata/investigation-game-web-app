@@ -138,6 +138,13 @@ export interface Question {
   is_mandatory: boolean; 
 }
 
+export const LevelPresentationType = {
+  Standard: 'standard',
+  Interrogation: 'interrogation',
+} as const;
+
+export type LevelPresentationType = typeof LevelPresentationType[keyof typeof LevelPresentationType];
+
 export interface Level {
   id: number;
   case_id: number;
@@ -146,6 +153,7 @@ export interface Level {
   img_url?: string; 
   order_index: number;
   is_initial: boolean; 
+  presentation_type?: LevelPresentationType; 
   questions?: Question[]; 
 }
 

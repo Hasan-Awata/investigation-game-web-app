@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRoomContext } from '../../../context/RoomContext';
 import { useInvestigationPhase } from '../../../hooks/useInvestigationPhase';
+import InterrogationPhase from './InterrogationPhase';
 import './Tabs.css';
 
 export default function CampaignTab() {
@@ -29,7 +30,6 @@ export default function CampaignTab() {
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   // --- NARRATIVE VISIBILITY MASKING ---
-  // Instead of filtering the array, we track what's unlocked and map everything.
   const unlockedLevelIds = new Set(room.unlocked_levels?.map(l => l.id) || []);
   const sortedLevels = [...levels].sort((a, b) => a.order_index - b.order_index);
 
@@ -38,16 +38,48 @@ export default function CampaignTab() {
     setExpandedId(expandedId === levelId ? null : levelId);
   };
 
-  // --- GLOBAL VOTE TALLY LOGIC ---
+  // --- UPGRADED GLOBAL CONSENSUS ENGINE ---
   const totalPlayers = room.users?.length || 1; 
-  const globalVoteCounts: Record<number, number> = {};
-  
-  room.votes?.forEach(v => {
-    globalVoteCounts[v.question_id] = (globalVoteCounts[v.question_id] || 0) + 1;
-  });
 
-  const isQuestionGloballyResolved = (questionId: number) => {
-    return (globalVoteCounts[questionId] || 0) >= totalPlayers;
+  const getQuestionConsensus = (questionId: number) => {
+    const tally: Record<number, number> = {};
+    let votesCast = 0;
+    const participants = room.users || [];
+
+    room.votes?.forEach(v => {
+      if (v.question_id === questionId) {
+        const role = participants.find(p => p.user_id === v.user_id)?.role || 'participant';
+        const weight = role === 'host' ? 2 : 1; // Host vote carries double weight
+        tally[v.choice_id] = (tally[v.choice_id] || 0) + weight;
+        votesCast++;
+      }
+    });
+
+    if (votesCast < totalPlayers) {
+      return { votesCast, isResolved: false, isTie: false, winningChoiceId: null };
+    }
+
+    // Everyone voted. Check if it's a tie or a clear victory.
+    let maxWeight = -1;
+    let isTie = false;
+    let winningChoiceId = null;
+
+    for (const [cId, weight] of Object.entries(tally)) {
+      if (weight > maxWeight) {
+        maxWeight = weight;
+        winningChoiceId = Number(cId);
+        isTie = false;
+      } else if (weight === maxWeight) {
+        isTie = true;
+      }
+    }
+
+    return {
+      votesCast,
+      isResolved: !isTie, // It is ONLY resolved if everyone voted AND there's no tie
+      isTie,
+      winningChoiceId: isTie ? null : winningChoiceId
+    };
   };
 
   return (
@@ -119,7 +151,8 @@ export default function CampaignTab() {
           const isExpanded = expandedId === level.id;
           const mandatoryQuestions = level.questions?.filter(q => q.is_mandatory) || [];
           
-          const allMandatoryAnswered = mandatoryQuestions.every(q => isQuestionGloballyResolved(q.id));
+          // Button is only enabled when every mandatory question is fully resolved (no ties)
+          const allMandatoryAnswered = mandatoryQuestions.every(q => getQuestionConsensus(q.id).isResolved);
 
           // 3. UI Content Masking
           const displayTitle = isDiscovered ? level.title : 'Encounter Undiscovered';
@@ -173,75 +206,94 @@ export default function CampaignTab() {
                       </div>
                     )}
 
-                    {/* QUESTIONS BLOCK */}
+                    {/* DYNAMIC PRESENTATION ROUTER */}
                     {(status === 'active' || status === 'completed') && level.questions && (
                       <>
-                        <h4 className="drawer-title">Required Verdicts</h4>
-                        <div className="questions-list">
-                          {level.questions.map((q, qIdx) => {
-                            
-                            const isVisible = 
-                              status === 'completed' || 
-                              qIdx === 0 || 
-                              isQuestionGloballyResolved(level.questions![qIdx - 1].id);
+                        {level.presentation_type === 'interrogation' ? (
+                          <InterrogationPhase 
+                            level={level}
+                            status={status}
+                            localVotes={localVotes}
+                            totalPlayers={totalPlayers}
+                            getQuestionConsensus={getQuestionConsensus}
+                            handleSelectChoice={handleSelectChoice}
+                          />
+                        ) : (
+                          <>
+                            <h4 className="drawer-title">Required Verdicts</h4>
+                            <div className="questions-list">
+                              {level.questions.map((q, qIdx) => {
+                                
+                                const consensus = getQuestionConsensus(q.id);
+                                const prevConsensus = qIdx > 0 ? getQuestionConsensus(level.questions![qIdx - 1].id) : null;
+                                
+                                const isVisible = 
+                                  status === 'completed' || 
+                                  qIdx === 0 || 
+                                  (prevConsensus && prevConsensus.isResolved);
 
-                            if (!isVisible) return null;
+                                if (!isVisible) return null;
 
-                            const isGloballyLocked = isQuestionGloballyResolved(q.id);
-                            const isSingleQuestionLevel = level.questions!.length === 1;
-                            const isLocked = isGloballyLocked && !isSingleQuestionLevel;
+                                const isGloballyLocked = consensus.isResolved;
+                                const isSingleQuestionLevel = level.questions!.length === 1;
+                                const isLocked = isGloballyLocked && !isSingleQuestionLevel;
 
-                            return (
-                              <div key={q.id} className="question-item" style={{ animation: 'fadeIn 0.4s ease-out forwards' }}>
-                                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                  <span className="question-number">Q{qIdx + 1}</span>
-                                  {!q.is_mandatory && (
-                                    <span title="This question provides additional narrative evidence." style={{ color: 'var(--accent-amber)', marginTop: '0.35rem', fontSize: '1.1rem', cursor: 'help', animation: 'pulse-icon 2s infinite' }}>📄</span>
-                                  )}
-                                </div>
+                                return (
+                                  <div key={q.id} className="question-item" style={{ animation: 'fadeIn 0.4s ease-out forwards' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                      <span className="question-number">Q{qIdx + 1}</span>
+                                      {!q.is_mandatory && (
+                                        <span title="Optional narrative evidence." style={{ color: 'var(--accent-amber)', marginTop: '0.35rem', fontSize: '1.1rem', cursor: 'help', animation: 'pulse-icon 2s infinite' }}>📄</span>
+                                      )}
+                                    </div>
 
-                                <div className="question-body">
-                                  <p className="question-text">
-                                    {q.text}
-                                    {status === 'active' && !isGloballyLocked && (
-                                      <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--accent-amber)', marginTop: '0.5rem', fontFamily: 'var(--font-mono)' }}>
-                                        ↳ Awaiting Agent consensus: {(globalVoteCounts[q.id] || 0)} / {totalPlayers} cast
-                                      </span>
-                                    )}
-                                  </p>
-                                  <div className="choices-preview">
-                                    {q.choices?.map(c => {
-                                      const isSelected = localVotes[q.id] === c.id;
-                                      const isHistoricalCorrect = status === 'completed' && c.is_correct;
-                                      
-                                      let pillClass = 'choice-pill';
-                                      if (isSelected) pillClass += ' selected';
-                                      if (isHistoricalCorrect) pillClass += ' historical-correct';
-                                      
-                                      if (status === 'active' && !isLocked) {
-                                        pillClass += ' interactable';
-                                      }
+                                    <div className="question-body">
+                                      <p className="question-text">
+                                        {q.text}
+                                        {status === 'active' && !isGloballyLocked && (
+                                          <span style={{ display: 'block', fontSize: '0.75rem', color: consensus.isTie ? 'var(--accent-crimson)' : 'var(--accent-amber)', marginTop: '0.5rem', fontFamily: 'var(--font-mono)' }}>
+                                            ↳ {consensus.isTie ? 'TIE DETECTED: AWAITING TIE-BREAKER' : `Awaiting Agent consensus: ${consensus.votesCast} / ${totalPlayers} cast`}
+                                          </span>
+                                        )}
+                                      </p>
+                                      <div className="choices-preview">
+                                        {q.choices?.map(c => {
+                                          const isSelected = localVotes[q.id] === c.id;
+                                          const isHistoricalCorrect = status === 'completed' && c.is_correct;
+                                          
+                                          let pillClass = 'choice-pill';
+                                          if (isSelected) pillClass += ' selected';
+                                          if (isHistoricalCorrect) pillClass += ' historical-correct';
+                                          
+                                          if (status === 'active' && !isLocked) {
+                                            pillClass += ' interactable';
+                                          }
 
-                                      return (
-                                        <span 
-                                          key={c.id} 
-                                          className={pillClass}
-                                          onClick={(e) => {
-                                            if (status === 'active' && !isLocked) {
-                                              handleSelectChoice(e, q.id, c, status);
-                                            }
-                                          }}
-                                        >
-                                          {c.text}
-                                        </span>
-                                      );
-                                    })}
+                                          return (
+                                            <span 
+                                              key={c.id} 
+                                              className={pillClass}
+                                              style={isSelected && status === 'active' && !isLocked ? { 
+                                                background: 'var(--bg-dark)', borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)', boxShadow: 'inset 3px 0 0 0 var(--accent-cyan)' 
+                                              } : {}}
+                                              onClick={(e) => {
+                                                if (status === 'active' && !isLocked) {
+                                                  handleSelectChoice(e, q.id, c, status);
+                                                }
+                                              }}
+                                            >
+                                              {c.text}
+                                            </span>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
                                   </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                                );
+                              })}
+                            </div>
+                          </>
+                        )}
 
                         {status === 'active' && (
                           <div className="submit-theory-container">

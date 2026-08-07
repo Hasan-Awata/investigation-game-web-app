@@ -85,7 +85,7 @@ class GameCaseSeeder extends Seeder
             'img_url' => '/assets/placeholder-mugshot.jpg',
         ]);
 
-        // 2. Create the Non-Linear Phases (Levels) - Now with 3 Initial Phases
+        // 2. Create the Non-Linear Phases (Levels)
         $phase1 = Level::create([
             'case_id' => $case->id,
             'title' => 'The Crime Scene',
@@ -122,7 +122,17 @@ class GameCaseSeeder extends Seeder
             'img_url' => '/assets/cases/Level4.png',
         ]);
 
-        // 3. Create Case Evidence - Expanded to 5 Initial Pieces
+        $phase5 = Level::create([
+            'case_id' => $case->id,
+            'title' => 'The Confession',
+            'details' => 'Anton Varga has been detained and brought into Interrogation Room B. Break his alibi and secure a confession.',
+            'order_index' => 5,
+            'is_initial' => false, // Hidden until unlocked by Phase 4
+            'img_url' => '/assets/cases/Level5.png',
+            'presentation_type' => 'interrogation', // Testing the new feature
+        ]);
+
+        // 3. Create Case Evidence
         $evidence1 = Evidence::create([
             'case_id' => $case->id,
             'is_initial' => true,
@@ -256,7 +266,34 @@ class GameCaseSeeder extends Seeder
             'msg_when_wrong' => 'Review EX-001. Someone had legitimate access to the floor hours before the murder.',
             'is_mandatory' => true,
         ]);
-        Choice::create(['question_id' => $p4q1->id, 'text' => 'The "Janitor" who badged in at 11:30 PM, whose employer is a shell company quietly owned by Thorne.', 'is_correct' => true]);
-        Choice::create(['question_id' => $p4q1->id, 'text' => 'The precinct detective who immediately ruled it a suicide.', 'is_correct' => false]);
+        Choice::create([
+            'question_id' => $p4q1->id, 
+            'text' => 'The "Janitor" who badged in at 11:30 PM, whose employer is a shell company quietly owned by Thorne.', 
+            'is_correct' => true,
+            'unlocks_level_id' => $phase5->id // Instantly unlocks the Phase 5 Interrogation Log
+        ]);
+        Choice::create([
+            'question_id' => $p4q1->id, 
+            'text' => 'The precinct detective who immediately ruled it a suicide.', 
+            'is_correct' => false
+        ]);
+
+        // PHASE 5 VERDICTS (The Confession - Interrogation Phase)
+        $p5q1 = Question::create([
+            'level_id' => $phase5->id,
+            'text' => "I already told the uniforms, I just empty the trash. I don't know anything about a hanging.",
+            'msg_when_wrong' => "He is playing dumb. Confront him with hard evidence of his specialized skills and access.",
+            'is_mandatory' => true,
+        ]);
+        Choice::create([
+            'question_id' => $p5q1->id, 
+            'text' => 'We know Thorne paid you. Just admit it.', 
+            'is_correct' => false
+        ]);
+        Choice::create([
+            'question_id' => $p5q1->id, 
+            'text' => 'A janitor doesn\'t know how to bypass an HVAC return vent without leaving a trace. But a former infiltration specialist does.', 
+            'is_correct' => true
+        ]);
     }
 }

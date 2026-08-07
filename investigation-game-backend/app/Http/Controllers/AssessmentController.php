@@ -27,10 +27,6 @@ class AssessmentController extends Controller
         return response()->json([
             'status' => $result->value['status'],    
             'message' => $result->value['message'], 
-            'unlocked_evidence' => $result->value['unlocked_evidence'] ?? [], 
-            'unlocked_levels' => $result->value['unlocked_levels'] ?? [],
-            'unlocked_suspects' => $result->value['unlocked_suspects'] ?? [],
-            'unlocked_victims' => $result->value['unlocked_victims'] ?? [],  
             'room' => $room->load('currentLevel'),  
         ], 200);
     }

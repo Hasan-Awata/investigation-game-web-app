@@ -37,10 +37,44 @@ class VotingService
             ]
         );
 
-        // Broadcast the real-time update to the rest of the room
+        // --- INSTANT NARRATIVE UNLOCKS ---
+        $unlocked = [
+            'evidence' => [],
+            'levels' => [],
+            'suspects' => [],
+            'victims' => []
+        ];
+
+        if ($choice->unlocks_evidence_id) {
+            $room->unlockedEvidences()->syncWithoutDetaching([$choice->unlocks_evidence_id]);
+            $unlocked['evidence'][] = $choice->unlocks_evidence_id;
+            \App\Events\EvidenceDiscovered::dispatch($room, [$choice->unlocks_evidence_id]);
+        }
+
+        if ($choice->unlocks_level_id) {
+            $room->unlockedLevels()->syncWithoutDetaching([$choice->unlocks_level_id]);
+            $unlocked['levels'][] = $choice->unlocks_level_id;
+        }
+
+        if ($choice->unlocks_suspect_id) {
+            $room->unlockedSuspects()->syncWithoutDetaching([$choice->unlocks_suspect_id]);
+            $unlocked['suspects'][] = $choice->unlocks_suspect_id;
+            \App\Events\SuspectDiscovered::dispatch($room, [$choice->unlocks_suspect_id]);
+        }
+
+        if ($choice->unlocks_victim_id) {
+            $room->unlockedVictims()->syncWithoutDetaching([$choice->unlocks_victim_id]);
+            $unlocked['victims'][] = $choice->unlocks_victim_id;
+            \App\Events\VictimDiscovered::dispatch($room, [$choice->unlocks_victim_id]);
+        }
+
+        // Broadcast the real-time vote update
         VoteLockedIn::dispatch($room, $vote);
 
-        return Result::success($vote);
+        return Result::success([
+            'vote' => $vote,
+            'unlocked' => $unlocked
+        ]);
     }
 
     /**

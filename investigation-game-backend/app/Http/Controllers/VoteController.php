@@ -17,7 +17,6 @@ class VoteController extends Controller
 
     public function store(Request $request, GameRoom $room, Question $question): JsonResponse
     {
-        // 1. Basic Laravel Form Validation
         $validated = $request->validate([
             'choice_id' => 'required|exists:choices,id',
         ]);
@@ -25,10 +24,8 @@ class VoteController extends Controller
         $choice = Choice::find($validated['choice_id']);
         $user = $request->user();
 
-        // 2. Execute Domain Logic
         $result = $this->votingService->lockInVote($room, $user, $question, $choice);
 
-        // 3. Handle the Result
         if ($result->isFailure()) {
             return response()->json([
                 'error' => 'Validation Failed',
@@ -38,7 +35,11 @@ class VoteController extends Controller
 
         return response()->json([
             'message' => 'Vote locked in successfully.',
-            'data' => $result->value
+            'data' => $result->value['vote'],
+            'unlocked_evidence' => $result->value['unlocked']['evidence'], 
+            'unlocked_levels' => $result->value['unlocked']['levels'],     
+            'unlocked_suspects' => $result->value['unlocked']['suspects'], 
+            'unlocked_victims' => $result->value['unlocked']['victims']    
         ], 200);
     }
 }

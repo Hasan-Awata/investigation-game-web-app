@@ -11,6 +11,7 @@ export default function LevelForm() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isInitial, setIsInitial] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [presentationType, setPresentationType] = useState<string>('standard');
 
   // Fetch cases for the dropdown
   const { data: cases = [], isLoading: isFetchingCases } = useQuery({
@@ -51,6 +52,7 @@ export default function LevelForm() {
     formData.append('details', details);
     formData.append('order_index', orderIndex);
     formData.append('is_initial', isInitial.toString());
+    formData.append('presentation_type', presentationType);
     if (image) {
       formData.append('image', image);
     }
@@ -90,6 +92,19 @@ export default function LevelForm() {
               value={orderIndex} onChange={(e) => setOrderIndex(e.target.value)} 
             />
           </div>
+
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Presentation Format</label>
+            <select 
+              className="admin-input" 
+              value={presentationType} 
+              onChange={(e) => setPresentationType(e.target.value)} 
+            >
+              <option value="standard">Standard Investigation</option>
+              <option value="interrogation">Suspect Interrogation</option>
+            </select>
+          </div>
+          
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>

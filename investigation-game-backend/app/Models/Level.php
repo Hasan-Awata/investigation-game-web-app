@@ -20,7 +20,8 @@ class Level extends Model
         'details',
         'img_url', 
         'order_index',
-        'is_initial', // NEW
+        'is_initial',
+        'presentation_type', 
     ];
 
     protected function casts(): array
