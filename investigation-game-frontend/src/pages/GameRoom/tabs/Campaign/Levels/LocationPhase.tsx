@@ -14,6 +14,11 @@ interface LocationPhaseProps {
 export default function LocationPhase({ level, status, localVotes, handleSelectChoice, currentUserId }: LocationPhaseProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
+  
+  const [clickedDeadEnds, setClickedDeadEnds] = useState<Set<number>>(() => {
+    const saved = sessionStorage.getItem(`level_${level.id}_dead_ends`);
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
 
   if (!level.questions || !level.img_url) return null;
 
@@ -30,10 +35,9 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
   const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice) => {
     e.stopPropagation();
     
-    // 1. If phase is over, or they already locked in the correct choice, block further clicks.
-    if (status !== 'active' || localVotes[qId]) return;
+    // Only block clicks entirely if the phase is no longer active
+    if (status !== 'active') return;
 
-    // 2. Did they find the actual clue?
     const isCorrectFind = choice.is_correct || !!(choice.unlocks_evidence_id || choice.unlocks_level_id || choice.unlocks_suspect_id || choice.unlocks_victim_id);
 
     if (isCorrectFind) {
@@ -42,16 +46,23 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         message: "I found something useful here. Logging it to the board.",
         isSuccess: true
       });
-      // ONLY lock the choice and send to backend if it's the correct find
-      handleSelectChoice(e, qId, choice, status);
+      // ONLY trigger the server call if they haven't already locked this clue
+      if (!localVotes[qId]) {
+        handleSelectChoice(e, qId, choice, status);
+      }
     } else {
-      setPopup({
-        title: "DEAD END",
-        message: "Nothing was found here. I should keep looking.",
-        isSuccess: false
-      });
-      // DO NOT call handleSelectChoice. They aren't penalized and can keep clicking!
-    }
+        setPopup({
+          title: "DEAD END",
+          message: "Nothing was found here. I should keep looking.",
+          isSuccess: false
+        });
+        // Mark this specific dead end as clicked so it turns grey locally
+        setClickedDeadEnds(prev => {
+          const newSet = new Set(prev).add(choice.id);
+          sessionStorage.setItem(`level_${level.id}_dead_ends`, JSON.stringify(Array.from(newSet)));
+          return newSet;
+        });
+      }
 
     setTimeout(() => setPopup(null), 2500);
   };
@@ -97,15 +108,15 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
               const x = coordParts[0].trim();
               const y = coordParts[1].trim();
 
-              const hasVotedLocally = !!localVotes[q.id];
-              // Highlight the point if they just clicked it, OR if the phase is completed and this was the historical correct answer
               const isSelected = localVotes[q.id] === choice.id || (isCompleted && choice.is_correct);
+              const isDeadEndClicked = clickedDeadEnds.has(choice.id);
 
               let zoneClass = 'loc-hover-zone';
               if (isSelected) {
-                zoneClass += ' selected'; // Applies the fixed cyan layout from your screenshot
-              } else if (isCompleted || hasVotedLocally) {
-                zoneClass += ' investigated'; // Turns unselected dead-ends grey once the clue is found
+                zoneClass += ' selected'; 
+              } else if (isCompleted || isDeadEndClicked) {
+                // Now, dead ends only turn grey if the phase is over, OR if the user manually clicked them
+                zoneClass += ' investigated'; 
               }
 
               return (
@@ -137,7 +148,7 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
               onClick={() => setIsFullscreen(true)}
               style={{ flex: 'none', width: 'auto', padding: '0.75rem 2rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}
             >
-              <span style={{ marginRight: '0.5rem', filter: 'brightness(0)' }}>👁️</span> Inspect Crime Scene
+              <span style={{ marginRight: '0.5rem'}}>👁️</span> Inspect Location
             </button>
           </div>
         </div>

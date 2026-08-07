@@ -81,9 +81,9 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
                   <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
                     <span className="speaker-label" style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
                       {consensus.isTie 
-                        ? '⚠️ TIE DETECTED: AWAITING TIE-BREAKER' 
+                        ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
                         : hasLocalVote 
-                          ? `AWAITING TEAM (${consensus.votesCast}/${totalPlayers})` 
+                          ? `VOTE CAST (${consensus.votesCast}/${totalPlayers}) - YOU MAY REASSIGN` 
                           : `SELECT RESPONSE (${consensus.votesCast}/${totalPlayers})`
                       }
                     </span>

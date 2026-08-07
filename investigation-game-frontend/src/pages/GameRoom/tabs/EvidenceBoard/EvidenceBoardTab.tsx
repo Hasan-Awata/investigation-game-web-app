@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useRoomContext } from '@/context/RoomContext';
 import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
-import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
 import type { Evidence } from '@/types';
 import EvidenceCard from './EvidenceCard';
 import EvidenceModal from './EvidenceModal'; 
+import ProceduralRequestTray from './ProceduralRequestTray';
 import './EvidenceBoardTab.css';
 
 export default function EvidenceBoardTab() {
@@ -27,12 +27,6 @@ export default function EvidenceBoardTab() {
   const handleInspect = (evidence: Evidence) => {
     setInspectedEvidence(evidence);
     markEvidenceAsViewed(evidence.id);
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const evidenceId = parseInt(e.dataTransfer.getData('evidenceId'), 10);
-    if (!isNaN(evidenceId)) addToTray(evidenceId);
   };
 
   return (
@@ -86,57 +80,16 @@ export default function EvidenceBoardTab() {
         )}
       </div>
 
-      {/* TACTICAL FILING TRAY */}
-      <div className="filing-tray glass-panel" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
-        <div className="tray-header">
-          <span className="forensic-icon">⚖️</span>
-          <h3>Procedural Request Tray</h3>
-        </div>
-        
-        <div className="tray-layout">
-          <div className="tray-dropzone">
-            {trayEvidences.length === 0 ? (
-              <span className="tray-placeholder">Drag & Drop Evidence Here</span>
-            ) : (
-              <div className="tray-items">
-                {trayEvidences.map(id => {
-                  const ev = accumulatedEvidences.find(e => e.id === id);
-                  return (
-                    <div key={id} className="tray-item-pill">
-                      <span className="tray-item-id">EX-{id.toString().padStart(3, '0')}</span>
-                      <span className="tray-item-title">{ev?.title || 'Unknown File'}</span>
-                      <button className="tray-item-remove" onClick={() => removeFromTray(id)}>×</button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          <div className="tray-actions">
-            <select 
-              className="admin-input" 
-              value={requestType} 
-              onChange={(e) => setRequestType(e.target.value)}
-              style={{ width: '100%', marginBottom: '1rem', background: 'rgba(0,0,0,0.5)' }}
-            >
-              <option value="" disabled>-- Select Request Type --</option>
-              {Object.values(InvestigationRequestType).map(type => (
-                <option key={type} value={type}>{getInvestigationRequestLabel(type)}</option>
-              ))}
-            </select>
-            
-            <button 
-              className="btn-primary" 
-              disabled={trayEvidences.length < 2 || !requestType || isSubmitting}
-              onClick={() => submitRequest()}
-              style={{ width: '100%' }}
-            >
-              {isSubmitting ? 'Filing...' : 'Submit Request to DA'}
-            </button>
-          </div>
-        </div>
-      </div>
+      <ProceduralRequestTray 
+        accumulatedEvidences={accumulatedEvidences}
+        trayEvidences={trayEvidences}
+        requestType={requestType}
+        setRequestType={setRequestType}
+        addToTray={addToTray}
+        removeFromTray={removeFromTray}
+        isSubmitting={isSubmitting}
+        submitRequest={submitRequest}
+      />
 
       <EvidenceModal evidence={inspectedEvidence} onClose={() => setInspectedEvidence(null)} />
     </div>

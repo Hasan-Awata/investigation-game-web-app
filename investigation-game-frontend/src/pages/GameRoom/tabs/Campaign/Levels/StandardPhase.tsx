@@ -26,9 +26,9 @@ export default function StandardPhase({ level, status, localVotes, totalPlayers,
           const isVisible = status === 'completed' || qIdx === 0 || (prevConsensus && prevConsensus.isResolved);
           if (!isVisible) return null;
 
-          const isGloballyLocked = consensus.isResolved;
-          const isSingleQuestionLevel = level.questions!.length === 1;
-          const isLocked = isGloballyLocked && !isSingleQuestionLevel;
+          // THE FIX: The question locks ONLY when all players have voted AND there is no tie.
+          const isLocked = consensus.isResolved; 
+          const hasLocalVote = !!localVotes[q.id];
 
           return (
             <div key={q.id} className="question-item">
@@ -42,9 +42,14 @@ export default function StandardPhase({ level, status, localVotes, totalPlayers,
               <div className="question-body">
                 <p className="question-text">
                   {q.text}
-                  {status === 'active' && !isGloballyLocked && (
+                  {status === 'active' && !isLocked && (
                     <span style={{ display: 'block', fontSize: '0.75rem', color: consensus.isTie ? 'var(--accent-crimson)' : 'var(--accent-amber)', marginTop: '0.5rem', fontFamily: 'var(--font-mono)' }}>
-                      ↳ {consensus.isTie ? 'TIE DETECTED: AWAITING TIE-BREAKER' : `Awaiting Agent consensus: ${consensus.votesCast} / ${totalPlayers} cast`}
+                      ↳ {consensus.isTie 
+                          ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
+                          : hasLocalVote 
+                            ? `Vote recorded (${consensus.votesCast} / ${totalPlayers}). You may still change your choice.` 
+                            : `Awaiting Agent consensus: ${consensus.votesCast} / ${totalPlayers} cast`
+                        }
                     </span>
                   )}
                 </p>
