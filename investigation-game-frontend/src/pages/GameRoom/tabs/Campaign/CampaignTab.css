@@ -209,3 +209,50 @@
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+.phase-subnav {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 1rem;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.phase-subnav-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.phase-subnav-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.phase-subnav-btn.active {
+  background: rgba(0, 229, 255, 0.1);
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  box-shadow: inset 0 0 10px rgba(0, 229, 255, 0.1);
+}
+
+.phase-subnav-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.phase-lock-icon {
+  font-size: 0.8rem;
+}

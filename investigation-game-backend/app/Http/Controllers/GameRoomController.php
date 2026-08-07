@@ -103,7 +103,7 @@ class GameRoomController extends Controller
     {
         $room->load([
             'host',
-            'gameCase.levels.questions.choices',
+            'gameCase.phases.levels.questions.choices', 
             'gameCase.evidences', 
             'gameCase.suspects', 
             'users.user', 

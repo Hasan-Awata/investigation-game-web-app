@@ -19,7 +19,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
 
   const isCompleted = status === 'completed';
   
-  // FALLBACK: If the backend fails to send 'assigned_user_id', show the point to everyone rather than hiding it.
   const displayQuestions = isCompleted 
     ? level.questions 
     : level.questions.filter(q => 
@@ -28,27 +27,32 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         q.assigned_user_id === null
       );
 
-  const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice, isInvestigated: boolean) => {
+  const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice) => {
     e.stopPropagation();
-    if (isInvestigated || status !== 'active') return;
+    
+    // 1. If phase is over, or they already locked in the correct choice, block further clicks.
+    if (status !== 'active' || localVotes[qId]) return;
 
-    const hasUnlock = !!(choice.unlocks_evidence_id || choice.unlocks_level_id || choice.unlocks_suspect_id || choice.unlocks_victim_id);
+    // 2. Did they find the actual clue?
+    const isCorrectFind = choice.is_correct || !!(choice.unlocks_evidence_id || choice.unlocks_level_id || choice.unlocks_suspect_id || choice.unlocks_victim_id);
 
-    if (hasUnlock) {
+    if (isCorrectFind) {
       setPopup({
         title: "LEAD DISCOVERED",
         message: "I found something useful here. Logging it to the board.",
         isSuccess: true
       });
+      // ONLY lock the choice and send to backend if it's the correct find
+      handleSelectChoice(e, qId, choice, status);
     } else {
       setPopup({
         title: "DEAD END",
-        message: "Nothing was found here, I will move on.",
+        message: "Nothing was found here. I should keep looking.",
         isSuccess: false
       });
+      // DO NOT call handleSelectChoice. They aren't penalized and can keep clicking!
     }
 
-    handleSelectChoice(e, qId, choice, status);
     setTimeout(() => setPopup(null), 2500);
   };
 
@@ -78,39 +82,44 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         <div className="location-image-wrapper">
           <img src={level.img_url} alt="Crime Scene" className="location-image-full" />
 
-          {displayQuestions.map(q => {
-            const choice = q.choices?.[0];
-            if (!choice) return null;
+          {displayQuestions.flatMap(q => {
+            return q.choices?.map(choice => {
+              
+              const parts = choice.text.split('|');
+              if (parts.length < 2) return null;
+              
+              const coords = parts[0].trim();
+              const title = parts[1].trim();
+              
+              const coordParts = coords.split(',');
+              if (coordParts.length < 2) return null;
 
-            // BULLETPROOF PARSING: Splits strictly by the pipe character and trims spaces later
-            const parts = choice.text.split('|');
-            if (parts.length < 2) {
-              console.warn(`[SYSTEM DIAGNOSTIC] Question ID ${q.id} is missing coordinate data. Expected format "X,Y | Title". Received: "${choice.text}"`);
-              return null;
-            }
-            
-            const coords = parts[0].trim();
-            const title = parts[1].trim();
-            
-            const coordParts = coords.split(',');
-            if (coordParts.length < 2) return null;
+              const x = coordParts[0].trim();
+              const y = coordParts[1].trim();
 
-            const x = coordParts[0].trim();
-            const y = coordParts[1].trim();
+              const hasVotedLocally = !!localVotes[q.id];
+              // Highlight the point if they just clicked it, OR if the phase is completed and this was the historical correct answer
+              const isSelected = localVotes[q.id] === choice.id || (isCompleted && choice.is_correct);
 
-            const isInvestigated = !!localVotes[q.id] || isCompleted;
+              let zoneClass = 'loc-hover-zone';
+              if (isSelected) {
+                zoneClass += ' selected'; // Applies the fixed cyan layout from your screenshot
+              } else if (isCompleted || hasVotedLocally) {
+                zoneClass += ' investigated'; // Turns unselected dead-ends grey once the clue is found
+              }
 
-            return (
-              <div
-                key={q.id}
-                className={`loc-hover-zone ${isInvestigated ? 'investigated' : ''}`}
-                style={{ top: `${y}%`, left: `${x}%` }}
-                onClick={(e) => handlePointClick(e, q.id, choice, isInvestigated)}
-              >
-                <div className="loc-crosshair"></div>
-                <div className="loc-tooltip">{title}</div>
-              </div>
-            );
+              return (
+                <div
+                  key={choice.id}
+                  className={zoneClass}
+                  style={{ top: `${y}%`, left: `${x}%` }}
+                  onClick={(e) => handlePointClick(e, q.id, choice)}
+                >
+                  <div className="loc-crosshair"></div>
+                  <div className="loc-tooltip">{title}</div>
+                </div>
+              );
+            });
           })}
         </div>
       </div>
@@ -126,15 +135,9 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
             <button 
               className="btn-primary" 
               onClick={() => setIsFullscreen(true)}
-              style={{ 
-                flex: 'none',          /* Kills the global stretching behavior */
-                width: 'auto',         /* Forces the button to wrap its text */
-                padding: '0.75rem 2rem', /* Tighter padding for a floating action button */
-                borderRadius: '50px',  /* A pill shape looks much better floating over an image */
-                boxShadow: '0 4px 15px rgba(0,0,0,0.5)' /* Drops a shadow to detach it from the image */
-              }}
+              style={{ flex: 'none', width: 'auto', padding: '0.75rem 2rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}
             >
-              Inspect Location
+              <span style={{ marginRight: '0.5rem', filter: 'brightness(0)' }}>👁️</span> Inspect Crime Scene
             </button>
           </div>
         </div>

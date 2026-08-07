@@ -4,6 +4,7 @@ import { createAdminLevel, fetchAdminCases } from '@/services/adminApi';
 
 export default function LevelForm() {
   const [caseId, setCaseId] = useState('');
+  const [phaseId, setPhaseId] = useState(''); 
   const [title, setTitle] = useState('');
   const [details, setDetails] = useState('');
   const [orderIndex, setOrderIndex] = useState('1');
@@ -42,12 +43,13 @@ export default function LevelForm() {
     }
   });
 
+  const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
+  const availablePhases = selectedCase?.phases || [];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setFeedback(null);
-
     const formData = new FormData();
-    formData.append('case_id', caseId);
+    formData.append('phase_id', phaseId);
     formData.append('title', title);
     formData.append('details', details);
     formData.append('order_index', orderIndex);
@@ -85,6 +87,14 @@ export default function LevelForm() {
             </select>
           </div>
           
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Target Phase</label>
+            <select className="admin-input" required value={phaseId} onChange={(e) => setPhaseId(e.target.value)} disabled={!caseId}>
+              <option value="" disabled>-- Select a Phase --</option>
+              {availablePhases.map((p: any) => <option key={p.id} value={p.id}>{p.order_index}: {p.title}</option>)}
+            </select>
+          </div>
+
           <div className="form-group" style={{ flex: 1 }}>
             <label>Phase Order Index</label>
             <input 

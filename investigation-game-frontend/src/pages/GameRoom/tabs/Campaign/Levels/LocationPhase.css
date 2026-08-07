@@ -146,28 +146,39 @@
   transform: translateY(0);
 }
 
-/* --- INVESTIGATED STATE --- */
+/* --- SELECTED STATE (Pre-Submit) --- */
+.loc-hover-zone.selected {
+  background: rgba(0, 229, 255, 0.15);
+  border: 1px solid var(--accent-cyan);
+}
+
+.loc-hover-zone.selected .loc-crosshair {
+  background: var(--accent-cyan);
+  transform: scale(1.5);
+  box-shadow: 0 0 15px 5px rgba(0, 229, 255, 0.4);
+}
+
+.loc-hover-zone.selected .loc-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --- INVESTIGATED STATE (Post-Submit / Completed Phase) --- */
 .loc-hover-zone.investigated {
+  border: 1px dashed rgba(255,255,255,0.2);
   cursor: default;
 }
 
 .loc-hover-zone.investigated .loc-crosshair {
-  background: rgba(255, 255, 255, 0.2);
-  width: 12px;
-  height: 12px;
+  background: var(--text-secondary);
 }
 
 .loc-hover-zone.investigated:hover {
   background: transparent;
 }
 
-.loc-hover-zone.investigated:hover .loc-crosshair {
-  transform: scale(1);
-  box-shadow: none;
-}
-
 .loc-hover-zone.investigated .loc-tooltip {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255,255,255,0.2);
   color: var(--text-secondary);
 }
 

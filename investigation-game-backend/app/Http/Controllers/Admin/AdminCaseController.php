@@ -78,8 +78,8 @@ public function store(Request $request): JsonResponse
     public function index(): JsonResponse
     {
         $cases = GameCase::with([
-            'levels' => function ($query) {
-                $query->select('id', 'case_id', 'title', 'order_index', 'presentation_type', 'img_url')->orderBy('order_index', 'asc');
+            'phases.levels' => function ($query) {
+                $query->select('id', 'phase_id', 'title', 'order_index', 'presentation_type', 'img_url')->orderBy('order_index', 'asc');
             },
             'evidences:id,case_id,title,is_initial'
         ])

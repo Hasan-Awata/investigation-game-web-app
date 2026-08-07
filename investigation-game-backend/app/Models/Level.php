@@ -16,7 +16,7 @@ class Level extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'case_id',
+        'phase_id', 
         'title',
         'details',
         'img_url', 
@@ -49,11 +49,11 @@ class Level extends Model
     }
 
     /**
-     * A level belongs to a specific parent case.
+     * A level belongs to a specific parent phase.
      */
-    public function gameCase(): BelongsTo
+    public function phase(): BelongsTo
     {
-        return $this->belongsTo(GameCase::class, 'case_id');
+        return $this->belongsTo(Phase::class, 'phase_id');
     }
 
     /**

@@ -58,7 +58,7 @@ export interface GameCase {
   author_name?: string;
   img_url?: string; 
   active_room_invite_code?: string; 
-  levels?: Level[]; 
+  phases?: Phase[]; 
   evidences?: Evidence[]; 
   suspects?: Suspect[];
   victims?: Victim[];
@@ -147,9 +147,18 @@ export const LevelPresentationType = {
 
 export type LevelPresentationType = typeof LevelPresentationType[keyof typeof LevelPresentationType];
 
-export interface Level {
+export interface Phase {
   id: number;
   case_id: number;
+  title: string;
+  description?: string;
+  order_index: number;
+  levels?: Level[]; 
+}
+
+export interface Level {
+  id: number;
+  phase_id: number;
   title: string;
   details: string;
   img_url?: string; 

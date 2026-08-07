@@ -15,7 +15,7 @@ class AdminLevelController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'case_id' => 'required|exists:cases,id',
+            'phase_id' => 'required|exists:phases,id', 
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
@@ -43,10 +43,11 @@ class AdminLevelController extends Controller
         }
 
         $level = Level::create([
-            'case_id' => $validated['case_id'],
+            'phase_id' => $validated['phase_id'], 
             'title' => $validated['title'],
             'details' => $validated['details'],
             'order_index' => $validated['order_index'],
+            'is_initial' => filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN),
             'presentation_type' => $validated['presentation_type'], 
             'img_url' => $imageUrl,
         ]);

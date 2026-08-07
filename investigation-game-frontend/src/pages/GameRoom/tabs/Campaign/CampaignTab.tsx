@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRoomContext } from '../../../../context/RoomContext';
 import { useInvestigationPhase } from '../../../../hooks/useInvestigationPhase';
 import type { Question } from '../../../../types';
@@ -11,7 +11,8 @@ import './CampaignTab.css';
 export default function CampaignTab() {
   const { room, refreshRoomData } = useRoomContext();
   
-  const levels = room.game_case?.levels || [];
+  // Now iterating over phases instead of flat levels
+  const phases = room.game_case?.phases || [];
   const currentLevelId = room.current_level_id;
   const roomStatus = room.status;
 
@@ -33,16 +34,29 @@ export default function CampaignTab() {
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  // --- NARRATIVE VISIBILITY MASKING ---
+  // --- HIERARCHICAL MASKING ---
   const unlockedLevelIds = new Set(room.unlocked_levels?.map(l => l.id) || []);
-  const sortedLevels = [...levels].sort((a, b) => a.order_index - b.order_index);
+  const sortedPhases = [...phases].sort((a, b) => a.order_index - b.order_index);
+
+  // Auto-select the most relevant Phase on load
+  const [activePhaseId, setActivePhaseId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (activePhaseId === null && sortedPhases.length > 0) {
+      // Find the "highest" phase that contains at least one unlocked/initial level
+      const activeOrHighestUnlockedPhase = [...sortedPhases].reverse().find(p => 
+        p.levels?.some(l => l.is_initial || unlockedLevelIds.has(l.id))
+      );
+      setActivePhaseId(activeOrHighestUnlockedPhase?.id || sortedPhases[0].id);
+    }
+  }, [sortedPhases, unlockedLevelIds, activePhaseId]);
 
   const toggleExpand = (levelId: number, status: string) => {
     if (status === 'locked') return; 
     setExpandedId(expandedId === levelId ? null : levelId);
   };
 
-  // --- UPGRADED GLOBAL CONSENSUS ENGINE ---
+  // --- CONSENSUS ENGINE ---
   const totalPlayers = room.users?.length || 1; 
 
   const getQuestionConsensus = (question: Question) => {
@@ -53,55 +67,64 @@ export default function CampaignTab() {
     room.votes?.forEach(v => {
       if (v.question_id === question.id) {
         const role = participants.find(p => p.user_id === v.user_id)?.role || 'participant';
-        const weight = role === 'host' ? 2 : 1; // Host vote carries double weight
+        const weight = role === 'host' ? 2 : 1; 
         tally[v.choice_id] = (tally[v.choice_id] || 0) + weight;
         votesCast++;
       }
     });
 
-    // LOCATION PHASE EXCEPTION: Only requires the assigned user's vote
     if (question.assigned_user_id !== undefined && question.assigned_user_id !== null) {
       const assignedVote = room.votes?.find(v => v.question_id === question.id && v.user_id === question.assigned_user_id);
-      return {
-        votesCast,
-        isResolved: !!assignedVote,
-        isTie: false,
-        winningChoiceId: assignedVote ? assignedVote.choice_id : null
-      };
+      return { votesCast, isResolved: !!assignedVote, isTie: false, winningChoiceId: assignedVote ? assignedVote.choice_id : null };
     }
 
-    if (votesCast < totalPlayers) {
-      return { votesCast, isResolved: false, isTie: false, winningChoiceId: null };
-    }
+    if (votesCast < totalPlayers) return { votesCast, isResolved: false, isTie: false, winningChoiceId: null };
 
-    // Everyone voted. Check if it's a tie or a clear victory.
-    let maxWeight = -1;
-    let isTie = false;
-    let winningChoiceId = null;
-
+    let maxWeight = -1, isTie = false, winningChoiceId = null;
     for (const [cId, weight] of Object.entries(tally)) {
-      if (weight > maxWeight) {
-        maxWeight = weight;
-        winningChoiceId = Number(cId);
-        isTie = false;
-      } else if (weight === maxWeight) {
-        isTie = true;
-      }
+      if (weight > maxWeight) { maxWeight = weight; winningChoiceId = Number(cId); isTie = false; } 
+      else if (weight === maxWeight) { isTie = true; }
     }
-
-    return {
-      votesCast,
-      isResolved: !isTie, // It is ONLY resolved if everyone voted AND there's no tie
-      isTie,
-      winningChoiceId: isTie ? null : winningChoiceId
-    };
+    return { votesCast, isResolved: !isTie, isTie, winningChoiceId: isTie ? null : winningChoiceId };
   };
+
+  // Grab the currently active phase and its levels
+  const activePhaseData = sortedPhases.find(p => p.id === activePhaseId);
+  const sortedLevels = activePhaseData?.levels ? [...activePhaseData.levels].sort((a, b) => a.order_index - b.order_index) : [];
 
   return (
     <div className="campaign-roadmap-container">
-      <h2 className="section-title">Investigation Phases</h2>
       
-      {/* --- FEEDBACK MODAL (PERSONA INTERCEPT) --- */}
+      {/* PHASE SUB-NAVIGATION */}
+      <div className="phase-subnav">
+        {sortedPhases.map((phase) => {
+          // A phase is "unlocked" if ANY level inside it is initial or unlocked by a choice
+          const isPhaseUnlocked = phase.levels?.some(l => l.is_initial || unlockedLevelIds.has(l.id));
+
+          return (
+            <button
+              key={phase.id}
+              className={`phase-subnav-btn ${activePhaseId === phase.id ? 'active' : ''}`}
+              disabled={!isPhaseUnlocked}
+              onClick={() => { setActivePhaseId(phase.id); setExpandedId(null); }}
+            >
+              {!isPhaseUnlocked && <span className="phase-lock-icon">🔒</span>}
+              {phase.title}
+            </button>
+          );
+        })}
+      </div>
+
+      <div style={{ marginBottom: '2rem' }}>
+        <h2 className="section-title">{activePhaseData?.title || 'Unknown Phase'}</h2>
+        {activePhaseData?.description && (
+          <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+            {activePhaseData.description}
+          </p>
+        )}
+      </div>
+
+      {/* --- FEEDBACK MODAL --- */}
       {feedback && (
         <div className="feedback-modal-overlay">
           <div className={`feedback-modal-content ${feedback.type}`}>
@@ -141,38 +164,30 @@ export default function CampaignTab() {
         ))}
       </div>
 
-      {/* --- NON-LINEAR ROADMAP --- */}
+      {/* --- NON-LINEAR ROADMAP (Mapped to Active Phase's Levels) --- */}
       <div className="roadmap-timeline">
+        {sortedLevels.length === 0 && (
+          <div className="terminal-text" style={{ padding: 0, textAlign: 'left' }}>No leads currently available in this phase.</div>
+        )}
+        
         {sortedLevels.map((level) => {
-          // 1. Determine if the level is even discovered yet
           const isDiscovered = level.is_initial || unlockedLevelIds.has(level.id);
-          
-          // 2. State Machine
           const isCompleted = room.completed_levels?.some(cl => cl.id === level.id);
           const isActive = currentLevelId === level.id;
           const isAnotherPhaseRunning = currentLevelId !== null;
 
           let status = 'available';
-          if (!isDiscovered) {
-            status = 'locked'; // Undiscovered levels are strictly locked
-          } else if (roomStatus === 'solved' || isCompleted) {
-            status = 'completed'; 
-          } else if (isActive) {
-            status = 'active';
-          } else if (isAnotherPhaseRunning) {
-            status = 'locked'; 
-          }
+          if (!isDiscovered) status = 'locked'; 
+          else if (roomStatus === 'solved' || isCompleted) status = 'completed'; 
+          else if (isActive) status = 'active';
+          else if (isAnotherPhaseRunning) status = 'locked'; 
 
           const isExpanded = expandedId === level.id;
           const mandatoryQuestions = level.questions?.filter(q => q.is_mandatory) || [];
-          
-          // Button is only enabled when every mandatory question is fully resolved (no ties)
           const allMandatoryAnswered = mandatoryQuestions.every(q => getQuestionConsensus(q).isResolved);
 
-          // 3. UI Content Masking
           const displayTitle = isDiscovered ? level.title : 'Encounter Undiscovered';
           const displayDesc = isDiscovered ? level.details : 'This path remains hidden. You must deduce the correct narrative link in an available phase to unlock this lead.';
-          const displayPhase = isDiscovered ? `Phase ${level.order_index}` : 'Unknown Phase';
 
           return (
             <div key={level.id} className={`roadmap-node ${status}`}>
@@ -193,7 +208,7 @@ export default function CampaignTab() {
                     <div className="node-image-overlay"></div>
                   </div>
                   <div className="node-details">
-                    <span className="node-phase">{displayPhase}</span>
+                    <span className="node-phase">Lead {level.order_index}</span>
                     <h3 className="node-title">{displayTitle}</h3>
                     <p className="node-desc">{displayDesc}</p>
                     {status === 'active' && <div className="active-badge">Active Investigation</div>}
@@ -203,7 +218,6 @@ export default function CampaignTab() {
                 {isExpanded && isDiscovered && (
                   <div className="node-questions-drawer" onClick={(e) => e.stopPropagation()}>
                     
-                    {/* INITIATION BLOCK */}
                     {status === 'available' && (
                       <div style={{ textAlign: 'center', padding: '1rem' }}>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontFamily: 'var(--font-mono)' }}>
@@ -219,7 +233,6 @@ export default function CampaignTab() {
                       </div>
                     )}
 
-                    {/* DYNAMIC PRESENTATION ROUTER */}
                     {(status === 'active' || status === 'completed') && level.questions && (
                       <>
                         {level.presentation_type === 'interrogation' ? (
@@ -241,7 +254,7 @@ export default function CampaignTab() {
                           />
                         )}
 
-                        {/* UNIVERSAL SUBMIT BUTTON */}
+                        {/* UNIVERSAL SUBMIT BUTTON WITH LOCATION EXCEPTION */}
                         {status === 'active' && (
                           <div className="submit-theory-container">
                             <button 

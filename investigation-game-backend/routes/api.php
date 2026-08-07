@@ -9,6 +9,7 @@ use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\InvestigationRequestController; 
 use App\Http\Controllers\SuspectVerdictController;
 use App\Http\Controllers\Admin\AdminCaseController;
+use App\Http\Controllers\Admin\AdminPhaseController;
 use App\Http\Controllers\Admin\AdminLevelController;
 use App\Http\Controllers\Admin\AdminEvidenceController;
 use App\Http\Controllers\Admin\AdminQuestionController;
@@ -45,7 +46,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
         Route::get('/cases', [AdminCaseController::class, 'index']); 
         Route::post('/cases', [AdminCaseController::class, 'store']);
-        Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']); 
+        Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']);
+        Route::post('/phases', [AdminPhaseController::class, 'store']);  
         Route::post('/levels', [AdminLevelController::class, 'store']);
         Route::post('/evidences', [AdminEvidenceController::class, 'store']);
         Route::post('/questions', [AdminQuestionController::class, 'store']);

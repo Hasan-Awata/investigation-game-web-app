@@ -191,3 +191,26 @@ export const createAdminInvestigationRequest = async (formData: FormData): Promi
     return failure(error instanceof Error ? error.message : 'Network error');
   }
 };
+
+export const createAdminPhase = async (formData: FormData): Promise<Result<any>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/phases`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: formData,
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) handleUnauthorized();
+      const data = await response.json().catch(() => ({}));
+      return failure(data.message || 'Failed to create phase.');
+    }
+    
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};

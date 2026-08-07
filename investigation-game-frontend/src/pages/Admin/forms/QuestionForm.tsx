@@ -12,6 +12,7 @@ interface ChoiceState {
 
 export default function QuestionForm() {
   const [selectedCaseId, setSelectedCaseId] = useState('');
+  const [phaseId, setPhaseId] = useState(''); // NEW Phase tracker
   const [levelId, setLevelId] = useState('');
   
   const [text, setText] = useState('');
@@ -19,7 +20,6 @@ export default function QuestionForm() {
   const [isMandatory, setIsMandatory] = useState(true); 
   const [image, setImage] = useState<File | null>(null);
   
-  // NEW: State to track which choice is currently listening for an image click
   const [activeCoordinateTarget, setActiveCoordinateTarget] = useState<string | null>(null);
   
   const [choices, setChoices] = useState<ChoiceState[]>([
@@ -39,8 +39,11 @@ export default function QuestionForm() {
     }
   });
 
+  // HIERARCHICAL LOOKUPS
   const selectedCase = cases.find((c: any) => c.id.toString() === selectedCaseId);
-  const availableLevels = selectedCase?.levels || [];
+  const availablePhases = selectedCase?.phases || [];
+  const selectedPhase = availablePhases.find((p: any) => p.id.toString() === phaseId);
+  const availableLevels = selectedPhase?.levels || [];
   const availableEvidences = selectedCase?.evidences || []; 
 
   // Look up the selected level to check its presentation_type and grab its image
@@ -71,22 +74,15 @@ export default function QuestionForm() {
     }
   });
 
-  // --- NEW: THE MATH FOR THE VISUAL PICKER ---
   const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!activeCoordinateTarget) return;
 
-    // Get the exact dimensions and position of the image container on the screen
     const rect = e.currentTarget.getBoundingClientRect();
-    
-    // Calculate the click position relative to the image boundaries
     const xRelative = e.clientX - rect.left;
     const yRelative = e.clientY - rect.top;
-    
-    // Convert to strict percentages (0 to 100) and round to 1 decimal for clean coordinates
     const xPercent = ((xRelative / rect.width) * 100).toFixed(1);
     const yPercent = ((yRelative / rect.height) * 100).toFixed(1);
 
-    // Grab the existing title if one exists, otherwise default to 'New Point'
     const targetChoice = choices.find(c => c.id === activeCoordinateTarget);
     let title = 'New Point';
     if (targetChoice && targetChoice.text.includes('|')) {
@@ -95,10 +91,7 @@ export default function QuestionForm() {
       title = targetChoice.text.trim();
     }
 
-    // Format and save the string
     updateChoiceText(activeCoordinateTarget, `${xPercent},${yPercent} | ${title}`);
-    
-    // Disengage the targeting system
     setActiveCoordinateTarget(null);
   };
 
@@ -127,7 +120,7 @@ export default function QuestionForm() {
     }
 
     const formData = new FormData();
-    formData.append('level_id', levelId);
+    formData.append('level_id', levelId); // Even with phase introduced, Questions still attach directly to Levels
     formData.append('text', text);
     formData.append('is_mandatory', isMandatory ? '1' : '0'); 
     if (msgWhenWrong) formData.append('msg_when_wrong', msgWhenWrong);
@@ -153,7 +146,7 @@ export default function QuestionForm() {
           <div className="form-group" style={{ flex: 1 }}>
             <label>Target Case</label>
             <select className="admin-input" required value={selectedCaseId} disabled={isFetchingCases}
-              onChange={(e) => { setSelectedCaseId(e.target.value); setLevelId(''); setActiveCoordinateTarget(null); }} 
+              onChange={(e) => { setSelectedCaseId(e.target.value); setPhaseId(''); setLevelId(''); setActiveCoordinateTarget(null); }} 
             >
               <option value="" disabled>-- Select a Case --</option>
               {cases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
@@ -161,15 +154,24 @@ export default function QuestionForm() {
           </div>
 
           <div className="form-group" style={{ flex: 1 }}>
-            <label>Target Level</label>
-            <select className="admin-input" required value={levelId} onChange={(e) => { setLevelId(e.target.value); setActiveCoordinateTarget(null); }} disabled={!selectedCaseId}>
+            <label>Target Phase</label>
+            <select className="admin-input" required value={phaseId} disabled={!selectedCaseId}
+              onChange={(e) => { setPhaseId(e.target.value); setLevelId(''); setActiveCoordinateTarget(null); }} 
+            >
               <option value="" disabled>-- Select a Phase --</option>
-              {availableLevels.map((l: any) => <option key={l.id} value={l.id}>Phase {l.order_index}: {l.title}</option>)}
+              {availablePhases.map((p: any) => <option key={p.id} value={p.id}>{p.order_index}: {p.title}</option>)}
+            </select>
+          </div>
+
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Target Level</label>
+            <select className="admin-input" required value={levelId} onChange={(e) => { setLevelId(e.target.value); setActiveCoordinateTarget(null); }} disabled={!phaseId}>
+              <option value="" disabled>-- Select a Level --</option>
+              {availableLevels.map((l: any) => <option key={l.id} value={l.id}>Lead {l.order_index}: {l.title}</option>)}
             </select>
           </div>
         </div>
 
-        {/* NEW: THE VISUAL LOCATION PICKER */}
         {isLocationPhase && selectedLevel?.img_url && (
           <div className="coordinate-picker-container">
             <div className="coordinate-picker-header">
@@ -242,7 +244,6 @@ export default function QuestionForm() {
                       value={choice.text} onChange={(e) => updateChoiceText(choice.id, e.target.value)} 
                     />
 
-                    {/* NEW: THE CROSSHAIR TARGETING BUTTON */}
                     {isLocationPhase && selectedLevel?.img_url && (
                       <button 
                         type="button" 
@@ -262,8 +263,7 @@ export default function QuestionForm() {
                       ×
                     </button>
                   </div>
-                  
-                  {/* ... unlock dropdowns ... */}            
+                             
                   <div style={{ display: 'flex', alignItems: 'center', paddingLeft: isLocationPhase ? '0' : '2.5rem' }}>
                     <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Evidence:</label>
                     <select className="admin-input" style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }} value={choice.unlocks_evidence_id || ''} onChange={(e) => updateChoiceEvidence(choice.id, e.target.value)}>
@@ -273,10 +273,14 @@ export default function QuestionForm() {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', paddingLeft: isLocationPhase ? '0' : '2.5rem', marginTop: '0.5rem' }}>
-                    <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Phase:</label>
+                    <label style={{ fontSize: '0.85rem', color: 'var(--accent-amber)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Unlocks Next Phase:</label>
                     <select className="admin-input" style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }} value={choice.unlocks_level_id || ''} onChange={(e) => updateChoiceText(choice.id, e.target.value)}>
                       <option value="">-- No Phase Unlock --</option>
-                      {availableLevels.map((l: any) => <option key={l.id} value={l.id}>Phase {l.order_index}: {l.title}</option>)}
+                      {availablePhases.flatMap((p: any) => 
+                        p.levels?.map((l: any) => (
+                          <option key={l.id} value={l.id}>{p.title} - Lead {l.order_index}: {l.title}</option>
+                        ))
+                      )}
                     </select>
                   </div>
 

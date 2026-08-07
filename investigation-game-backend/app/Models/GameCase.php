@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Casts\Attribute; 
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class GameCase extends Model
 {
@@ -45,9 +46,14 @@ class GameCase extends Model
     /**
      * A case is divided into sequential levels.
      */
-    public function levels(): HasMany
+    public function levels(): HasManyThrough
     {
-        return $this->hasMany(Level::class, 'case_id');
+    return $this->hasManyThrough(Level::class, Phase::class, 'case_id', 'phase_id');
+    }
+
+    public function phases(): HasMany
+    {
+        return $this->hasMany(Phase::class, 'case_id');
     }
 
     public function evidences(): HasMany
