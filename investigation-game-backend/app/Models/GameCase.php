@@ -61,6 +61,11 @@ class GameCase extends Model
         return $this->hasMany(Evidence::class, 'case_id');
     }
 
+    public function investigationRequests(): HasMany
+    {
+        return $this->hasMany(InvestigationRequest::class, 'case_id');
+    }
+    
     /**
      * A case can have multiple multiplayer rooms instantiated from it.
      */

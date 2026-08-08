@@ -44,14 +44,34 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin Dashboard Routes
     Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
+        // GET (Fetch)
         Route::get('/cases', [AdminCaseController::class, 'index']); 
+        
+        // POST (Create)
         Route::post('/cases', [AdminCaseController::class, 'store']);
-        Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']);
         Route::post('/phases', [AdminPhaseController::class, 'store']);  
         Route::post('/levels', [AdminLevelController::class, 'store']);
         Route::post('/evidences', [AdminEvidenceController::class, 'store']);
         Route::post('/questions', [AdminQuestionController::class, 'store']);
         Route::post('/suspects', [AdminSuspectController::class, 'store']);
         Route::post('/investigation-requests', [AdminInvestigationRequestController::class, 'store']);        
+        
+        // PUT (Update)
+        Route::put('/cases/{case}', [AdminCaseController::class, 'update']);
+        Route::put('/phases/{phase}', [AdminPhaseController::class, 'update']);
+        Route::put('/levels/{level}', [AdminLevelController::class, 'update']);
+        Route::put('/evidences/{evidence}', [AdminEvidenceController::class, 'update']);
+        Route::put('/questions/{question}', [AdminQuestionController::class, 'update']);
+        Route::put('/suspects/{suspect}', [AdminSuspectController::class, 'update']);
+        Route::put('/investigation-requests/{request}', [AdminInvestigationRequestController::class, 'update']);
+        
+        // DELETE (Destroy)
+        Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']);
+        Route::delete('/phases/{phase}', [AdminPhaseController::class, 'destroy']);
+        Route::delete('/levels/{level}', [AdminLevelController::class, 'destroy']);
+        Route::delete('/evidences/{evidence}', [AdminEvidenceController::class, 'destroy']);
+        Route::delete('/questions/{question}', [AdminQuestionController::class, 'destroy']);
+        Route::delete('/suspects/{suspect}', [AdminSuspectController::class, 'destroy']);
+        Route::delete('/investigation-requests/{request}', [AdminInvestigationRequestController::class, 'destroy']);
     });
 });

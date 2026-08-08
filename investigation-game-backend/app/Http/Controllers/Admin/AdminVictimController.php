@@ -3,12 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Suspect;
+use App\Models\Victim;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Cloudinary\Cloudinary;
 
-class AdminSuspectController extends Controller
+class AdminVictimController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
@@ -17,57 +17,35 @@ class AdminSuspectController extends Controller
             'name' => 'required|string|max:255',
             'background' => 'nullable|string',
             'is_initial' => 'required|boolean',
-            'is_guilty' => 'required|boolean', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
-        ]);
-
-        $cloudinary = new Cloudinary([
-            'cloud' => [
-                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                'api_key'    => env('CLOUDINARY_API_KEY'),
-                'api_secret' => env('CLOUDINARY_API_SECRET'),
-            ],
-            'url' => [
-                'secure' => true
-            ]
         ]);
 
         $imageUrl = null;
         if ($request->hasFile('image')) {
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'suspects/images'
-            ]);
+            $cloudinary = new Cloudinary(['cloud' => ['cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 'api_key' => env('CLOUDINARY_API_KEY'), 'api_secret' => env('CLOUDINARY_API_SECRET')], 'url' => ['secure' => true]]);
+            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), ['folder' => 'victims/images']);
             $imageUrl = $upload['secure_url'];
         }
 
-        $suspect = Suspect::create([
-            'case_id' => $validated['case_id'],
-            'name' => $validated['name'],
-            'background' => $validated['background'] ?? null,
-            'is_initial' => $validated['is_initial'],
-            'is_guilty' => $validated['is_guilty'], // NEW
-            'img_url' => $imageUrl,
-        ]);
-
-        return response()->json(['message' => 'Suspect added successfully.', 'suspect' => $suspect], 201);
+        $victim = Victim::create(array_merge($validated, ['img_url' => $imageUrl]));
+        return response()->json(['message' => 'Victim filed.', 'victim' => $victim], 201);
     }
 
     public function update(Request $request, $id): JsonResponse
     {
-        $suspect = Suspect::findOrFail($id);
+        $victim = Victim::findOrFail($id);
         
         $validated = $request->validate([
             'case_id' => 'required|exists:cases,id',
             'name' => 'required|string|max:255',
             'background' => 'nullable|string',
             'is_initial' => 'required|boolean',
-            'is_guilty' => 'required|boolean', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
         if ($request->hasFile('image')) {
             // Wipe old mugshot
-            $this->deleteCloudinaryMedia($suspect->img_url);
+            $this->deleteCloudinaryMedia($victim->img_url);
 
             $cloudinary = new \Cloudinary\Cloudinary([
                 'cloud' => [
@@ -79,22 +57,22 @@ class AdminSuspectController extends Controller
             ]);
 
             $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'suspects/images'
+                'folder' => 'victims/images'
             ]);
             $validated['img_url'] = $upload['secure_url'];
         }
 
-        $suspect->update($validated);
+        $victim->update($validated);
         
-        return response()->json(['message' => 'Suspect profile updated.', 'suspect' => $suspect], 200);
+        return response()->json(['message' => 'Victim profile updated.', 'victim' => $victim], 200);
     }
 
     public function destroy($id): JsonResponse
     {
-        $suspect = Suspect::findOrFail($id);
-        $this->deleteCloudinaryMedia($suspect->img_url);
-        $suspect->delete();
-        return response()->json(['message' => 'Suspect deleted.'], 200);
+        $victim = Victim::findOrFail($id);
+        $this->deleteCloudinaryMedia($victim->img_url);
+        $victim->delete();
+        return response()->json(['message' => 'Victim deleted.'], 200);
     }
 
     private function deleteCloudinaryMedia(?string $url): void

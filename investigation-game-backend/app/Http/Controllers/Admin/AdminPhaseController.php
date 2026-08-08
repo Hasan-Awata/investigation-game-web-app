@@ -25,4 +25,24 @@ class AdminPhaseController extends Controller
             'phase' => $phase
         ], 201);
     }
+
+    public function update(Request $request, $id): JsonResponse
+    {
+        $phase = Phase::findOrFail($id);
+        $validated = $request->validate([
+            'case_id' => 'required|exists:cases,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'order_index' => 'required|integer|min:1',
+        ]);
+        $phase->update($validated);
+        return response()->json(['message' => 'Phase updated.', 'phase' => $phase], 200);
+    }
+
+    public function destroy($id): JsonResponse
+    {
+        $phase = Phase::findOrFail($id);
+        $phase->delete();
+        return response()->json(['message' => 'Phase deleted.'], 200);
+    }
 }
