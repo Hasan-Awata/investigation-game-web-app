@@ -141,7 +141,13 @@ export default function VictimForm() {
 
           <div className="form-group"><label>Full Name / Alias</label><input type="text" className="admin-input" required value={name} onChange={(e) => setName(e.target.value)} /></div>
           <div className="form-group"><label>Background Intel</label><textarea className="admin-textarea" value={background} onChange={(e) => setBackground(e.target.value)} /></div>
-          <div className="form-group"><label>Mugshot {editingId && '(Leave blank to keep existing)'}</label><input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} /></div>
+          <div className="form-group">
+            <label>Mugshot {editingId && '(Leave blank to keep existing)'}</label>
+            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+              <strong>Optimal:</strong> 1:1 (Square) ratio. Face centered. Min 400x400px. WEBP or JPG. Max 4MB.
+            </p>
+            <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+          </div>
 
           <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>
             {isProcessing ? 'Processing Data...' : editingId ? 'Update Victim' : 'Commit Victim to Database'}

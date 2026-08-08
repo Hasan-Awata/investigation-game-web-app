@@ -306,6 +306,9 @@ export default function QuestionForm() {
 
           <div className="form-group">
             <label>Question Image {editingId && '(Leave blank to keep existing)'}</label>
+            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+              <strong>Optimal:</strong> 16:9 or 4:3 ratio. Useful for visual diagrams, specific clues, or maps. Max 4MB.
+            </p>
             <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
           </div>
 

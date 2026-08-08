@@ -245,6 +245,9 @@ export default function CaseForm() {
           
           <div className="form-group">
             <label>Cover Image {editingCaseId && '(Leave blank to keep existing image)'}</label>
+            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+              <strong>Optimal:</strong> 1:1 (Square) or 16:9 ratio. Min 800x800px. WEBP or JPG format. Max 4MB.
+            </p>
             <input 
               type="file" className="admin-file-input" accept="image/*"
               ref={fileInputRef}

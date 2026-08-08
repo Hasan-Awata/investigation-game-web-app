@@ -179,8 +179,25 @@ export default function EvidenceForm() {
           <div className="form-group"><label>Short Description</label><input type="text" className="admin-input" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
           <div className="form-group"><label>Text Content (Markdown)</label><textarea className="admin-textarea" value={paragraph} onChange={(e) => setParagraph(e.target.value)} /></div>
 
-          {evidenceType === 'image' && <div className="form-group"><label>Evidence Image</label><input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} /></div>}
-          {evidenceType === 'audio' && <div className="form-group"><label>Audio Recording</label><input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} /></div>}
+          {evidenceType === 'image' && (
+            <div className="form-group">
+              <label>Evidence Image</label>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                <strong>Optimal:</strong> 1:1 or 3:4 portrait. Ensure written text is legible. WEBP or JPG. Max 4MB.
+              </p>
+              <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+            </div>
+          )}
+          
+          {evidenceType === 'audio' && (
+            <div className="form-group">
+              <label>Audio Recording</label>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                <strong>Optimal:</strong> MP3 or WAV format. Compressed for web streaming. Max 10MB.
+              </p>
+              <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
+            </div>
+          )}
 
           <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>
             {isProcessing ? 'Processing Data...' : editingId ? 'Update Evidence' : 'Commit Evidence'}

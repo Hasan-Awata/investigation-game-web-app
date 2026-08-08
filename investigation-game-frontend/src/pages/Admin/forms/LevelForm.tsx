@@ -198,7 +198,14 @@ export default function LevelForm() {
 
           <div className="form-group">
             <label>Location / Background Image {editingId && '(Leave blank to keep existing)'}</label>
-            <input type="file" className="admin-file-input" accept="image/*" ref={fileInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+              <strong>Optimal:</strong> 16:9 ratio (e.g., 1920x1080) for full-screen location sweeps. High contrast recommended. Max 4MB.
+            </p>
+            <input 
+              type="file" className="admin-file-input" accept="image/*" 
+              ref={fileInputRef} 
+              onChange={(e) => setImage(e.target.files?.[0] || null)} 
+            />
           </div>
 
           <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>

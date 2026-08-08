@@ -1,0 +1,12 @@
+Admin UX improvements: 
+1. "Draft" vs "Published" Mode (The Sandbox)
+The Problem: Right now, the second you hit "Commit Case" on the dashboard, it goes live to the player base. But building a case takes time—you have to add phases, levels, suspects, and evidence. If a player logs in while you are halfway through building a case, they will enter a broken, unbeatable room.
+The Solution: Add a simple status toggle (draft, published, archived) to the Case model. The Main Menu will only fetch published cases, giving you a safe "sandbox" to build and test cases in the Admin Dashboard before flipping the switch to make them live.
+
+2. The "Command Center" Overview Tab
+The Problem: Right now, when you click "System Oversight," you are immediately dropped into the "New Case" form. It feels a bit like a data-entry tool rather than a Director's dashboard.
+The Solution: Create a "Command Center" or "Analytics" tab as the default landing page for the Admin Dashboard. We can fetch and display high-level metrics: Total Registered Agents, Active Investigation Rooms, and Win/Loss ratios for each case to see if a case is too hard or too easy.
+
+3. Smart Filtering & Collapsible Lists
+The Problem: As your game grows, a case might have 50 pieces of evidence and 15 suspects. When you select that case in the Admin dropdown, the "Manage Existing..." list at the bottom of the page is going to become a massive, endlessly scrolling wall of text.
+The Solution: Upgrade the "Manage Existing" UI. We can add quick text-search filters (e.g., typing "gun" instantly filters the evidence list) and make the parent categories (like Phases) collapsible accordions so the author can keep their workspace clean.
