@@ -93,10 +93,7 @@ export default function SuspectsTab() {
   };
 
   const handleSubmitVerdict = () => {
-    if (guiltyIds.length === 0) {
-      setFeedback({ type: 'error', message: 'You must select at least one prime suspect for the Guilty verdict.' });
-      return;
-    }
+    // Empty array submission is now allowed for the No Foul Play scenario.
     verdictMutation.mutate(guiltyIds);
   };
 
@@ -104,6 +101,11 @@ export default function SuspectsTab() {
     setFeedback(null);
     refreshRoomData();
   };
+
+  // Helper booleans for clean rendering
+  const isAllAssigned = unassignedPool.length === 0;
+  const isReadyToSubmit = allInitialCompleted && isAllAssigned;
+  const isNoFoulPlay = isAllAssigned && guiltyPool.length === 0;
 
   return (
     <div className="suspects-tab-container">
@@ -215,14 +217,24 @@ export default function SuspectsTab() {
         </div>
       </div>
 
-      <div className="submit-verdict-container">
+      <div className="submit-verdict-container" style={{ flexDirection: 'column', gap: '1rem' }}>
         <button 
-          className="btn-primary final-verdict-btn"
-          disabled={!allInitialCompleted || unassignedPool.length > 0 || guiltyPool.length === 0 || verdictMutation.isPending}
+          className={`btn-primary final-verdict-btn ${isNoFoulPlay ? 'no-foul-play' : ''}`}
+          disabled={!isReadyToSubmit || verdictMutation.isPending}
           onClick={handleSubmitVerdict}
         >
-          {verdictMutation.isPending ? 'Filing Indictment...' : 'Submit Final Verdict'}
+          {verdictMutation.isPending 
+            ? 'Filing Indictment...' 
+            : isNoFoulPlay 
+              ? 'Rule as Accident / Suicide' 
+              : 'Submit Final Indictment'}
         </button>
+        
+        {isReadyToSubmit && isNoFoulPlay && (
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            * By submitting an empty guilty pool, you are declaring no crime occurred.
+          </span>
+        )}
       </div>
     </div>
   );

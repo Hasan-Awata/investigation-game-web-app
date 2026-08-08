@@ -93,7 +93,6 @@ class AssessmentService
 
             LevelTransitioned::dispatch($room, $responseMessage);
             
-            // Removed the unlocked arrays payload entirely
             return Result::success([
                 'status' => 'success', 
                 'message' => $responseMessage
@@ -158,6 +157,55 @@ class AssessmentService
                 $innocentMessage = " " . implode(', ', $innocentNames) . " {$verb} found innocent.";
             }
 
+            // --- SCENARIO 0: NO FOUL PLAY (Suicide / Accident) ---
+            if ($totalGuiltyCount === 0) {
+                if (count($submittedSuspectIds) === 0) {
+                    // Perfect Win: They correctly deduced there was no murderer
+                    $stats = $this->generateFinalStats($room, $case->XP_on_solve, 0, 0, 0);
+                    $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
+                    $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
+                    
+                    $message = 'PERFECT WIN: You successfully proved that no foul play was involved. Case closed.';
+                    \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+
+                    return \App\Support\Result::success([
+                        'status' => 'success',
+                        'message' => $message,
+                        'room' => $room,
+                        'stats' => $stats
+                    ]);
+                } else {
+                    // Strike/Failure: They accused an innocent person of a crime that didn't happen
+                    $room->increment('strikes');
+                    $room->refresh();
+                    $maxStrikes = $case->max_strikes;
+
+                    if ($room->strikes >= $maxStrikes) {
+                        $stats = $this->generateFinalStats($room, 0, 0, 0, count($innocentsSubmitted));
+                        $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
+                        $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedStrikes->value, 0);
+                        
+                        $message = 'DEPARTMENT THRESHOLD EXCEEDED. You accused innocent people of a fabricated crime. The DA has pulled your mandate.' . $innocentMessage;
+                        \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+
+                        return \App\Support\Result::success([
+                            'status' => 'failed_final',
+                            'message' => $message,
+                            'stats' => $stats
+                        ]);
+                    }
+
+                    $message = "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: You are chasing a ghost. Are you certain a murder was even committed?" . $innocentMessage;
+                    
+                    \App\Events\LevelTransitioned::dispatch($room, $message, null);
+                    
+                    return \App\Support\Result::success([
+                        'status' => 'failed',
+                        'message' => $message
+                    ]);
+                }
+            }
+
             // SCENARIO A: Perfect Win (Got everyone, no innocents)
             if (count($missedGuilty) === 0 && count($innocentsSubmitted) === 0) {
                 $stats = $this->generateFinalStats($room, $case->XP_on_solve, count($correctGuesses), $totalGuiltyCount, 0);
@@ -177,8 +225,23 @@ class AssessmentService
             
             // SCENARIO B: Partial Win (Got all guilty, but included innocents)
             if (count($missedGuilty) === 0 && count($innocentsSubmitted) > 0) {
-                $xpPayload = (int) floor($case->XP_on_solve / 2);
-                $stats = $this->generateFinalStats($room, $xpPayload, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
+                $innocentsAccusedCount = count($innocentsSubmitted);
+                
+                // 1. Get the total number of innocent suspects existing in this specific case
+                $totalInnocentsInCase = \App\Models\Suspect::where('case_id', $case->id)
+                    ->where('is_guilty', false)
+                    ->count();
+
+                // 2. Calculate the deduction percentage per innocent (preventing division by zero)
+                $deductionPerInnocent = $totalInnocentsInCase > 0 ? (int) ceil(100 / $totalInnocentsInCase) : 100;
+                
+                // 3. Apply the deduction based on how many innocents they actually accused
+                $totalDeduction = min(100, $deductionPerInnocent * $innocentsAccusedCount);
+                $multiplier = max(0, 100 - $totalDeduction) / 100;
+                
+                $xpPayload = (int) floor($case->XP_on_solve * $multiplier);
+
+                $stats = $this->generateFinalStats($room, $xpPayload, count($correctGuesses), $totalGuiltyCount, $innocentsAccusedCount);
                 
                 $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
                 $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPartial->value, $xpPayload);
@@ -249,8 +312,8 @@ class AssessmentService
         });
     }
 
-    /*
-     * Populate the case_user history and distribute XP dynamically.
+    /**
+     * Populate the case_user history and distribute XP dynamically based on player history.
      */
     private function finalizeCaseForParticipants(GameRoom $room, string $finalStatus, int $xpGained): void
     {
@@ -265,20 +328,40 @@ class AssessmentService
 
             $previousStatus = $existingRecord->status ?? null;
 
-            // 1. Distribute XP
-            // Prevent XP farming: Only award XP if they haven't already achieved a perfect solve.
-            if ($xpGained > 0 && $previousStatus !== 'solved_perfect') {
-                \App\Models\User::where('id', $userId)->increment('XP', $xpGained);
+            // 1. Distribute XP based on historical attempts
+            $actualXpToAward = 0;
+
+            if (!$existingRecord) {
+                // FIRST TIME PLAYING: They receive 100% of the XP earned in this session
+                $actualXpToAward = $xpGained;
+            } else {
+                // CHECK PREVIOUS STATUS
+                $isPreviousWin = in_array($previousStatus, [
+                    \App\Enums\CaseUserStatus::SolvedPerfect->value,
+                    \App\Enums\CaseUserStatus::SolvedPartial->value
+                ]);
+
+                if ($isPreviousWin) {
+                    // RESTART AFTER A WIN: 0 XP (Prevent XP farming)
+                    $actualXpToAward = 0;
+                } else {
+                    // RESTART AFTER A LOSE: Penalty applied (50% of the XP earned in this session)
+                    $actualXpToAward = (int) floor($xpGained / 2);
+                }
+            }
+
+            if ($actualXpToAward > 0) {
+                \App\Models\User::where('id', $userId)->increment('XP', $actualXpToAward);
             }
 
             // 2. Preserve or Update State
             // If they already have a perfect solve on record, do not downgrade their status to a partial win or failure on replay.
-            if ($previousStatus === 'solved_perfect') {
+            if ($previousStatus === \App\Enums\CaseUserStatus::SolvedPerfect->value) {
                 \Illuminate\Support\Facades\DB::table('case_user')
                     ->where('id', $existingRecord->id)
                     ->update(['completed_at' => now()]);
             } else {
-                // Otherwise, record their new outcome (solved_perfect, solved_partial, failed_no_proof, etc.)
+                // Otherwise, record their new outcome
                 \Illuminate\Support\Facades\DB::table('case_user')->updateOrInsert(
                     ['user_id' => $userId, 'case_id' => $case->id],
                     ['status' => $finalStatus, 'completed_at' => now()]

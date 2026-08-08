@@ -157,3 +157,19 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* --- NO FOUL PLAY BUTTON MODIFIER --- */
+.final-verdict-btn.no-foul-play {
+  background: var(--text-secondary);
+  border-color: var(--text-secondary);
+  color: var(--bg-dark);
+  box-shadow: 0 4px 15px rgba(138, 141, 145, 0.3);
+}
+
+.final-verdict-btn.no-foul-play:hover:not(:disabled) {
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  border-color: var(--text-primary);
+  box-shadow: 0 6px 20px rgba(138, 141, 145, 0.5);
+  transform: translateY(-2px);
+}

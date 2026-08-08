@@ -742,17 +742,28 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
   const storageKey = useRef(`notepad_fallback`);
 
   useEffect(() => {
-    // Dynamically generate a unique key for this specific player in this specific room
-    const storedUser = localStorage.getItem('auth_user');
-    const currentUser = storedUser ? JSON.parse(storedUser) : null;
-    
-    if (currentUser) {
-       storageKey.current = `room_${roomId}_user_${currentUser.id}_ledger`;
-       const savedNotes = localStorage.getItem(storageKey.current);
-       if (savedNotes) {
-         setNotes(savedNotes);
-       }
+    try {
+      const storedUser = localStorage.getItem('auth_user');
+      const currentUser = storedUser ? JSON.parse(storedUser) : null;
+      
+      if (currentUser) {
+         storageKey.current = `room_${roomId}_user_${currentUser.id}_ledger`;
+         const savedNotes = localStorage.getItem(storageKey.current);
+         if (savedNotes) setNotes(savedNotes);
+      }
+    } catch (e) {
+      console.error("Failed to parse user data", e);
     }
+
+    // Sync notes instantly if the user types in a different tab
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === storageKey.current && e.newValue !== null) {
+        setNotes(e.newValue);
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
   }, [roomId]);
 
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -1743,8 +1754,10 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
   // Persistent history in sessionStorage for this room
   const historyStorageKey = `room_${room.id}_filed_requests`;
   const [filedRequests, setFiledRequests] = useState<FiledRequest[]>(() => {
-    const saved = sessionStorage.getItem(historyStorageKey);
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = sessionStorage.getItem(historyStorageKey);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
   });
 
   const requestMutation = useMutation({
@@ -1833,8 +1846,10 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
 
   const [viewedItems, setViewedItems] = useState<Set<number>>(() => {
     if (!storageKey) return new Set();
-    const stored = sessionStorage.getItem(storageKey);
-    return stored ? new Set(JSON.parse(stored)) : new Set();
+    try {
+      const stored = sessionStorage.getItem(storageKey);
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch { return new Set(); }
   });
 
   useEffect(() => {
@@ -4654,17 +4669,23 @@ export default function CampaignTab() {
   const sortedPhases = [...phases].sort((a, b) => a.order_index - b.order_index);
 
   // Auto-select the most relevant Phase on load
-  const [activePhaseId, setActivePhaseId] = useState<number | null>(null);
+  const phaseStorageKey = `room_${room.id}_active_phase`;
+
+  const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
+    try {
+      const saved = sessionStorage.getItem(phaseStorageKey);
+      return saved ? parseInt(saved, 10) : null;
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
+    // Default strictly to the FIRST phase if no cache exists
     if (activePhaseId === null && sortedPhases.length > 0) {
-      // Find the "highest" phase that contains at least one unlocked/initial level
-      const activeOrHighestUnlockedPhase = [...sortedPhases].reverse().find(p => 
-        p.levels?.some(l => l.is_initial || unlockedLevelIds.has(l.id))
-      );
-      setActivePhaseId(activeOrHighestUnlockedPhase?.id || sortedPhases[0].id);
+      setActivePhaseId(sortedPhases[0].id);
     }
-  }, [sortedPhases, unlockedLevelIds, activePhaseId]);
+  }, [sortedPhases, activePhaseId]);
 
   const toggleExpand = (levelId: number, status: string) => {
     if (status === 'locked') return; 
@@ -4721,7 +4742,11 @@ export default function CampaignTab() {
               key={phase.id}
               className={`phase-subnav-btn ${activePhaseId === phase.id ? 'active' : ''}`}
               disabled={!isPhaseUnlocked}
-              onClick={() => { setActivePhaseId(phase.id); setExpandedId(null); }}
+              onClick={() => { 
+                setActivePhaseId(phase.id); 
+                setExpandedId(null); 
+                sessionStorage.setItem(phaseStorageKey, phase.id.toString());
+              }}
             >
               {!isPhaseUnlocked && <span className="phase-lock-icon">🔒</span>}
               {phase.title}
@@ -5019,43 +5044,49 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\InterrogationPhase.tsx
 ----------------------------------------
 import React, { useState, useEffect, useRef } from 'react';
-import { useRoomContext } from '../../../../../context/RoomContext';
+import { useRoomContext } from '@/context/RoomContext';
 import type { Level, Choice, Question } from '@/types';
 import './InterrogationPhase.css';
 
-// Module-level cache to remember which animations have already finished playing
-const playedAnimations = new Set<string>();
-
 const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
-  // Using substring logic prevents the text from stopping halfway due to React render cycles
-  const [visibleLength, setVisibleLength] = useState(() => {
-    return (skip || (cacheKey && playedAnimations.has(cacheKey))) ? text.length : 0;
-  });
-
+  const spanRef = useRef<HTMLSpanElement>(null);
   const savedOnComplete = useRef(onComplete);
-  useEffect(() => { savedOnComplete.current = onComplete; }, [onComplete]);
+  
+  useEffect(() => { 
+    savedOnComplete.current = onComplete; 
+  }, [onComplete]);
 
   useEffect(() => {
-    // Instantly complete if flagged to skip or already cached
-    if (skip || (cacheKey && playedAnimations.has(cacheKey))) {
-      setVisibleLength(text.length);
-      if (cacheKey) playedAnimations.add(cacheKey);
+    const el = spanRef.current;
+    if (!el) return;
+
+    // 1. Instantly complete if skipping or already cached in session storage
+    if (skip || (cacheKey && sessionStorage.getItem(cacheKey))) {
+      el.textContent = text;
+      if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
       if (savedOnComplete.current) savedOnComplete.current();
       return;
     }
 
-    if (visibleLength < text.length) {
-      const timeout = setTimeout(() => {
-        setVisibleLength(prev => prev + 1);
-      }, delay);
-      return () => clearTimeout(timeout);
-    } else if (visibleLength === text.length) {
-      if (cacheKey) playedAnimations.add(cacheKey);
-      if (savedOnComplete.current) savedOnComplete.current();
-    }
-  }, [visibleLength, text.length, delay, skip, cacheKey]);
+    // 2. Perform raw DOM manipulation to bypass React's render cycle (fixes the stutter/half-way cutoffs)
+    let i = 0;
+    el.textContent = '';
+    
+    const interval = setInterval(() => {
+      el.textContent += text.charAt(i);
+      i++;
+      if (i >= text.length) {
+        clearInterval(interval);
+        if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
+        if (savedOnComplete.current) savedOnComplete.current();
+      }
+    }, delay);
 
-  return <span>{text.substring(0, visibleLength)}</span>;
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+  }, [text, delay, skip, cacheKey]);
+
+  return <span ref={spanRef} />;
 };
 
 interface InterrogationPhaseProps {
@@ -5068,14 +5099,13 @@ interface InterrogationPhaseProps {
 }
 
 export default function InterrogationPhase({ level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice }: InterrogationPhaseProps) {
-  // THE FIX: Actually use the hook to get the room data for namespacing
   const { room } = useRoomContext();
 
-  // Initialize state by checking the global cache with the Room ID tied to it
+  // Initialize state directly from sessionStorage
   const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>(() => {
     const initial: Record<number, boolean> = {};
     level.questions?.forEach(q => {
-      if (playedAnimations.has(`room_${room.id}_suspect_${q.id}`)) initial[q.id] = true;
+      if (sessionStorage.getItem(`room_${room.id}_suspect_${q.id}`)) initial[q.id] = true;
     });
     return initial;
   });
@@ -5083,7 +5113,7 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
   const [investigatorTypingComplete, setInvestigatorTypingComplete] = useState<Record<number, boolean>>(() => {
     const initial: Record<number, boolean> = {};
     level.questions?.forEach(q => {
-      if (playedAnimations.has(`room_${room.id}_investigator_${q.id}`)) initial[q.id] = true;
+      if (sessionStorage.getItem(`room_${room.id}_investigator_${q.id}`)) initial[q.id] = true;
     });
     return initial;
   });
@@ -5398,6 +5428,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 ----------------------------------------
 import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useRoomContext } from '@/context/RoomContext';
 import type { Level, Choice } from '@/types';
 import './LocationPhase.css';
 
@@ -5410,12 +5441,18 @@ interface LocationPhaseProps {
 }
 
 export default function LocationPhase({ level, status, localVotes, handleSelectChoice, currentUserId }: LocationPhaseProps) {
+  const { room } = useRoomContext();
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
   
+  // Tie the dead-end cache to the Room ID so a restart completely wipes the slate
+  const storageKey = `room_${room.id}_level_${level.id}_dead_ends`;
+  
   const [clickedDeadEnds, setClickedDeadEnds] = useState<Set<number>>(() => {
-    const saved = sessionStorage.getItem(`level_${level.id}_dead_ends`);
-    return saved ? new Set(JSON.parse(saved)) : new Set();
+    try {
+      const saved = sessionStorage.getItem(storageKey);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
   });
 
   if (!level.questions || !level.img_url) return null;
@@ -5433,7 +5470,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
   const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice) => {
     e.stopPropagation();
     
-    // Only block clicks entirely if the phase is no longer active
     if (status !== 'active') return;
 
     const isCorrectFind = choice.is_correct || !!(choice.unlocks_evidence_id || choice.unlocks_level_id || choice.unlocks_suspect_id || choice.unlocks_victim_id);
@@ -5444,7 +5480,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         message: "I found something useful here. Logging it to the board.",
         isSuccess: true
       });
-      // ONLY trigger the server call if they haven't already locked this clue
       if (!localVotes[qId]) {
         handleSelectChoice(e, qId, choice, status);
       }
@@ -5454,10 +5489,10 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
           message: "Nothing was found here. I should keep looking.",
           isSuccess: false
         });
-        // Mark this specific dead end as clicked so it turns grey locally
+        
         setClickedDeadEnds(prev => {
           const newSet = new Set(prev).add(choice.id);
-          sessionStorage.setItem(`level_${level.id}_dead_ends`, JSON.stringify(Array.from(newSet)));
+          sessionStorage.setItem(storageKey, JSON.stringify(Array.from(newSet)));
           return newSet;
         });
       }
@@ -5513,7 +5548,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
               if (isSelected) {
                 zoneClass += ' selected'; 
               } else if (isCompleted || isDeadEndClicked) {
-                // Now, dead ends only turn grey if the phase is over, OR if the user manually clicked them
                 zoneClass += ' investigated'; 
               }
 
@@ -7413,18 +7447,22 @@ export default function SuspectsTab() {
   } = useRoomContext();
   
   const [guiltyIds, setGuiltyIds] = useState<number[]>(() => {
-    const saved = sessionStorage.getItem(`room_${room.invite_code}_guilty_suspects`);
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = sessionStorage.getItem(`room_${room.invite_code}_guilty_suspects`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
   });
   
   const [innocentIds, setInnocentIds] = useState<number[]>(() => {
-    const saved = sessionStorage.getItem(`room_${room.invite_code}_innocent_suspects`);
-    return saved ? JSON.parse(saved) : [];
+    try {
+      const saved = sessionStorage.getItem(`room_${room.invite_code}_innocent_suspects`);
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
   });
 
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const initialLevels = room.game_case?.levels?.filter(l => l.is_initial) || [];
+  const initialLevels = room.game_case?.phases?.flatMap(p => p.levels || []).filter(l => l.is_initial) || [];
   const completedLevelIds = new Set(room.completed_levels?.map(l => l.id) || []);
   const allInitialCompleted = initialLevels.length > 0 && initialLevels.every(l => completedLevelIds.has(l.id));
 
@@ -7443,12 +7481,14 @@ export default function SuspectsTab() {
         setFeedback({ type: 'error', message: data.message });
         refreshRoomData();
       } else {
-        sessionStorage.removeItem(`room_${room.invite_code}_guilty_suspects`);
-        sessionStorage.removeItem(`room_${room.invite_code}_innocent_suspects`);
+        // Complete Garbage Collection: Wipe all session memory tied to this room
+        Object.keys(sessionStorage).forEach(key => {
+          if (key.includes(`room_${room.invite_code}`) || key.includes(`room_${room.id}`)) {
+            sessionStorage.removeItem(key);
+          }
+        });
         
-        // 2. USE THE NATIVE REACT CONTEXT METHOD
         setGameOverData(data.message, data.stats);
-        
         refreshRoomData();
       }
     },

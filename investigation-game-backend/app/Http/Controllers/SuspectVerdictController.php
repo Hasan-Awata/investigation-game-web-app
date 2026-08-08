@@ -23,7 +23,7 @@ class SuspectVerdictController extends Controller
         }
 
         $validated = $request->validate([
-            'guilty_suspect_ids' => 'required|array|min:1',
+            'guilty_suspect_ids' => 'present|array',
             'guilty_suspect_ids.*' => 'integer|exists:suspects,id'
         ]);
 

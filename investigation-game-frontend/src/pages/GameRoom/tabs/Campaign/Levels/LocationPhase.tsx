@@ -17,12 +17,22 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
   
-  // Tie the dead-end cache to the Room ID so a restart completely wipes the slate
-  const storageKey = `room_${room.id}_level_${level.id}_dead_ends`;
+  // 1. Scoped keys for both dead ends and found intel. 
+  // Tying it to room.id ensures it never bleeds into new cases and is wiped by our Garbage Collector.
+  const deadEndsStorageKey = `room_${room.id}_level_${level.id}_dead_ends`;
+  const foundPointsStorageKey = `room_${room.id}_level_${level.id}_found_points`;
   
   const [clickedDeadEnds, setClickedDeadEnds] = useState<Set<number>>(() => {
     try {
-      const saved = sessionStorage.getItem(storageKey);
+      const saved = sessionStorage.getItem(deadEndsStorageKey);
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch { return new Set(); }
+  });
+
+  // 2. Track found intel locally so multiple points per question can be remembered without overwriting the single vote
+  const [foundPoints, setFoundPoints] = useState<Set<number>>(() => {
+    try {
+      const saved = sessionStorage.getItem(foundPointsStorageKey);
       return saved ? new Set(JSON.parse(saved)) : new Set();
     } catch { return new Set(); }
   });
@@ -52,6 +62,14 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         message: "I found something useful here. Logging it to the board.",
         isSuccess: true
       });
+      
+      // 3. Save to our new local found points cache
+      setFoundPoints(prev => {
+        const newSet = new Set(prev).add(choice.id);
+        sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(newSet)));
+        return newSet;
+      });
+
       if (!localVotes[qId]) {
         handleSelectChoice(e, qId, choice, status);
       }
@@ -64,7 +82,7 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         
         setClickedDeadEnds(prev => {
           const newSet = new Set(prev).add(choice.id);
-          sessionStorage.setItem(storageKey, JSON.stringify(Array.from(newSet)));
+          sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(newSet)));
           return newSet;
         });
       }
@@ -113,7 +131,8 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
               const x = coordParts[0].trim();
               const y = coordParts[1].trim();
 
-              const isSelected = localVotes[q.id] === choice.id || (isCompleted && choice.is_correct);
+              // 4. Update the selection logic to honor the new found points cache alongside DB votes
+              const isSelected = localVotes[q.id] === choice.id || foundPoints.has(choice.id) || (isCompleted && choice.is_correct);
               const isDeadEndClicked = clickedDeadEnds.has(choice.id);
 
               let zoneClass = 'loc-hover-zone';
