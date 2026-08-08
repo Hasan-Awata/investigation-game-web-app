@@ -7,4 +7,5 @@ enum LevelPresentationType: string
     case Standard = 'standard';
     case Interrogation = 'interrogation';
     case Location = 'location'; 
+    case Wiretap = 'wiretap'; 
 }

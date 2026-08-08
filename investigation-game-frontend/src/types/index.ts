@@ -91,6 +91,7 @@ export interface GameRoom {
   unlocked_victims?: Victim[];
   completed_levels?: Level[];
   votes?: RoomVote[];
+  played_wiretaps?: Question[]; 
 }
 
 export interface FinalStats {
@@ -133,6 +134,7 @@ export interface Question {
   level_id: number;
   text: string;
   img_url?: string;
+  audio_url?: string; 
   msg_when_wrong?: string;
   choices?: Choice[];
   is_mandatory: boolean; 
@@ -143,6 +145,7 @@ export const LevelPresentationType = {
   Standard: 'standard',
   Interrogation: 'interrogation',
   Location: 'location',
+  Wiretap: 'wiretap', 
 } as const;
 
 export type LevelPresentationType = typeof LevelPresentationType[keyof typeof LevelPresentationType];

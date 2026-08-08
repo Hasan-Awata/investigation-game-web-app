@@ -5,6 +5,7 @@ import type { Question } from '../../../../types';
 import InterrogationPhase from './Levels/InterrogationPhase';
 import StandardPhase from './Levels/StandardPhase'; 
 import LocationPhase from './Levels/LocationPhase';
+import WiretapPhase from './Levels/WiretapPhase';
 import '../SharedOverlay.css';
 import './CampaignTab.css';
 
@@ -29,13 +30,16 @@ export default function CampaignTab() {
     handleSelectChoice,
     handleSubmitTheory,
     initiatePhase,
-    clearFeedback
+    clearFeedback,
+    triggerWiretap,
+    isTriggeringWiretap
   } = useInvestigationPhase(room, refreshRoomData);
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   // --- HIERARCHICAL MASKING ---
   const unlockedLevelIds = new Set(room.unlocked_levels?.map(l => l.id) || []);
+  const playedWiretaps = new Set(room.played_wiretaps?.map(q => q.id) || []);
   const sortedPhases = [...phases].sort((a, b) => a.order_index - b.order_index);
 
   // Auto-select the most relevant Phase on load
@@ -255,6 +259,14 @@ export default function CampaignTab() {
                           <LocationPhase 
                             level={level} status={status} localVotes={localVotes} 
                             handleSelectChoice={handleSelectChoice} currentUserId={currentUser.id}
+                          />
+                        ) : level.presentation_type === 'wiretap' ? (
+                          <WiretapPhase 
+                            level={level} status={status} localVotes={localVotes} 
+                            totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} 
+                            handleSelectChoice={handleSelectChoice}
+                            isHost={isHost} playedWiretaps={playedWiretaps}
+                            onPlayWiretap={triggerWiretap} isTriggeringWiretap={isTriggeringWiretap}
                           />
                         ) : (
                           <StandardPhase 

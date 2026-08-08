@@ -149,7 +149,7 @@ class AdminCaseController extends Controller
         public function destroy($id): JsonResponse
     {
         // Eager load everything associated with the case to harvest the media URLs
-        $case = GameCase::with(['levels.evidences', 'levels.questions'])->findOrFail($id);
+        $case = GameCase::with(['levels.questions', 'evidences'])->findOrFail($id);
 
         // 1. Wipe Case Cover
         $this->deleteCloudinaryMedia($case->img_url);

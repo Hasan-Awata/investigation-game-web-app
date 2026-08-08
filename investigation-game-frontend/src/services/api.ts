@@ -237,3 +237,25 @@ export const submitInvestigationRequest = async (
     return failure(error instanceof Error ? error.message : 'Network error');
   }
 };
+
+export const triggerWiretap = async (roomId: number, questionId: number): Promise<Result<any>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/questions/${questionId}/wiretap/play`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) handleUnauthorized();
+      const data = await response.json().catch(() => null);
+      return failure(data?.message || 'Failed to trigger wiretap.');
+    }
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};

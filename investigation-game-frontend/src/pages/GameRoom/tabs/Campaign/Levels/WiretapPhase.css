@@ -1,0 +1,60 @@
+.wiretap-phase-wrapper {
+  background: rgba(10, 15, 20, 0.4);
+  border: 1px solid rgba(0, 229, 255, 0.1);
+  padding: 1.5rem;
+  border-radius: var(--radius-md);
+}
+
+.wiretap-item {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1.5rem;
+  border-radius: var(--radius-sm);
+  border-left: 2px solid var(--accent-cyan);
+}
+
+.wiretap-container {
+  margin: 1.5rem 0;
+  padding: 1.5rem;
+  background: rgba(0, 229, 255, 0.05);
+  border: 1px dashed var(--accent-cyan);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05);
+}
+
+.wiretap-container.played {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.5);
+  padding: 1rem;
+  box-shadow: none;
+}
+
+.wiretap-burned {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  letter-spacing: 0.1em;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.play-wiretap-btn {
+  width: 100%;
+  max-width: 350px;
+  margin: 0 auto;
+  border-color: var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.1);
+  color: var(--accent-cyan);
+}
+
+.play-wiretap-btn:hover:not(:disabled) {
+  background: var(--accent-cyan);
+  color: var(--bg-dark);
+}
+
+.locked-choice {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-style: dashed;
+}

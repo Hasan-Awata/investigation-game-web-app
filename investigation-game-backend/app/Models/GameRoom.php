@@ -81,4 +81,10 @@ class GameRoom extends Model
         return $this->belongsToMany(Victim::class, 'room_victims', 'room_id', 'victim_id')
                     ->withTimestamps(); 
     }
+
+    public function playedWiretaps()
+    {
+        return $this->belongsToMany(Question::class, 'room_played_wiretaps', 'room_id', 'question_id')
+                    ->withTimestamps();
+    }    
 }

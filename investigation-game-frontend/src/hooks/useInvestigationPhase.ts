@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import type { Choice, GameRoom } from '@/types';
-import { lockVote, submitAssessment, initiatePhase } from '@/services/api';
+import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/services/api'; 
 
 export interface ToastNotification {
   id: string;
@@ -47,6 +47,37 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     });
     setLocalVotes(serverVotes);
   }, [room.votes]);
+
+  useEffect(() => {
+    if (!window.Echo) return;
+    const channel = window.Echo.private(`room.${roomId}`);
+    
+    channel.listen('VoteLockedIn', () => {
+      refreshRoomData();
+    });
+
+    channel.listen('WiretapTriggered', (e: any) => {
+      if (e.audio_url) {
+        const audio = new Audio(e.audio_url);
+        audio.play().catch(err => console.error('Browser blocked autoplay:', err));
+      }
+
+      const newToast: ToastNotification = {
+        id: crypto.randomUUID(), type: 'evidence', title: 'WIRETAP INTERCEPTED', message: e.message || 'Audio feed active. Listen carefully.',
+        icon: 'https://api.iconify.design/ph:waveform-duotone.svg?color=%23c48b36'
+      };
+      
+      setToasts(prev => [...prev, newToast]);
+      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== newToast.id)), 5000);
+
+      refreshRoomData();
+    });
+
+    return () => {
+      channel.stopListening('VoteLockedIn');
+      channel.stopListening('WiretapTriggered'); 
+    };
+  }, [roomId, refreshRoomData]);
 
   const voteMutation = useMutation({
     mutationFn: async ({ questionId, choiceId }: { questionId: number, choiceId: number }) => {
@@ -135,6 +166,15 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
   });
 
+    const triggerWiretapMutation = useMutation({
+    mutationFn: async (questionId: number) => {
+      const result = await triggerWiretap(roomId, questionId);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
+  });
+  
   const handleSelectChoice = (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => {
     e.stopPropagation(); 
     if (status !== 'active') return; 
@@ -163,6 +203,8 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     handleSelectChoice,
     handleSubmitTheory,
     initiatePhase: (levelId: number) => initiatePhaseMutation.mutate(levelId),
-    clearFeedback
+    clearFeedback,
+    triggerWiretap: (questionId: number) => triggerWiretapMutation.mutate(questionId), 
+    isTriggeringWiretap: triggerWiretapMutation.isPending 
   };
 }

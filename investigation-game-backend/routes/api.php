@@ -8,6 +8,7 @@ use App\Http\Controllers\VoteController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\InvestigationRequestController; 
 use App\Http\Controllers\SuspectVerdictController;
+use App\Http\Controllers\WiretapController;
 use App\Http\Controllers\Admin\AdminCaseController;
 use App\Http\Controllers\Admin\AdminPhaseController;
 use App\Http\Controllers\Admin\AdminLevelController;
@@ -16,6 +17,10 @@ use App\Http\Controllers\Admin\AdminQuestionController;
 use App\Http\Controllers\Admin\AdminSuspectController;
 use App\Http\Controllers\Admin\AdminInvestigationRequestController; 
 use App\Http\Middleware\IsAdmin; 
+
+Route::get('/login', function () {
+    return response()->json(['error' => 'Unauthenticated', 'message' => 'Session expired. Please log in again.'], 401);
+})->name('login');
 
 // Public Authentication Routes
 Route::post('/register', [AuthController::class, 'register']);
@@ -40,7 +45,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rooms/{room}/levels/{level}/start', [GameRoomController::class, 'startLevel']);
     Route::post('/rooms/{room}/suspects/submit', [SuspectVerdictController::class, 'store']);
     Route::post('/rooms/{room}/investigate', [InvestigationRequestController::class, 'store']);
-    
+    Route::post('/rooms/{room}/questions/{question}/wiretap/play', [WiretapController::class, 'play']);    
 
     // Admin Dashboard Routes
     Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {

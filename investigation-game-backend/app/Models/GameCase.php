@@ -65,7 +65,7 @@ class GameCase extends Model
     {
         return $this->hasMany(InvestigationRequest::class, 'case_id');
     }
-    
+
     /**
      * A case can have multiple multiplayer rooms instantiated from it.
      */
@@ -89,7 +89,7 @@ class GameCase extends Model
         return $this->hasMany(Suspect::class, 'case_id');
     }
     
-    public function victims()
+    public function victims(): HasMany
     { 
         return $this->hasMany(Victim::class, 'case_id');
     }
