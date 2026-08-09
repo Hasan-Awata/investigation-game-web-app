@@ -13,6 +13,7 @@ export default function LevelForm() {
   const [details, setDetails] = useState('');
   const [orderIndex, setOrderIndex] = useState('1');
   const [image, setImage] = useState<File | null>(null);
+  const [storeLocally, setStoreLocally] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isInitial, setIsInitial] = useState(true);
   const [presentationType, setPresentationType] = useState<string>('standard');
@@ -34,6 +35,7 @@ export default function LevelForm() {
     setDetails('');
     setOrderIndex('1');
     setIsInitial(true);
+    setStoreLocally(false);
     setPresentationType('standard');
     setRequiredRequestId('');
     setImage(null);
@@ -97,6 +99,7 @@ export default function LevelForm() {
     formData.append('order_index', orderIndex);
     formData.append('is_initial', isInitial ? '1' : '0');
     formData.append('presentation_type', presentationType);
+    formData.append('store_locally', storeLocally ? '1' : '0');
     if (requiredRequestId) formData.append('required_request_id', requiredRequestId);
     if (image) formData.append('image', image);
 
@@ -224,6 +227,28 @@ export default function LevelForm() {
               ref={fileInputRef} 
               onChange={(e) => setImage(e.target.files?.[0] || null)} 
             />
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1rem', 
+            background: 'rgba(255,255,255,0.02)', 
+            padding: '1rem', 
+            borderRadius: '8px', 
+            marginTop: '1rem',
+            border: '1px solid rgba(255,255,255,0.05)'
+          }}>
+            <input 
+              type="checkbox" 
+              id="store-locally-toggle" 
+              checked={storeLocally} 
+              onChange={(e) => setStoreLocally(e.target.checked)} 
+              style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} 
+            />
+            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
+              <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
+            </label>
           </div>
 
           <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>

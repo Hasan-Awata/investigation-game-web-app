@@ -3,13 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\HandlesMedia;
 use App\Models\Suspect;
+use App\Models\GameCase;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Cloudinary\Cloudinary;
 
 class AdminSuspectController extends Controller
 {
+    use HandlesMedia;
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -19,33 +22,20 @@ class AdminSuspectController extends Controller
             'is_initial' => 'required|boolean',
             'is_guilty' => 'required|boolean', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'store_locally' => 'required|boolean',
         ]);
 
-        $cloudinary = new Cloudinary([
-            'cloud' => [
-                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                'api_key'    => env('CLOUDINARY_API_KEY'),
-                'api_secret' => env('CLOUDINARY_API_SECRET'),
-            ],
-            'url' => [
-                'secure' => true
-            ]
-        ]);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
 
-        $imageUrl = null;
-        if ($request->hasFile('image')) {
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'suspects/images'
-            ]);
-            $imageUrl = $upload['secure_url'];
-        }
+        $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, 'People', $storeLocally);
 
         $suspect = Suspect::create([
             'case_id' => $validated['case_id'],
             'name' => $validated['name'],
             'background' => $validated['background'] ?? null,
             'is_initial' => $validated['is_initial'],
-            'is_guilty' => $validated['is_guilty'], // NEW
+            'is_guilty' => $validated['is_guilty'], 
             'img_url' => $imageUrl,
         ]);
 
@@ -63,28 +53,27 @@ class AdminSuspectController extends Controller
             'is_initial' => 'required|boolean',
             'is_guilty' => 'required|boolean', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'store_locally' => 'required|boolean',
         ]);
 
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
+
+        $updateData = [
+            'case_id' => $validated['case_id'],
+            'name' => $validated['name'],
+            'background' => $validated['background'] ?? null,
+            'is_initial' => $validated['is_initial'],
+            'is_guilty' => $validated['is_guilty'],
+        ];
+
         if ($request->hasFile('image')) {
-            // Wipe old mugshot
-            $this->deleteCloudinaryMedia($suspect->img_url);
-
-            $cloudinary = new \Cloudinary\Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
-                ],
-                'url' => ['secure' => true]
-            ]);
-
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'suspects/images'
-            ]);
-            $validated['img_url'] = $upload['secure_url'];
+            // Wipe old mugshot (local or cloud) safely via trait
+            $this->deleteMedia($suspect->getRawOriginal('img_url'));
+            $updateData['img_url'] = $this->storeMedia($request->file('image'), $caseTitle, 'People', $storeLocally);
         }
 
-        $suspect->update($validated);
+        $suspect->update($updateData);
         
         return response()->json(['message' => 'Suspect profile updated.', 'suspect' => $suspect], 200);
     }
@@ -92,17 +81,8 @@ class AdminSuspectController extends Controller
     public function destroy($id): JsonResponse
     {
         $suspect = Suspect::findOrFail($id);
-        $this->deleteCloudinaryMedia($suspect->img_url);
+        $this->deleteMedia($suspect->getRawOriginal('img_url'));
         $suspect->delete();
         return response()->json(['message' => 'Suspect deleted.'], 200);
-    }
-
-    private function deleteCloudinaryMedia(?string $url): void
-    {
-        if (!$url) return;
-        if (preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
-            $cloudinary = new \Cloudinary\Cloudinary(['cloud' => ['cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 'api_key' => env('CLOUDINARY_API_KEY'), 'api_secret' => env('CLOUDINARY_API_SECRET')], 'url' => ['secure' => true]]);
-            try { $cloudinary->uploadApi()->destroy($matches[1], ['resource_type' => 'image']); } catch (\Exception $e) {}
-        }
     }
 }

@@ -23,6 +23,7 @@ export default function QuestionForm() {
   const [msgWhenWrong, setMsgWhenWrong] = useState('');
   const [isMandatory, setIsMandatory] = useState(true); 
   const [image, setImage] = useState<File | null>(null);
+  const [storeLocally, setStoreLocally] = useState(false);
   
   const [activeCoordinateTarget, setActiveCoordinateTarget] = useState<string | null>(null);
   
@@ -58,6 +59,7 @@ export default function QuestionForm() {
     setText('');
     setMsgWhenWrong('');
     setIsMandatory(true);
+    setStoreLocally(false);
     setImage(null);
     setActiveCoordinateTarget(null);
     setChoices([
@@ -161,6 +163,7 @@ export default function QuestionForm() {
     formData.append('text', text);
     formData.append('is_mandatory', isMandatory ? '1' : '0'); 
     if (msgWhenWrong) formData.append('msg_when_wrong', msgWhenWrong);
+    formData.append('store_locally', storeLocally ? '1' : '0');
     if (image) formData.append('image', image);
 
     choices.forEach((choice, index) => {
@@ -320,6 +323,28 @@ export default function QuestionForm() {
               <strong>Optimal:</strong> 16:9 or 4:3 ratio. Useful for visual diagrams, specific clues, or maps. Max 4MB.
             </p>
             <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1rem', 
+            background: 'rgba(255,255,255,0.02)', 
+            padding: '1rem', 
+            borderRadius: '8px', 
+            marginTop: '1rem',
+            border: '1px solid rgba(255,255,255,0.05)'
+          }}>
+            <input 
+              type="checkbox" 
+              id="store-locally-toggle" 
+              checked={storeLocally} 
+              onChange={(e) => setStoreLocally(e.target.checked)} 
+              style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} 
+            />
+            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
+              <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
+            </label>
           </div>
 
           <div style={{ margin: '1.5rem 0', padding: '1.5rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>

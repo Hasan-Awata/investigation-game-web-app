@@ -14,6 +14,7 @@ export default function EvidenceForm() {
   const [evidenceType, setEvidenceType] = useState<EvidenceType>('document');
   const [isInitial, setIsInitial] = useState(true);
   const [isVitalForConviction, setIsVitalForConviction] = useState(false);
+  const [storeLocally, setStoreLocally] = useState(false);
   
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
@@ -38,6 +39,7 @@ export default function EvidenceForm() {
     setParagraph('');
     setIsInitial(true);
     setIsVitalForConviction(false);
+    setStoreLocally(false);
     setImage(null);
     setAudio(null);
     if (imageInputRef.current) imageInputRef.current.value = '';
@@ -98,6 +100,7 @@ export default function EvidenceForm() {
     formData.append('paragraph', paragraph);
     formData.append('is_initial', isInitial ? '1' : '0');
     formData.append('is_vital_for_conviction', isVitalForConviction ? '1' : '0');
+    formData.append('store_locally', storeLocally ? '1' : '0');
     
     if (evidenceType === 'image' && image) formData.append('image', image);
     if (evidenceType === 'audio' && audio) formData.append('audio', audio);
@@ -196,6 +199,30 @@ export default function EvidenceForm() {
                 <strong>Optimal:</strong> MP3 or WAV format. Compressed for web streaming. Max 10MB.
               </p>
               <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
+            </div>
+          )}
+
+          {(evidenceType === 'image' || evidenceType === 'audio') && (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '1rem', 
+              background: 'rgba(255,255,255,0.02)', 
+              padding: '1rem', 
+              borderRadius: '8px', 
+              marginTop: '1rem',
+              border: '1px solid rgba(255,255,255,0.05)'
+            }}>
+              <input 
+                type="checkbox" 
+                id="store-locally-toggle" 
+                checked={storeLocally} 
+                onChange={(e) => setStoreLocally(e.target.checked)} 
+                style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} 
+              />
+              <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
+                <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
+              </label>
             </div>
           )}
 

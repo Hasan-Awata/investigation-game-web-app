@@ -20,6 +20,7 @@ export default function CaseForm() {
   const [tags, setTags] = useState('');
   const [authorName, setAuthorName] = useState('System');
   const [isPublished, setIsPublished] = useState(false);
+  const [storeLocally, setStoreLocally] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: cases = [], isLoading: isFetchingCases } = useQuery({
@@ -44,7 +45,8 @@ export default function CaseForm() {
     setDifficulty('Standard');
     setTags('');
     setAuthorName('System');
-    setIsPublished(false); 
+    setIsPublished(false);
+    setStoreLocally(false);
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -107,6 +109,7 @@ export default function CaseForm() {
     formData.append('tags', tags);
     formData.append('author_name', authorName);
     formData.append('is_published', isPublished ? '1' : '0'); 
+    formData.append('store_locally', storeLocally ? '1' : '0');
     if (image) formData.append('image', image);
 
     if (editingCaseId) {
@@ -282,6 +285,28 @@ export default function CaseForm() {
               ref={fileInputRef}
               onChange={(e) => setImage(e.target.files?.[0] || null)} 
             />
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1rem', 
+            background: 'rgba(255,255,255,0.02)', 
+            padding: '1rem', 
+            borderRadius: '8px', 
+            marginTop: '1rem',
+            border: '1px solid rgba(255,255,255,0.05)'
+          }}>
+            <input 
+              type="checkbox" 
+              id="store-locally-toggle" 
+              checked={storeLocally} 
+              onChange={(e) => setStoreLocally(e.target.checked)} 
+              style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} 
+            />
+            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
+              <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
+            </label>
           </div>
 
           <button 

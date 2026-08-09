@@ -3,14 +3,17 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\HandlesMedia;
 use App\Models\Question;
+use App\Models\Level;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Cloudinary\Cloudinary;
 
 class AdminQuestionController extends Controller
 {
+    use HandlesMedia;
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -18,7 +21,7 @@ class AdminQuestionController extends Controller
             'text' => 'required|string',
             'msg_when_wrong' => 'nullable|string',
             'is_mandatory' => 'required|boolean', 
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
             'choices' => 'required|array|min:2',
             'choices.*.text' => 'required|string|max:255',
@@ -26,33 +29,24 @@ class AdminQuestionController extends Controller
             'choices.*.unlocks_evidence_id' => 'nullable|exists:evidences,id',
             'choices.*.unlocks_level_id' => 'nullable|exists:levels,id', 
             'choices.*.feedback_message' => 'nullable|string|max:255',
+            'store_locally' => 'required|boolean',
         ]);
 
-        $cloudinary = new Cloudinary([
-            'cloud' => [
-                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                'api_key'    => env('CLOUDINARY_API_KEY'),
-                'api_secret' => env('CLOUDINARY_API_SECRET'),
-            ],
-            'url' => ['secure' => true]
-        ]);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-        $imageUrl = null;
-        if ($request->hasFile('image')) {
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'questions'
-            ]);
-            $imageUrl = $upload['secure_url'];
-        }
+        // Fetch the parent case title through relationships to build the clean folder slug
+        // 1. Fetch the level and its relations in a single efficient query
+        $level = Level::with('phase.gameCase')->find($validated['level_id']);
 
-        $audioUrl = null;
-        if ($request->hasFile('audio')) {
-            $upload = $cloudinary->uploadApi()->upload($request->file('audio')->getRealPath(), [
-                'folder' => 'questions/audio',
-                'resource_type' => 'video' 
-            ]);
-            $audioUrl = $upload['secure_url'];
-        }
+        $caseTitle = $level?->phase?->gameCase?->title ?? 'General';
+        $levelTitle = $level?->title ?? 'General-Level';
+
+        // 2. Build the nested subfolder structure using the slugified level title
+        $subfolder = 'Levels/' . \Illuminate\Support\Str::slug($levelTitle) . '/Questions';
+
+        // 3. Pass it to your trait helper
+        $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, $subfolder, $storeLocally);
+        $audioUrl = $this->storeMedia($request->file('audio'), $caseTitle, $subfolder, $storeLocally);
 
         return DB::transaction(function () use ($validated, $imageUrl, $audioUrl) {
             $question = Question::create([
@@ -103,47 +97,31 @@ class AdminQuestionController extends Controller
             'choices.*.unlocks_evidence_id' => 'nullable|exists:evidences,id', 
             'choices.*.unlocks_level_id' => 'nullable|exists:levels,id', 
             'choices.*.feedback_message' => 'nullable|string|max:255',
+            'store_locally' => 'required|boolean',
         ]);
 
-        if ($request->hasFile('image') || $request->hasFile('audio')) {
-            $cloudinary = new Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
-                ],
-                'url' => ['secure' => true]
-            ]);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = Level::with('phase.gameCase')->where('id', $validated['level_id'])->first()?->phase?->gameCase?->title ?? 'General';
 
-            if ($request->hasFile('image')) {
-                $this->deleteCloudinaryMedia($question->img_url); 
-                
-                $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                    'folder' => 'questions'
-                ]);
-                $validated['img_url'] = $upload['secure_url'];
-            }
+        $updateData = [
+            'level_id' => $validated['level_id'],
+            'text' => $validated['text'],
+            'msg_when_wrong' => $validated['msg_when_wrong'],
+            'is_mandatory' => $validated['is_mandatory'],
+        ];
 
-            if ($request->hasFile('audio')) {
-                $this->deleteCloudinaryMedia($question->audio_url); 
-                
-                $upload = $cloudinary->uploadApi()->upload($request->file('audio')->getRealPath(), [
-                    'folder' => 'questions/audio',
-                    'resource_type' => 'video' 
-                ]);
-                $validated['audio_url'] = $upload['secure_url'];
-            }
+        if ($request->hasFile('image')) {
+            $this->deleteMedia($question->getRawOriginal('img_url')); 
+            $updateData['img_url'] = $this->storeMedia($request->file('image'), $caseTitle, 'Levels/Questions', $storeLocally);
         }
 
-        return DB::transaction(function () use ($question, $validated) {
-            $question->update([
-                'level_id' => $validated['level_id'],
-                'text' => $validated['text'],
-                'msg_when_wrong' => $validated['msg_when_wrong'],
-                'is_mandatory' => $validated['is_mandatory'],
-                'img_url' => $validated['img_url'] ?? $question->img_url,
-                'audio_url' => $validated['audio_url'] ?? $question->audio_url, 
-            ]);
+        if ($request->hasFile('audio')) {
+            $this->deleteMedia($question->getRawOriginal('audio_url')); 
+            $updateData['audio_url'] = $this->storeMedia($request->file('audio'), $caseTitle, 'Levels/Questions', $storeLocally);
+        }
+
+        return DB::transaction(function () use ($question, $validated, $updateData) {
+            $question->update($updateData);
 
             $question->choices()->delete();
 
@@ -170,31 +148,11 @@ class AdminQuestionController extends Controller
     {
         $question = Question::findOrFail($id);
         
-        $this->deleteCloudinaryMedia($question->img_url);
-        $this->deleteCloudinaryMedia($question->audio_url);
+        $this->deleteMedia($question->getRawOriginal('img_url'));
+        $this->deleteMedia($question->getRawOriginal('audio_url'));
         
         $question->delete();
 
         return response()->json(['message' => 'Question deleted.'], 200);
-    }
-
-    private function deleteCloudinaryMedia(?string $url): void
-    {
-        if (!$url) return;
-        if (preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
-            $cloudinary = new Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 
-                    'api_key' => env('CLOUDINARY_API_KEY'), 
-                    'api_secret' => env('CLOUDINARY_API_SECRET')
-                ], 
-                'url' => ['secure' => true]
-            ]);
-            try { 
-                $cloudinary->uploadApi()->destroy($matches[1], [
-                    'resource_type' => str_contains($url, '/video/') ? 'video' : 'image'
-                ]); 
-            } catch (\Exception $e) {}
-        }
     }
 }
