@@ -123,6 +123,7 @@ export interface Choice {
   id: number;
   question_id: number;
   text: string;
+  feedback_message?: string | null; 
   is_correct: boolean;
   unlocks_evidence_id?: number | null; 
   unlocks_level_id?: number | null; 
@@ -169,7 +170,7 @@ export interface Level {
   order_index: number;
   is_initial: boolean; 
   presentation_type?: LevelPresentationType; 
-  required_request_type?: InvestigationRequestType | string | null; 
+  required_request_id?: number | null; 
   questions?: Question[]; 
 }
 

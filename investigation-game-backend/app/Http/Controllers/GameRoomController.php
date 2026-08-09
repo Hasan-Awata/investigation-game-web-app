@@ -86,17 +86,21 @@ class GameRoomController extends Controller
             return response()->json(['error' => 'Conflict', 'message' => 'This phase is already solved.'], 409);
         }
 
-        // --- NEW: THE ROBUST GATEKEEPER ---
-        if ($level->required_request_type) {
-            // Did the room complete ANY request that matches the required enum type?
+        // --- ROBUST GATEKEEPER ---
+        if ($level->required_request_id) {
+            // Did the room complete THIS exact request combo?
             $hasRequirement = $room->completedRequests()
-                ->where('request_type', $level->required_request_type)
+                ->where('request_id', $level->required_request_id)
                 ->exists();
 
             if (!$hasRequirement) {
+                // Eager load to get the exact label for the error message
+                $level->load('requiredRequest');
+                $label = $level->requiredRequest ? $level->requiredRequest->request_type->label() : 'specific procedural request';
+                
                 return response()->json([
                     'error' => 'Missing Prerequisite',
-                    'message' => "We can't proceed without a " . $level->required_request_type->label() . "."
+                    'message' => "We can't proceed without a " . $label . "."
                 ], 403);
             }
         }

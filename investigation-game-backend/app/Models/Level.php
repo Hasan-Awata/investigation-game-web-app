@@ -24,6 +24,7 @@ class Level extends Model
         'order_index',
         'is_initial',
         'presentation_type', 
+        'required_request_id',     
     ];
 
     protected function casts(): array
@@ -31,7 +32,6 @@ class Level extends Model
         return [
             'is_initial' => 'boolean',
             'presentation_type' => LevelPresentationType::class, 
-            'required_request_type' => InvestigationRequestType::class, 
         ];
     }
     
@@ -64,5 +64,10 @@ class Level extends Model
     public function questions(): HasMany
     {
         return $this->hasMany(Question::class, 'level_id');
+    }
+
+    public function requiredRequest(): BelongsTo
+    {
+        return $this->belongsTo(InvestigationRequest::class, 'required_request_id');
     }
 }

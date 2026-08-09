@@ -29,7 +29,6 @@ class InvestigationRequest extends Model
             'investigation_request_items', 
             'request_id', 
             'evidence_id',
-            'unlocks_level_id' 
         );
     }
 

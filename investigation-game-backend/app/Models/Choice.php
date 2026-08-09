@@ -10,6 +10,7 @@ class Choice extends Model
     protected $fillable = [
         'question_id',
         'text',
+        'feedback_message',
         'is_correct',
         'unlocks_evidence_id', 
         'unlocks_level_id',

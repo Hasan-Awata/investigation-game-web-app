@@ -13,7 +13,7 @@ export interface ToastNotification {
 
 export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => void) {
   const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   
   // Track wiretaps triggered by this specific client to prevent WebSocket echo
@@ -136,12 +136,16 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
   const submitTheoryMutation = useMutation({
     mutationFn: async () => {
       const result = await submitAssessment(roomId);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
+      if (!result.isSuccess) throw result.errorMessage;
       return result.value;
     },
     onSuccess: async (data) => {
       if (data.status === 'success' || data.status === 'failed_final') {
-        setFeedback({ type: data.status === 'success' ? 'success' : 'error', message: data.message });
+        setFeedback({ 
+          type: data.status === 'success' ? 'success' : 'error', 
+          title: data.status === 'success' ? 'Consensus Verified' : 'Theory Rejected',
+          message: data.message 
+        });
         
         // Wait for the players to read the feedback before sweeping the board
         setTimeout(() => {
@@ -150,31 +154,39 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
           refreshRoomData(); 
         }, 2000);
       } else {
-        setFeedback({ type: 'error', message: data.message });
+        setFeedback({ type: 'error', title: 'Theory Rejected', message: data.message });
         setLocalVotes({}); 
         refreshRoomData(); 
       }
     },
-    onError: (error: Error) => {
-      setFeedback({ type: 'error', message: error.message });
+    onError: (error: any) => {
+      setFeedback({ type: 'error', title: error.title || 'Error', message: error.message });
     }
   });
 
   const initiatePhaseMutation = useMutation({
     mutationFn: async (levelId: number) => {
       const result = await initiatePhase(roomId, levelId);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
+      // Throw the object directly so onError can catch it
+      if (!result.isSuccess) throw result.errorMessage; 
       return result.value;
     },
     onSuccess: () => refreshRoomData(),
-    onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
+    onError: (error: any) => setFeedback({ 
+      type: 'error', 
+      title: error.title || 'System Error', 
+      message: error.message 
+    })
   });
 
   const triggerWiretapMutation = useMutation({
     mutationFn: async ({ questionId, audioUrl }: { questionId: number, audioUrl: string }) => {
       locallyTriggered.current.add(questionId); // Mark as triggered by this client
       const result = await triggerWiretap(roomId, questionId);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
+      
+      // Throw the error object directly
+      if (!result.isSuccess) throw result.errorMessage; 
+      
       return { value: result.value, audioUrl };
     },
     onSuccess: (data) => {
@@ -185,7 +197,11 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
       }
       refreshRoomData(); // Guarantee the UI updates to the "Severed" state
     },
-    onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
+    onError: (error: any) => setFeedback({ 
+      type: 'error', 
+      title: error.title || 'Transmission Error', 
+      message: error.message 
+    })
   });
   
   const handleSelectChoice = (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => {

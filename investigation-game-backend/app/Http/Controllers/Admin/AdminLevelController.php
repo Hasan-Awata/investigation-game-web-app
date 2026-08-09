@@ -21,7 +21,7 @@ class AdminLevelController extends Controller
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
             'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
-            'required_request_type' => ['nullable', new Enum(InvestigationRequestType::class)],
+            'required_request_id' => 'nullable|exists:investigation_requests,id',            
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
@@ -49,7 +49,7 @@ class AdminLevelController extends Controller
             'order_index' => $validated['order_index'],
             'is_initial' => filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN),
             'presentation_type' => $validated['presentation_type'], 
-            'required_request_type' => $validated['required_request_type'] ?? null,
+            'required_request_id' => $validated['required_request_id'] ?? null,
             'img_url' => $imageUrl,
         ]);
 

@@ -1,60 +1,161 @@
 .wiretap-phase-wrapper {
-  background: rgba(10, 15, 20, 0.4);
-  border: 1px solid rgba(0, 229, 255, 0.1);
+  background: linear-gradient(180deg, rgba(10, 15, 20, 0.9) 0%, rgba(10, 15, 20, 0.6) 100%);
+  border: 1px solid rgba(0, 229, 255, 0.2);
   padding: 1.5rem;
   border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 229, 255, 0.05);
+}
+
+/* Tactical grid overlay */
+.wiretap-phase-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: 
+    linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wiretap-phase-wrapper > * {
+  position: relative;
+  z-index: 1;
 }
 
 .wiretap-item {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 1.5rem;
-  border-radius: var(--radius-sm);
-  border-left: 2px solid var(--accent-cyan);
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.05) 0%, rgba(0, 0, 0, 0.3) 100%);
+  padding: 1.25rem;
+  margin-top: 1rem;
+  border-left: 3px solid var(--accent-cyan);
+  border-top: 1px solid rgba(0, 229, 255, 0.1);
+  border-right: 1px solid rgba(0, 229, 255, 0.1);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.1);
+  /* Tactical angled corner */
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.wiretap-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+  border-right: 1px solid rgba(0, 229, 255, 0.1);
+  padding-right: 1rem;
+}
+
+.question-number {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-cyan);
+  letter-spacing: 0.05em;
+  font-weight: bold;
+}
+
+.tactical-pulse {
+  position: relative;
+  color: var(--accent-cyan);
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.tactical-pulse::before {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-cyan);
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { opacity: 0.5; }
+  100% { transform: scale(1.5); opacity: 0; }
 }
 
 .wiretap-container {
   margin: 1.5rem 0;
-  padding: 1.5rem;
-  background: rgba(0, 229, 255, 0.05);
-  border: 1px dashed var(--accent-cyan);
+  padding: 1.25rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px dashed rgba(0, 229, 255, 0.3);
   border-radius: var(--radius-sm);
   text-align: center;
-  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05);
+  position: relative;
+}
+
+.wiretap-container::before {
+  content: '[ AUDIO FEED ]';
+  position: absolute;
+  top: -9px;
+  left: 15px;
+  background: var(--bg-dark); /* Match your actual background var here if needed */
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--accent-cyan);
+  letter-spacing: 0.1em;
 }
 
 .wiretap-container.played {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 50, 50, 0.2);
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.4),
+    rgba(0, 0, 0, 0.4) 10px,
+    rgba(255, 50, 50, 0.02) 10px,
+    rgba(255, 50, 50, 0.02) 20px
+  );
   padding: 1rem;
-  box-shadow: none;
+}
+
+.wiretap-container.played::before {
+  content: '[ FEED SEVERED ]';
+  color: var(--text-secondary);
 }
 
 .wiretap-burned {
   font-family: var(--font-mono);
   color: var(--text-secondary);
   letter-spacing: 0.1em;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-shadow: 0 0 5px rgba(0,0,0,0.5);
 }
 
 .play-wiretap-btn {
   width: 100%;
   max-width: 350px;
   margin: 0 auto;
-  border-color: var(--accent-cyan);
-  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.05);
   color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all 0.2s ease-in-out;
 }
 
 .play-wiretap-btn:hover:not(:disabled) {
-  background: var(--accent-cyan);
-  color: var(--bg-dark);
+  background: rgba(0, 229, 255, 0.2);
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
 }
 
 .locked-choice {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
-  border-style: dashed;
+  border: 1px dashed var(--text-secondary);
+  background: transparent;
 }

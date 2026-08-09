@@ -11,7 +11,7 @@ use App\Models\Question;
 use App\Models\Choice;
 use App\Models\Suspect;
 use App\Models\Victim; 
-use App\Enums\EvidenceType;
+use App\Models\InvestigationRequest;
 
 class GameCaseSeeder extends Seeder
 {
@@ -31,6 +31,7 @@ class GameCaseSeeder extends Seeder
             'tags' => ['Tactical', 'Choice-Driven Narrative', 'Corporate Espionage'],
             'author_name' => 'Agent MasterAdmin',
             'img_url' => '/assets/cases/Case-cover.png',
+            'is_published' => true, // Ensure it shows up on the main board immediately
         ]);
 
         Victim::create([
@@ -91,7 +92,6 @@ class GameCaseSeeder extends Seeder
         $phase2 = Phase::create(['case_id' => $case->id, 'title' => 'Medical Examiner', 'description' => 'Review the physical trauma and toxicology.', 'order_index' => 2]);
         $phase3 = Phase::create(['case_id' => $case->id, 'title' => 'Corporate Espionage', 'description' => 'Follow the money and cross-reference alibis.', 'order_index' => 3]);
         $phase4 = Phase::create(['case_id' => $case->id, 'title' => 'The Break', 'description' => 'Interrogate the prime suspects.', 'order_index' => 4]);
-        // NEW: Wiretap test phase
         $phase5 = Phase::create(['case_id' => $case->id, 'title' => 'Surveillance', 'description' => 'Active wiretap on a burner device.', 'order_index' => 5]);
 
         // 3. Create the Nested Levels (Attached to Phases)
@@ -145,13 +145,12 @@ class GameCaseSeeder extends Seeder
             'presentation_type' => 'interrogation', 
         ]);
 
-        // NEW: Wiretap test level
         $level6 = Level::create([
             'phase_id' => $phase5->id,
             'title' => 'Burner Phone Intercept',
             'details' => 'We managed to clone a burner phone tied to Marcus Thorne. A call is incoming. You only get one chance to listen.',
             'order_index' => 1,
-            'is_initial' => true, // Set to true so you can test it immediately
+            'is_initial' => true,
             'presentation_type' => 'wiretap',
         ]);
 
@@ -220,6 +219,20 @@ class GameCaseSeeder extends Seeder
             'audio_url' => '/assets/cases/drilling_sound.wav',
         ]);
 
+        // --- NEW: COMPILE THE INVESTIGATION REQUEST & ATTACH IT TO A LEVEL ---
+        $warrant = InvestigationRequest::create([
+            'case_id' => $case->id,
+            'request_type' => 'search_warrant',
+            // This combo will unlock the interrogation room (Level 5) on the board
+            'unlocks_level_id' => $level5->id, 
+        ]);
+        // To get the warrant, players must combine the Keycard Logs and Thorne's Statement
+        $warrant->requiredEvidences()->sync([$evidence1->id, $evidence3->id]);
+
+        // We explicitly tell Level 5 that the Host cannot start the interrogation 
+        // until the $warrant combo is successfully executed.
+        $level5->update(['required_request_id' => $warrant->id]);
+
         // 5. Create Verdicts and Choices
 
         // LEVEL 1: LOCATION PHASE VERDICTS
@@ -229,13 +242,25 @@ class GameCaseSeeder extends Seeder
             'msg_when_wrong' => 'The door was physically bolted, not electronically locked. Think about architectural vulnerabilities.',
             'is_mandatory' => true,
         ]);
+        
         // Formatted for the location visual targeter: "X,Y | Title"
-        Choice::create(['question_id' => $l1q1->id, 'text' => '45.0,50.0 | The Bolted Door', 'is_correct' => false]);
-        Choice::create(['question_id' => $l1q1->id, 'text' => '85.5,20.0 | The Exterior Window Rig', 'is_correct' => false]);
+        Choice::create([
+            'question_id' => $l1q1->id, 
+            'text' => '45.0,50.0 | The Bolted Door', 
+            'is_correct' => false,
+            'feedback_message' => 'The deadbolt is secured from the inside. The killer didn\'t leave through this door.'
+        ]);
+        Choice::create([
+            'question_id' => $l1q1->id, 
+            'text' => '85.5,20.0 | The Exterior Window Rig', 
+            'is_correct' => false,
+            'feedback_message' => 'The window washing rig is empty. No signs of forced entry on the glass.'
+        ]);
         Choice::create([
             'question_id' => $l1q1->id, 
             'text' => '65.2,15.5 | HVAC Return Vent', 
             'is_correct' => true,
+            'feedback_message' => 'The vent cover screws are stripped. Someone accessed the ductwork recently.',
             'unlocks_evidence_id' => $evidence6->id // Unlocks the blueprint
         ]);
 
@@ -293,7 +318,8 @@ class GameCaseSeeder extends Seeder
             'question_id' => $l4q1->id, 
             'text' => 'The "Janitor" who badged in at 11:30 PM, whose employer is a shell company quietly owned by Thorne.', 
             'is_correct' => true,
-            'unlocks_level_id' => $level5->id // Instantly unlocks the Interrogation Log
+            // Notice: It no longer unlocks Level 5 automatically.
+            // The team must now figure out the Search Warrant combo to get the Interrogation room.
         ]);
         Choice::create([
             'question_id' => $l4q1->id, 
@@ -319,7 +345,7 @@ class GameCaseSeeder extends Seeder
             'is_correct' => true
         ]);
 
-        // NEW LEVEL 6: WIRETAP PHASE VERDICTS
+        // LEVEL 6: WIRETAP PHASE VERDICTS
         $l6q1 = Question::create([
             'level_id' => $level6->id,
             'text' => 'Analyze the background noise behind the target\'s voice. What do you hear?',

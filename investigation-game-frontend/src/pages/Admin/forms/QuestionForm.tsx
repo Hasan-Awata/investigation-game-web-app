@@ -5,6 +5,7 @@ import { createAdminQuestion, updateAdminQuestion, deleteAdminQuestion, fetchAdm
 interface ChoiceState {
   id: string; 
   text: string;
+  feedback_message?: string; 
   is_correct: boolean;
   unlocks_evidence_id?: string; 
   unlocks_level_id?: string; 
@@ -125,6 +126,7 @@ export default function QuestionForm() {
     }
 
     updateChoiceText(activeCoordinateTarget, `${xPercent},${yPercent} | ${title}`);
+    
     setActiveCoordinateTarget(null);
   };
 
@@ -140,6 +142,7 @@ export default function QuestionForm() {
   };
 
   const updateChoiceText = (id: string, newText: string) => setChoices(choices.map(c => c.id === id ? { ...c, text: newText } : c));
+  const updateChoiceFeedback = (id: string, newFeedback: string) => setChoices(choices.map(c => c.id === id ? { ...c, feedback_message: newFeedback } : c));
   const updateChoiceEvidence = (id: string, evidenceId: string) => setChoices(choices.map(c => c.id === id ? { ...c, unlocks_evidence_id: evidenceId } : c));
   const updateChoiceLevel = (id: string, levelUnlockId: string) => setChoices(choices.map(c => c.id === id ? { ...c, unlocks_level_id: levelUnlockId } : c));
   const setCorrectChoice = (id: string) => setChoices(choices.map(c => ({ ...c, is_correct: c.id === id })));
@@ -163,6 +166,12 @@ export default function QuestionForm() {
     choices.forEach((choice, index) => {
       formData.append(`choices[${index}][text]`, choice.text);
       formData.append(`choices[${index}][is_correct]`, choice.is_correct ? '1' : '0');
+      
+      // Enforce the constraint on the payload level
+      if (isLocationPhase && choice.feedback_message) {
+        formData.append(`choices[${index}][feedback_message]`, choice.feedback_message);
+      }
+      
       if (choice.unlocks_evidence_id) formData.append(`choices[${index}][unlocks_evidence_id]`, choice.unlocks_evidence_id);
       if (choice.unlocks_level_id) formData.append(`choices[${index}][unlocks_level_id]`, choice.unlocks_level_id);
     });
@@ -185,6 +194,7 @@ export default function QuestionForm() {
       setChoices(question.choices.map((c: any) => ({
         id: crypto.randomUUID(), 
         text: c.text,
+        feedback_message: c.feedback_message || '', // Map it here
         is_correct: !!c.is_correct,
         unlocks_evidence_id: c.unlocks_evidence_id?.toString() || '',
         unlocks_level_id: c.unlocks_level_id?.toString() || ''
@@ -380,6 +390,20 @@ export default function QuestionForm() {
                         )}
                       </select>
                     </div>
+
+                    {isLocationPhase && (
+                      <div style={{ display: 'flex', alignItems: 'center', paddingLeft: '0', marginTop: '0.5rem' }}>
+                        <label style={{ fontSize: '0.85rem', color: 'var(--accent-cyan)', width: '150px', fontFamily: 'var(--font-mono)' }}>↳ Custom Feedback:</label>
+                        <input 
+                          type="text" 
+                          className="admin-input" 
+                          style={{ flex: 1, padding: '0.5rem', fontSize: '0.9rem' }} 
+                          placeholder={choice.is_correct ? "e.g., I found something useful here." : "e.g., Nothing was found here."}
+                          value={choice.feedback_message || ''} 
+                          onChange={(e) => updateChoiceFeedback(choice.id, e.target.value)} 
+                        />
+                      </div>
+                    )}
 
                   </div>
                 );

@@ -153,7 +153,7 @@ export default function CampaignTab() {
               </div>
             )}
             <h3 className="feedback-title">
-              {feedback.type === 'success' ? 'Consensus Verified' : 'Theory Rejected'}
+              {feedback.title}
             </h3>
             <p className="feedback-message">{feedback.message}</p>
             {feedback.type === 'error' && (

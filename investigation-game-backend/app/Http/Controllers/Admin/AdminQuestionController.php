@@ -25,6 +25,7 @@ class AdminQuestionController extends Controller
             'choices.*.is_correct' => 'required|boolean',
             'choices.*.unlocks_evidence_id' => 'nullable|exists:evidences,id',
             'choices.*.unlocks_level_id' => 'nullable|exists:levels,id', 
+            'choices.*.feedback_message' => 'nullable|string|max:255',
         ]);
 
         $cloudinary = new Cloudinary([
@@ -67,6 +68,7 @@ class AdminQuestionController extends Controller
                 return [
                     'question_id' => $question->id,
                     'text' => $choice['text'],
+                    'feedback_message' => $choice['feedback_message'] ?? null, 
                     'is_correct' => filter_var($choice['is_correct'], FILTER_VALIDATE_BOOLEAN),
                     'unlocks_evidence_id' => $choice['unlocks_evidence_id'] ?? null,
                     'unlocks_level_id' => $choice['unlocks_level_id'] ?? null,
@@ -100,6 +102,7 @@ class AdminQuestionController extends Controller
             'choices.*.is_correct' => 'required|boolean',
             'choices.*.unlocks_evidence_id' => 'nullable|exists:evidences,id', 
             'choices.*.unlocks_level_id' => 'nullable|exists:levels,id', 
+            'choices.*.feedback_message' => 'nullable|string|max:255',
         ]);
 
         if ($request->hasFile('image') || $request->hasFile('audio')) {
@@ -148,6 +151,7 @@ class AdminQuestionController extends Controller
                 return [
                     'question_id' => $question->id,
                     'text' => $choice['text'],
+                    'feedback_message' => $choice['feedback_message'] ?? null, 
                     'is_correct' => filter_var($choice['is_correct'], FILTER_VALIDATE_BOOLEAN),
                     'unlocks_evidence_id' => $choice['unlocks_evidence_id'] ?? null,
                     'unlocks_level_id' => $choice['unlocks_level_id'] ?? null,

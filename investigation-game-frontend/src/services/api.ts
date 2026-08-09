@@ -138,10 +138,7 @@ export const lockVote = async (roomId: number, questionId: number, choiceId: num
   }
 };
 
-export const submitAssessment = async (roomId: number): Promise<Result<{ 
-  status: string; 
-  message: string; 
-}>> => {  
+export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string; }, { title: string, message: string }>> => {  
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/submit`, {
       method: 'POST',
@@ -154,17 +151,19 @@ export const submitAssessment = async (roomId: number): Promise<Result<{
     
     if (!response.ok) {
       if (response.status === 401) handleUnauthorized();
-      
       const data = await response.json().catch(() => null);
-      return failure(data?.message || 'Failed to submit theory.');
+      return failure({
+        title: data?.error || 'Theory Rejected',
+        message: data?.message || 'Failed to submit theory.'
+      });
     }
     return success(await response.json());
   } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
+    return failure({ title: 'Network Error', message: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
-export const initiatePhase = async (roomId: number, levelId: number): Promise<Result<any>> => {
+export const initiatePhase = async (roomId: number, levelId: number): Promise<Result<any, { title: string, message: string }>> => {
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/levels/${levelId}/start`, {
       method: 'POST',
@@ -178,11 +177,15 @@ export const initiatePhase = async (roomId: number, levelId: number): Promise<Re
     if (!response.ok) {
       if (response.status === 401) handleUnauthorized();
       const data = await response.json().catch(() => null);
-      return failure(data?.message || 'Failed to initiate phase.');
+      // Capture the backend 'error' key for the title
+      return failure({ 
+        title: data?.error || 'Clearance Denied', 
+        message: data?.message || 'Failed to initiate phase.' 
+      });
     }
     return success(await response.json());
   } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
+    return failure({ title: 'Network Error', message: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
 
@@ -238,7 +241,7 @@ export const submitInvestigationRequest = async (
   }
 };
 
-export const triggerWiretap = async (roomId: number, questionId: number): Promise<Result<any>> => {
+export const triggerWiretap = async (roomId: number, questionId: number): Promise<Result<any, { title: string, message: string }>> => {
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/questions/${questionId}/wiretap/play`, {
       method: 'POST',
@@ -252,10 +255,13 @@ export const triggerWiretap = async (roomId: number, questionId: number): Promis
     if (!response.ok) {
       if (response.status === 401) handleUnauthorized();
       const data = await response.json().catch(() => null);
-      return failure(data?.message || 'Failed to trigger wiretap.');
+      return failure({
+        title: data?.error || 'Transmission Failed',
+        message: data?.message || 'Failed to trigger wiretap.'
+      });
     }
     return success(await response.json());
   } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
+    return failure({ title: 'Network Error', message: error instanceof Error ? error.message : 'Unknown error' });
   }
 };

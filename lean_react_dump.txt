@@ -1560,7 +1560,7 @@ export function useGameRoom(inviteCode: string | undefined) {
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\hooks\useInvestigationPhase.ts
 ----------------------------------------
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import type { Choice, GameRoom } from '@/types';
 import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/services/api'; 
@@ -1577,6 +1577,9 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
   const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  
+  // Track wiretaps triggered by this specific client to prevent WebSocket echo
+  const locallyTriggered = useRef<Set<number>>(new Set());
 
   const roomId = room.id;
 
@@ -1619,7 +1622,8 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     });
 
     channel.listen('WiretapTriggered', (e: any) => {
-      if (e.audio_url) {
+      // Only play the audio if it wasn't triggered locally
+      if (e.audio_url && !locallyTriggered.current.has(e.question_id)) {
         const audio = new Audio(e.audio_url);
         audio.play().catch(err => console.error('Browser blocked autoplay:', err));
       }
@@ -1728,11 +1732,20 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
   });
 
-    const triggerWiretapMutation = useMutation({
-    mutationFn: async (questionId: number) => {
+  const triggerWiretapMutation = useMutation({
+    mutationFn: async ({ questionId, audioUrl }: { questionId: number, audioUrl: string }) => {
+      locallyTriggered.current.add(questionId); // Mark as triggered by this client
       const result = await triggerWiretap(roomId, questionId);
       if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
+      return { value: result.value, audioUrl };
+    },
+    onSuccess: (data) => {
+      // Guarantee playback for the Host immediately within the trusted user-gesture chain
+      if (data.audioUrl) {
+        const audio = new Audio(data.audioUrl);
+        audio.play().catch(err => console.error('Audio playback failed:', err));
+      }
+      refreshRoomData(); // Guarantee the UI updates to the "Severed" state
     },
     onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
   });
@@ -1766,7 +1779,7 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     handleSubmitTheory,
     initiatePhase: (levelId: number) => initiatePhaseMutation.mutate(levelId),
     clearFeedback,
-    triggerWiretap: (questionId: number) => triggerWiretapMutation.mutate(questionId), 
+    triggerWiretap: (questionId: number, audioUrl: string) => triggerWiretapMutation.mutate({ questionId, audioUrl }), 
     isTriggeringWiretap: triggerWiretapMutation.isPending 
   };
 }
@@ -2221,6 +2234,7 @@ export default function CaseForm() {
   const [difficulty, setDifficulty] = useState('Standard');
   const [tags, setTags] = useState('');
   const [authorName, setAuthorName] = useState('System');
+  const [isPublished, setIsPublished] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: cases = [], isLoading: isFetchingCases } = useQuery({
@@ -2245,6 +2259,7 @@ export default function CaseForm() {
     setDifficulty('Standard');
     setTags('');
     setAuthorName('System');
+    setIsPublished(false); 
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -2306,6 +2321,7 @@ export default function CaseForm() {
     formData.append('difficulty', difficulty);
     formData.append('tags', tags);
     formData.append('author_name', authorName);
+    formData.append('is_published', isPublished ? '1' : '0'); 
     if (image) formData.append('image', image);
 
     if (editingCaseId) {
@@ -2329,6 +2345,7 @@ export default function CaseForm() {
     setDifficulty(caseObj.difficulty || 'Standard');
     setTags(Array.isArray(caseObj.tags) ? caseObj.tags.join(', ') : (caseObj.tags || ''));
     setAuthorName(caseObj.author_name || 'System');
+    setIsPublished(!!caseObj.is_published); 
     
     // Clear the file input so they don't accidentally re-upload an old image
     setImage(null);
@@ -2375,6 +2392,31 @@ export default function CaseForm() {
         )}
 
         <form onSubmit={handleSubmit} className="admin-form">
+
+          {/* THE PUBLISH TOGGLE */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1rem', 
+            background: isPublished ? 'rgba(0, 229, 255, 0.1)' : 'rgba(163, 50, 50, 0.1)', 
+            border: `1px solid ${isPublished ? 'rgba(0, 229, 255, 0.3)' : 'rgba(163, 50, 50, 0.3)'}`, 
+            padding: '1rem', 
+            borderRadius: '8px', 
+            marginBottom: '1rem',
+            transition: 'all 0.3s ease'
+          }}>
+            <input 
+              type="checkbox" 
+              id="published-toggle" 
+              checked={isPublished} 
+              onChange={(e) => setIsPublished(e.target.checked)} 
+              style={{ transform: 'scale(1.5)', accentColor: isPublished ? 'var(--accent-cyan)' : 'var(--accent-crimson)' }} 
+            />
+            <label htmlFor="published-toggle" style={{ fontFamily: 'var(--font-mono)', color: isPublished ? 'var(--accent-cyan)' : 'var(--accent-crimson)', cursor: 'pointer' }}>
+              <strong>{isPublished ? 'LIVE / PUBLISHED' : 'DRAFT / CLASSIFIED'} :</strong> {isPublished ? 'This case is visible to all agents on the main board.' : 'This case is hidden from the public. Only visible in Admin Oversight.'}
+            </label>
+          </div>
+
           <div className="form-group">
             <label>Case Title</label>
             <input 
@@ -2485,6 +2527,9 @@ export default function CaseForm() {
             {cases.map((c: any) => (
               <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <div>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: c.is_published ? 'var(--accent-success)' : 'var(--accent-amber)', marginRight: '1rem', fontSize: '0.85rem' }}>
+                    [{c.is_published ? 'PUBLISHED' : 'DRAFT'}]
+                  </span>
                   <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>ID: {c.id}</span>
                   <strong>{c.title}</strong>
                 </div>
@@ -6578,64 +6623,165 @@ export default function StandardPhase({ level, status, localVotes, totalPlayers,
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\WiretapPhase.css
 ----------------------------------------
 .wiretap-phase-wrapper {
-  background: rgba(10, 15, 20, 0.4);
-  border: 1px solid rgba(0, 229, 255, 0.1);
+  background: linear-gradient(180deg, rgba(10, 15, 20, 0.9) 0%, rgba(10, 15, 20, 0.6) 100%);
+  border: 1px solid rgba(0, 229, 255, 0.2);
   padding: 1.5rem;
   border-radius: var(--radius-md);
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(0, 229, 255, 0.05);
+}
+
+/* Tactical grid overlay */
+.wiretap-phase-wrapper::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: 
+    linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wiretap-phase-wrapper > * {
+  position: relative;
+  z-index: 1;
 }
 
 .wiretap-item {
-  background: rgba(0, 0, 0, 0.2);
-  padding: 1.5rem;
-  border-radius: var(--radius-sm);
-  border-left: 2px solid var(--accent-cyan);
+  background: linear-gradient(90deg, rgba(0, 229, 255, 0.05) 0%, rgba(0, 0, 0, 0.3) 100%);
+  padding: 1.25rem;
+  margin-top: 1rem;
+  border-left: 3px solid var(--accent-cyan);
+  border-top: 1px solid rgba(0, 229, 255, 0.1);
+  border-right: 1px solid rgba(0, 229, 255, 0.1);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.1);
+  /* Tactical angled corner */
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.wiretap-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 60px;
+  border-right: 1px solid rgba(0, 229, 255, 0.1);
+  padding-right: 1rem;
+}
+
+.question-number {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-cyan);
+  letter-spacing: 0.05em;
+  font-weight: bold;
+}
+
+.tactical-pulse {
+  position: relative;
+  color: var(--accent-cyan);
+  margin-top: 0.75rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.tactical-pulse::before {
+  content: '';
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-cyan);
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+}
+
+@keyframes pulse-ring {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { opacity: 0.5; }
+  100% { transform: scale(1.5); opacity: 0; }
 }
 
 .wiretap-container {
   margin: 1.5rem 0;
-  padding: 1.5rem;
-  background: rgba(0, 229, 255, 0.05);
-  border: 1px dashed var(--accent-cyan);
+  padding: 1.25rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px dashed rgba(0, 229, 255, 0.3);
   border-radius: var(--radius-sm);
   text-align: center;
-  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.05);
+  position: relative;
+}
+
+.wiretap-container::before {
+  content: '[ AUDIO FEED ]';
+  position: absolute;
+  top: -9px;
+  left: 15px;
+  background: var(--bg-dark); /* Match your actual background var here if needed */
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--accent-cyan);
+  letter-spacing: 0.1em;
 }
 
 .wiretap-container.played {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: rgba(0, 0, 0, 0.5);
+  border-color: rgba(255, 50, 50, 0.2);
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(0, 0, 0, 0.4),
+    rgba(0, 0, 0, 0.4) 10px,
+    rgba(255, 50, 50, 0.02) 10px,
+    rgba(255, 50, 50, 0.02) 20px
+  );
   padding: 1rem;
-  box-shadow: none;
+}
+
+.wiretap-container.played::before {
+  content: '[ FEED SEVERED ]';
+  color: var(--text-secondary);
 }
 
 .wiretap-burned {
   font-family: var(--font-mono);
   color: var(--text-secondary);
   letter-spacing: 0.1em;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-shadow: 0 0 5px rgba(0,0,0,0.5);
 }
 
 .play-wiretap-btn {
   width: 100%;
   max-width: 350px;
   margin: 0 auto;
-  border-color: var(--accent-cyan);
-  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid var(--accent-cyan);
+  background: rgba(0, 229, 255, 0.05);
   color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  transition: all 0.2s ease-in-out;
 }
 
 .play-wiretap-btn:hover:not(:disabled) {
-  background: var(--accent-cyan);
-  color: var(--bg-dark);
+  background: rgba(0, 229, 255, 0.2);
+  box-shadow: 0 0 15px rgba(0, 229, 255, 0.2);
+  text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
 }
 
 .locked-choice {
-  opacity: 0.4;
+  opacity: 0.3;
   cursor: not-allowed;
-  border-style: dashed;
+  border: 1px dashed var(--text-secondary);
+  background: transparent;
 }
 
 
@@ -6654,7 +6800,7 @@ interface WiretapPhaseProps {
   handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
   isHost: boolean;
   playedWiretaps: Set<number>;
-  onPlayWiretap: (questionId: number) => void;
+  onPlayWiretap: (questionId: number, audioUrl: string) => void;
   isTriggeringWiretap: boolean;
 }
 
@@ -6666,7 +6812,9 @@ export default function WiretapPhase({
 
   return (
     <div className="wiretap-phase-wrapper">
-      <h4 className="drawer-title" style={{ color: 'var(--accent-cyan)' }}>Active Intercept</h4>
+      <h4 className="drawer-title" style={{ color: 'var(--accent-cyan)', margin: '0 0 1rem 0', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+        [ Active Intercept ]
+      </h4>
       
       <div className="questions-list">
         {level.questions.map((q, qIdx) => {
@@ -6681,24 +6829,35 @@ export default function WiretapPhase({
           const hasLocalVote = !!localVotes[q.id];
           const hasBeenPlayed = playedWiretaps.has(q.id);
           const isAudioIntercept = !!q.audio_url;
+          
+          // Pad the number for a more tactical feel (e.g. 01, 02)
+          const interceptNumber = String(qIdx + 1).padStart(2, '0');
 
           return (
             <div key={q.id} className="question-item wiretap-item">
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span className="question-number">INT-{qIdx + 1}</span>
-                {isAudioIntercept && <span className="pulse-icon" style={{ color: 'var(--accent-cyan)', marginTop: '0.5rem' }}>🎙️</span>}
+              
+              {/* Tactical Sidebar */}
+              <div className="wiretap-sidebar">
+                <span className="question-number">INT-{interceptNumber}</span>
+                {isAudioIntercept && !hasBeenPlayed && (
+                  <span className="tactical-pulse">🎙️</span>
+                )}
+                {isAudioIntercept && hasBeenPlayed && (
+                  <span style={{ fontSize: '1.2rem', marginTop: '0.75rem', opacity: 0.5 }}>🔇</span>
+                )}
               </div>
 
+              {/* Main Content Body */}
               <div className="question-body" style={{ width: '100%' }}>
-                <p className="question-text">
+                <p className="question-text" style={{ marginTop: 0 }}>
                   {q.text}
                   {status === 'active' && !isLocked && (
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: consensus.isTie ? 'var(--accent-crimson)' : 'var(--text-secondary)', marginTop: '0.5rem', fontFamily: 'var(--font-mono)' }}>
-                      ↳ {consensus.isTie 
-                          ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: consensus.isTie ? 'var(--accent-crimson)' : 'var(--text-secondary)', marginTop: '0.75rem', fontFamily: 'var(--font-mono)' }}>
+                      {consensus.isTie 
+                          ? '> ⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
                           : hasLocalVote 
-                            ? `Vote recorded (${consensus.votesCast} / ${totalPlayers}).` 
-                            : `Awaiting Agent consensus: ${consensus.votesCast} / ${totalPlayers} cast`
+                            ? `> STATUS: Vote recorded [${consensus.votesCast}/${totalPlayers}]` 
+                            : `> STATUS: Awaiting Agent consensus [${consensus.votesCast}/${totalPlayers}]`
                         }
                     </span>
                   )}
@@ -6715,15 +6874,15 @@ export default function WiretapPhase({
                       <button 
                         className="btn-primary play-wiretap-btn"
                         disabled={!isHost || isTriggeringWiretap}
-                        onClick={(e) => { e.stopPropagation(); onPlayWiretap(q.id); }}
+                        onClick={(e) => { e.stopPropagation(); onPlayWiretap(q.id, q.audio_url!); }}
                       >
-                        {isHost ? '▶ INITIATE AUDIO FEED (ONCE)' : 'AWAITING HOST TO INITIATE FEED'}
+                        {isHost ? '▶ INITIATE AUDIO FEED (ONCE)' : 'AWAITING HOST TO INITIATE'}
                       </button>
                     )}
                   </div>
                 )}
 
-                <div className="choices-preview">
+                <div className="choices-preview" style={{ marginTop: '1rem' }}>
                   {q.choices?.map(c => {
                     const isSelected = localVotes[q.id] === c.id;
                     const isHistoricalCorrect = status === 'completed' && c.is_correct;
@@ -6733,7 +6892,6 @@ export default function WiretapPhase({
                     if (isHistoricalCorrect) pillClass += ' historical-correct';
                     if (status === 'active' && !isLocked && (!isAudioIntercept || hasBeenPlayed)) pillClass += ' interactable';
 
-                    // Lock choices if it's an audio question that hasn't been played yet
                     const preventGuessing = isAudioIntercept && !hasBeenPlayed;
 
                     return (
@@ -6744,7 +6902,7 @@ export default function WiretapPhase({
                           if (status === 'active' && !isLocked && !preventGuessing) handleSelectChoice(e, q.id, c, status);
                         }}
                       >
-                        {preventGuessing ? 'CLASSIFIED (Awaiting Audio)' : c.text}
+                        {preventGuessing ? '[ CLASSIFIED ]' : c.text}
                       </span>
                     );
                   })}
@@ -9723,6 +9881,7 @@ export interface GameCase {
   author_name?: string;
   img_url?: string; 
   active_room_invite_code?: string; 
+  is_published?: boolean; 
   phases?: Phase[]; 
   evidences?: Evidence[]; 
   suspects?: Suspect[];

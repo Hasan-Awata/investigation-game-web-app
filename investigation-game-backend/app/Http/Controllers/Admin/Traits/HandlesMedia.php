@@ -1,16 +1,13 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Admin\Concerns;
 
 use Cloudinary\Cloudinary;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
-abstract class Controller
+trait HandlesMedia
 {
-    /**
-     * Centralized media storage helper (Local Public Disk or Cloudinary).
-     */
     protected function storeMedia(?UploadedFile $file, string $caseTitle, string $subfolder, bool $storeLocally): ?string
     {
         if (!$file) return null;
@@ -22,7 +19,6 @@ abstract class Controller
             $destinationPath = public_path("assets/cases/{$caseSlug}/{$subfolder}");
             $filename = time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
             
-            // Move file directly into public/assets/cases/{caseSlug}/{subfolder}
             $file->move($destinationPath, $filename);
 
             return "/assets/cases/{$caseSlug}/{$subfolder}/{$filename}";
@@ -39,7 +35,7 @@ abstract class Controller
         ]);
 
         $isAudio = str_contains($file->getMimeType(), 'audio') || in_array($file->getClientOriginalExtension(), ['mp3', 'wav', 'ogg']);
-        $resourceType = $isAudio ? 'video' : 'image';
+        $resourceType = $isAudio ? 'video' : 'image'; // Cloudinary requires 'video' resource type for audio files[cite: 1]
 
         $cloudFolder = "cases/{$caseSlug}/{$subfolder}";
 

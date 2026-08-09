@@ -59,11 +59,11 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     if (isCorrectFind) {
       setPopup({
         title: "LEAD DISCOVERED",
-        message: "I found something useful here. Logging it to the board.",
+        // Dynamically insert the custom message, or fall back to the default
+        message: choice.feedback_message || "I found something useful here. Logging it to the board.",
         isSuccess: true
       });
       
-      // 3. Save to our new local found points cache
       setFoundPoints(prev => {
         const newSet = new Set(prev).add(choice.id);
         sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(newSet)));
@@ -76,7 +76,8 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     } else {
         setPopup({
           title: "DEAD END",
-          message: "Nothing was found here. I should keep looking.",
+          // Dynamically insert the custom message, or fall back to the default
+          message: choice.feedback_message || "Nothing was found here. I should keep looking.",
           isSuccess: false
         });
         

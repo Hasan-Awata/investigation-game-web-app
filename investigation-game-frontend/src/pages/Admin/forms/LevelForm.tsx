@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAdminLevel, updateAdminLevel, deleteAdminLevel, fetchAdminCases } from '@/services/adminApi';
-import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
+import { getInvestigationRequestLabel } from '@/types';
 
 export default function LevelForm() {
   const queryClient = useQueryClient();
@@ -16,8 +16,7 @@ export default function LevelForm() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isInitial, setIsInitial] = useState(true);
   const [presentationType, setPresentationType] = useState<string>('standard');
-  const [requiredRequestType, setRequiredRequestType] = useState<string>('');
-  
+  const [requiredRequestId, setRequiredRequestId] = useState<string>('');   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: cases = [], isLoading: isFetchingCases } = useQuery({
@@ -36,7 +35,7 @@ export default function LevelForm() {
     setOrderIndex('1');
     setIsInitial(true);
     setPresentationType('standard');
-    setRequiredRequestType('');
+    setRequiredRequestId('');
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -86,6 +85,7 @@ export default function LevelForm() {
 
   const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
   const availablePhases = selectedCase?.phases || [];
+  const availableRequests = selectedCase?.investigation_requests || [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -97,7 +97,7 @@ export default function LevelForm() {
     formData.append('order_index', orderIndex);
     formData.append('is_initial', isInitial ? '1' : '0');
     formData.append('presentation_type', presentationType);
-    if (requiredRequestType) formData.append('required_request_type', requiredRequestType);
+    if (requiredRequestId) formData.append('required_request_id', requiredRequestId);
     if (image) formData.append('image', image);
 
     if (editingId) {
@@ -116,7 +116,7 @@ export default function LevelForm() {
     setOrderIndex(level.order_index.toString());
     setIsInitial(!!level.is_initial);
     setPresentationType(level.presentation_type || 'standard');
-    setRequiredRequestType(level.required_request_type || '');
+    setRequiredRequestId(level.required_request_id?.toString() || '');
     
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -186,10 +186,12 @@ export default function LevelForm() {
 
             <div className="form-group" style={{ flex: 1 }}>
               <label>Required Combo (Gatekeeper)</label>
-              <select className="admin-input" value={requiredRequestType} onChange={(e) => setRequiredRequestType(e.target.value)}>
+              <select className="admin-input" value={requiredRequestId} onChange={(e) => setRequiredRequestId(e.target.value)} disabled={!caseId}>
                 <option value="">-- No Requirement --</option>
-                {Object.values(InvestigationRequestType).map(type => (
-                  <option key={type} value={type}>{getInvestigationRequestLabel(type)}</option>
+                {availableRequests.map((req: any) => (
+                  <option key={req.id} value={req.id}>
+                    REQ-{req.id}: {getInvestigationRequestLabel(req.request_type)}
+                  </option>
                 ))}
               </select>
             </div>

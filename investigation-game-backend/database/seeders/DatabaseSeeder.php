@@ -42,6 +42,7 @@ class DatabaseSeeder extends Seeder
         // 3. Run the Game Case seeder
         $this->call([
             GameCaseSeeder::class,
+            BloodOperaCaseSeeder::class, 
         ]);
     }
 }

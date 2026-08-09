@@ -23,7 +23,9 @@ export default function WiretapPhase({
 
   return (
     <div className="wiretap-phase-wrapper">
-      <h4 className="drawer-title" style={{ color: 'var(--accent-cyan)' }}>Active Intercept</h4>
+      <h4 className="drawer-title" style={{ color: 'var(--accent-cyan)', margin: '0 0 1rem 0', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>
+        [ Active Intercept ]
+      </h4>
       
       <div className="questions-list">
         {level.questions.map((q, qIdx) => {
@@ -38,24 +40,35 @@ export default function WiretapPhase({
           const hasLocalVote = !!localVotes[q.id];
           const hasBeenPlayed = playedWiretaps.has(q.id);
           const isAudioIntercept = !!q.audio_url;
+          
+          // Pad the number for a more tactical feel (e.g. 01, 02)
+          const interceptNumber = String(qIdx + 1).padStart(2, '0');
 
           return (
             <div key={q.id} className="question-item wiretap-item">
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span className="question-number">INT-{qIdx + 1}</span>
-                {isAudioIntercept && <span className="pulse-icon" style={{ color: 'var(--accent-cyan)', marginTop: '0.5rem' }}>🎙️</span>}
+              
+              {/* Tactical Sidebar */}
+              <div className="wiretap-sidebar">
+                <span className="question-number">INT-{interceptNumber}</span>
+                {isAudioIntercept && !hasBeenPlayed && (
+                  <span className="tactical-pulse">🎙️</span>
+                )}
+                {isAudioIntercept && hasBeenPlayed && (
+                  <span style={{ fontSize: '1.2rem', marginTop: '0.75rem', opacity: 0.5 }}>🔇</span>
+                )}
               </div>
 
+              {/* Main Content Body */}
               <div className="question-body" style={{ width: '100%' }}>
-                <p className="question-text">
+                <p className="question-text" style={{ marginTop: 0 }}>
                   {q.text}
                   {status === 'active' && !isLocked && (
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: consensus.isTie ? 'var(--accent-crimson)' : 'var(--text-secondary)', marginTop: '0.5rem', fontFamily: 'var(--font-mono)' }}>
-                      ↳ {consensus.isTie 
-                          ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
+                    <span style={{ display: 'block', fontSize: '0.75rem', color: consensus.isTie ? 'var(--accent-crimson)' : 'var(--text-secondary)', marginTop: '0.75rem', fontFamily: 'var(--font-mono)' }}>
+                      {consensus.isTie 
+                          ? '> ⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
                           : hasLocalVote 
-                            ? `Vote recorded (${consensus.votesCast} / ${totalPlayers}).` 
-                            : `Awaiting Agent consensus: ${consensus.votesCast} / ${totalPlayers} cast`
+                            ? `> STATUS: Vote recorded [${consensus.votesCast}/${totalPlayers}]` 
+                            : `> STATUS: Awaiting Agent consensus [${consensus.votesCast}/${totalPlayers}]`
                         }
                     </span>
                   )}
@@ -74,13 +87,13 @@ export default function WiretapPhase({
                         disabled={!isHost || isTriggeringWiretap}
                         onClick={(e) => { e.stopPropagation(); onPlayWiretap(q.id, q.audio_url!); }}
                       >
-                        {isHost ? '▶ INITIATE AUDIO FEED (ONCE)' : 'AWAITING HOST TO INITIATE FEED'}
+                        {isHost ? '▶ INITIATE AUDIO FEED (ONCE)' : 'AWAITING HOST TO INITIATE'}
                       </button>
                     )}
                   </div>
                 )}
 
-                <div className="choices-preview">
+                <div className="choices-preview" style={{ marginTop: '1rem' }}>
                   {q.choices?.map(c => {
                     const isSelected = localVotes[q.id] === c.id;
                     const isHistoricalCorrect = status === 'completed' && c.is_correct;
@@ -90,7 +103,6 @@ export default function WiretapPhase({
                     if (isHistoricalCorrect) pillClass += ' historical-correct';
                     if (status === 'active' && !isLocked && (!isAudioIntercept || hasBeenPlayed)) pillClass += ' interactable';
 
-                    // Lock choices if it's an audio question that hasn't been played yet
                     const preventGuessing = isAudioIntercept && !hasBeenPlayed;
 
                     return (
@@ -101,7 +113,7 @@ export default function WiretapPhase({
                           if (status === 'active' && !isLocked && !preventGuessing) handleSelectChoice(e, q.id, c, status);
                         }}
                       >
-                        {preventGuessing ? 'CLASSIFIED (Awaiting Audio)' : c.text}
+                        {preventGuessing ? '[ CLASSIFIED ]' : c.text}
                       </span>
                     );
                   })}
