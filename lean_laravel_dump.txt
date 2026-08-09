@@ -887,12 +887,8 @@ class GameRoomController extends Controller
      */
     public function startLevel(Request $request, GameRoom $room, Level $level): JsonResponse
     {
-        // NEW: Strict authorization gate - Host Only
         if ($request->user()->id !== $room->host_user_id) {
-            return response()->json([
-                'error' => 'Unauthorized', 
-                'message' => 'Only the assigned Room Host can initiate a new phase.'
-            ], 403);
+            return response()->json(['error' => 'Unauthorized', 'message' => 'Only the assigned Room Host can initiate a new phase.'], 403);
         }
 
         if ($room->current_level_id !== null) {
@@ -901,6 +897,21 @@ class GameRoomController extends Controller
         
         if ($room->completedLevels()->where('level_id', $level->id)->exists()) {
             return response()->json(['error' => 'Conflict', 'message' => 'This phase is already solved.'], 409);
+        }
+
+        // --- NEW: THE ROBUST GATEKEEPER ---
+        if ($level->required_request_type) {
+            // Did the room complete ANY request that matches the required enum type?
+            $hasRequirement = $room->completedRequests()
+                ->where('request_type', $level->required_request_type)
+                ->exists();
+
+            if (!$hasRequirement) {
+                return response()->json([
+                    'error' => 'Missing Prerequisite',
+                    'message' => "We can't proceed without a " . $level->required_request_type->label() . "."
+                ], 403);
+            }
         }
 
         $room->update(['current_level_id' => $level->id]);
@@ -981,7 +992,8 @@ class InvestigationRequestController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => $result->value['message'],
-            'unlocked_evidence' => $result->value['unlocked_evidence']
+            'unlocked_evidence' => $result->value['unlocked_evidence'],
+            'unlocked_levels' => $result->value['unlocked_levels'] 
         ], 200);
     }
 }
@@ -1506,17 +1518,18 @@ class AdminInvestigationRequestController extends Controller
         $validated = $request->validate([
             'case_id' => 'required|exists:cases,id',
             'request_type' => ['required', new Enum(InvestigationRequestType::class)],
-            'unlocks_evidence_id' => 'required|exists:evidences,id',
+            'unlocks_evidence_id' => 'nullable|exists:evidences,id',
+            'unlocks_level_id' => 'nullable|exists:levels,id',
             'required_evidence_ids' => 'required|array|min:2',
             'required_evidence_ids.*' => 'exists:evidences,id',
         ]);
 
-        // Wrap in a transaction to ensure both the parent record and pivot table sync cleanly
         return DB::transaction(function () use ($validated) {
             $investigationRequest = InvestigationRequest::create([
                 'case_id' => $validated['case_id'],
                 'request_type' => $validated['request_type'],
-                'unlocks_evidence_id' => $validated['unlocks_evidence_id'],
+                'unlocks_evidence_id' => $validated['unlocks_evidence_id'] ?? null,
+                'unlocks_level_id' => $validated['unlocks_level_id'] ?? null,
             ]);
 
             // Automatically populate the investigation_request_items pivot table
@@ -1536,7 +1549,8 @@ class AdminInvestigationRequestController extends Controller
         $validated = $request->validate([
             'case_id' => 'required|exists:cases,id',
             'request_type' => ['required', new Enum(InvestigationRequestType::class)],
-            'unlocks_evidence_id' => 'required|exists:evidences,id',
+            'unlocks_evidence_id' => 'nullable|exists:evidences,id',
+            'unlocks_level_id' => 'nullable|exists:levels,id',
             'required_evidence_ids' => 'required|array|min:2',
             'required_evidence_ids.*' => 'exists:evidences,id',
         ]);
@@ -1545,10 +1559,11 @@ class AdminInvestigationRequestController extends Controller
             $investigationRequest->update([
                 'case_id' => $validated['case_id'],
                 'request_type' => $validated['request_type'],
-                'unlocks_evidence_id' => $validated['unlocks_evidence_id'],
+                'unlocks_evidence_id' => $validated['unlocks_evidence_id'] ?? null,
+                'unlocks_level_id' => $validated['unlocks_level_id'] ?? null,
             ]);
 
-            // Sync automatically updates the pivot table (investigation_request_items)
+            // Sync automatically updates the pivot table
             $investigationRequest->requiredEvidences()->sync($validated['required_evidence_ids']);
 
             return response()->json([
@@ -1561,7 +1576,8 @@ class AdminInvestigationRequestController extends Controller
     public function destroy($id): JsonResponse
     {
         $investigationRequest = InvestigationRequest::findOrFail($id);
-        // Pivot records delete automatically due to cascade constraints in migration
+        
+        // Pivot records in `investigation_request_items` delete automatically due to cascadeOnDelete constraints
         $investigationRequest->delete();
 
         return response()->json(['message' => 'Investigation request deleted.'], 200);
@@ -1578,6 +1594,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Level;
 use App\Enums\LevelPresentationType; 
+use App\Enums\InvestigationRequestType;
 use Illuminate\Validation\Rules\Enum; 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -1593,6 +1610,7 @@ class AdminLevelController extends Controller
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
             'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
+            'required_request_type' => ['nullable', new Enum(InvestigationRequestType::class)],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
@@ -1604,9 +1622,7 @@ class AdminLevelController extends Controller
                     'api_key'    => env('CLOUDINARY_API_KEY'),
                     'api_secret' => env('CLOUDINARY_API_SECRET'),
                 ],
-                'url' => [
-                    'secure' => true
-                ]
+                'url' => ['secure' => true]
             ]);
 
             $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
@@ -1622,6 +1638,7 @@ class AdminLevelController extends Controller
             'order_index' => $validated['order_index'],
             'is_initial' => filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN),
             'presentation_type' => $validated['presentation_type'], 
+            'required_request_type' => $validated['required_request_type'] ?? null,
             'img_url' => $imageUrl,
         ]);
 
@@ -1640,17 +1657,22 @@ class AdminLevelController extends Controller
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
-            'presentation_type' => ['required', new \Illuminate\Validation\Rules\Enum(\App\Enums\LevelPresentationType::class)], 
+            'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
+            'required_request_type' => ['nullable', new Enum(InvestigationRequestType::class)],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
         $validated['is_initial'] = filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN);
 
+        // Ensure nullability passes through if the frontend sends an empty string or omits it
+        if (!array_key_exists('required_request_type', $validated) || empty($validated['required_request_type'])) {
+            $validated['required_request_type'] = null;
+        }
+
         if ($request->hasFile('image')) {
-            // Wipe the old level background/map
             $this->deleteCloudinaryMedia($level->img_url);
 
-            $cloudinary = new \Cloudinary\Cloudinary([
+            $cloudinary = new Cloudinary([
                 'cloud' => [
                     'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
                     'api_key'    => env('CLOUDINARY_API_KEY'),
@@ -1674,7 +1696,14 @@ class AdminLevelController extends Controller
     {
         if (!$url) return;
         if (preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
-            $cloudinary = new \Cloudinary\Cloudinary(['cloud' => ['cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 'api_key' => env('CLOUDINARY_API_KEY'), 'api_secret' => env('CLOUDINARY_API_SECRET')], 'url' => ['secure' => true]]);
+            $cloudinary = new Cloudinary([
+                'cloud' => [
+                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 
+                    'api_key' => env('CLOUDINARY_API_KEY'), 
+                    'api_secret' => env('CLOUDINARY_API_SECRET')
+                ], 
+                'url' => ['secure' => true]
+            ]);
             try { $cloudinary->uploadApi()->destroy($matches[1], ['resource_type' => 'image']); } catch (\Exception $e) {}
         }
     }
@@ -2455,6 +2484,12 @@ class GameRoom extends Model
                     ->withTimestamps();
     }
 
+    public function completedRequests()
+    {
+        return $this->belongsToMany(InvestigationRequest::class, 'room_investigation_requests', 'room_id', 'request_id')
+                    ->withTimestamps();
+    }
+
     public function unlockedVictims()
     { 
         return $this->belongsToMany(Victim::class, 'room_victims', 'room_id', 'victim_id')
@@ -2501,13 +2536,19 @@ class InvestigationRequest extends Model
             Evidence::class, 
             'investigation_request_items', 
             'request_id', 
-            'evidence_id'
+            'evidence_id',
+            'unlocks_level_id' 
         );
     }
 
     public function unlockedEvidence(): BelongsTo
     {
         return $this->belongsTo(Evidence::class, 'unlocks_evidence_id');
+    }
+
+    public function unlockedLevel(): BelongsTo
+    {
+        return $this->belongsTo(Level::class, 'unlocks_level_id');
     }
 }
 
@@ -2523,6 +2564,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Casts\Attribute; 
 use App\Enums\LevelPresentationType; 
+use App\Enums\InvestigationRequestType; 
 
 class Level extends Model
 {
@@ -2546,6 +2588,7 @@ class Level extends Model
         return [
             'is_initial' => 'boolean',
             'presentation_type' => LevelPresentationType::class, 
+            'required_request_type' => InvestigationRequestType::class, 
         ];
     }
     
@@ -3256,7 +3299,7 @@ class AssessmentService
 
             $previousStatus = $existingRecord->status ?? null;
 
-            // 1. Distribute XP based on historical attempts
+            // --- 1. XP DISTRIBUTION LOGIC ---
             $actualXpToAward = 0;
 
             if (!$existingRecord) {
@@ -3282,18 +3325,54 @@ class AssessmentService
                 \App\Models\User::where('id', $userId)->increment('XP', $actualXpToAward);
             }
 
-            // 2. Preserve or Update State
-            // If they already have a perfect solve on record, do not downgrade their status to a partial win or failure on replay.
-            if ($previousStatus === \App\Enums\CaseUserStatus::SolvedPerfect->value) {
-                \Illuminate\Support\Facades\DB::table('case_user')
-                    ->where('id', $existingRecord->id)
-                    ->update(['completed_at' => now()]);
+            // --- 2. STATE PRESERVATION LOGIC ---
+            if ($existingRecord) {
+                $protectFromDowngrade = false;
+
+                $isNewFail = in_array($finalStatus, [
+                    \App\Enums\CaseUserStatus::FailedNoProof->value,
+                    \App\Enums\CaseUserStatus::FailedIncomplete->value,
+                    \App\Enums\CaseUserStatus::FailedStrikes->value
+                ]);
+
+                // Always protect a Perfect Win.
+                if ($previousStatus === \App\Enums\CaseUserStatus::SolvedPerfect->value) {
+                    $protectFromDowngrade = true;
+                } 
+                // Protect a Partial Win ONLY if the new result is a Failure.
+                // (This allows them to successfully upgrade a Partial Win into a Perfect Win).
+                elseif ($previousStatus === \App\Enums\CaseUserStatus::SolvedPartial->value && $isNewFail) {
+                    $protectFromDowngrade = true;
+                }
+
+                if ($protectFromDowngrade) {
+                    // Just update the timestamp, do not overwrite the status.
+                    \Illuminate\Support\Facades\DB::table('case_user')
+                        ->where('id', $existingRecord->id)
+                        ->update([
+                            'completed_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                } else {
+                    // Overwrite with the new status (e.g., Upgrading to Perfect, or overwriting a previous Fail)
+                    \Illuminate\Support\Facades\DB::table('case_user')
+                        ->where('id', $existingRecord->id)
+                        ->update([
+                            'status' => $finalStatus, 
+                            'completed_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                }
             } else {
-                // Otherwise, record their new outcome
-                \Illuminate\Support\Facades\DB::table('case_user')->updateOrInsert(
-                    ['user_id' => $userId, 'case_id' => $case->id],
-                    ['status' => $finalStatus, 'completed_at' => now()]
-                );
+                // Create a brand new record for first-time players
+                \Illuminate\Support\Facades\DB::table('case_user')->insert([
+                    'user_id' => $userId, 
+                    'case_id' => $case->id,
+                    'status' => $finalStatus, 
+                    'completed_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
             }
         }
     }
@@ -3467,9 +3546,6 @@ use App\Events\EvidenceDiscovered;
 
 class InvestigationRequestService
 {
-    /**
-     * Evaluates if the submitted evidence qualifies for a procedural request.
-     */
     public function processRequest(GameRoom $room, array $submittedIds): Result
     {
         // 1. Establish the room's total known knowledge base
@@ -3477,15 +3553,12 @@ class InvestigationRequestService
         $unlockedEvidences = $room->unlockedEvidences()->pluck('evidences.id')->toArray();
         $possessedEvidences = array_unique(array_merge($initialEvidences, $unlockedEvidences));
 
-        // 2. Validate the players actually own the evidence they are trying to combine
         if (array_diff($submittedIds, $possessedEvidences)) {
             return Result::failure("Unauthorized: You cannot file a request using evidence you have not yet discovered.");
         }
 
-        // Sort to ensure array equality checks work regardless of input order
         sort($submittedIds);
 
-        // 3. Fetch all active requests for this case
         $availableRequests = InvestigationRequest::with('requiredEvidences')
             ->where('case_id', $room->case_id)
             ->get();
@@ -3494,25 +3567,40 @@ class InvestigationRequestService
             $requiredIds = $request->requiredEvidences->pluck('id')->toArray();
             sort($requiredIds);
 
-            // 4. Check for a perfect match
             if ($requiredIds === $submittedIds) {
-                $unlockedId = $request->unlocks_evidence_id;
-
-                if (in_array($unlockedId, $possessedEvidences)) {
+                // Prevent duplicate submissions of the exact same request
+                if ($room->completedRequests()->where('request_id', $request->id)->exists()) {
                     return Result::failure("This {$request->request_type->label()} has already been executed.");
                 }
 
-                // 5. Update State & Broadcast via Reverb
-                DB::table('room_evidences')->updateOrInsert([
-                    'room_id' => $room->id,
-                    'evidence_id' => $unlockedId
-                ]);
+                // 2. EXPLICITLY RECORD THE COMBO AS COMPLETE
+                $room->completedRequests()->syncWithoutDetaching([$request->id]);
 
-                EvidenceDiscovered::dispatch($room, [$unlockedId]);
+                $unlockedEvidence = [];
+                $unlockedLevels = [];
+
+                // 3. Process Dynamic Unlocks
+                if ($request->unlocks_evidence_id) {
+                    DB::table('room_evidences')->updateOrInsert([
+                        'room_id' => $room->id,
+                        'evidence_id' => $request->unlocks_evidence_id
+                    ]);
+                    $unlockedEvidence[] = $request->unlocks_evidence_id;
+                    EvidenceDiscovered::dispatch($room, $unlockedEvidence);
+                }
+
+                if ($request->unlocks_level_id) {
+                    DB::table('room_unlocked_levels')->updateOrInsert([
+                        'room_id' => $room->id,
+                        'level_id' => $request->unlocks_level_id
+                    ]);
+                    $unlockedLevels[] = $request->unlocks_level_id;
+                }
 
                 return Result::success([
-                    'message' => "{$request->request_type->label()} approved. New files added to your case board.",
-                    'unlocked_evidence' => [$unlockedId],
+                    'message' => "{$request->request_type->label()} approved by the DA.",
+                    'unlocked_evidence' => $unlockedEvidence,
+                    'unlocked_levels' => $unlockedLevels,
                     'request_type' => $request->request_type->value
                 ]);
             }
@@ -6481,6 +6569,53 @@ return new class extends Migration {
 
     public function down(): void {
         Schema::dropIfExists('room_played_wiretaps');
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_08_193441_refactor_investigation_requests_and_levels.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        // 1. Make the request unlocks totally flexible
+        Schema::table('investigation_requests', function (Blueprint $table) {
+            $table->foreignId('unlocks_evidence_id')->nullable()->change();
+            $table->foreignId('unlocks_level_id')->nullable()->constrained('levels')->nullOnDelete()->after('unlocks_evidence_id');
+        });
+
+        // 2. Explicitly track which requests a room has completed
+        Schema::create('room_investigation_requests', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('room_id')->constrained('game_rooms')->cascadeOnDelete();
+            $table->foreignId('request_id')->constrained('investigation_requests')->cascadeOnDelete();
+            $table->timestamps();
+            
+            $table->unique(['room_id', 'request_id']);
+        });
+
+        // 3. Add the gatekeeper requirement to levels
+        Schema::table('levels', function (Blueprint $table) {
+            $table->string('required_request_type')->nullable()->after('presentation_type');
+        });
+    }
+
+    public function down(): void {
+        Schema::dropIfExists('room_investigation_requests');
+        
+        Schema::table('investigation_requests', function (Blueprint $table) {
+            $table->dropForeign(['unlocks_level_id']);
+            $table->dropColumn('unlocks_level_id');
+        });
+
+        Schema::table('levels', function (Blueprint $table) {
+            $table->dropColumn('required_request_type');
+        });
     }
 };
 

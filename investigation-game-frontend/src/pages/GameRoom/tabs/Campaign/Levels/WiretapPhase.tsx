@@ -11,7 +11,7 @@ interface WiretapPhaseProps {
   handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
   isHost: boolean;
   playedWiretaps: Set<number>;
-  onPlayWiretap: (questionId: number) => void;
+  onPlayWiretap: (questionId: number, audioUrl: string) => void;
   isTriggeringWiretap: boolean;
 }
 
@@ -72,7 +72,7 @@ export default function WiretapPhase({
                       <button 
                         className="btn-primary play-wiretap-btn"
                         disabled={!isHost || isTriggeringWiretap}
-                        onClick={(e) => { e.stopPropagation(); onPlayWiretap(q.id); }}
+                        onClick={(e) => { e.stopPropagation(); onPlayWiretap(q.id, q.audio_url!); }}
                       >
                         {isHost ? '▶ INITIATE AUDIO FEED (ONCE)' : 'AWAITING HOST TO INITIATE FEED'}
                       </button>

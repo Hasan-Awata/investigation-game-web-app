@@ -19,6 +19,7 @@ export default function CaseForm() {
   const [difficulty, setDifficulty] = useState('Standard');
   const [tags, setTags] = useState('');
   const [authorName, setAuthorName] = useState('System');
+  const [isPublished, setIsPublished] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: cases = [], isLoading: isFetchingCases } = useQuery({
@@ -43,6 +44,7 @@ export default function CaseForm() {
     setDifficulty('Standard');
     setTags('');
     setAuthorName('System');
+    setIsPublished(false); 
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -104,6 +106,7 @@ export default function CaseForm() {
     formData.append('difficulty', difficulty);
     formData.append('tags', tags);
     formData.append('author_name', authorName);
+    formData.append('is_published', isPublished ? '1' : '0'); 
     if (image) formData.append('image', image);
 
     if (editingCaseId) {
@@ -127,6 +130,7 @@ export default function CaseForm() {
     setDifficulty(caseObj.difficulty || 'Standard');
     setTags(Array.isArray(caseObj.tags) ? caseObj.tags.join(', ') : (caseObj.tags || ''));
     setAuthorName(caseObj.author_name || 'System');
+    setIsPublished(!!caseObj.is_published); 
     
     // Clear the file input so they don't accidentally re-upload an old image
     setImage(null);
@@ -173,6 +177,31 @@ export default function CaseForm() {
         )}
 
         <form onSubmit={handleSubmit} className="admin-form">
+
+          {/* THE PUBLISH TOGGLE */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1rem', 
+            background: isPublished ? 'rgba(0, 229, 255, 0.1)' : 'rgba(163, 50, 50, 0.1)', 
+            border: `1px solid ${isPublished ? 'rgba(0, 229, 255, 0.3)' : 'rgba(163, 50, 50, 0.3)'}`, 
+            padding: '1rem', 
+            borderRadius: '8px', 
+            marginBottom: '1rem',
+            transition: 'all 0.3s ease'
+          }}>
+            <input 
+              type="checkbox" 
+              id="published-toggle" 
+              checked={isPublished} 
+              onChange={(e) => setIsPublished(e.target.checked)} 
+              style={{ transform: 'scale(1.5)', accentColor: isPublished ? 'var(--accent-cyan)' : 'var(--accent-crimson)' }} 
+            />
+            <label htmlFor="published-toggle" style={{ fontFamily: 'var(--font-mono)', color: isPublished ? 'var(--accent-cyan)' : 'var(--accent-crimson)', cursor: 'pointer' }}>
+              <strong>{isPublished ? 'LIVE / PUBLISHED' : 'DRAFT / CLASSIFIED'} :</strong> {isPublished ? 'This case is visible to all agents on the main board.' : 'This case is hidden from the public. Only visible in Admin Oversight.'}
+            </label>
+          </div>
+
           <div className="form-group">
             <label>Case Title</label>
             <input 
@@ -283,6 +312,9 @@ export default function CaseForm() {
             {cases.map((c: any) => (
               <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <div>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: c.is_published ? 'var(--accent-success)' : 'var(--accent-amber)', marginRight: '1rem', fontSize: '0.85rem' }}>
+                    [{c.is_published ? 'PUBLISHED' : 'DRAFT'}]
+                  </span>
                   <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>ID: {c.id}</span>
                   <strong>{c.title}</strong>
                 </div>

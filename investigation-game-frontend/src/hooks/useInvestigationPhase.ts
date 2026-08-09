@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import type { Choice, GameRoom } from '@/types';
 import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/services/api'; 
@@ -15,6 +15,9 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
   const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  
+  // Track wiretaps triggered by this specific client to prevent WebSocket echo
+  const locallyTriggered = useRef<Set<number>>(new Set());
 
   const roomId = room.id;
 
@@ -57,7 +60,8 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     });
 
     channel.listen('WiretapTriggered', (e: any) => {
-      if (e.audio_url) {
+      // Only play the audio if it wasn't triggered locally
+      if (e.audio_url && !locallyTriggered.current.has(e.question_id)) {
         const audio = new Audio(e.audio_url);
         audio.play().catch(err => console.error('Browser blocked autoplay:', err));
       }
@@ -166,11 +170,20 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
   });
 
-    const triggerWiretapMutation = useMutation({
-    mutationFn: async (questionId: number) => {
+  const triggerWiretapMutation = useMutation({
+    mutationFn: async ({ questionId, audioUrl }: { questionId: number, audioUrl: string }) => {
+      locallyTriggered.current.add(questionId); // Mark as triggered by this client
       const result = await triggerWiretap(roomId, questionId);
       if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
+      return { value: result.value, audioUrl };
+    },
+    onSuccess: (data) => {
+      // Guarantee playback for the Host immediately within the trusted user-gesture chain
+      if (data.audioUrl) {
+        const audio = new Audio(data.audioUrl);
+        audio.play().catch(err => console.error('Audio playback failed:', err));
+      }
+      refreshRoomData(); // Guarantee the UI updates to the "Severed" state
     },
     onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
   });
@@ -204,7 +217,7 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     handleSubmitTheory,
     initiatePhase: (levelId: number) => initiatePhaseMutation.mutate(levelId),
     clearFeedback,
-    triggerWiretap: (questionId: number) => triggerWiretapMutation.mutate(questionId), 
+    triggerWiretap: (questionId: number, audioUrl: string) => triggerWiretapMutation.mutate({ questionId, audioUrl }), 
     isTriggeringWiretap: triggerWiretapMutation.isPending 
   };
 }

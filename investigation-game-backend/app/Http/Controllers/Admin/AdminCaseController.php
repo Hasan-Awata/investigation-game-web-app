@@ -28,6 +28,7 @@ class AdminCaseController extends Controller
             'tags' => 'nullable|string', // We will accept a comma-separated string from the frontend
             'author_name' => 'required|string|max:100',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'is_published' => 'required|boolean',
         ]);
 
         $imageUrl = null;
@@ -67,6 +68,7 @@ class AdminCaseController extends Controller
             'tags' => $tagsArray,
             'author_name' => $validated['author_name'],
             'img_url' => $imageUrl,
+            'is_published' => filter_var($request->is_published, FILTER_VALIDATE_BOOLEAN),
         ]);
 
         return response()->json(['message' => 'Case created successfully.', 'case' => $case], 201);
@@ -108,6 +110,7 @@ class AdminCaseController extends Controller
             'tags' => 'nullable|string',
             'author_name' => 'required|string|max:100',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'is_published' => 'required|boolean',
         ]);
 
         if ($request->hasFile('image')) {
@@ -141,6 +144,7 @@ class AdminCaseController extends Controller
             'difficulty' => $validated['difficulty'],
             'tags' => $request->filled('tags') ? array_map('trim', explode(',', $validated['tags'])) : [],
             'author_name' => $validated['author_name'],
+            'is_published' => filter_var($request->is_published, FILTER_VALIDATE_BOOLEAN),
         ]);
 
         return response()->json(['message' => 'Case updated successfully.', 'case' => $case], 200);

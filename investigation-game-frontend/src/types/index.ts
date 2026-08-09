@@ -58,6 +58,7 @@ export interface GameCase {
   author_name?: string;
   img_url?: string; 
   active_room_invite_code?: string; 
+  is_published?: boolean; 
   phases?: Phase[]; 
   evidences?: Evidence[]; 
   suspects?: Suspect[];

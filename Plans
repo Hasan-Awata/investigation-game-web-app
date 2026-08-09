@@ -1,7 +1,7 @@
 Admin UX improvements: 
-1. "Draft" vs "Published" Mode (The Sandbox)
+<!-- 1. "Draft" vs "Published" Mode (The Sandbox)
 The Problem: Right now, the second you hit "Commit Case" on the dashboard, it goes live to the player base. But building a case takes time—you have to add phases, levels, suspects, and evidence. If a player logs in while you are halfway through building a case, they will enter a broken, unbeatable room.
-The Solution: Add a simple status toggle (draft, published, archived) to the Case model. The Main Menu will only fetch published cases, giving you a safe "sandbox" to build and test cases in the Admin Dashboard before flipping the switch to make them live.
+The Solution: Add a simple status toggle (draft, published, archived) to the Case model. The Main Menu will only fetch published cases, giving you a safe "sandbox" to build and test cases in the Admin Dashboard before flipping the switch to make them live. --> DONE
 
 2. The "Command Center" Overview Tab
 The Problem: Right now, when you click "System Oversight," you are immediately dropped into the "New Case" form. It feels a bit like a data-entry tool rather than a Director's dashboard.
@@ -10,3 +10,34 @@ The Solution: Create a "Command Center" or "Analytics" tab as the default landin
 3. Smart Filtering & Collapsible Lists
 The Problem: As your game grows, a case might have 50 pieces of evidence and 15 suspects. When you select that case in the Admin dropdown, the "Manage Existing..." list at the bottom of the page is going to become a massive, endlessly scrolling wall of text.
 The Solution: Upgrade the "Manage Existing" UI. We can add quick text-search filters (e.g., typing "gun" instantly filters the evidence list) and make the parent categories (like Phases) collapsible accordions so the author can keep their workspace clean.
+
+4. In the context of game development, this falls under the category of a business logic vulnerability or a gameplay integrity issue. It isn't a critical infrastructure security flaw—meaning a hacker can't use this URL to take over your server or steal user passwords—but it absolutely breaks the core rules and tension of your game.
+
+If the "one chance to listen" mechanic is crucial to the tension of the wiretap phase, then yes, exposing the raw URL is a flaw that needs to be patched.
+
+Fortunately, you can resolve this completely by moving the audio files behind Laravel's authorization layer, rather than serving them directly from a public directory.
+
+Here are the two best ways to secure those files.
+
+Option 1: The Authenticated Streaming Route (Recommended)
+Instead of putting the .wav or .mp3 files in your public folder, you move them to a private storage disk (like storage/app/private) and serve them through a dedicated Laravel API route.
+
+This allows you to leverage your existing database locks to authorize the request before sending a single byte of audio.
+
+How it works:
+
+Relocate the Files: Store your wiretap audio files in a non-public directory.
+
+Create a Gatekeeper Endpoint: Set up a route like GET /api/rooms/{room}/questions/{question}/audio.
+
+Check the Locks: In your controller, before returning the file, you run three checks:
+
+Is the user authenticated?
+
+Are they a participant in this specific room?
+
+Crucially: Has this question_id already been recorded in the room_played_wiretaps table?
+
+Serve or Deny: If the wiretap has already been burned, you return a 403 Forbidden. If it's valid, you use Laravel's response()->file() or response()->stream() to send the audio to the frontend.
+
+Even if a player copies the API URL and pastes it into their browser later, the server will see that the wiretap is marked as "played" in the database and block the request.

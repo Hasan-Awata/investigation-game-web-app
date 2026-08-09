@@ -91,6 +91,8 @@ class GameCaseSeeder extends Seeder
         $phase2 = Phase::create(['case_id' => $case->id, 'title' => 'Medical Examiner', 'description' => 'Review the physical trauma and toxicology.', 'order_index' => 2]);
         $phase3 = Phase::create(['case_id' => $case->id, 'title' => 'Corporate Espionage', 'description' => 'Follow the money and cross-reference alibis.', 'order_index' => 3]);
         $phase4 = Phase::create(['case_id' => $case->id, 'title' => 'The Break', 'description' => 'Interrogate the prime suspects.', 'order_index' => 4]);
+        // NEW: Wiretap test phase
+        $phase5 = Phase::create(['case_id' => $case->id, 'title' => 'Surveillance', 'description' => 'Active wiretap on a burner device.', 'order_index' => 5]);
 
         // 3. Create the Nested Levels (Attached to Phases)
         $level1 = Level::create([
@@ -100,7 +102,7 @@ class GameCaseSeeder extends Seeder
             'order_index' => 1,
             'is_initial' => true,
             'img_url' => '/assets/cases/Level1.png',
-            'presentation_type' => 'location', // Location testing
+            'presentation_type' => 'location', 
         ]);
             
         $level2 = Level::create([
@@ -128,7 +130,7 @@ class GameCaseSeeder extends Seeder
             'title' => 'The Fixer',
             'details' => 'Identify the external contractor Thorne hired to execute the hit.',
             'order_index' => 2,
-            'is_initial' => false, // Hidden until unlocked
+            'is_initial' => false, 
             'img_url' => '/assets/cases/Level4.png',
             'presentation_type' => 'standard',
         ]);
@@ -138,9 +140,19 @@ class GameCaseSeeder extends Seeder
             'title' => 'The Confession',
             'details' => 'Anton Varga has been detained and brought into Interrogation Room B. Break his alibi and secure a confession.',
             'order_index' => 1,
-            'is_initial' => false, // Hidden until unlocked by Level 4
+            'is_initial' => false, 
             'img_url' => '/assets/cases/Level5.png',
-            'presentation_type' => 'interrogation', // Interrogation testing
+            'presentation_type' => 'interrogation', 
+        ]);
+
+        // NEW: Wiretap test level
+        $level6 = Level::create([
+            'phase_id' => $phase5->id,
+            'title' => 'Burner Phone Intercept',
+            'details' => 'We managed to clone a burner phone tied to Marcus Thorne. A call is incoming. You only get one chance to listen.',
+            'order_index' => 1,
+            'is_initial' => true, // Set to true so you can test it immediately
+            'presentation_type' => 'wiretap',
         ]);
 
         // 4. Create Case Evidence
@@ -304,6 +316,25 @@ class GameCaseSeeder extends Seeder
         Choice::create([
             'question_id' => $l5q1->id, 
             'text' => 'A janitor doesn\'t know how to bypass an HVAC return vent without leaving a trace. But a former infiltration specialist does.', 
+            'is_correct' => true
+        ]);
+
+        // NEW LEVEL 6: WIRETAP PHASE VERDICTS
+        $l6q1 = Question::create([
+            'level_id' => $level6->id,
+            'text' => 'Analyze the background noise behind the target\'s voice. What do you hear?',
+            'audio_url' => '/assets/cases/drilling_sound.wav',
+            'msg_when_wrong' => 'Listen closely to the rhythmic, mechanical sound.',
+            'is_mandatory' => true,
+        ]);
+        Choice::create([
+            'question_id' => $l6q1->id, 
+            'text' => 'Heavy traffic and sirens. They are in a moving vehicle.', 
+            'is_correct' => false
+        ]);
+        Choice::create([
+            'question_id' => $l6q1->id, 
+            'text' => 'A high-speed drill or mechanical whine, matching a safe breach.', 
             'is_correct' => true
         ]);
     }

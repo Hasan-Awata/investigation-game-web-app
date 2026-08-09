@@ -1094,7 +1094,7 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
     rewardText = `0 XP (PERFECT REPLAY)`;
     rewardColor = 'var(--text-secondary)';
   } else if (userStatus === CaseUserStatus.SolvedPartial) {
-    rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} XP (PARTIAL REPLAY)`;
+    rewardText = `0 XP (PARTIAL REPLAY)`; 
     rewardColor = 'var(--text-secondary)';
   } else if (isFailed) {
     rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} XP (PENALTY ALLOWANCE)`;
@@ -1827,19 +1827,37 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
       setRequestType('');
       refreshRoomData();
 
-      if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
-        setTimeout(() => {
-          const newToast: ToastNotification = { 
+      // Trigger respective toast notifications based on what the DA unlocked
+      setTimeout(() => {
+        const newToasts: ToastNotification[] = [];
+        
+        if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
+          newToasts.push({ 
             id: crypto.randomUUID(), 
             type: 'evidence', 
             title: 'PROCEDURAL REQUEST APPROVED', 
             message: 'New case files have been authorized and added to the board.', 
             icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
-          };
-          setToasts(prev => [...prev, newToast]);
-          setTimeout(() => setToasts(prev => prev.filter(t => t.id !== newToast.id)), 5000);
-        }, 500);
-      }
+          });
+        }
+
+        if (data.unlocked_levels && data.unlocked_levels.length > 0) {
+          newToasts.push({ 
+            id: crypto.randomUUID(), 
+            type: 'level', 
+            title: 'WARRANT EXECUTED', 
+            message: 'A new investigative phase is now available on the roadmap.', 
+            icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
+          });
+        }
+
+        if (newToasts.length > 0) {
+          setToasts(prev => [...prev, ...newToasts]);
+          setTimeout(() => {
+            setToasts((prev) => prev.filter((t) => !newToasts.some((nt) => nt.id === t.id)));
+          }, 5000);
+        }
+      }, 500);
     },
     onError: (error: Error) => {
       setFeedback({ type: 'error', message: error.message });
@@ -2745,6 +2763,7 @@ export default function InvestigationRequestForm() {
   const [caseId, setCaseId] = useState('');
   const [requestType, setRequestType] = useState<string>('');
   const [unlocksEvidenceId, setUnlocksEvidenceId] = useState('');
+  const [unlocksLevelId, setUnlocksLevelId] = useState('');
   const [requiredEvidenceIds, setRequiredEvidenceIds] = useState<number[]>([]);
   
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -2761,11 +2780,13 @@ export default function InvestigationRequestForm() {
   const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
   const availableEvidences = selectedCase?.evidences || [];
   const existingRequests = selectedCase?.investigation_requests || [];
+  const availablePhases = selectedCase?.phases || [];
 
   const clearForm = () => {
     setEditingId(null);
     setRequestType('');
     setUnlocksEvidenceId('');
+    setUnlocksLevelId('');
     setRequiredEvidenceIds([]);
   };
 
@@ -2824,10 +2845,15 @@ export default function InvestigationRequestForm() {
       return setFeedback({ type: 'error', message: 'A procedural request must require at least two pieces of evidence to cross-reference.' });
     }
 
+    if (!unlocksEvidenceId && !unlocksLevelId) {
+       return setFeedback({ type: 'error', message: 'A request must unlock either a piece of evidence or a narrative level.' });
+    }
+
     const formData = new FormData();
     formData.append('case_id', caseId);
     formData.append('request_type', requestType);
-    formData.append('unlocks_evidence_id', unlocksEvidenceId);
+    if (unlocksEvidenceId) formData.append('unlocks_evidence_id', unlocksEvidenceId);
+    if (unlocksLevelId) formData.append('unlocks_level_id', unlocksLevelId);
     requiredEvidenceIds.forEach(id => formData.append('required_evidence_ids[]', id.toString()));
 
     if (editingId) updateMutation.mutate({ id: editingId, formData });
@@ -2838,7 +2864,8 @@ export default function InvestigationRequestForm() {
     setEditingId(req.id);
     setCaseId(parentCaseId.toString());
     setRequestType(req.request_type);
-    setUnlocksEvidenceId(req.unlocks_evidence_id.toString());
+    setUnlocksEvidenceId(req.unlocks_evidence_id?.toString() || '');
+    setUnlocksLevelId(req.unlocks_level_id?.toString() || '');
     setRequiredEvidenceIds(req.required_evidences?.map((e: any) => e.id) || []);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -2887,14 +2914,28 @@ export default function InvestigationRequestForm() {
             </div>
           </div>
 
-          <div className="form-group" style={{ marginTop: '1rem' }}>
-            <label style={{ color: 'var(--accent-amber)' }}>Target Evidence to Unlock</label>
-            <select className="admin-input" required value={unlocksEvidenceId} onChange={(e) => setUnlocksEvidenceId(e.target.value)} disabled={!caseId}>
-              <option value="" disabled>-- Select the Reward Evidence --</option>
-              {availableEvidences.map((ev: any) => (
-                <option key={`unlock-${ev.id}`} value={ev.id}>EX-{ev.id.toString().padStart(3, '0')} : {ev.title}</option>
-              ))}
-            </select>
+          <div className="admin-form-row" style={{ marginTop: '1rem' }}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label style={{ color: 'var(--accent-amber)' }}>Target Evidence to Unlock</label>
+              <select className="admin-input" value={unlocksEvidenceId} onChange={(e) => setUnlocksEvidenceId(e.target.value)} disabled={!caseId}>
+                <option value="">-- No Evidence Unlock --</option> 
+                {availableEvidences.map((ev: any) => (
+                  <option key={`unlock-${ev.id}`} value={ev.id}>EX-{ev.id.toString().padStart(3, '0')} : {ev.title}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ flex: 1 }}>
+              <label style={{ color: 'var(--accent-cyan)' }}>Target Phase to Unlock</label>
+              <select className="admin-input" value={unlocksLevelId} onChange={(e) => setUnlocksLevelId(e.target.value)} disabled={!caseId}>
+                <option value="">-- No Phase Unlock --</option>
+                {availablePhases.flatMap((p: any) => 
+                  p.levels?.map((l: any) => (
+                    <option key={l.id} value={l.id}>{p.title} - Lead {l.order_index}: {l.title}</option>
+                  ))
+                )}
+              </select>
+            </div>
           </div>
 
           <div className="form-group" style={{ marginTop: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '8px' }}>
@@ -2967,6 +3008,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\
 import { useState, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAdminLevel, updateAdminLevel, deleteAdminLevel, fetchAdminCases } from '@/services/adminApi';
+import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
 
 export default function LevelForm() {
   const queryClient = useQueryClient();
@@ -2981,6 +3023,7 @@ export default function LevelForm() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isInitial, setIsInitial] = useState(true);
   const [presentationType, setPresentationType] = useState<string>('standard');
+  const [requiredRequestType, setRequiredRequestType] = useState<string>('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -3000,6 +3043,7 @@ export default function LevelForm() {
     setOrderIndex('1');
     setIsInitial(true);
     setPresentationType('standard');
+    setRequiredRequestType('');
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -3060,6 +3104,7 @@ export default function LevelForm() {
     formData.append('order_index', orderIndex);
     formData.append('is_initial', isInitial ? '1' : '0');
     formData.append('presentation_type', presentationType);
+    if (requiredRequestType) formData.append('required_request_type', requiredRequestType);
     if (image) formData.append('image', image);
 
     if (editingId) {
@@ -3078,6 +3123,7 @@ export default function LevelForm() {
     setOrderIndex(level.order_index.toString());
     setIsInitial(!!level.is_initial);
     setPresentationType(level.presentation_type || 'standard');
+    setRequiredRequestType(level.required_request_type || '');
     
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -3142,6 +3188,16 @@ export default function LevelForm() {
                 <option value="interrogation">Suspect Interrogation</option>
                 <option value="location">Location</option>
                 <option value="wiretap">Communications Wiretap</option> 
+              </select>
+            </div>
+
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Required Combo (Gatekeeper)</label>
+              <select className="admin-input" value={requiredRequestType} onChange={(e) => setRequiredRequestType(e.target.value)}>
+                <option value="">-- No Requirement --</option>
+                {Object.values(InvestigationRequestType).map(type => (
+                  <option key={type} value={type}>{getInvestigationRequestLabel(type)}</option>
+                ))}
               </select>
             </div>
           </div>
@@ -9494,7 +9550,7 @@ export const submitSuspectVerdict = async (
 export const submitInvestigationRequest = async (
   roomId: number, 
   evidenceIds: number[]
-): Promise<Result<{ status: string; message: string; unlocked_evidence: number[] }>> => {  
+): Promise<Result<{ status: string; message: string; unlocked_evidence: number[]; unlocked_levels?: number[] }>> => {  
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/investigate`, {
       method: 'POST',
@@ -9777,6 +9833,7 @@ export interface Level {
   order_index: number;
   is_initial: boolean; 
   presentation_type?: LevelPresentationType; 
+  required_request_type?: InvestigationRequestType | string | null; 
   questions?: Question[]; 
 }
 

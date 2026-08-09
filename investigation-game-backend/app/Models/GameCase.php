@@ -34,12 +34,14 @@ class GameCase extends Model
         'difficulty',
         'tags',
         'author_name',
+        'is_published', 
     ];
 
     protected function casts(): array
     {
         return [
             'tags' => 'array',
+            'is_published' => 'boolean', 
         ];
     }
     

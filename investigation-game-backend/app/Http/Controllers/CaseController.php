@@ -16,6 +16,7 @@ class CaseController extends Controller
             'id', 'title', 'story', 'min_player_XP', 'XP_on_solve', 'img_url', 'max_strikes',
             'rating_stars', 'age_rating', 'estimated_playtime', 'difficulty', 'tags', 'author_name'
         )
+            ->where('is_published', true) 
             ->with([
                 'users' => function ($query) use ($userId) {
                     $query->where('users.id', $userId)->select('users.id', 'case_user.status');
