@@ -53,7 +53,7 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
     rewardText = `0 XP (PERFECT REPLAY)`;
     rewardColor = 'var(--text-secondary)';
   } else if (userStatus === CaseUserStatus.SolvedPartial) {
-    rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} XP (PARTIAL REPLAY)`;
+    rewardText = `0 XP (PARTIAL REPLAY)`; 
     rewardColor = 'var(--text-secondary)';
   } else if (isFailed) {
     rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} XP (PENALTY ALLOWANCE)`;

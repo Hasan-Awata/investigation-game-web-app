@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Level;
 use App\Enums\LevelPresentationType; 
+use App\Enums\InvestigationRequestType;
 use Illuminate\Validation\Rules\Enum; 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -20,6 +21,7 @@ class AdminLevelController extends Controller
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
             'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
+            'required_request_type' => ['nullable', new Enum(InvestigationRequestType::class)],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
@@ -31,9 +33,7 @@ class AdminLevelController extends Controller
                     'api_key'    => env('CLOUDINARY_API_KEY'),
                     'api_secret' => env('CLOUDINARY_API_SECRET'),
                 ],
-                'url' => [
-                    'secure' => true
-                ]
+                'url' => ['secure' => true]
             ]);
 
             $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
@@ -49,6 +49,7 @@ class AdminLevelController extends Controller
             'order_index' => $validated['order_index'],
             'is_initial' => filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN),
             'presentation_type' => $validated['presentation_type'], 
+            'required_request_type' => $validated['required_request_type'] ?? null,
             'img_url' => $imageUrl,
         ]);
 
@@ -67,17 +68,22 @@ class AdminLevelController extends Controller
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
-            'presentation_type' => ['required', new \Illuminate\Validation\Rules\Enum(\App\Enums\LevelPresentationType::class)], 
+            'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
+            'required_request_type' => ['nullable', new Enum(InvestigationRequestType::class)],
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
         $validated['is_initial'] = filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN);
 
+        // Ensure nullability passes through if the frontend sends an empty string or omits it
+        if (!array_key_exists('required_request_type', $validated) || empty($validated['required_request_type'])) {
+            $validated['required_request_type'] = null;
+        }
+
         if ($request->hasFile('image')) {
-            // Wipe the old level background/map
             $this->deleteCloudinaryMedia($level->img_url);
 
-            $cloudinary = new \Cloudinary\Cloudinary([
+            $cloudinary = new Cloudinary([
                 'cloud' => [
                     'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
                     'api_key'    => env('CLOUDINARY_API_KEY'),
@@ -101,7 +107,14 @@ class AdminLevelController extends Controller
     {
         if (!$url) return;
         if (preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
-            $cloudinary = new \Cloudinary\Cloudinary(['cloud' => ['cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 'api_key' => env('CLOUDINARY_API_KEY'), 'api_secret' => env('CLOUDINARY_API_SECRET')], 'url' => ['secure' => true]]);
+            $cloudinary = new Cloudinary([
+                'cloud' => [
+                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 
+                    'api_key' => env('CLOUDINARY_API_KEY'), 
+                    'api_secret' => env('CLOUDINARY_API_SECRET')
+                ], 
+                'url' => ['secure' => true]
+            ]);
             try { $cloudinary->uploadApi()->destroy($matches[1], ['resource_type' => 'image']); } catch (\Exception $e) {}
         }
     }

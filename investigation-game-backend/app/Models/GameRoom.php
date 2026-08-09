@@ -76,6 +76,12 @@ class GameRoom extends Model
                     ->withTimestamps();
     }
 
+    public function completedRequests()
+    {
+        return $this->belongsToMany(InvestigationRequest::class, 'room_investigation_requests', 'room_id', 'request_id')
+                    ->withTimestamps();
+    }
+
     public function unlockedVictims()
     { 
         return $this->belongsToMany(Victim::class, 'room_victims', 'room_id', 'victim_id')

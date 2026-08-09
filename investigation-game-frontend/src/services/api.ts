@@ -215,7 +215,7 @@ export const submitSuspectVerdict = async (
 export const submitInvestigationRequest = async (
   roomId: number, 
   evidenceIds: number[]
-): Promise<Result<{ status: string; message: string; unlocked_evidence: number[] }>> => {  
+): Promise<Result<{ status: string; message: string; unlocked_evidence: number[]; unlocked_levels?: number[] }>> => {  
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/investigate`, {
       method: 'POST',

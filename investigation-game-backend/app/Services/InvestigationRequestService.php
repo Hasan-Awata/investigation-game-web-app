@@ -10,9 +10,6 @@ use App\Events\EvidenceDiscovered;
 
 class InvestigationRequestService
 {
-    /**
-     * Evaluates if the submitted evidence qualifies for a procedural request.
-     */
     public function processRequest(GameRoom $room, array $submittedIds): Result
     {
         // 1. Establish the room's total known knowledge base
@@ -20,15 +17,12 @@ class InvestigationRequestService
         $unlockedEvidences = $room->unlockedEvidences()->pluck('evidences.id')->toArray();
         $possessedEvidences = array_unique(array_merge($initialEvidences, $unlockedEvidences));
 
-        // 2. Validate the players actually own the evidence they are trying to combine
         if (array_diff($submittedIds, $possessedEvidences)) {
             return Result::failure("Unauthorized: You cannot file a request using evidence you have not yet discovered.");
         }
 
-        // Sort to ensure array equality checks work regardless of input order
         sort($submittedIds);
 
-        // 3. Fetch all active requests for this case
         $availableRequests = InvestigationRequest::with('requiredEvidences')
             ->where('case_id', $room->case_id)
             ->get();
@@ -37,25 +31,40 @@ class InvestigationRequestService
             $requiredIds = $request->requiredEvidences->pluck('id')->toArray();
             sort($requiredIds);
 
-            // 4. Check for a perfect match
             if ($requiredIds === $submittedIds) {
-                $unlockedId = $request->unlocks_evidence_id;
-
-                if (in_array($unlockedId, $possessedEvidences)) {
+                // Prevent duplicate submissions of the exact same request
+                if ($room->completedRequests()->where('request_id', $request->id)->exists()) {
                     return Result::failure("This {$request->request_type->label()} has already been executed.");
                 }
 
-                // 5. Update State & Broadcast via Reverb
-                DB::table('room_evidences')->updateOrInsert([
-                    'room_id' => $room->id,
-                    'evidence_id' => $unlockedId
-                ]);
+                // 2. EXPLICITLY RECORD THE COMBO AS COMPLETE
+                $room->completedRequests()->syncWithoutDetaching([$request->id]);
 
-                EvidenceDiscovered::dispatch($room, [$unlockedId]);
+                $unlockedEvidence = [];
+                $unlockedLevels = [];
+
+                // 3. Process Dynamic Unlocks
+                if ($request->unlocks_evidence_id) {
+                    DB::table('room_evidences')->updateOrInsert([
+                        'room_id' => $room->id,
+                        'evidence_id' => $request->unlocks_evidence_id
+                    ]);
+                    $unlockedEvidence[] = $request->unlocks_evidence_id;
+                    EvidenceDiscovered::dispatch($room, $unlockedEvidence);
+                }
+
+                if ($request->unlocks_level_id) {
+                    DB::table('room_unlocked_levels')->updateOrInsert([
+                        'room_id' => $room->id,
+                        'level_id' => $request->unlocks_level_id
+                    ]);
+                    $unlockedLevels[] = $request->unlocks_level_id;
+                }
 
                 return Result::success([
-                    'message' => "{$request->request_type->label()} approved. New files added to your case board.",
-                    'unlocked_evidence' => [$unlockedId],
+                    'message' => "{$request->request_type->label()} approved by the DA.",
+                    'unlocked_evidence' => $unlockedEvidence,
+                    'unlocked_levels' => $unlockedLevels,
                     'request_type' => $request->request_type->value
                 ]);
             }

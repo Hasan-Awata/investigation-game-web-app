@@ -51,19 +51,37 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
       setRequestType('');
       refreshRoomData();
 
-      if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
-        setTimeout(() => {
-          const newToast: ToastNotification = { 
+      // Trigger respective toast notifications based on what the DA unlocked
+      setTimeout(() => {
+        const newToasts: ToastNotification[] = [];
+        
+        if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
+          newToasts.push({ 
             id: crypto.randomUUID(), 
             type: 'evidence', 
             title: 'PROCEDURAL REQUEST APPROVED', 
             message: 'New case files have been authorized and added to the board.', 
             icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
-          };
-          setToasts(prev => [...prev, newToast]);
-          setTimeout(() => setToasts(prev => prev.filter(t => t.id !== newToast.id)), 5000);
-        }, 500);
-      }
+          });
+        }
+
+        if (data.unlocked_levels && data.unlocked_levels.length > 0) {
+          newToasts.push({ 
+            id: crypto.randomUUID(), 
+            type: 'level', 
+            title: 'WARRANT EXECUTED', 
+            message: 'A new investigative phase is now available on the roadmap.', 
+            icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
+          });
+        }
+
+        if (newToasts.length > 0) {
+          setToasts(prev => [...prev, ...newToasts]);
+          setTimeout(() => {
+            setToasts((prev) => prev.filter((t) => !newToasts.some((nt) => nt.id === t.id)));
+          }, 5000);
+        }
+      }, 500);
     },
     onError: (error: Error) => {
       setFeedback({ type: 'error', message: error.message });

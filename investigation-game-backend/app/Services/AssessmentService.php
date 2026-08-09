@@ -328,7 +328,7 @@ class AssessmentService
 
             $previousStatus = $existingRecord->status ?? null;
 
-            // 1. Distribute XP based on historical attempts
+            // --- 1. XP DISTRIBUTION LOGIC ---
             $actualXpToAward = 0;
 
             if (!$existingRecord) {
@@ -354,18 +354,54 @@ class AssessmentService
                 \App\Models\User::where('id', $userId)->increment('XP', $actualXpToAward);
             }
 
-            // 2. Preserve or Update State
-            // If they already have a perfect solve on record, do not downgrade their status to a partial win or failure on replay.
-            if ($previousStatus === \App\Enums\CaseUserStatus::SolvedPerfect->value) {
-                \Illuminate\Support\Facades\DB::table('case_user')
-                    ->where('id', $existingRecord->id)
-                    ->update(['completed_at' => now()]);
+            // --- 2. STATE PRESERVATION LOGIC ---
+            if ($existingRecord) {
+                $protectFromDowngrade = false;
+
+                $isNewFail = in_array($finalStatus, [
+                    \App\Enums\CaseUserStatus::FailedNoProof->value,
+                    \App\Enums\CaseUserStatus::FailedIncomplete->value,
+                    \App\Enums\CaseUserStatus::FailedStrikes->value
+                ]);
+
+                // Always protect a Perfect Win.
+                if ($previousStatus === \App\Enums\CaseUserStatus::SolvedPerfect->value) {
+                    $protectFromDowngrade = true;
+                } 
+                // Protect a Partial Win ONLY if the new result is a Failure.
+                // (This allows them to successfully upgrade a Partial Win into a Perfect Win).
+                elseif ($previousStatus === \App\Enums\CaseUserStatus::SolvedPartial->value && $isNewFail) {
+                    $protectFromDowngrade = true;
+                }
+
+                if ($protectFromDowngrade) {
+                    // Just update the timestamp, do not overwrite the status.
+                    \Illuminate\Support\Facades\DB::table('case_user')
+                        ->where('id', $existingRecord->id)
+                        ->update([
+                            'completed_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                } else {
+                    // Overwrite with the new status (e.g., Upgrading to Perfect, or overwriting a previous Fail)
+                    \Illuminate\Support\Facades\DB::table('case_user')
+                        ->where('id', $existingRecord->id)
+                        ->update([
+                            'status' => $finalStatus, 
+                            'completed_at' => now(),
+                            'updated_at' => now()
+                        ]);
+                }
             } else {
-                // Otherwise, record their new outcome
-                \Illuminate\Support\Facades\DB::table('case_user')->updateOrInsert(
-                    ['user_id' => $userId, 'case_id' => $case->id],
-                    ['status' => $finalStatus, 'completed_at' => now()]
-                );
+                // Create a brand new record for first-time players
+                \Illuminate\Support\Facades\DB::table('case_user')->insert([
+                    'user_id' => $userId, 
+                    'case_id' => $case->id,
+                    'status' => $finalStatus, 
+                    'completed_at' => now(),
+                    'created_at' => now(),
+                    'updated_at' => now()
+                ]);
             }
         }
     }

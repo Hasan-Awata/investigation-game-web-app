@@ -17,17 +17,18 @@ class AdminInvestigationRequestController extends Controller
         $validated = $request->validate([
             'case_id' => 'required|exists:cases,id',
             'request_type' => ['required', new Enum(InvestigationRequestType::class)],
-            'unlocks_evidence_id' => 'required|exists:evidences,id',
+            'unlocks_evidence_id' => 'nullable|exists:evidences,id',
+            'unlocks_level_id' => 'nullable|exists:levels,id',
             'required_evidence_ids' => 'required|array|min:2',
             'required_evidence_ids.*' => 'exists:evidences,id',
         ]);
 
-        // Wrap in a transaction to ensure both the parent record and pivot table sync cleanly
         return DB::transaction(function () use ($validated) {
             $investigationRequest = InvestigationRequest::create([
                 'case_id' => $validated['case_id'],
                 'request_type' => $validated['request_type'],
-                'unlocks_evidence_id' => $validated['unlocks_evidence_id'],
+                'unlocks_evidence_id' => $validated['unlocks_evidence_id'] ?? null,
+                'unlocks_level_id' => $validated['unlocks_level_id'] ?? null,
             ]);
 
             // Automatically populate the investigation_request_items pivot table
@@ -47,7 +48,8 @@ class AdminInvestigationRequestController extends Controller
         $validated = $request->validate([
             'case_id' => 'required|exists:cases,id',
             'request_type' => ['required', new Enum(InvestigationRequestType::class)],
-            'unlocks_evidence_id' => 'required|exists:evidences,id',
+            'unlocks_evidence_id' => 'nullable|exists:evidences,id',
+            'unlocks_level_id' => 'nullable|exists:levels,id',
             'required_evidence_ids' => 'required|array|min:2',
             'required_evidence_ids.*' => 'exists:evidences,id',
         ]);
@@ -56,10 +58,11 @@ class AdminInvestigationRequestController extends Controller
             $investigationRequest->update([
                 'case_id' => $validated['case_id'],
                 'request_type' => $validated['request_type'],
-                'unlocks_evidence_id' => $validated['unlocks_evidence_id'],
+                'unlocks_evidence_id' => $validated['unlocks_evidence_id'] ?? null,
+                'unlocks_level_id' => $validated['unlocks_level_id'] ?? null,
             ]);
 
-            // Sync automatically updates the pivot table (investigation_request_items)
+            // Sync automatically updates the pivot table
             $investigationRequest->requiredEvidences()->sync($validated['required_evidence_ids']);
 
             return response()->json([
@@ -72,7 +75,8 @@ class AdminInvestigationRequestController extends Controller
     public function destroy($id): JsonResponse
     {
         $investigationRequest = InvestigationRequest::findOrFail($id);
-        // Pivot records delete automatically due to cascade constraints in migration
+        
+        // Pivot records in `investigation_request_items` delete automatically due to cascadeOnDelete constraints
         $investigationRequest->delete();
 
         return response()->json(['message' => 'Investigation request deleted.'], 200);

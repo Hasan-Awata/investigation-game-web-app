@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAdminLevel, updateAdminLevel, deleteAdminLevel, fetchAdminCases } from '@/services/adminApi';
+import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
 
 export default function LevelForm() {
   const queryClient = useQueryClient();
@@ -15,6 +16,7 @@ export default function LevelForm() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isInitial, setIsInitial] = useState(true);
   const [presentationType, setPresentationType] = useState<string>('standard');
+  const [requiredRequestType, setRequiredRequestType] = useState<string>('');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -34,6 +36,7 @@ export default function LevelForm() {
     setOrderIndex('1');
     setIsInitial(true);
     setPresentationType('standard');
+    setRequiredRequestType('');
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
@@ -94,6 +97,7 @@ export default function LevelForm() {
     formData.append('order_index', orderIndex);
     formData.append('is_initial', isInitial ? '1' : '0');
     formData.append('presentation_type', presentationType);
+    if (requiredRequestType) formData.append('required_request_type', requiredRequestType);
     if (image) formData.append('image', image);
 
     if (editingId) {
@@ -112,6 +116,7 @@ export default function LevelForm() {
     setOrderIndex(level.order_index.toString());
     setIsInitial(!!level.is_initial);
     setPresentationType(level.presentation_type || 'standard');
+    setRequiredRequestType(level.required_request_type || '');
     
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -176,6 +181,16 @@ export default function LevelForm() {
                 <option value="interrogation">Suspect Interrogation</option>
                 <option value="location">Location</option>
                 <option value="wiretap">Communications Wiretap</option> 
+              </select>
+            </div>
+
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Required Combo (Gatekeeper)</label>
+              <select className="admin-input" value={requiredRequestType} onChange={(e) => setRequiredRequestType(e.target.value)}>
+                <option value="">-- No Requirement --</option>
+                {Object.values(InvestigationRequestType).map(type => (
+                  <option key={type} value={type}>{getInvestigationRequestLabel(type)}</option>
+                ))}
               </select>
             </div>
           </div>

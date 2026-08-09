@@ -10,6 +10,7 @@ export default function InvestigationRequestForm() {
   const [caseId, setCaseId] = useState('');
   const [requestType, setRequestType] = useState<string>('');
   const [unlocksEvidenceId, setUnlocksEvidenceId] = useState('');
+  const [unlocksLevelId, setUnlocksLevelId] = useState('');
   const [requiredEvidenceIds, setRequiredEvidenceIds] = useState<number[]>([]);
   
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -26,11 +27,13 @@ export default function InvestigationRequestForm() {
   const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
   const availableEvidences = selectedCase?.evidences || [];
   const existingRequests = selectedCase?.investigation_requests || [];
+  const availablePhases = selectedCase?.phases || [];
 
   const clearForm = () => {
     setEditingId(null);
     setRequestType('');
     setUnlocksEvidenceId('');
+    setUnlocksLevelId('');
     setRequiredEvidenceIds([]);
   };
 
@@ -89,10 +92,15 @@ export default function InvestigationRequestForm() {
       return setFeedback({ type: 'error', message: 'A procedural request must require at least two pieces of evidence to cross-reference.' });
     }
 
+    if (!unlocksEvidenceId && !unlocksLevelId) {
+       return setFeedback({ type: 'error', message: 'A request must unlock either a piece of evidence or a narrative level.' });
+    }
+
     const formData = new FormData();
     formData.append('case_id', caseId);
     formData.append('request_type', requestType);
-    formData.append('unlocks_evidence_id', unlocksEvidenceId);
+    if (unlocksEvidenceId) formData.append('unlocks_evidence_id', unlocksEvidenceId);
+    if (unlocksLevelId) formData.append('unlocks_level_id', unlocksLevelId);
     requiredEvidenceIds.forEach(id => formData.append('required_evidence_ids[]', id.toString()));
 
     if (editingId) updateMutation.mutate({ id: editingId, formData });
@@ -103,7 +111,8 @@ export default function InvestigationRequestForm() {
     setEditingId(req.id);
     setCaseId(parentCaseId.toString());
     setRequestType(req.request_type);
-    setUnlocksEvidenceId(req.unlocks_evidence_id.toString());
+    setUnlocksEvidenceId(req.unlocks_evidence_id?.toString() || '');
+    setUnlocksLevelId(req.unlocks_level_id?.toString() || '');
     setRequiredEvidenceIds(req.required_evidences?.map((e: any) => e.id) || []);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -152,14 +161,28 @@ export default function InvestigationRequestForm() {
             </div>
           </div>
 
-          <div className="form-group" style={{ marginTop: '1rem' }}>
-            <label style={{ color: 'var(--accent-amber)' }}>Target Evidence to Unlock</label>
-            <select className="admin-input" required value={unlocksEvidenceId} onChange={(e) => setUnlocksEvidenceId(e.target.value)} disabled={!caseId}>
-              <option value="" disabled>-- Select the Reward Evidence --</option>
-              {availableEvidences.map((ev: any) => (
-                <option key={`unlock-${ev.id}`} value={ev.id}>EX-{ev.id.toString().padStart(3, '0')} : {ev.title}</option>
-              ))}
-            </select>
+          <div className="admin-form-row" style={{ marginTop: '1rem' }}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label style={{ color: 'var(--accent-amber)' }}>Target Evidence to Unlock</label>
+              <select className="admin-input" value={unlocksEvidenceId} onChange={(e) => setUnlocksEvidenceId(e.target.value)} disabled={!caseId}>
+                <option value="">-- No Evidence Unlock --</option> 
+                {availableEvidences.map((ev: any) => (
+                  <option key={`unlock-${ev.id}`} value={ev.id}>EX-{ev.id.toString().padStart(3, '0')} : {ev.title}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ flex: 1 }}>
+              <label style={{ color: 'var(--accent-cyan)' }}>Target Phase to Unlock</label>
+              <select className="admin-input" value={unlocksLevelId} onChange={(e) => setUnlocksLevelId(e.target.value)} disabled={!caseId}>
+                <option value="">-- No Phase Unlock --</option>
+                {availablePhases.flatMap((p: any) => 
+                  p.levels?.map((l: any) => (
+                    <option key={l.id} value={l.id}>{p.title} - Lead {l.order_index}: {l.title}</option>
+                  ))
+                )}
+              </select>
+            </div>
           </div>
 
           <div className="form-group" style={{ marginTop: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '8px' }}>

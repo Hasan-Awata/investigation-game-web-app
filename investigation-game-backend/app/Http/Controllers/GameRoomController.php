@@ -74,12 +74,8 @@ class GameRoomController extends Controller
      */
     public function startLevel(Request $request, GameRoom $room, Level $level): JsonResponse
     {
-        // NEW: Strict authorization gate - Host Only
         if ($request->user()->id !== $room->host_user_id) {
-            return response()->json([
-                'error' => 'Unauthorized', 
-                'message' => 'Only the assigned Room Host can initiate a new phase.'
-            ], 403);
+            return response()->json(['error' => 'Unauthorized', 'message' => 'Only the assigned Room Host can initiate a new phase.'], 403);
         }
 
         if ($room->current_level_id !== null) {
@@ -88,6 +84,21 @@ class GameRoomController extends Controller
         
         if ($room->completedLevels()->where('level_id', $level->id)->exists()) {
             return response()->json(['error' => 'Conflict', 'message' => 'This phase is already solved.'], 409);
+        }
+
+        // --- NEW: THE ROBUST GATEKEEPER ---
+        if ($level->required_request_type) {
+            // Did the room complete ANY request that matches the required enum type?
+            $hasRequirement = $room->completedRequests()
+                ->where('request_type', $level->required_request_type)
+                ->exists();
+
+            if (!$hasRequirement) {
+                return response()->json([
+                    'error' => 'Missing Prerequisite',
+                    'message' => "We can't proceed without a " . $level->required_request_type->label() . "."
+                ], 403);
+            }
         }
 
         $room->update(['current_level_id' => $level->id]);

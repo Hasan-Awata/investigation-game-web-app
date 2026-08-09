@@ -168,6 +168,7 @@ export interface Level {
   order_index: number;
   is_initial: boolean; 
   presentation_type?: LevelPresentationType; 
+  required_request_type?: InvestigationRequestType | string | null; 
   questions?: Question[]; 
 }
 

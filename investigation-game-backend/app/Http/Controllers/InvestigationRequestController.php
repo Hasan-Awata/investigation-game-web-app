@@ -35,7 +35,8 @@ class InvestigationRequestController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => $result->value['message'],
-            'unlocked_evidence' => $result->value['unlocked_evidence']
+            'unlocked_evidence' => $result->value['unlocked_evidence'],
+            'unlocked_levels' => $result->value['unlocked_levels'] 
         ], 200);
     }
 }

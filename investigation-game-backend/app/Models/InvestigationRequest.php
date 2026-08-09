@@ -28,12 +28,18 @@ class InvestigationRequest extends Model
             Evidence::class, 
             'investigation_request_items', 
             'request_id', 
-            'evidence_id'
+            'evidence_id',
+            'unlocks_level_id' 
         );
     }
 
     public function unlockedEvidence(): BelongsTo
     {
         return $this->belongsTo(Evidence::class, 'unlocks_evidence_id');
+    }
+
+    public function unlockedLevel(): BelongsTo
+    {
+        return $this->belongsTo(Level::class, 'unlocks_level_id');
     }
 }
