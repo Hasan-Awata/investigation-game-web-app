@@ -54,13 +54,21 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     
     if (status !== 'active') return;
 
-    const isCorrectFind = choice.is_correct || !!(choice.unlocks_evidence_id || choice.unlocks_level_id || choice.unlocks_suspect_id || choice.unlocks_victim_id);
+    // Check if the choice unlocks anything dynamically via the new outcomes JSON
+    const hasUnlocks = choice.outcomes && (
+      (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) || 
+      (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) || 
+      (choice.outcomes.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) ||
+      (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0)
+    );
+
+    const isCorrectFind = !!hasUnlocks;
 
     if (isCorrectFind) {
       setPopup({
         title: "LEAD DISCOVERED",
-        // Dynamically insert the custom message, or fall back to the default
-        message: choice.feedback_message || "I found something useful here. Logging it to the board.",
+        // Dynamically insert the custom message from JSON, or fall back to the default
+        message: choice.outcomes?.feedback || "I found something useful here. Logging it to the board.",
         isSuccess: true
       });
       
@@ -76,8 +84,8 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     } else {
         setPopup({
           title: "DEAD END",
-          // Dynamically insert the custom message, or fall back to the default
-          message: choice.feedback_message || "Nothing was found here. I should keep looking.",
+          // Dynamically insert the custom message from JSON, or fall back to the default
+          message: choice.outcomes?.feedback || "Nothing was found here. I should keep looking.",
           isSuccess: false
         });
         
@@ -132,8 +140,19 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
               const x = coordParts[0].trim();
               const y = coordParts[1].trim();
 
-              // 4. Update the selection logic to honor the new found points cache alongside DB votes
-              const isSelected = localVotes[q.id] === choice.id || foundPoints.has(choice.id) || (isCompleted && choice.is_correct);
+              // 1. Calculate if THIS specific rendered point contains actual narrative unlocks
+              const hasUnlocks = choice.outcomes && (
+                (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) || 
+                (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) || 
+                (choice.outcomes.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) ||
+                (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0)
+              );
+
+              // 2. A point gets the glowing cyan "selected" animation if it was voted for, locally found, 
+              // OR if the phase is completed and this point actually contained unlocks.
+              const isSelected = localVotes[q.id] === choice.id || foundPoints.has(choice.id) || (isCompleted && !!hasUnlocks);
+
+              // 3. Keep dead ends styled appropriately
               const isDeadEndClicked = clickedDeadEnds.has(choice.id);
 
               let zoneClass = 'loc-hover-zone';

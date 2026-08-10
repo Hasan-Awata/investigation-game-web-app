@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRoomContext } from '../../../../context/RoomContext';
 import { useInvestigationPhase } from '../../../../hooks/useInvestigationPhase';
 import type { Question } from '../../../../types';
@@ -45,21 +45,26 @@ export default function CampaignTab() {
   // Auto-select the most relevant Phase on load
   const phaseStorageKey = `room_${room.id}_active_phase`;
 
-  const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
+const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
     try {
       const saved = sessionStorage.getItem(phaseStorageKey);
-      return saved ? parseInt(saved, 10) : null;
+      if (saved) {
+        const parsedId = parseInt(saved, 10);
+        // Ensure the cached ID actually exists in the current room's phases
+        if (sortedPhases.some(p => p.id === parsedId)) {
+          return parsedId;
+        }
+      }
     } catch {
-      return null;
+      // Silently catch parsing errors
     }
+    
+    // Synchronous fallback: Default strictly to the FIRST phase 
+    // This eliminates the "Unknown Phase" rendering flash completely.
+    return sortedPhases.length > 0 ? sortedPhases[0].id : null;
   });
 
-  useEffect(() => {
-    // Default strictly to the FIRST phase if no cache exists
-    if (activePhaseId === null && sortedPhases.length > 0) {
-      setActivePhaseId(sortedPhases[0].id);
-    }
-  }, [sortedPhases, activePhaseId]);
+  // (You can delete the old useEffect block entirely, as it is no longer needed)
 
   const toggleExpand = (levelId: number, status: string) => {
     if (status === 'locked') return; 

@@ -19,7 +19,32 @@ export default function WiretapPhase({
   level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice,
   isHost, playedWiretaps, onPlayWiretap, isTriggeringWiretap
 }: WiretapPhaseProps) {
-  if (!level.questions) return null;
+  if (!level.questions || level.questions.length === 0) return null;
+
+  // --- THE NODE TRAVERSAL ENGINE ---
+  const visibleQuestions: Question[] = [];
+  let currentId: number | null = level.questions[0].id; // Root Node
+
+  while (currentId) {
+    const q = level.questions.find(x => x.id === currentId);
+    if (!q) break;
+    visibleQuestions.push(q);
+    
+    const consensus = getQuestionConsensus(q);
+    if (consensus.isResolved && consensus.winningChoiceId) {
+      const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
+      
+      // If outcomes dictate a branch, follow it. Otherwise, fall back to linear progression.
+      if (winningChoice?.outcomes?.next_question_id) {
+        currentId = winningChoice.outcomes.next_question_id;
+      } else {
+        const currentIndex = level.questions.findIndex(x => x.id === q.id);
+        currentId = level.questions[currentIndex + 1]?.id || null;
+      }
+    } else {
+      currentId = null; // Traversal stops, awaiting player consensus
+    }
+  }
 
   return (
     <div className="wiretap-phase-wrapper">
@@ -28,10 +53,10 @@ export default function WiretapPhase({
       </h4>
       
       <div className="questions-list">
-        {level.questions.map((q, qIdx) => {
+        {visibleQuestions.map((q, qIdx) => {
           
           const consensus = getQuestionConsensus(q);
-          const prevConsensus = qIdx > 0 ? getQuestionConsensus(level.questions![qIdx - 1]) : null;
+          const prevConsensus = qIdx > 0 ? getQuestionConsensus(visibleQuestions[qIdx - 1]) : null;
           
           const isVisible = status === 'completed' || qIdx === 0 || (prevConsensus && prevConsensus.isResolved);
           if (!isVisible) return null;

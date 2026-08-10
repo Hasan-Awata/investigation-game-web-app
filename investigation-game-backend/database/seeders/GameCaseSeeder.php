@@ -31,7 +31,7 @@ class GameCaseSeeder extends Seeder
             'tags' => ['Tactical', 'Choice-Driven Narrative', 'Corporate Espionage'],
             'author_name' => 'Agent MasterAdmin',
             'img_url' => '/assets/cases/Case-cover.png',
-            'is_published' => true, // Ensure it shows up on the main board immediately
+            'is_published' => true,
         ]);
 
         Victim::create([
@@ -219,18 +219,13 @@ class GameCaseSeeder extends Seeder
             'audio_url' => '/assets/cases/drilling_sound.wav',
         ]);
 
-        // --- NEW: COMPILE THE INVESTIGATION REQUEST & ATTACH IT TO A LEVEL ---
+        // --- THE INVESTIGATION REQUEST ---
         $warrant = InvestigationRequest::create([
             'case_id' => $case->id,
             'request_type' => 'search_warrant',
-            // This combo will unlock the interrogation room (Level 5) on the board
             'unlocks_level_id' => $level5->id, 
         ]);
-        // To get the warrant, players must combine the Keycard Logs and Thorne's Statement
         $warrant->requiredEvidences()->sync([$evidence1->id, $evidence3->id]);
-
-        // We explicitly tell Level 5 that the Host cannot start the interrogation 
-        // until the $warrant combo is successfully executed.
         $level5->update(['required_request_id' => $warrant->id]);
 
         // 5. Create Verdicts and Choices
@@ -243,25 +238,27 @@ class GameCaseSeeder extends Seeder
             'is_mandatory' => true,
         ]);
         
-        // Formatted for the location visual targeter: "X,Y | Title"
+        // Dynamic JSON payloads handling feedback and unocks
         Choice::create([
             'question_id' => $l1q1->id, 
             'text' => '45.0,50.0 | The Bolted Door', 
             'is_correct' => false,
-            'feedback_message' => 'The deadbolt is secured from the inside. The killer didn\'t leave through this door.'
+            'outcomes' => ['feedback' => 'The deadbolt is secured from the inside. The killer didn\'t leave through this door.']
         ]);
         Choice::create([
             'question_id' => $l1q1->id, 
             'text' => '85.5,20.0 | The Exterior Window Rig', 
             'is_correct' => false,
-            'feedback_message' => 'The window washing rig is empty. No signs of forced entry on the glass.'
+            'outcomes' => ['feedback' => 'The window washing rig is empty. No signs of forced entry on the glass.']
         ]);
         Choice::create([
             'question_id' => $l1q1->id, 
             'text' => '65.2,15.5 | HVAC Return Vent', 
             'is_correct' => true,
-            'feedback_message' => 'The vent cover screws are stripped. Someone accessed the ductwork recently.',
-            'unlocks_evidence_id' => $evidence6->id // Unlocks the blueprint
+            'outcomes' => [
+                'feedback' => 'The vent cover screws are stripped. Someone accessed the ductwork recently.',
+                'unlock_evidence' => [$evidence6->id]
+            ]
         ]);
 
         // LEVEL 2: STANDARD PHASE VERDICTS
@@ -285,7 +282,7 @@ class GameCaseSeeder extends Seeder
             'question_id' => $l3q1->id, 
             'text' => 'Thorne\'s alibi is solid because he hired a professional \'fixer\' to bypass the security and stage the scene.', 
             'is_correct' => true,
-            'unlocks_level_id' => $level4->id // Unlocks Level 4
+            'outcomes' => ['unlock_levels' => [$level4->id]]
         ]);
         Choice::create(['question_id' => $l3q1->id, 'text' => 'Thorne slipped out the back of the gala, committed the murder, and returned unnoticed.', 'is_correct' => false]);
 
@@ -299,7 +296,7 @@ class GameCaseSeeder extends Seeder
             'question_id' => $l3q2->id, 
             'text' => 'The painting on the back wall is crooked. Dispatch Crime Scene Units (CSU) to sweep and crack the wall safe behind it.', 
             'is_correct' => true,
-            'unlocks_evidence_id' => $evidence7->id
+            'outcomes' => ['unlock_evidence' => [$evidence7->id]]
         ]);
         Choice::create([
             'question_id' => $l3q2->id, 
@@ -318,8 +315,6 @@ class GameCaseSeeder extends Seeder
             'question_id' => $l4q1->id, 
             'text' => 'The "Janitor" who badged in at 11:30 PM, whose employer is a shell company quietly owned by Thorne.', 
             'is_correct' => true,
-            // Notice: It no longer unlocks Level 5 automatically.
-            // The team must now figure out the Search Warrant combo to get the Interrogation room.
         ]);
         Choice::create([
             'question_id' => $l4q1->id, 

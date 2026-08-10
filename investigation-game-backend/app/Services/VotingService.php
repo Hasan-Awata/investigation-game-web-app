@@ -37,7 +37,7 @@ class VotingService
             ]
         );
 
-        // --- INSTANT NARRATIVE UNLOCKS ---
+        // --- DYNAMIC NARRATIVE UNLOCKS VIA JSON PAYLOAD ---
         $unlocked = [
             'evidence' => [],
             'levels' => [],
@@ -45,27 +45,47 @@ class VotingService
             'victims' => []
         ];
 
-        if ($choice->unlocks_evidence_id) {
-            $room->unlockedEvidences()->syncWithoutDetaching([$choice->unlocks_evidence_id]);
-            $unlocked['evidence'][] = $choice->unlocks_evidence_id;
-            \App\Events\EvidenceDiscovered::dispatch($room, [$choice->unlocks_evidence_id]);
+        // Access the automatically casted JSON array
+        $outcomes = $choice->outcomes ?? [];
+
+        // Evidence Unlocks
+        if (!empty($outcomes['unlock_evidence']) && is_array($outcomes['unlock_evidence'])) {
+            // Check that the items exist to prevent ghost relations
+            $validEvidence = \App\Models\Evidence::whereIn('id', $outcomes['unlock_evidence'])->pluck('id')->toArray();
+            if (!empty($validEvidence)) {
+                $room->unlockedEvidences()->syncWithoutDetaching($validEvidence);
+                $unlocked['evidence'] = array_merge($unlocked['evidence'], $validEvidence);
+                \App\Events\EvidenceDiscovered::dispatch($room, $validEvidence);
+            }
         }
 
-        if ($choice->unlocks_level_id) {
-            $room->unlockedLevels()->syncWithoutDetaching([$choice->unlocks_level_id]);
-            $unlocked['levels'][] = $choice->unlocks_level_id;
+        // Level Unlocks
+        if (!empty($outcomes['unlock_levels']) && is_array($outcomes['unlock_levels'])) {
+            $validLevels = \App\Models\Level::whereIn('id', $outcomes['unlock_levels'])->pluck('id')->toArray();
+            if (!empty($validLevels)) {
+                $room->unlockedLevels()->syncWithoutDetaching($validLevels);
+                $unlocked['levels'] = array_merge($unlocked['levels'], $validLevels);
+            }
         }
 
-        if ($choice->unlocks_suspect_id) {
-            $room->unlockedSuspects()->syncWithoutDetaching([$choice->unlocks_suspect_id]);
-            $unlocked['suspects'][] = $choice->unlocks_suspect_id;
-            \App\Events\SuspectDiscovered::dispatch($room, [$choice->unlocks_suspect_id]);
+        // Suspect Unlocks
+        if (!empty($outcomes['unlock_suspects']) && is_array($outcomes['unlock_suspects'])) {
+            $validSuspects = \App\Models\Suspect::whereIn('id', $outcomes['unlock_suspects'])->pluck('id')->toArray();
+            if (!empty($validSuspects)) {
+                $room->unlockedSuspects()->syncWithoutDetaching($validSuspects);
+                $unlocked['suspects'] = array_merge($unlocked['suspects'], $validSuspects);
+                \App\Events\SuspectDiscovered::dispatch($room, $validSuspects);
+            }
         }
 
-        if ($choice->unlocks_victim_id) {
-            $room->unlockedVictims()->syncWithoutDetaching([$choice->unlocks_victim_id]);
-            $unlocked['victims'][] = $choice->unlocks_victim_id;
-            \App\Events\VictimDiscovered::dispatch($room, [$choice->unlocks_victim_id]);
+        // Victim Unlocks
+        if (!empty($outcomes['unlock_victims']) && is_array($outcomes['unlock_victims'])) {
+            $validVictims = \App\Models\Victim::whereIn('id', $outcomes['unlock_victims'])->pluck('id')->toArray();
+            if (!empty($validVictims)) {
+                $room->unlockedVictims()->syncWithoutDetaching($validVictims);
+                $unlocked['victims'] = array_merge($unlocked['victims'], $validVictims);
+                \App\Events\VictimDiscovered::dispatch($room, $validVictims);
+            }
         }
 
         // Broadcast the real-time vote update
@@ -90,7 +110,6 @@ class VotingService
         $participants = $room->users->keyBy('user_id');
 
         foreach ($votes as $vote) {
-            // Retrieve the role to apply the correct vote weight
             $role = $participants->get($vote->user_id)?->role ?? 'participant';
             $weight = ($role === 'host') ? 2 : 1;
 
@@ -102,7 +121,6 @@ class VotingService
 
         $consensus = [];
         foreach ($tally as $questionId => $choices) {
-            // Sort choices descending by weight and pick the highest
             arsort($choices);
             $consensus[$questionId] = array_key_first($choices);
         }

@@ -34,12 +34,13 @@ class AssessmentService
                 }
 
                 $chosenId = $consensus[$question->id];
-                $isCorrect = Choice::where('id', $chosenId)->value('is_correct');
-                
-                $maxStrikes = $room->gameCase->max_strikes; 
+                $choice = Choice::find($chosenId);
 
-                // IF THEY SUBMIT THE WRONG ANSWER
-                if (!$isCorrect) {
+                $maxStrikes = $room->gameCase->max_strikes; 
+                $givesStrike = $choice->outcomes['gives_strike'] ?? false;
+
+                // IF THE CHOICE CARRIES A PENALTY
+                if ($givesStrike) {
                     $room->increment('strikes');
                     $room->refresh();
 

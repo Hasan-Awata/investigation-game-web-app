@@ -25,26 +25,18 @@ class AdminQuestionController extends Controller
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
             'choices' => 'required|array|min:2',
             'choices.*.text' => 'required|string|max:255',
-            'choices.*.is_correct' => 'required|boolean',
-            'choices.*.unlocks_evidence_id' => 'nullable|exists:evidences,id',
-            'choices.*.unlocks_level_id' => 'nullable|exists:levels,id', 
-            'choices.*.feedback_message' => 'nullable|string|max:255',
+            'choices.*.outcomes.gives_strike' => 'nullable|boolean',
+            'choices.*.outcomes' => 'nullable|array', 
             'store_locally' => 'required|boolean',
         ]);
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-        // Fetch the parent case title through relationships to build the clean folder slug
-        // 1. Fetch the level and its relations in a single efficient query
         $level = Level::with('phase.gameCase')->find($validated['level_id']);
-
         $caseTitle = $level?->phase?->gameCase?->title ?? 'General';
         $levelTitle = $level?->title ?? 'General-Level';
-
-        // 2. Build the nested subfolder structure using the slugified level title
         $subfolder = 'Levels/' . \Illuminate\Support\Str::slug($levelTitle) . '/Questions';
 
-        // 3. Pass it to your trait helper
         $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, $subfolder, $storeLocally);
         $audioUrl = $this->storeMedia($request->file('audio'), $caseTitle, $subfolder, $storeLocally);
 
@@ -62,10 +54,8 @@ class AdminQuestionController extends Controller
                 return [
                     'question_id' => $question->id,
                     'text' => $choice['text'],
-                    'feedback_message' => $choice['feedback_message'] ?? null, 
-                    'is_correct' => filter_var($choice['is_correct'], FILTER_VALIDATE_BOOLEAN),
-                    'unlocks_evidence_id' => $choice['unlocks_evidence_id'] ?? null,
-                    'unlocks_level_id' => $choice['unlocks_level_id'] ?? null,
+                    // Encode the outcomes array into JSON for the DB
+                    'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -93,10 +83,8 @@ class AdminQuestionController extends Controller
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
             'choices' => 'required|array|min:2',
             'choices.*.text' => 'required|string|max:255',
-            'choices.*.is_correct' => 'required|boolean',
-            'choices.*.unlocks_evidence_id' => 'nullable|exists:evidences,id', 
-            'choices.*.unlocks_level_id' => 'nullable|exists:levels,id', 
-            'choices.*.feedback_message' => 'nullable|string|max:255',
+            'choices.*.outcomes.gives_strike' => 'nullable|boolean',
+            'choices.*.outcomes' => 'nullable|array', 
             'store_locally' => 'required|boolean',
         ]);
 
@@ -122,17 +110,13 @@ class AdminQuestionController extends Controller
 
         return DB::transaction(function () use ($question, $validated, $updateData) {
             $question->update($updateData);
-
             $question->choices()->delete();
 
             $choicesData = array_map(function ($choice) use ($question) {
                 return [
                     'question_id' => $question->id,
                     'text' => $choice['text'],
-                    'feedback_message' => $choice['feedback_message'] ?? null, 
-                    'is_correct' => filter_var($choice['is_correct'], FILTER_VALIDATE_BOOLEAN),
-                    'unlocks_evidence_id' => $choice['unlocks_evidence_id'] ?? null,
-                    'unlocks_level_id' => $choice['unlocks_level_id'] ?? null,
+                    'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];

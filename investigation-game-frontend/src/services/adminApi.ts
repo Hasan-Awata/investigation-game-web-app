@@ -270,18 +270,27 @@ export const deleteAdminPhase = async (id: number): Promise<Result<any>> => {
 export const updateAdminLevel = async (id: number, formData: FormData): Promise<Result<any>> => {
   formData.append('_method', 'PUT');
   try {
-    const response = await fetch(`${API_BASE_URL}/levels/${id}`, { method: 'POST', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }, body: formData });
-    if (!response.ok) return failure('Failed to update level.');
+    const response = await fetch(`${API_BASE_URL}/levels/${id}`, { 
+      method: 'POST', 
+      headers: { 
+        'Accept': 'application/json', 
+        'Authorization': `Bearer ${getToken()}` 
+      }, 
+      body: formData 
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) handleUnauthorized();
+      // Parse Laravel's error payload instead of discarding it
+      const data = await response.json().catch(() => ({}));
+      // This will now pipe the exact error (e.g., "The image field must not be greater...") into your UI
+      return failure(data.message || 'Failed to update level.');
+    }
+    
     return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
-
-export const deleteAdminLevel = async (id: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/levels/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` } });
-    if (!response.ok) return failure('Failed to delete level.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
+  } catch (error) { 
+    return failure((error as Error).message); 
+  }
 };
 
 // ==========================================

@@ -10,17 +10,15 @@ class Choice extends Model
     protected $fillable = [
         'question_id',
         'text',
-        'feedback_message',
-        'is_correct',
-        'unlocks_evidence_id', 
-        'unlocks_level_id',
-        'unlocks_victim_id', 
-        'unlocks_suspect_id' 
+        'outcomes', 
     ];
 
-    protected $casts = [
-        'is_correct' => 'boolean',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'outcomes' => 'array', 
+        ];
+    }
 
     public function question(): BelongsTo
     {

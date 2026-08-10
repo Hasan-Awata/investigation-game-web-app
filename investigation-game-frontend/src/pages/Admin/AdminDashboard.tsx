@@ -3,7 +3,7 @@ import CaseForm from './forms/CaseForm';
 import PhaseForm from './forms/PhaseForm';
 import LevelForm from './forms/LevelForm';
 import EvidenceForm from './forms/EvidenceForm';
-import QuestionForm from './forms/QuestionForm';
+import QuestionForm from './forms/QuestionForm/QuestionForm';
 import SuspectForm from './forms/SuspectForm'; 
 import VictimForm from './forms/VictimForm'; 
 

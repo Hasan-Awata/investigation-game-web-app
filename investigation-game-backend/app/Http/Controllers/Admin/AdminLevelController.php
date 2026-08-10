@@ -63,7 +63,7 @@ class AdminLevelController extends Controller
             'order_index' => 'required|integer|min:1',
             'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
             'required_request_id' => 'nullable|exists:investigation_requests,id',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'store_locally' => 'required|boolean',
         ]);
 

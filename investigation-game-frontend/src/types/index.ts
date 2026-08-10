@@ -123,12 +123,7 @@ export interface Choice {
   id: number;
   question_id: number;
   text: string;
-  feedback_message?: string | null; 
-  is_correct: boolean;
-  unlocks_evidence_id?: number | null; 
-  unlocks_level_id?: number | null; 
-  unlocks_suspect_id?: number | null;
-  unlocks_victim_id?: number | null;
+  outcomes?: Record<string, any> | null; 
 }
 
 export interface Question {

@@ -1756,25 +1756,17 @@ class AdminQuestionController extends Controller
             'choices' => 'required|array|min:2',
             'choices.*.text' => 'required|string|max:255',
             'choices.*.is_correct' => 'required|boolean',
-            'choices.*.unlocks_evidence_id' => 'nullable|exists:evidences,id',
-            'choices.*.unlocks_level_id' => 'nullable|exists:levels,id', 
-            'choices.*.feedback_message' => 'nullable|string|max:255',
+            'choices.*.outcomes' => 'nullable|array', 
             'store_locally' => 'required|boolean',
         ]);
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-        // Fetch the parent case title through relationships to build the clean folder slug
-        // 1. Fetch the level and its relations in a single efficient query
         $level = Level::with('phase.gameCase')->find($validated['level_id']);
-
         $caseTitle = $level?->phase?->gameCase?->title ?? 'General';
         $levelTitle = $level?->title ?? 'General-Level';
-
-        // 2. Build the nested subfolder structure using the slugified level title
         $subfolder = 'Levels/' . \Illuminate\Support\Str::slug($levelTitle) . '/Questions';
 
-        // 3. Pass it to your trait helper
         $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, $subfolder, $storeLocally);
         $audioUrl = $this->storeMedia($request->file('audio'), $caseTitle, $subfolder, $storeLocally);
 
@@ -1792,10 +1784,9 @@ class AdminQuestionController extends Controller
                 return [
                     'question_id' => $question->id,
                     'text' => $choice['text'],
-                    'feedback_message' => $choice['feedback_message'] ?? null, 
                     'is_correct' => filter_var($choice['is_correct'], FILTER_VALIDATE_BOOLEAN),
-                    'unlocks_evidence_id' => $choice['unlocks_evidence_id'] ?? null,
-                    'unlocks_level_id' => $choice['unlocks_level_id'] ?? null,
+                    // Encode the outcomes array into JSON for the DB
+                    'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -1824,9 +1815,7 @@ class AdminQuestionController extends Controller
             'choices' => 'required|array|min:2',
             'choices.*.text' => 'required|string|max:255',
             'choices.*.is_correct' => 'required|boolean',
-            'choices.*.unlocks_evidence_id' => 'nullable|exists:evidences,id', 
-            'choices.*.unlocks_level_id' => 'nullable|exists:levels,id', 
-            'choices.*.feedback_message' => 'nullable|string|max:255',
+            'choices.*.outcomes' => 'nullable|array', 
             'store_locally' => 'required|boolean',
         ]);
 
@@ -1852,17 +1841,14 @@ class AdminQuestionController extends Controller
 
         return DB::transaction(function () use ($question, $validated, $updateData) {
             $question->update($updateData);
-
             $question->choices()->delete();
 
             $choicesData = array_map(function ($choice) use ($question) {
                 return [
                     'question_id' => $question->id,
                     'text' => $choice['text'],
-                    'feedback_message' => $choice['feedback_message'] ?? null, 
                     'is_correct' => filter_var($choice['is_correct'], FILTER_VALIDATE_BOOLEAN),
-                    'unlocks_evidence_id' => $choice['unlocks_evidence_id'] ?? null,
-                    'unlocks_level_id' => $choice['unlocks_level_id'] ?? null,
+                    'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -2193,24 +2179,23 @@ class Choice extends Model
     protected $fillable = [
         'question_id',
         'text',
-        'feedback_message',
         'is_correct',
-        'unlocks_evidence_id', 
-        'unlocks_level_id',
-        'unlocks_victim_id', 
-        'unlocks_suspect_id' 
+        'outcomes', 
     ];
 
-    protected $casts = [
-        'is_correct' => 'boolean',
-    ];
+    protected function casts(): array
+    {
+        return [
+            'is_correct' => 'boolean',
+            'outcomes' => 'array', 
+        ];
+    }
 
     public function question(): BelongsTo
     {
         return $this->belongsTo(Question::class);
     }
 }
-
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\Evidence.php
@@ -3651,7 +3636,7 @@ class VotingService
             ]
         );
 
-        // --- INSTANT NARRATIVE UNLOCKS ---
+        // --- DYNAMIC NARRATIVE UNLOCKS VIA JSON PAYLOAD ---
         $unlocked = [
             'evidence' => [],
             'levels' => [],
@@ -3659,27 +3644,47 @@ class VotingService
             'victims' => []
         ];
 
-        if ($choice->unlocks_evidence_id) {
-            $room->unlockedEvidences()->syncWithoutDetaching([$choice->unlocks_evidence_id]);
-            $unlocked['evidence'][] = $choice->unlocks_evidence_id;
-            \App\Events\EvidenceDiscovered::dispatch($room, [$choice->unlocks_evidence_id]);
+        // Access the automatically casted JSON array
+        $outcomes = $choice->outcomes ?? [];
+
+        // Evidence Unlocks
+        if (!empty($outcomes['unlock_evidence']) && is_array($outcomes['unlock_evidence'])) {
+            // Check that the items exist to prevent ghost relations
+            $validEvidence = \App\Models\Evidence::whereIn('id', $outcomes['unlock_evidence'])->pluck('id')->toArray();
+            if (!empty($validEvidence)) {
+                $room->unlockedEvidences()->syncWithoutDetaching($validEvidence);
+                $unlocked['evidence'] = array_merge($unlocked['evidence'], $validEvidence);
+                \App\Events\EvidenceDiscovered::dispatch($room, $validEvidence);
+            }
         }
 
-        if ($choice->unlocks_level_id) {
-            $room->unlockedLevels()->syncWithoutDetaching([$choice->unlocks_level_id]);
-            $unlocked['levels'][] = $choice->unlocks_level_id;
+        // Level Unlocks
+        if (!empty($outcomes['unlock_levels']) && is_array($outcomes['unlock_levels'])) {
+            $validLevels = \App\Models\Level::whereIn('id', $outcomes['unlock_levels'])->pluck('id')->toArray();
+            if (!empty($validLevels)) {
+                $room->unlockedLevels()->syncWithoutDetaching($validLevels);
+                $unlocked['levels'] = array_merge($unlocked['levels'], $validLevels);
+            }
         }
 
-        if ($choice->unlocks_suspect_id) {
-            $room->unlockedSuspects()->syncWithoutDetaching([$choice->unlocks_suspect_id]);
-            $unlocked['suspects'][] = $choice->unlocks_suspect_id;
-            \App\Events\SuspectDiscovered::dispatch($room, [$choice->unlocks_suspect_id]);
+        // Suspect Unlocks
+        if (!empty($outcomes['unlock_suspects']) && is_array($outcomes['unlock_suspects'])) {
+            $validSuspects = \App\Models\Suspect::whereIn('id', $outcomes['unlock_suspects'])->pluck('id')->toArray();
+            if (!empty($validSuspects)) {
+                $room->unlockedSuspects()->syncWithoutDetaching($validSuspects);
+                $unlocked['suspects'] = array_merge($unlocked['suspects'], $validSuspects);
+                \App\Events\SuspectDiscovered::dispatch($room, $validSuspects);
+            }
         }
 
-        if ($choice->unlocks_victim_id) {
-            $room->unlockedVictims()->syncWithoutDetaching([$choice->unlocks_victim_id]);
-            $unlocked['victims'][] = $choice->unlocks_victim_id;
-            \App\Events\VictimDiscovered::dispatch($room, [$choice->unlocks_victim_id]);
+        // Victim Unlocks
+        if (!empty($outcomes['unlock_victims']) && is_array($outcomes['unlock_victims'])) {
+            $validVictims = \App\Models\Victim::whereIn('id', $outcomes['unlock_victims'])->pluck('id')->toArray();
+            if (!empty($validVictims)) {
+                $room->unlockedVictims()->syncWithoutDetaching($validVictims);
+                $unlocked['victims'] = array_merge($unlocked['victims'], $validVictims);
+                \App\Events\VictimDiscovered::dispatch($room, $validVictims);
+            }
         }
 
         // Broadcast the real-time vote update
@@ -3704,7 +3709,6 @@ class VotingService
         $participants = $room->users->keyBy('user_id');
 
         foreach ($votes as $vote) {
-            // Retrieve the role to apply the correct vote weight
             $role = $participants->get($vote->user_id)?->role ?? 'participant';
             $weight = ($role === 'host') ? 2 : 1;
 
@@ -3716,7 +3720,6 @@ class VotingService
 
         $consensus = [];
         foreach ($tally as $questionId => $choices) {
-            // Sort choices descending by weight and pick the highest
             arsort($choices);
             $consensus[$questionId] = array_key_first($choices);
         }
@@ -6708,6 +6711,51 @@ return new class extends Migration
 };
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_10_085857_refactor_choices_to_json_outcomes.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('choices', function (Blueprint $table) {
+            // 1. Drop existing foreign key constraints
+            $table->dropForeign(['unlocks_evidence_id']);
+            $table->dropForeign(['unlocks_level_id']);
+            $table->dropForeign(['unlocks_suspect_id']);
+            $table->dropForeign(['unlocks_victim_id']);
+
+            // 2. Drop the redundant columns
+            $table->dropColumn([
+                'feedback_message',
+                'unlocks_evidence_id',
+                'unlocks_level_id',
+                'unlocks_suspect_id',
+                'unlocks_victim_id'
+            ]);
+
+            // 3. Add the centralized JSON payload column
+            $table->json('outcomes')->nullable()->after('is_correct');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('choices', function (Blueprint $table) {
+            $table->dropColumn('outcomes');
+            
+            $table->string('feedback_message')->nullable();
+            $table->foreignId('unlocks_evidence_id')->nullable()->constrained('evidences')->nullOnDelete();
+            $table->foreignId('unlocks_level_id')->nullable()->constrained('levels')->nullOnDelete();
+            $table->foreignId('unlocks_suspect_id')->nullable()->constrained('suspects')->nullOnDelete();
+            $table->foreignId('unlocks_victim_id')->nullable()->constrained('victims')->nullOnDelete();
+        });
+    }
+};
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\BloodOperaCaseSeeder.php
 ----------------------------------------
 <?php
@@ -6911,7 +6959,7 @@ class GameCaseSeeder extends Seeder
             'tags' => ['Tactical', 'Choice-Driven Narrative', 'Corporate Espionage'],
             'author_name' => 'Agent MasterAdmin',
             'img_url' => '/assets/cases/Case-cover.png',
-            'is_published' => true, // Ensure it shows up on the main board immediately
+            'is_published' => true,
         ]);
 
         Victim::create([
@@ -7099,18 +7147,13 @@ class GameCaseSeeder extends Seeder
             'audio_url' => '/assets/cases/drilling_sound.wav',
         ]);
 
-        // --- NEW: COMPILE THE INVESTIGATION REQUEST & ATTACH IT TO A LEVEL ---
+        // --- THE INVESTIGATION REQUEST ---
         $warrant = InvestigationRequest::create([
             'case_id' => $case->id,
             'request_type' => 'search_warrant',
-            // This combo will unlock the interrogation room (Level 5) on the board
             'unlocks_level_id' => $level5->id, 
         ]);
-        // To get the warrant, players must combine the Keycard Logs and Thorne's Statement
         $warrant->requiredEvidences()->sync([$evidence1->id, $evidence3->id]);
-
-        // We explicitly tell Level 5 that the Host cannot start the interrogation 
-        // until the $warrant combo is successfully executed.
         $level5->update(['required_request_id' => $warrant->id]);
 
         // 5. Create Verdicts and Choices
@@ -7123,25 +7166,27 @@ class GameCaseSeeder extends Seeder
             'is_mandatory' => true,
         ]);
         
-        // Formatted for the location visual targeter: "X,Y | Title"
+        // Dynamic JSON payloads handling feedback and unocks
         Choice::create([
             'question_id' => $l1q1->id, 
             'text' => '45.0,50.0 | The Bolted Door', 
             'is_correct' => false,
-            'feedback_message' => 'The deadbolt is secured from the inside. The killer didn\'t leave through this door.'
+            'outcomes' => ['feedback' => 'The deadbolt is secured from the inside. The killer didn\'t leave through this door.']
         ]);
         Choice::create([
             'question_id' => $l1q1->id, 
             'text' => '85.5,20.0 | The Exterior Window Rig', 
             'is_correct' => false,
-            'feedback_message' => 'The window washing rig is empty. No signs of forced entry on the glass.'
+            'outcomes' => ['feedback' => 'The window washing rig is empty. No signs of forced entry on the glass.']
         ]);
         Choice::create([
             'question_id' => $l1q1->id, 
             'text' => '65.2,15.5 | HVAC Return Vent', 
             'is_correct' => true,
-            'feedback_message' => 'The vent cover screws are stripped. Someone accessed the ductwork recently.',
-            'unlocks_evidence_id' => $evidence6->id // Unlocks the blueprint
+            'outcomes' => [
+                'feedback' => 'The vent cover screws are stripped. Someone accessed the ductwork recently.',
+                'unlock_evidence' => [$evidence6->id]
+            ]
         ]);
 
         // LEVEL 2: STANDARD PHASE VERDICTS
@@ -7165,7 +7210,7 @@ class GameCaseSeeder extends Seeder
             'question_id' => $l3q1->id, 
             'text' => 'Thorne\'s alibi is solid because he hired a professional \'fixer\' to bypass the security and stage the scene.', 
             'is_correct' => true,
-            'unlocks_level_id' => $level4->id // Unlocks Level 4
+            'outcomes' => ['unlock_levels' => [$level4->id]]
         ]);
         Choice::create(['question_id' => $l3q1->id, 'text' => 'Thorne slipped out the back of the gala, committed the murder, and returned unnoticed.', 'is_correct' => false]);
 
@@ -7179,7 +7224,7 @@ class GameCaseSeeder extends Seeder
             'question_id' => $l3q2->id, 
             'text' => 'The painting on the back wall is crooked. Dispatch Crime Scene Units (CSU) to sweep and crack the wall safe behind it.', 
             'is_correct' => true,
-            'unlocks_evidence_id' => $evidence7->id
+            'outcomes' => ['unlock_evidence' => [$evidence7->id]]
         ]);
         Choice::create([
             'question_id' => $l3q2->id, 
@@ -7198,8 +7243,6 @@ class GameCaseSeeder extends Seeder
             'question_id' => $l4q1->id, 
             'text' => 'The "Janitor" who badged in at 11:30 PM, whose employer is a shell company quietly owned by Thorne.', 
             'is_correct' => true,
-            // Notice: It no longer unlocks Level 5 automatically.
-            // The team must now figure out the Search Warrant combo to get the Interrogation room.
         ]);
         Choice::create([
             'question_id' => $l4q1->id, 

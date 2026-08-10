@@ -73,16 +73,41 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
     return initial;
   });
 
-  if (!level.questions) return null;
+  if (!level.questions || level.questions.length === 0) return null;
+
+  // --- THE NODE TRAVERSAL ENGINE ---
+  const visibleQuestions: Question[] = [];
+  let currentId: number | null = level.questions[0].id; // Root Node
+  
+  while (currentId) {
+    const q = level.questions.find(x => x.id === currentId);
+    if (!q) break;
+    visibleQuestions.push(q);
+    
+    const consensus = getQuestionConsensus(q);
+    if (consensus.isResolved && consensus.winningChoiceId) {
+      const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
+      
+      // If outcomes dictate a branch, follow it. Otherwise, fall back to linear progression.
+      if (winningChoice?.outcomes?.next_question_id) {
+        currentId = winningChoice.outcomes.next_question_id;
+      } else {
+        const currentIndex = level.questions.findIndex(x => x.id === q.id);
+        currentId = level.questions[currentIndex + 1]?.id || null;
+      }
+    } else {
+      currentId = null; // Traversal stops, awaiting player consensus
+    }
+  }
 
   const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
   const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
 
   return (
     <div className="interrogation-log">
-      {level.questions.map((q, qIdx) => {
+      {visibleQuestions.map((q, qIdx) => {
         const consensus = getQuestionConsensus(q);
-        const prevQ = qIdx > 0 ? level.questions![qIdx - 1] : null;
+        const prevQ = qIdx > 0 ? visibleQuestions[qIdx - 1] : null;
         const isVisible = status === 'completed' || qIdx === 0 || (prevQ && investigatorTypingComplete[prevQ.id]);
         
         if (!isVisible) return null;
@@ -92,11 +117,15 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
         const isSuspectDone = suspectTypingComplete[q.id] || skipTyping;
         const hasLocalVote = !!localVotes[q.id];
 
+        // Read specific suspect reactions if they exist
+        const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
+        const customReaction = winningChoice?.outcomes?.suspect_reaction; 
+
         return (
           <div key={q.id} className="chat-exchange">
             
             <div className="chat-bubble suspect-bubble">
-              <span className="speaker-label suspect">SUSPECT</span>
+              <span className="speaker-label suspect">SUSPECT {customReaction ? `[${customReaction}]` : ''}</span>
               <p>
                 <Typewriter 
                   text={q.text} 
@@ -142,7 +171,7 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
                       <span className="speaker-label investigator">INVESTIGATORS</span>
                       <p>
                         <Typewriter 
-                          text={status === 'completed' ? (q.choices?.find(c => c.is_correct)?.text || '...') : (q.choices?.find(c => c.id === consensus.winningChoiceId)?.text || '...')} 
+                          text={status === 'completed' ? (q.choices?.find(c => c.is_correct)?.text || '...') : (winningChoice?.text || '...')} 
                           skip={skipTyping} 
                           delay={15} 
                           cacheKey={`room_${room.id}_investigator_${q.id}`} 
