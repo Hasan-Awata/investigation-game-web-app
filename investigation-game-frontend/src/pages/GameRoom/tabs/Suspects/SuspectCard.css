@@ -57,3 +57,79 @@
 .suspect-card.is-dragging {
   opacity: 0;
 }
+
+/* --- INTEL TOGGLE BUTTON --- */
+.intel-toggle-btn {
+  position: absolute;
+  top: 0.5rem;
+  left: 0.5rem;
+  z-index: 10;
+  background: rgba(10, 11, 13, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--accent-cyan);
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  font-weight: bold;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s ease;
+}
+
+.intel-toggle-btn:hover {
+  background: var(--accent-cyan);
+  color: var(--bg-dark);
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+}
+
+/* --- INTEL OVERLAY --- */
+.suspect-intel-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 11, 13, 0.98);
+  padding: 2.75rem 0.75rem 0.75rem 0.75rem; /* Top padding clears the button */
+  border-radius: calc(var(--radius-sm) - 1px);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 5;
+  animation: fadeIn 0.2s ease-out;
+  cursor: default; /* Reset cursor so it doesn't look draggable */
+}
+
+/* Custom scrollbar for the small card overlay */
+.suspect-intel-overlay::-webkit-scrollbar {
+  width: 4px;
+}
+.suspect-intel-overlay::-webkit-scrollbar-track {
+  background: transparent;
+}
+.suspect-intel-overlay::-webkit-scrollbar-thumb {
+  background: rgba(0, 229, 255, 0.3);
+  border-radius: 4px;
+}
+
+.intel-header {
+  margin: 0 0 0.5rem 0;
+  font-family: var(--font-mono);
+  color: var(--accent-amber);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.35rem;
+}
+
+.intel-text {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  white-space: pre-wrap; /* Honors line breaks from the database */
+}

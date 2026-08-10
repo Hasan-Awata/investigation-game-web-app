@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap');
+
 :root {
   /* Keep the dark bases, but make them richer */
   --bg-dark: #0a0b0d; 
@@ -27,6 +29,20 @@
   --radius-md: 4px;
   --radius-lg: 4px; 
   --radius-xl: 8px;
+
+  --font-primary: 'YourCurrentEnglishFont', 'IBM Plex Sans Arabic', sans-serif;
+  --font-mono: 'YourCurrentEnglishMonoFont', 'IBM Plex Sans Arabic', monospace;
+}
+
+/* Automatically handle RTL for Arabic and LTR for English */
+p, h1, h2, h3, h4, h5, h6, 
+textarea, input, 
+.terminal-text, 
+.story-text-block, 
+.evidence-text-content,
+.chat-bubble p {
+  unicode-bidi: plaintext;
+  text-align: start;
 }
 
 body {
