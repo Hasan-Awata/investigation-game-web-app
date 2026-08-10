@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\AdminLevelController;
 use App\Http\Controllers\Admin\AdminEvidenceController;
 use App\Http\Controllers\Admin\AdminQuestionController;
 use App\Http\Controllers\Admin\AdminSuspectController;
+use App\Http\Controllers\Admin\AdminVictimController;
 use App\Http\Controllers\Admin\AdminInvestigationRequestController; 
 use App\Http\Middleware\IsAdmin; 
 
@@ -59,6 +60,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/evidences', [AdminEvidenceController::class, 'store']);
         Route::post('/questions', [AdminQuestionController::class, 'store']);
         Route::post('/suspects', [AdminSuspectController::class, 'store']);
+        Route::post('/victims', [AdminVictimController::class, 'store']);
         Route::post('/investigation-requests', [AdminInvestigationRequestController::class, 'store']);        
         
         // PUT (Update)
@@ -68,6 +70,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/evidences/{evidence}', [AdminEvidenceController::class, 'update']);
         Route::put('/questions/{question}', [AdminQuestionController::class, 'update']);
         Route::put('/suspects/{suspect}', [AdminSuspectController::class, 'update']);
+        Route::put('/victims/{victim}', [AdminVictimController::class, 'update']);
         Route::put('/investigation-requests/{request}', [AdminInvestigationRequestController::class, 'update']);
         
         // DELETE (Destroy)
@@ -77,6 +80,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/evidences/{evidence}', [AdminEvidenceController::class, 'destroy']);
         Route::delete('/questions/{question}', [AdminQuestionController::class, 'destroy']);
         Route::delete('/suspects/{suspect}', [AdminSuspectController::class, 'destroy']);
+        Route::delete('/victims/{victim}', [AdminVictimController::class, 'destroy']);
         Route::delete('/investigation-requests/{request}', [AdminInvestigationRequestController::class, 'destroy']);
     });
 });

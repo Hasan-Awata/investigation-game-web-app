@@ -803,11 +803,55 @@ FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controll
 
 namespace App\Http\Controllers;
 
+use Cloudinary\Cloudinary;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
+
 abstract class Controller
 {
-    //
-}
+    /**
+     * Centralized media storage helper (Local Public Disk or Cloudinary).
+     */
+    protected function storeMedia(?UploadedFile $file, string $caseTitle, string $subfolder, bool $storeLocally): ?string
+    {
+        if (!$file) return null;
 
+        $caseSlug = Str::slug($caseTitle);
+
+        // 1. Local Server Storage Path
+        if ($storeLocally) {
+            $destinationPath = public_path("assets/cases/{$caseSlug}/{$subfolder}");
+            $filename = time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+            
+            // Move file directly into public/assets/cases/{caseSlug}/{subfolder}
+            $file->move($destinationPath, $filename);
+
+            return "/assets/cases/{$caseSlug}/{$subfolder}/{$filename}";
+        }
+
+        // 2. Cloudinary Cloud Storage Path
+        $cloudinary = new Cloudinary([
+            'cloud' => [
+                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                'api_key'    => env('CLOUDINARY_API_KEY'),
+                'api_secret' => env('CLOUDINARY_API_SECRET'),
+            ],
+            'url' => ['secure' => true]
+        ]);
+
+        $isAudio = str_contains($file->getMimeType(), 'audio') || in_array($file->getClientOriginalExtension(), ['mp3', 'wav', 'ogg']);
+        $resourceType = $isAudio ? 'video' : 'image';
+
+        $cloudFolder = "cases/{$caseSlug}/{$subfolder}";
+
+        $upload = $cloudinary->uploadApi()->upload($file->getRealPath(), [
+            'folder' => $cloudFolder,
+            'resource_type' => $resourceType
+        ]);
+
+        return $upload['secure_url'];
+    }
+}
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\GameRoomController.php
@@ -900,17 +944,21 @@ class GameRoomController extends Controller
             return response()->json(['error' => 'Conflict', 'message' => 'This phase is already solved.'], 409);
         }
 
-        // --- NEW: THE ROBUST GATEKEEPER ---
-        if ($level->required_request_type) {
-            // Did the room complete ANY request that matches the required enum type?
+        // --- ROBUST GATEKEEPER ---
+        if ($level->required_request_id) {
+            // Did the room complete THIS exact request combo?
             $hasRequirement = $room->completedRequests()
-                ->where('request_type', $level->required_request_type)
+                ->where('request_id', $level->required_request_id)
                 ->exists();
 
             if (!$hasRequirement) {
+                // Eager load to get the exact label for the error message
+                $level->load('requiredRequest');
+                $label = $level->requiredRequest ? $level->requiredRequest->request_type->label() : 'specific procedural request';
+                
                 return response()->json([
                     'error' => 'Missing Prerequisite',
-                    'message' => "We can't proceed without a " . $level->required_request_type->label() . "."
+                    'message' => "We can't proceed without a " . $label . "."
                 ], 403);
             }
         }
@@ -1147,13 +1195,15 @@ FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controll
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\HandlesMedia;
 use App\Models\GameCase;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Cloudinary\Cloudinary;
 
 class AdminCaseController extends Controller
 {
+    use HandlesMedia;
+
     /**
      * Store a newly created case with an optional cover image.
      */
@@ -1169,32 +1219,22 @@ class AdminCaseController extends Controller
             'age_rating' => 'required|string|max:50',
             'estimated_playtime' => 'required|string|max:100',
             'difficulty' => 'required|string|max:50',
-            'tags' => 'nullable|string', // We will accept a comma-separated string from the frontend
+            'tags' => 'nullable|string', 
             'author_name' => 'required|string|max:100',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'is_published' => 'required|boolean',
+            'store_locally' => 'required|boolean',
         ]);
 
-        $imageUrl = null;
-        if ($request->hasFile('image')) {
-            $cloudinary = new Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
-                ],
-                'url' => [
-                    'secure' => true
-                ]
-            ]);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'cases'
-            ]);
-            $imageUrl = $upload['secure_url'];
-        }
+        $imageUrl = $this->storeMedia(
+            $request->file('image'), 
+            $validated['title'], 
+            'Cover', 
+            $storeLocally
+        );
 
-        // Convert the comma-separated tags string into a proper array
         $tagsArray = $request->filled('tags') 
             ? array_map('trim', explode(',', $validated['tags'])) 
             : [];
@@ -1223,7 +1263,6 @@ class AdminCaseController extends Controller
      */
     public function index(): JsonResponse
     {
-        // Removed the ->select('id', 'title') restrictions so the React forms get ALL the data
         $cases = GameCase::with([
             'phases.levels.questions.choices',
             'evidences',
@@ -1255,25 +1294,20 @@ class AdminCaseController extends Controller
             'author_name' => 'required|string|max:100',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'is_published' => 'required|boolean',
+            'store_locally' => 'required|boolean',
         ]);
 
-        if ($request->hasFile('image')) {
-            // Wipe the old cover image to free up vault space
-            $this->deleteCloudinaryMedia($case->img_url); 
-            
-            $cloudinary = new \Cloudinary\Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
-                ],
-                'url' => ['secure' => true]
-            ]);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'cases'
-            ]);
-            $case->img_url = $upload['secure_url']; // Update model instance directly
+        if ($request->hasFile('image')) {
+            $this->deleteMedia($case->getRawOriginal('img_url')); 
+            
+            $case->img_url = $this->storeMedia(
+                $request->file('image'), 
+                $validated['title'], 
+                'Cover', 
+                $storeLocally
+            );
         }
 
         $case->update([
@@ -1294,66 +1328,34 @@ class AdminCaseController extends Controller
         return response()->json(['message' => 'Case updated successfully.', 'case' => $case], 200);
     }
 
-        public function destroy($id): JsonResponse
+    public function destroy($id): JsonResponse
     {
-        // Eager load everything associated with the case to harvest the media URLs
         $case = GameCase::with(['levels.questions', 'evidences'])->findOrFail($id);
 
         // 1. Wipe Case Cover
-        $this->deleteCloudinaryMedia($case->img_url);
+        $this->deleteMedia($case->getRawOriginal('img_url'));
 
         // 2. Wipe Level and Evidence Media
         foreach ($case->levels as $level) {
-            $this->deleteCloudinaryMedia($level->img_url);
+            $this->deleteMedia($level->getRawOriginal('img_url'));
 
             foreach ($level->evidences as $evidence) {
-                $this->deleteCloudinaryMedia($evidence->img_url);
-                $this->deleteCloudinaryMedia($evidence->audio_url);
+                $this->deleteMedia($evidence->getRawOriginal('img_url'));
+                $this->deleteMedia($evidence->getRawOriginal('audio_url'));
             }
 
             foreach ($level->questions as $question) {
-                $this->deleteCloudinaryMedia($question->img_url);
+                $this->deleteMedia($question->getRawOriginal('img_url'));
+                $this->deleteMedia($question->getRawOriginal('audio_url'));
             }
         }
 
-        // 3. Wipe the database rows (handled automatically via SQLite cascadeOnDelete constraints)
+        // 3. Wipe database records
         $case->delete();
 
         return response()->json(['message' => 'Case and all associated media completely wiped.'], 200);
     }
-
-    /**
-     * Regex helper to extract the public_id and trigger Cloudinary SDK deletion.
-     */
-    private function deleteCloudinaryMedia(?string $url): void
-    {
-        if (!$url) return;
-
-        // Extracts everything after /upload/[version]/ up to the file extension
-        if (preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
-            $publicId = $matches[1];
-            
-            // Cloudinary requires 'video' resource_type for audio files
-            $resourceType = str_contains($url, '/video/') ? 'video' : 'image';
-
-            $cloudinary = new Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
-                ],
-                'url' => ['secure' => true]
-            ]);
-
-            try {
-                $cloudinary->uploadApi()->destroy($publicId, ['resource_type' => $resourceType]);
-            } catch (\Exception $e) {
-                // Silently fail if the image is already missing from the cloud vault
-            }
-        }
-    }
 }
-
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminEvidenceController.php
@@ -1363,15 +1365,18 @@ FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controll
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\HandlesMedia;
 use App\Models\Evidence;
+use App\Models\GameCase;
 use App\Enums\EvidenceType;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rules\Enum;
-use Cloudinary\Cloudinary; 
 
 class AdminEvidenceController extends Controller
 {
+    use HandlesMedia; // <-- Injected trait
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -1381,38 +1386,19 @@ class AdminEvidenceController extends Controller
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
             'paragraph' => 'nullable|string',
             'is_initial' => 'required|boolean', 
-            'is_vital_for_conviction' => 'required|boolean', // Unified naming
+            'is_vital_for_conviction' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
+            'store_locally' => 'required|boolean', // <-- Validates storage toggle
         ]);
 
-        $cloudinary = new Cloudinary([
-            'cloud' => [
-                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                'api_key'    => env('CLOUDINARY_API_KEY'),
-                'api_secret' => env('CLOUDINARY_API_SECRET'),
-            ],
-            'url' => [
-                'secure' => true
-            ]
-        ]);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        
+        // Lightweight primary key lookup to get the case title for folder naming
+        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
 
-        $imageUrl = null;
-        if ($request->hasFile('image')) {
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'evidence/images'
-            ]);
-            $imageUrl = $upload['secure_url']; 
-        }
-
-        $audioUrl = null;
-        if ($request->hasFile('audio')) {
-            $upload = $cloudinary->uploadApi()->upload($request->file('audio')->getRealPath(), [
-                'folder' => 'evidence/audio',
-                'resource_type' => 'video'
-            ]);
-            $audioUrl = $upload['secure_url'];
-        }
+        $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, 'Evidences', $storeLocally);
+        $audioUrl = $this->storeMedia($request->file('audio'), $caseTitle, 'Evidences', $storeLocally);
 
         $evidence = Evidence::create([
             'case_id' => $validated['case_id'],
@@ -1421,7 +1407,7 @@ class AdminEvidenceController extends Controller
             'evidence_type' => $validated['evidence_type'],
             'paragraph' => $validated['paragraph'] ?? null,
             'is_initial' => $validated['is_initial'],
-            'is_vital_for_conviction' => $validated['is_vital_for_conviction'], // Unified naming
+            'is_vital_for_conviction' => $validated['is_vital_for_conviction'],
             'img_url' => $imageUrl,
             'audio_url' => $audioUrl,
         ]);
@@ -1437,47 +1423,41 @@ class AdminEvidenceController extends Controller
             'case_id' => 'required|exists:cases,id', 
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'evidence_type' => ['required', new \Illuminate\Validation\Rules\Enum(\App\Enums\EvidenceType::class)],
+            'evidence_type' => ['required', new Enum(EvidenceType::class)],
             'paragraph' => 'nullable|string',
             'is_initial' => 'required|boolean', 
             'is_vital_for_conviction' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
+            'store_locally' => 'required|boolean',
         ]);
 
-        if ($request->hasFile('image') || $request->hasFile('audio')) {
-            $cloudinary = new \Cloudinary\Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
-                ],
-                'url' => ['secure' => true]
-            ]);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
 
-            if ($request->hasFile('image')) {
-                // Wipe old image if a new one is uploaded
-                $this->deleteCloudinaryMedia($evidence->img_url);
-                
-                $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                    'folder' => 'evidence/images'
-                ]);
-                $validated['img_url'] = $upload['secure_url']; 
-            }
+        $updateData = [
+            'case_id' => $validated['case_id'],
+            'title' => $validated['title'],
+            'description' => $validated['description'] ?? null,
+            'evidence_type' => $validated['evidence_type'],
+            'paragraph' => $validated['paragraph'] ?? null,
+            'is_initial' => $validated['is_initial'],
+            'is_vital_for_conviction' => $validated['is_vital_for_conviction'],
+        ];
 
-            if ($request->hasFile('audio')) {
-                // Wipe old audio track if a new one is uploaded
-                $this->deleteCloudinaryMedia($evidence->audio_url);
-
-                $upload = $cloudinary->uploadApi()->upload($request->file('audio')->getRealPath(), [
-                    'folder' => 'evidence/audio',
-                    'resource_type' => 'video' // Cloudinary requires 'video' for audio files
-                ]);
-                $validated['audio_url'] = $upload['secure_url'];
-            }
+        if ($request->hasFile('image')) {
+            // Wipe old image (local or cloud)
+            $this->deleteMedia($evidence->getRawOriginal('img_url'));
+            $updateData['img_url'] = $this->storeMedia($request->file('image'), $caseTitle, 'Evidences', $storeLocally);
         }
 
-        $evidence->update($validated);
+        if ($request->hasFile('audio')) {
+            // Wipe old audio track (local or cloud)
+            $this->deleteMedia($evidence->getRawOriginal('audio_url'));
+            $updateData['audio_url'] = $this->storeMedia($request->file('audio'), $caseTitle, 'Evidences', $storeLocally);
+        }
+
+        $evidence->update($updateData);
 
         return response()->json(['message' => 'Evidence updated successfully.', 'evidence' => $evidence], 200);
     }
@@ -1485,19 +1465,14 @@ class AdminEvidenceController extends Controller
     public function destroy($id): JsonResponse
     {
         $evidence = Evidence::findOrFail($id);
-        $this->deleteCloudinaryMedia($evidence->img_url);
-        $this->deleteCloudinaryMedia($evidence->audio_url);
+        
+        // Wipe associated media safely using the trait helper
+        $this->deleteMedia($evidence->getRawOriginal('img_url'));
+        $this->deleteMedia($evidence->getRawOriginal('audio_url'));
+        
         $evidence->delete();
+        
         return response()->json(['message' => 'Evidence deleted.'], 200);
-    }
-
-    private function deleteCloudinaryMedia(?string $url): void
-    {
-        if (!$url) return;
-        if (preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
-            $cloudinary = new \Cloudinary\Cloudinary(['cloud' => ['cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 'api_key' => env('CLOUDINARY_API_KEY'), 'api_secret' => env('CLOUDINARY_API_SECRET')], 'url' => ['secure' => true]]);
-            try { $cloudinary->uploadApi()->destroy($matches[1], ['resource_type' => str_contains($url, '/video/') ? 'video' : 'image']); } catch (\Exception $e) {}
-        }
     }
 }
 
@@ -1597,16 +1572,18 @@ FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controll
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\HandlesMedia;
 use App\Models\Level;
+use App\Models\Phase;
 use App\Enums\LevelPresentationType; 
-use App\Enums\InvestigationRequestType;
 use Illuminate\Validation\Rules\Enum; 
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Cloudinary\Cloudinary;
 
 class AdminLevelController extends Controller
 {
+    use HandlesMedia;
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -1615,26 +1592,17 @@ class AdminLevelController extends Controller
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
             'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
-            'required_request_type' => ['nullable', new Enum(InvestigationRequestType::class)],
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'required_request_id' => 'nullable|exists:investigation_requests,id',          
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
+            'store_locally' => 'required|boolean',
         ]);
 
-        $imageUrl = null;
-        if ($request->hasFile('image')) {
-            $cloudinary = new Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
-                ],
-                'url' => ['secure' => true]
-            ]);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'levels'
-            ]);
-            $imageUrl = $upload['secure_url'];
-        }
+        // Fetch the parent case title through the phase relationship to build the folder slug
+        $caseTitle = Phase::with('gameCase')->where('id', $validated['phase_id'])->first()?->gameCase?->title ?? 'General';
+
+        $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, 'Levels', $storeLocally);
 
         $level = Level::create([
             'phase_id' => $validated['phase_id'], 
@@ -1643,7 +1611,7 @@ class AdminLevelController extends Controller
             'order_index' => $validated['order_index'],
             'is_initial' => filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN),
             'presentation_type' => $validated['presentation_type'], 
-            'required_request_type' => $validated['required_request_type'] ?? null,
+            'required_request_id' => $validated['required_request_id'] ?? null,
             'img_url' => $imageUrl,
         ]);
 
@@ -1663,54 +1631,45 @@ class AdminLevelController extends Controller
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
             'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
-            'required_request_type' => ['nullable', new Enum(InvestigationRequestType::class)],
+            'required_request_id' => 'nullable|exists:investigation_requests,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'store_locally' => 'required|boolean',
         ]);
 
-        $validated['is_initial'] = filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = Phase::with('gameCase')->where('id', $validated['phase_id'])->first()?->gameCase?->title ?? 'General';
 
-        // Ensure nullability passes through if the frontend sends an empty string or omits it
-        if (!array_key_exists('required_request_type', $validated) || empty($validated['required_request_type'])) {
-            $validated['required_request_type'] = null;
-        }
+        $updateData = [
+            'phase_id' => $validated['phase_id'],
+            'title' => $validated['title'],
+            'details' => $validated['details'],
+            'order_index' => $validated['order_index'],
+            'is_initial' => filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN),
+            'presentation_type' => $validated['presentation_type'],
+            'required_request_id' => $validated['required_request_id'] ?? null,
+        ];
 
         if ($request->hasFile('image')) {
-            $this->deleteCloudinaryMedia($level->img_url);
-
-            $cloudinary = new Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
-                ],
-                'url' => ['secure' => true]
-            ]);
-
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'levels'
-            ]);
-            $validated['img_url'] = $upload['secure_url'];
+            // Wipe old media (local or cloud) safely via trait
+            $this->deleteMedia($level->getRawOriginal('img_url'));
+            $updateData['img_url'] = $this->storeMedia($request->file('image'), $caseTitle, 'Levels', $storeLocally);
         }
 
-        $level->update($validated);
+        $level->update($updateData);
 
         return response()->json(['message' => 'Level updated successfully.', 'level' => $level], 200);
     }
 
-    private function deleteCloudinaryMedia(?string $url): void
+    public function destroy($id): JsonResponse
     {
-        if (!$url) return;
-        if (preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
-            $cloudinary = new Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 
-                    'api_key' => env('CLOUDINARY_API_KEY'), 
-                    'api_secret' => env('CLOUDINARY_API_SECRET')
-                ], 
-                'url' => ['secure' => true]
-            ]);
-            try { $cloudinary->uploadApi()->destroy($matches[1], ['resource_type' => 'image']); } catch (\Exception $e) {}
-        }
+        $level = Level::findOrFail($id);
+        
+        // Wipe associated media safely via trait
+        $this->deleteMedia($level->getRawOriginal('img_url'));
+        
+        $level->delete();
+
+        return response()->json(['message' => 'Level deleted.'], 200);
     }
 }
 
@@ -1774,14 +1733,17 @@ FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controll
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\HandlesMedia;
 use App\Models\Question;
+use App\Models\Level;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Cloudinary\Cloudinary;
 
 class AdminQuestionController extends Controller
 {
+    use HandlesMedia;
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -1789,40 +1751,32 @@ class AdminQuestionController extends Controller
             'text' => 'required|string',
             'msg_when_wrong' => 'nullable|string',
             'is_mandatory' => 'required|boolean', 
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
             'choices' => 'required|array|min:2',
             'choices.*.text' => 'required|string|max:255',
             'choices.*.is_correct' => 'required|boolean',
             'choices.*.unlocks_evidence_id' => 'nullable|exists:evidences,id',
             'choices.*.unlocks_level_id' => 'nullable|exists:levels,id', 
+            'choices.*.feedback_message' => 'nullable|string|max:255',
+            'store_locally' => 'required|boolean',
         ]);
 
-        $cloudinary = new Cloudinary([
-            'cloud' => [
-                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                'api_key'    => env('CLOUDINARY_API_KEY'),
-                'api_secret' => env('CLOUDINARY_API_SECRET'),
-            ],
-            'url' => ['secure' => true]
-        ]);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-        $imageUrl = null;
-        if ($request->hasFile('image')) {
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'questions'
-            ]);
-            $imageUrl = $upload['secure_url'];
-        }
+        // Fetch the parent case title through relationships to build the clean folder slug
+        // 1. Fetch the level and its relations in a single efficient query
+        $level = Level::with('phase.gameCase')->find($validated['level_id']);
 
-        $audioUrl = null;
-        if ($request->hasFile('audio')) {
-            $upload = $cloudinary->uploadApi()->upload($request->file('audio')->getRealPath(), [
-                'folder' => 'questions/audio',
-                'resource_type' => 'video' 
-            ]);
-            $audioUrl = $upload['secure_url'];
-        }
+        $caseTitle = $level?->phase?->gameCase?->title ?? 'General';
+        $levelTitle = $level?->title ?? 'General-Level';
+
+        // 2. Build the nested subfolder structure using the slugified level title
+        $subfolder = 'Levels/' . \Illuminate\Support\Str::slug($levelTitle) . '/Questions';
+
+        // 3. Pass it to your trait helper
+        $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, $subfolder, $storeLocally);
+        $audioUrl = $this->storeMedia($request->file('audio'), $caseTitle, $subfolder, $storeLocally);
 
         return DB::transaction(function () use ($validated, $imageUrl, $audioUrl) {
             $question = Question::create([
@@ -1838,6 +1792,7 @@ class AdminQuestionController extends Controller
                 return [
                     'question_id' => $question->id,
                     'text' => $choice['text'],
+                    'feedback_message' => $choice['feedback_message'] ?? null, 
                     'is_correct' => filter_var($choice['is_correct'], FILTER_VALIDATE_BOOLEAN),
                     'unlocks_evidence_id' => $choice['unlocks_evidence_id'] ?? null,
                     'unlocks_level_id' => $choice['unlocks_level_id'] ?? null,
@@ -1871,47 +1826,32 @@ class AdminQuestionController extends Controller
             'choices.*.is_correct' => 'required|boolean',
             'choices.*.unlocks_evidence_id' => 'nullable|exists:evidences,id', 
             'choices.*.unlocks_level_id' => 'nullable|exists:levels,id', 
+            'choices.*.feedback_message' => 'nullable|string|max:255',
+            'store_locally' => 'required|boolean',
         ]);
 
-        if ($request->hasFile('image') || $request->hasFile('audio')) {
-            $cloudinary = new Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
-                ],
-                'url' => ['secure' => true]
-            ]);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = Level::with('phase.gameCase')->where('id', $validated['level_id'])->first()?->phase?->gameCase?->title ?? 'General';
 
-            if ($request->hasFile('image')) {
-                $this->deleteCloudinaryMedia($question->img_url); 
-                
-                $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                    'folder' => 'questions'
-                ]);
-                $validated['img_url'] = $upload['secure_url'];
-            }
+        $updateData = [
+            'level_id' => $validated['level_id'],
+            'text' => $validated['text'],
+            'msg_when_wrong' => $validated['msg_when_wrong'],
+            'is_mandatory' => $validated['is_mandatory'],
+        ];
 
-            if ($request->hasFile('audio')) {
-                $this->deleteCloudinaryMedia($question->audio_url); 
-                
-                $upload = $cloudinary->uploadApi()->upload($request->file('audio')->getRealPath(), [
-                    'folder' => 'questions/audio',
-                    'resource_type' => 'video' 
-                ]);
-                $validated['audio_url'] = $upload['secure_url'];
-            }
+        if ($request->hasFile('image')) {
+            $this->deleteMedia($question->getRawOriginal('img_url')); 
+            $updateData['img_url'] = $this->storeMedia($request->file('image'), $caseTitle, 'Levels/Questions', $storeLocally);
         }
 
-        return DB::transaction(function () use ($question, $validated) {
-            $question->update([
-                'level_id' => $validated['level_id'],
-                'text' => $validated['text'],
-                'msg_when_wrong' => $validated['msg_when_wrong'],
-                'is_mandatory' => $validated['is_mandatory'],
-                'img_url' => $validated['img_url'] ?? $question->img_url,
-                'audio_url' => $validated['audio_url'] ?? $question->audio_url, 
-            ]);
+        if ($request->hasFile('audio')) {
+            $this->deleteMedia($question->getRawOriginal('audio_url')); 
+            $updateData['audio_url'] = $this->storeMedia($request->file('audio'), $caseTitle, 'Levels/Questions', $storeLocally);
+        }
+
+        return DB::transaction(function () use ($question, $validated, $updateData) {
+            $question->update($updateData);
 
             $question->choices()->delete();
 
@@ -1919,6 +1859,7 @@ class AdminQuestionController extends Controller
                 return [
                     'question_id' => $question->id,
                     'text' => $choice['text'],
+                    'feedback_message' => $choice['feedback_message'] ?? null, 
                     'is_correct' => filter_var($choice['is_correct'], FILTER_VALIDATE_BOOLEAN),
                     'unlocks_evidence_id' => $choice['unlocks_evidence_id'] ?? null,
                     'unlocks_level_id' => $choice['unlocks_level_id'] ?? null,
@@ -1937,32 +1878,12 @@ class AdminQuestionController extends Controller
     {
         $question = Question::findOrFail($id);
         
-        $this->deleteCloudinaryMedia($question->img_url);
-        $this->deleteCloudinaryMedia($question->audio_url);
+        $this->deleteMedia($question->getRawOriginal('img_url'));
+        $this->deleteMedia($question->getRawOriginal('audio_url'));
         
         $question->delete();
 
         return response()->json(['message' => 'Question deleted.'], 200);
-    }
-
-    private function deleteCloudinaryMedia(?string $url): void
-    {
-        if (!$url) return;
-        if (preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
-            $cloudinary = new Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 
-                    'api_key' => env('CLOUDINARY_API_KEY'), 
-                    'api_secret' => env('CLOUDINARY_API_SECRET')
-                ], 
-                'url' => ['secure' => true]
-            ]);
-            try { 
-                $cloudinary->uploadApi()->destroy($matches[1], [
-                    'resource_type' => str_contains($url, '/video/') ? 'video' : 'image'
-                ]); 
-            } catch (\Exception $e) {}
-        }
     }
 }
 
@@ -1974,13 +1895,16 @@ FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controll
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\HandlesMedia;
 use App\Models\Suspect;
+use App\Models\GameCase;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Cloudinary\Cloudinary;
 
 class AdminSuspectController extends Controller
 {
+    use HandlesMedia;
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -1990,33 +1914,20 @@ class AdminSuspectController extends Controller
             'is_initial' => 'required|boolean',
             'is_guilty' => 'required|boolean', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'store_locally' => 'required|boolean',
         ]);
 
-        $cloudinary = new Cloudinary([
-            'cloud' => [
-                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                'api_key'    => env('CLOUDINARY_API_KEY'),
-                'api_secret' => env('CLOUDINARY_API_SECRET'),
-            ],
-            'url' => [
-                'secure' => true
-            ]
-        ]);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
 
-        $imageUrl = null;
-        if ($request->hasFile('image')) {
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'suspects/images'
-            ]);
-            $imageUrl = $upload['secure_url'];
-        }
+        $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, 'People', $storeLocally);
 
         $suspect = Suspect::create([
             'case_id' => $validated['case_id'],
             'name' => $validated['name'],
             'background' => $validated['background'] ?? null,
             'is_initial' => $validated['is_initial'],
-            'is_guilty' => $validated['is_guilty'], // NEW
+            'is_guilty' => $validated['is_guilty'], 
             'img_url' => $imageUrl,
         ]);
 
@@ -2034,28 +1945,27 @@ class AdminSuspectController extends Controller
             'is_initial' => 'required|boolean',
             'is_guilty' => 'required|boolean', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'store_locally' => 'required|boolean',
         ]);
 
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
+
+        $updateData = [
+            'case_id' => $validated['case_id'],
+            'name' => $validated['name'],
+            'background' => $validated['background'] ?? null,
+            'is_initial' => $validated['is_initial'],
+            'is_guilty' => $validated['is_guilty'],
+        ];
+
         if ($request->hasFile('image')) {
-            // Wipe old mugshot
-            $this->deleteCloudinaryMedia($suspect->img_url);
-
-            $cloudinary = new \Cloudinary\Cloudinary([
-                'cloud' => [
-                    'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                    'api_key'    => env('CLOUDINARY_API_KEY'),
-                    'api_secret' => env('CLOUDINARY_API_SECRET'),
-                ],
-                'url' => ['secure' => true]
-            ]);
-
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'suspects/images'
-            ]);
-            $validated['img_url'] = $upload['secure_url'];
+            // Wipe old mugshot (local or cloud) safely via trait
+            $this->deleteMedia($suspect->getRawOriginal('img_url'));
+            $updateData['img_url'] = $this->storeMedia($request->file('image'), $caseTitle, 'People', $storeLocally);
         }
 
-        $suspect->update($validated);
+        $suspect->update($updateData);
         
         return response()->json(['message' => 'Suspect profile updated.', 'suspect' => $suspect], 200);
     }
@@ -2063,18 +1973,9 @@ class AdminSuspectController extends Controller
     public function destroy($id): JsonResponse
     {
         $suspect = Suspect::findOrFail($id);
-        $this->deleteCloudinaryMedia($suspect->img_url);
+        $this->deleteMedia($suspect->getRawOriginal('img_url'));
         $suspect->delete();
         return response()->json(['message' => 'Suspect deleted.'], 200);
-    }
-
-    private function deleteCloudinaryMedia(?string $url): void
-    {
-        if (!$url) return;
-        if (preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
-            $cloudinary = new \Cloudinary\Cloudinary(['cloud' => ['cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 'api_key' => env('CLOUDINARY_API_KEY'), 'api_secret' => env('CLOUDINARY_API_SECRET')], 'url' => ['secure' => true]]);
-            try { $cloudinary->uploadApi()->destroy($matches[1], ['resource_type' => 'image']); } catch (\Exception $e) {}
-        }
     }
 }
 
@@ -2086,13 +1987,16 @@ FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controll
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Admin\Traits\HandlesMedia;
 use App\Models\Victim;
+use App\Models\GameCase;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Cloudinary\Cloudinary;
 
 class AdminVictimController extends Controller
 {
+    use HandlesMedia;
+
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -2101,16 +2005,22 @@ class AdminVictimController extends Controller
             'background' => 'nullable|string',
             'is_initial' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'store_locally' => 'required|boolean',
         ]);
 
-        $imageUrl = null;
-        if ($request->hasFile('image')) {
-            $cloudinary = new Cloudinary(['cloud' => ['cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 'api_key' => env('CLOUDINARY_API_KEY'), 'api_secret' => env('CLOUDINARY_API_SECRET')], 'url' => ['secure' => true]]);
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), ['folder' => 'victims/images']);
-            $imageUrl = $upload['secure_url'];
-        }
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
 
-        $victim = Victim::create(array_merge($validated, ['img_url' => $imageUrl]));
+        $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, 'People', $storeLocally);
+
+        $victim = Victim::create([
+            'case_id' => $validated['case_id'],
+            'name' => $validated['name'],
+            'background' => $validated['background'] ?? null,
+            'is_initial' => $validated['is_initial'],
+            'img_url' => $imageUrl,
+        ]);
+
         return response()->json(['message' => 'Victim filed.', 'victim' => $victim], 201);
     }
 
@@ -2124,13 +2034,110 @@ class AdminVictimController extends Controller
             'background' => 'nullable|string',
             'is_initial' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'store_locally' => 'required|boolean',
         ]);
 
-        if ($request->hasFile('image')) {
-            // Wipe old mugshot
-            $this->deleteCloudinaryMedia($victim->img_url);
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
 
-            $cloudinary = new \Cloudinary\Cloudinary([
+        $updateData = [
+            'case_id' => $validated['case_id'],
+            'name' => $validated['name'],
+            'background' => $validated['background'] ?? null,
+            'is_initial' => $validated['is_initial'],
+        ];
+
+        if ($request->hasFile('image')) {
+            // Wipe old mugshot (local or cloud) safely via trait
+            $this->deleteMedia($victim->getRawOriginal('img_url'));
+            $updateData['img_url'] = $this->storeMedia($request->file('image'), $caseTitle, 'People', $storeLocally);
+        }
+
+        $victim->update($updateData);
+        
+        return response()->json(['message' => 'Victim profile updated.', 'victim' => $victim], 200);
+    }
+
+    public function destroy($id): JsonResponse
+    {
+        $victim = Victim::findOrFail($id);
+        $this->deleteMedia($victim->getRawOriginal('img_url'));
+        $victim->delete();
+        return response()->json(['message' => 'Victim deleted.'], 200);
+    }
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\Traits\HandlesMedia.php
+----------------------------------------
+<?php
+
+namespace App\Http\Controllers\Admin\Traits;
+
+use Cloudinary\Cloudinary;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Str;
+
+trait HandlesMedia
+{
+    protected function storeMedia(?UploadedFile $file, string $caseTitle, string $subfolder, bool $storeLocally): ?string
+    {
+        if (!$file) return null;
+
+        $caseSlug = Str::slug($caseTitle);
+
+        // 1. Local Server Storage Path
+        if ($storeLocally) {
+            $destinationPath = public_path("assets/cases/{$caseSlug}/{$subfolder}");
+            $filename = time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
+            
+            $file->move($destinationPath, $filename);
+
+            return "/assets/cases/{$caseSlug}/{$subfolder}/{$filename}";
+        }
+
+        // 2. Cloudinary Cloud Storage Path
+        $cloudinary = new Cloudinary([
+            'cloud' => [
+                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                'api_key'    => env('CLOUDINARY_API_KEY'),
+                'api_secret' => env('CLOUDINARY_API_SECRET'),
+            ],
+            'url' => ['secure' => true]
+        ]);
+
+        $isAudio = str_contains($file->getMimeType(), 'audio') || in_array($file->getClientOriginalExtension(), ['mp3', 'wav', 'ogg']);
+        $resourceType = $isAudio ? 'video' : 'image'; // Cloudinary requires 'video' resource type for audio files[cite: 1]
+
+        $cloudFolder = "cases/{$caseSlug}/{$subfolder}";
+
+        $upload = $cloudinary->uploadApi()->upload($file->getRealPath(), [
+            'folder' => $cloudFolder,
+            'resource_type' => $resourceType
+        ]);
+
+        return $upload['secure_url'];
+    }
+
+    protected function deleteMedia(?string $url): void
+    {
+        if (!$url) return;
+
+        // If it's a local public file path (e.g., /assets/cases/...)
+        if (str_starts_with($url, '/assets/')) {
+            $fullPath = public_path($url);
+            if (file_exists($fullPath)) {
+                @unlink($fullPath);
+            }
+            return;
+        }
+
+        // Otherwise, process as a Cloudinary Asset URL
+        if (preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
+            $publicId = $matches[1];
+            $resourceType = str_contains($url, '/video/') ? 'video' : 'image';
+
+            $cloudinary = new Cloudinary([
                 'cloud' => [
                     'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
                     'api_key'    => env('CLOUDINARY_API_KEY'),
@@ -2139,31 +2146,11 @@ class AdminVictimController extends Controller
                 'url' => ['secure' => true]
             ]);
 
-            $upload = $cloudinary->uploadApi()->upload($request->file('image')->getRealPath(), [
-                'folder' => 'victims/images'
-            ]);
-            $validated['img_url'] = $upload['secure_url'];
-        }
-
-        $victim->update($validated);
-        
-        return response()->json(['message' => 'Victim profile updated.', 'victim' => $victim], 200);
-    }
-
-    public function destroy($id): JsonResponse
-    {
-        $victim = Victim::findOrFail($id);
-        $this->deleteCloudinaryMedia($victim->img_url);
-        $victim->delete();
-        return response()->json(['message' => 'Victim deleted.'], 200);
-    }
-
-    private function deleteCloudinaryMedia(?string $url): void
-    {
-        if (!$url) return;
-        if (preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
-            $cloudinary = new \Cloudinary\Cloudinary(['cloud' => ['cloud_name' => env('CLOUDINARY_CLOUD_NAME'), 'api_key' => env('CLOUDINARY_API_KEY'), 'api_secret' => env('CLOUDINARY_API_SECRET')], 'url' => ['secure' => true]]);
-            try { $cloudinary->uploadApi()->destroy($matches[1], ['resource_type' => 'image']); } catch (\Exception $e) {}
+            try {
+                $cloudinary->uploadApi()->destroy($publicId, ['resource_type' => $resourceType]);
+            } catch (\Exception $e) {
+                // Silently fail if already missing from the cloud vault
+            }
         }
     }
 }
@@ -2206,6 +2193,7 @@ class Choice extends Model
     protected $fillable = [
         'question_id',
         'text',
+        'feedback_message',
         'is_correct',
         'unlocks_evidence_id', 
         'unlocks_level_id',
@@ -2544,7 +2532,6 @@ class InvestigationRequest extends Model
             'investigation_request_items', 
             'request_id', 
             'evidence_id',
-            'unlocks_level_id' 
         );
     }
 
@@ -2588,6 +2575,7 @@ class Level extends Model
         'order_index',
         'is_initial',
         'presentation_type', 
+        'required_request_id',     
     ];
 
     protected function casts(): array
@@ -2595,7 +2583,6 @@ class Level extends Model
         return [
             'is_initial' => 'boolean',
             'presentation_type' => LevelPresentationType::class, 
-            'required_request_type' => InvestigationRequestType::class, 
         ];
     }
     
@@ -2628,6 +2615,11 @@ class Level extends Model
     public function questions(): HasMany
     {
         return $this->hasMany(Question::class, 'level_id');
+    }
+
+    public function requiredRequest(): BelongsTo
+    {
+        return $this->belongsTo(InvestigationRequest::class, 'required_request_id');
     }
 }
 
@@ -6651,6 +6643,187 @@ return new class extends Migration {
 };
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_09_172745_add_feedback_message_to_choices_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('choices', function (Blueprint $table) {
+            $table->string('feedback_message')->nullable()->after('text');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('choices', function (Blueprint $table) {
+            $table->dropColumn('feedback_message');
+        });
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_09_180614_update_levels_required_request_id.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('levels', function (Blueprint $table) {
+            $table->dropColumn('required_request_type');
+            $table->foreignId('required_request_id')
+                  ->nullable()
+                  ->after('presentation_type')
+                  ->constrained('investigation_requests')
+                  ->nullOnDelete();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('levels', function (Blueprint $table) {
+            $table->dropForeign(['required_request_id']);
+            $table->dropColumn('required_request_id');
+            $table->string('required_request_type')->nullable()->after('presentation_type');
+        });
+    }
+};
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\BloodOperaCaseSeeder.php
+----------------------------------------
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use App\Models\GameCase;
+use App\Models\Phase;
+use App\Models\Level;
+use App\Models\Evidence;
+use App\Models\Question;
+use App\Models\Choice;
+use App\Models\Suspect;
+use App\Models\Victim; 
+
+class BloodOperaCaseSeeder extends Seeder
+{
+    public function run(): void
+    {
+        // 1. Create the Parent Case
+        $case = GameCase::create([
+            'title' => 'أوبرا الدماء',
+            'story' => "في منتصف ليلة مظلمة، استيقظت المدينة على مشهد مرعب أمام مبنى الإدارة الرئيسي لمستشفى المدينة المركزية؛ حيث غُلّق جثمان الدكتور (رأفت)، استشاري الجراحة العامة ونائب رئيس لجنة تقييم الأخطاء الطبية، من شرفة الطوالق العالي بطريقة وحشية ومدروسة. أشار تقرير الطب الشرعي المبدئي إلى أن الضحية تعرضت لشلل مؤقت قبل أن يتم بتر أصابع يده اليمنى بدقة جراحية مذهلة وتعليقه بحبل متصل بمعصمه. بجانب الجُثة، وُجد جهاز تسجيل صغير بيت مقطوعة أوبرا حزينة بجوار قلمه الطبي الملطخ بالدماء. وبينما تحاول الشرطة جمع الخيوط الأولى، تشير المستندات الرسمية وسجلات المتقفي إلى أن الضحية كان يتولى إدارة صفقات مشبوهة وقرارات إدارية مثيرة للجدل لتغطية أخطاء جسيمة، مما يفتح باباً واسعاً لاحتمال وجود تصفية حسابات شخصية أو انتقام من خصوم مهنيين طالهم الظلم داخل أروقة المستشفى.",            
+            'min_player_XP' => 0, 
+            'XP_on_solve' => 2500,
+            'max_strikes' => 5,
+            'rating_stars' => 4.8,
+            'age_rating' => 'Adult 18+',
+            'estimated_playtime' => '120 Minutes',
+            'difficulty' => 'Standard',
+            'tags' => ['Tactical', 'Puzzle'],
+            'author_name' => 'System',
+            'img_url' => '/assets/cases/blood-opera-cover.png',
+            'is_published' => true,
+        ]);
+
+        // 2. Create Initial Victim
+        Victim::create([
+            'case_id' => $case->id,
+            'name' => 'الدكتور رأفت',
+            'background' => "استشاري الجراحة العامة ونائب رئيس لجنة تقييم الأخطاء الطبية في مستشفى المدينة المركزية. وُجد جثمانه معلقاً من شرفة الطابق العالي بعد تعرضه لشلل مؤقت وبتر دقيق لأصابع يده اليمنى.",
+            'img_url' => '/assets/victims/dr-rafat.png',
+            'is_initial' => true,
+        ]);
+
+        // 3. Create Suspects Roster
+        Suspect::create([
+            'case_id' => $case->id,
+            'name' => 'مدير المستشفى',
+            'background' => 'مدير المستشفى التنفيذي، كان على خلاف حاد مع الدكتور رأفت بسبب تقارير لجنة تقييم الأخطاء الطبية التي هددت بتوريط الإدارة في قضايا إهمال جسيمة.',
+            'is_initial' => true,
+            'is_guilty' => true, 
+            'img_url' => '/assets/placeholder-mugshot.jpg',
+        ]);
+
+        Suspect::create([
+            'case_id' => $case->id,
+            'name' => 'الممرض السري',
+            'background' => 'ممرض عمل لفترة طويل تحت إشراف الدكتور رأفت وتم فصله تعسفياً إثر شكوى تقدم بها للجنة الأخطاء الطبية.',
+            'is_initial' => true,
+            'is_guilty' => false, 
+            'img_url' => '/assets/placeholder-mugshot.jpg',
+        ]);
+
+        // 4. Create Parent Phases & Levels
+        $phase1 = Phase::create([
+            'case_id' => $case->id, 
+            'title' => 'مسرح الجريمة', 
+            'description' => 'فحص ملابسات تعليق الجثمان والأدلة الصوتية بجوار الجثة.', 
+            'order_index' => 1
+        ]);
+
+        $level1 = Level::create([
+            'phase_id' => $phase1->id,
+            'title' => 'تحليل مسرح الجريمة',
+            'details' => 'فحص موقع الحادث أمام مستشفى المدينة المركزية ودراسة الأدلة المتروكة.',
+            'order_index' => 1,
+            'is_initial' => true,
+            'img_url' => '/assets/cases/blood-level1.png',
+            'presentation_type' => 'location', 
+        ]);
+
+        // 5. Create Initial Evidence
+        Evidence::create([
+            'case_id' => $case->id,
+            'is_initial' => true,
+            'title' => 'جهاز التسجيل وقلم الدم',
+            'description' => 'جهاز تسجيل صغير وُجد بجوار الجثة يعزف مقطوعة أوبرا بجانب قلم طبي ملطخ بالدماء.',
+            'evidence_type' => 'document',
+            'paragraph' => "يحتوي جهاز التسجيل على تسجيل صوتي لمقطع أوبرا حزين يتكرر باستمرار. القلم الطبي يحمل بصمات غير واضحة.",
+        ]);
+
+        // 6. Create Questions and Choices
+        $q1 = Question::create([
+            'level_id' => $level1->id,
+            'text' => 'ما الذي يشير إليه بتر أصابع اليد اليمنى بهذه الدقة الجراحية بجانب الشلل المؤقت؟',
+            'msg_when_wrong' => 'راجع تقرير الطب الشرعي؛ الجراحة الدقيقة تعكس خلفية مهنية وليست عشوائية.',
+            'is_mandatory' => true,
+        ]);
+
+        Choice::create([
+            'question_id' => $q1->id, 
+            'text' => 'دليل على انتقام شخصي من شخص ذي خلفية طبية أو جراحية.', 
+            'is_correct' => true
+        ]);
+        
+        Choice::create([
+            'question_id' => $q1->id, 
+            'text' => 'مجرد حادث عارض نتج عن مقاومة الضحية أثناء السقوط.', 
+            'is_correct' => false
+        ]);
+    }
+}
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\DatabaseSeeder.php
 ----------------------------------------
 <?php
@@ -6697,6 +6870,7 @@ class DatabaseSeeder extends Seeder
         // 3. Run the Game Case seeder
         $this->call([
             GameCaseSeeder::class,
+            BloodOperaCaseSeeder::class, 
         ]);
     }
 }
@@ -6717,7 +6891,7 @@ use App\Models\Question;
 use App\Models\Choice;
 use App\Models\Suspect;
 use App\Models\Victim; 
-use App\Enums\EvidenceType;
+use App\Models\InvestigationRequest;
 
 class GameCaseSeeder extends Seeder
 {
@@ -6737,6 +6911,7 @@ class GameCaseSeeder extends Seeder
             'tags' => ['Tactical', 'Choice-Driven Narrative', 'Corporate Espionage'],
             'author_name' => 'Agent MasterAdmin',
             'img_url' => '/assets/cases/Case-cover.png',
+            'is_published' => true, // Ensure it shows up on the main board immediately
         ]);
 
         Victim::create([
@@ -6797,7 +6972,6 @@ class GameCaseSeeder extends Seeder
         $phase2 = Phase::create(['case_id' => $case->id, 'title' => 'Medical Examiner', 'description' => 'Review the physical trauma and toxicology.', 'order_index' => 2]);
         $phase3 = Phase::create(['case_id' => $case->id, 'title' => 'Corporate Espionage', 'description' => 'Follow the money and cross-reference alibis.', 'order_index' => 3]);
         $phase4 = Phase::create(['case_id' => $case->id, 'title' => 'The Break', 'description' => 'Interrogate the prime suspects.', 'order_index' => 4]);
-        // NEW: Wiretap test phase
         $phase5 = Phase::create(['case_id' => $case->id, 'title' => 'Surveillance', 'description' => 'Active wiretap on a burner device.', 'order_index' => 5]);
 
         // 3. Create the Nested Levels (Attached to Phases)
@@ -6851,13 +7025,12 @@ class GameCaseSeeder extends Seeder
             'presentation_type' => 'interrogation', 
         ]);
 
-        // NEW: Wiretap test level
         $level6 = Level::create([
             'phase_id' => $phase5->id,
             'title' => 'Burner Phone Intercept',
             'details' => 'We managed to clone a burner phone tied to Marcus Thorne. A call is incoming. You only get one chance to listen.',
             'order_index' => 1,
-            'is_initial' => true, // Set to true so you can test it immediately
+            'is_initial' => true,
             'presentation_type' => 'wiretap',
         ]);
 
@@ -6926,6 +7099,20 @@ class GameCaseSeeder extends Seeder
             'audio_url' => '/assets/cases/drilling_sound.wav',
         ]);
 
+        // --- NEW: COMPILE THE INVESTIGATION REQUEST & ATTACH IT TO A LEVEL ---
+        $warrant = InvestigationRequest::create([
+            'case_id' => $case->id,
+            'request_type' => 'search_warrant',
+            // This combo will unlock the interrogation room (Level 5) on the board
+            'unlocks_level_id' => $level5->id, 
+        ]);
+        // To get the warrant, players must combine the Keycard Logs and Thorne's Statement
+        $warrant->requiredEvidences()->sync([$evidence1->id, $evidence3->id]);
+
+        // We explicitly tell Level 5 that the Host cannot start the interrogation 
+        // until the $warrant combo is successfully executed.
+        $level5->update(['required_request_id' => $warrant->id]);
+
         // 5. Create Verdicts and Choices
 
         // LEVEL 1: LOCATION PHASE VERDICTS
@@ -6935,13 +7122,25 @@ class GameCaseSeeder extends Seeder
             'msg_when_wrong' => 'The door was physically bolted, not electronically locked. Think about architectural vulnerabilities.',
             'is_mandatory' => true,
         ]);
+        
         // Formatted for the location visual targeter: "X,Y | Title"
-        Choice::create(['question_id' => $l1q1->id, 'text' => '45.0,50.0 | The Bolted Door', 'is_correct' => false]);
-        Choice::create(['question_id' => $l1q1->id, 'text' => '85.5,20.0 | The Exterior Window Rig', 'is_correct' => false]);
+        Choice::create([
+            'question_id' => $l1q1->id, 
+            'text' => '45.0,50.0 | The Bolted Door', 
+            'is_correct' => false,
+            'feedback_message' => 'The deadbolt is secured from the inside. The killer didn\'t leave through this door.'
+        ]);
+        Choice::create([
+            'question_id' => $l1q1->id, 
+            'text' => '85.5,20.0 | The Exterior Window Rig', 
+            'is_correct' => false,
+            'feedback_message' => 'The window washing rig is empty. No signs of forced entry on the glass.'
+        ]);
         Choice::create([
             'question_id' => $l1q1->id, 
             'text' => '65.2,15.5 | HVAC Return Vent', 
             'is_correct' => true,
+            'feedback_message' => 'The vent cover screws are stripped. Someone accessed the ductwork recently.',
             'unlocks_evidence_id' => $evidence6->id // Unlocks the blueprint
         ]);
 
@@ -6999,7 +7198,8 @@ class GameCaseSeeder extends Seeder
             'question_id' => $l4q1->id, 
             'text' => 'The "Janitor" who badged in at 11:30 PM, whose employer is a shell company quietly owned by Thorne.', 
             'is_correct' => true,
-            'unlocks_level_id' => $level5->id // Instantly unlocks the Interrogation Log
+            // Notice: It no longer unlocks Level 5 automatically.
+            // The team must now figure out the Search Warrant combo to get the Interrogation room.
         ]);
         Choice::create([
             'question_id' => $l4q1->id, 
@@ -7025,7 +7225,7 @@ class GameCaseSeeder extends Seeder
             'is_correct' => true
         ]);
 
-        // NEW LEVEL 6: WIRETAP PHASE VERDICTS
+        // LEVEL 6: WIRETAP PHASE VERDICTS
         $l6q1 = Question::create([
             'level_id' => $level6->id,
             'text' => 'Analyze the background noise behind the target\'s voice. What do you hear?',
