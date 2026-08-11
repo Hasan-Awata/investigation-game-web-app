@@ -121,7 +121,7 @@ export default function WiretapPhase({
                 <div className="choices-preview" style={{ marginTop: '1rem' }}>
                   {q.choices?.map(c => {
                     const isSelected = localVotes[q.id] === c.id;
-                    const isHistoricalCorrect = status === 'completed' && c.is_correct;
+                    const isHistoricalCorrect = status === 'completed' && !c.outcomes?.gives_strike;
                     
                     let pillClass = 'choice-pill';
                     if (isSelected) pillClass += ' selected';

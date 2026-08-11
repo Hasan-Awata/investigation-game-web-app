@@ -14,11 +14,11 @@ interface LocationPhaseProps {
 
 export default function LocationPhase({ level, status, localVotes, handleSelectChoice, currentUserId }: LocationPhaseProps) {
   const { room } = useRoomContext();
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  
+  // Track WHICH question (angle) is currently fullscreen
+  const [inspectingQuestionId, setInspectingQuestionId] = useState<number | null>(null);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
   
-  // 1. Scoped keys for both dead ends and found intel. 
-  // Tying it to room.id ensures it never bleeds into new cases and is wiped by our Garbage Collector.
   const deadEndsStorageKey = `room_${room.id}_level_${level.id}_dead_ends`;
   const foundPointsStorageKey = `room_${room.id}_level_${level.id}_found_points`;
   
@@ -29,7 +29,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     } catch { return new Set(); }
   });
 
-  // 2. Track found intel locally so multiple points per question can be remembered without overwriting the single vote
   const [foundPoints, setFoundPoints] = useState<Set<number>>(() => {
     try {
       const saved = sessionStorage.getItem(foundPointsStorageKey);
@@ -37,7 +36,8 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     } catch { return new Set(); }
   });
 
-  if (!level.questions || !level.img_url) return null;
+  // Removed the level.img_url check so it doesn't fail if the parent level lacks an image
+  if (!level.questions) return null;
 
   const isCompleted = status === 'completed';
   
@@ -51,10 +51,8 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
 
   const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice) => {
     e.stopPropagation();
-    
     if (status !== 'active') return;
 
-    // Check if the choice unlocks anything dynamically via the new outcomes JSON
     const hasUnlocks = choice.outcomes && (
       (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) || 
       (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) || 
@@ -67,7 +65,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     if (isCorrectFind) {
       setPopup({
         title: "LEAD DISCOVERED",
-        // Dynamically insert the custom message from JSON, or fall back to the default
         message: choice.outcomes?.feedback || "I found something useful here. Logging it to the board.",
         isSuccess: true
       });
@@ -84,7 +81,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     } else {
         setPopup({
           title: "DEAD END",
-          // Dynamically insert the custom message from JSON, or fall back to the default
           message: choice.outcomes?.feedback || "Nothing was found here. I should keep looking.",
           isSuccess: false
         });
@@ -99,20 +95,23 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     setTimeout(() => setPopup(null), 2500);
   };
 
-  const fullScreenViewer = isFullscreen ? createPortal(
+  const activeQuestion = displayQuestions.find(q => q.id === inspectingQuestionId);
+
+  const fullScreenViewer = activeQuestion ? createPortal(
     <div className="location-fullscreen-overlay">
       <div className="location-header glass-panel">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h2 className="section-title" style={{ margin: 0, border: 'none', padding: 0 }}>{level.title}</h2>
+          <h2 className="section-title" style={{ margin: 0, border: 'none', padding: 0 }}>
+            {activeQuestion.text || level.title}
+          </h2>
           <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Active Scene Sweep</span>
         </div>
-        <button className="btn-secondary" style={{ flex: 'none', padding: '0.5rem 1.5rem' }} onClick={() => setIsFullscreen(false)}>
+        <button className="btn-secondary" style={{ flex: 'none', padding: '0.5rem 1.5rem' }} onClick={() => setInspectingQuestionId(null)}>
           Close Viewer
         </button>
       </div>
 
       <div className="location-image-container">
-        
         {popup && (
           <div className={`loc-feedback-modal ${popup.isSuccess ? 'success' : 'error'}`}>
             <h3 style={{ margin: '0 0 0.5rem 0', color: popup.isSuccess ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em' }}>
@@ -123,57 +122,49 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         )}
 
         <div className="location-image-wrapper">
-          <img src={level.img_url} alt="Crime Scene" className="location-image-full" />
+          <img src={activeQuestion.img_url || '/placeholder-crime-scene.jpg'} alt="Crime Scene" className="location-image-full" />
 
-          {displayQuestions.flatMap(q => {
-            return q.choices?.map(choice => {
-              
-              const parts = choice.text.split('|');
-              if (parts.length < 2) return null;
-              
-              const coords = parts[0].trim();
-              const title = parts[1].trim();
-              
-              const coordParts = coords.split(',');
-              if (coordParts.length < 2) return null;
+          {activeQuestion.choices?.map(choice => {
+            const parts = choice.text.split('|');
+            if (parts.length < 2) return null;
+            
+            const coords = parts[0].trim();
+            const title = parts[1].trim();
+            
+            const coordParts = coords.split(',');
+            if (coordParts.length < 2) return null;
 
-              const x = coordParts[0].trim();
-              const y = coordParts[1].trim();
+            const x = coordParts[0].trim();
+            const y = coordParts[1].trim();
 
-              // 1. Calculate if THIS specific rendered point contains actual narrative unlocks
-              const hasUnlocks = choice.outcomes && (
-                (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) || 
-                (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) || 
-                (choice.outcomes.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) ||
-                (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0)
-              );
+            const hasUnlocks = choice.outcomes && (
+              (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) || 
+              (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) || 
+              (choice.outcomes.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) ||
+              (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0)
+            );
 
-              // 2. A point gets the glowing cyan "selected" animation if it was voted for, locally found, 
-              // OR if the phase is completed and this point actually contained unlocks.
-              const isSelected = localVotes[q.id] === choice.id || foundPoints.has(choice.id) || (isCompleted && !!hasUnlocks);
+            const isSelected = localVotes[activeQuestion.id] === choice.id || foundPoints.has(choice.id) || (isCompleted && !!hasUnlocks);
+            const isDeadEndClicked = clickedDeadEnds.has(choice.id);
 
-              // 3. Keep dead ends styled appropriately
-              const isDeadEndClicked = clickedDeadEnds.has(choice.id);
+            let zoneClass = 'loc-hover-zone';
+            if (isSelected) {
+              zoneClass += ' selected'; 
+            } else if (isCompleted || isDeadEndClicked) {
+              zoneClass += ' investigated'; 
+            }
 
-              let zoneClass = 'loc-hover-zone';
-              if (isSelected) {
-                zoneClass += ' selected'; 
-              } else if (isCompleted || isDeadEndClicked) {
-                zoneClass += ' investigated'; 
-              }
-
-              return (
-                <div
-                  key={choice.id}
-                  className={zoneClass}
-                  style={{ top: `${y}%`, left: `${x}%` }}
-                  onClick={(e) => handlePointClick(e, q.id, choice)}
-                >
-                  <div className="loc-crosshair"></div>
-                  <div className="loc-tooltip">{title}</div>
-                </div>
-              );
-            });
+            return (
+              <div
+                key={choice.id}
+                className={zoneClass}
+                style={{ top: `${y}%`, left: `${x}%` }}
+                onClick={(e) => handlePointClick(e, activeQuestion.id, choice)}
+              >
+                <div className="loc-crosshair"></div>
+                <div className="loc-tooltip">{title}</div>
+              </div>
+            );
           })}
         </div>
       </div>
@@ -182,21 +173,23 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
   ) : null;
 
   return (
-    <div className="location-phase-wrapper">
-      <div className="location-thumbnail-container">
-        <div className="location-thumbnail" style={{ backgroundImage: `url(${level.img_url})` }}>
-          <div className="thumbnail-overlay">
-            <button 
-              className="btn-primary" 
-              onClick={() => setIsFullscreen(true)}
-              style={{ flex: 'none', width: 'auto', padding: '0.75rem 2rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}
-            >
-              <span style={{ marginRight: '0.5rem'}}>👁️</span> Inspect Location
-            </button>
+    <div className="location-phase-wrapper" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+      {displayQuestions.map(q => (
+        <div key={q.id} className="location-thumbnail-container">
+          <div className="location-thumbnail" style={{ backgroundImage: `url(${q.img_url || '/placeholder-crime-scene.jpg'})` }}>
+            <div className="thumbnail-overlay">
+              <button 
+                className="btn-primary" 
+                onClick={() => setInspectingQuestionId(q.id)}
+                style={{ flex: 'none', width: 'auto', padding: '0.75rem 2rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}
+              >
+                <span style={{ marginRight: '0.5rem'}}>👁️</span> Inspect Location
+              </button>
+            </div>
           </div>
+          <p className="location-hint">{q.text || 'Enter the full-screen viewer to sweep the scene.'}</p>
         </div>
-        <p className="location-hint">Enter the full-screen viewer to sweep the scene for evidence.</p>
-      </div>
+      ))}
 
       {fullScreenViewer}
     </div>

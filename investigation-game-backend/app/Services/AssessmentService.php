@@ -60,7 +60,7 @@ class AssessmentService
                     }
 
                     // Extract the Persona hint for the exact question they failed
-                    $hint = $question->msg_when_wrong ?? "Re-evaluate the evidence thoroughly.";
+                    $hint = $choice->outcomes['feedback'] ?? "Re-evaluate the evidence thoroughly.";
 
                     // REWIND LOGIC: Wipe all votes for this phase so they must start over
                     \App\Models\RoomVote::where('room_id', $room->id)

@@ -19,13 +19,11 @@ class AdminQuestionController extends Controller
         $validated = $request->validate([
             'level_id' => 'required|exists:levels,id',
             'text' => 'required|string',
-            'msg_when_wrong' => 'nullable|string',
             'is_mandatory' => 'required|boolean', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
             'choices' => 'required|array|min:2',
             'choices.*.text' => 'required|string|max:255',
-            'choices.*.outcomes.gives_strike' => 'nullable|boolean',
             'choices.*.outcomes' => 'nullable|array', 
             'store_locally' => 'required|boolean',
         ]);
@@ -44,7 +42,6 @@ class AdminQuestionController extends Controller
             $question = Question::create([
                 'level_id' => $validated['level_id'],
                 'text' => $validated['text'],
-                'msg_when_wrong' => $validated['msg_when_wrong'],
                 'is_mandatory' => $validated['is_mandatory'],
                 'img_url' => $imageUrl,
                 'audio_url' => $audioUrl, 
@@ -77,13 +74,11 @@ class AdminQuestionController extends Controller
         $validated = $request->validate([
             'level_id' => 'required|exists:levels,id',
             'text' => 'required|string',
-            'msg_when_wrong' => 'nullable|string',
             'is_mandatory' => 'required|boolean', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
             'choices' => 'required|array|min:2',
             'choices.*.text' => 'required|string|max:255',
-            'choices.*.outcomes.gives_strike' => 'nullable|boolean',
             'choices.*.outcomes' => 'nullable|array', 
             'store_locally' => 'required|boolean',
         ]);
@@ -94,7 +89,6 @@ class AdminQuestionController extends Controller
         $updateData = [
             'level_id' => $validated['level_id'],
             'text' => $validated['text'],
-            'msg_when_wrong' => $validated['msg_when_wrong'],
             'is_mandatory' => $validated['is_mandatory'],
         ];
 

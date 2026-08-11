@@ -132,7 +132,6 @@ export interface Question {
   text: string;
   img_url?: string;
   audio_url?: string; 
-  msg_when_wrong?: string;
   choices?: Choice[];
   is_mandatory: boolean; 
   assigned_user_id?: number; 

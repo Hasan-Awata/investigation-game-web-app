@@ -293,6 +293,22 @@ export const updateAdminLevel = async (id: number, formData: FormData): Promise<
   }
 };
 
+export const deleteAdminLevel = async (id: number): Promise<Result<any>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/levels/${id}`, { 
+      method: 'DELETE', 
+      headers: { 
+        'Accept': 'application/json', 
+        'Authorization': `Bearer ${getToken()}` 
+      } 
+    });
+    if (!response.ok) return failure('Failed to delete level.');
+    return success(await response.json());
+  } catch (error) { 
+    return failure((error as Error).message); 
+  }
+};
+
 // ==========================================
 // EVIDENCES
 // ==========================================

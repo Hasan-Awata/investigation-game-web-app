@@ -50,9 +50,9 @@ export default function QuestionForm() {
   const [levelId, setLevelId] = useState('');
   
   const [text, setText] = useState('');
-  const [msgWhenWrong, setMsgWhenWrong] = useState('');
   const [isMandatory, setIsMandatory] = useState(true); 
   const [image, setImage] = useState<File | null>(null);
+  const [existingImgUrl, setExistingImgUrl] = useState<string | null>(null);
   const [storeLocally, setStoreLocally] = useState(false);
   
   const [activeCoordinateTarget, setActiveCoordinateTarget] = useState<string | null>(null);
@@ -90,10 +90,10 @@ export default function QuestionForm() {
   const clearForm = () => {
     setEditingId(null);
     setText('');
-    setMsgWhenWrong('');
     setIsMandatory(true);
     setStoreLocally(false);
     setImage(null);
+    setExistingImgUrl(null);
     setActiveCoordinateTarget(null);
     setChoices([
       { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes() },
@@ -193,7 +193,6 @@ export default function QuestionForm() {
     formData.append('level_id', levelId); 
     formData.append('text', text);
     formData.append('is_mandatory', isMandatory ? '1' : '0'); 
-    if (msgWhenWrong) formData.append('msg_when_wrong', msgWhenWrong);
     formData.append('store_locally', storeLocally ? '1' : '0');
     if (image) formData.append('image', image);
 
@@ -228,7 +227,7 @@ export default function QuestionForm() {
     setPhaseId(parentPhaseId.toString());
     setLevelId(parentLevelId.toString());
     setText(question.text);
-    setMsgWhenWrong(question.msg_when_wrong || '');
+    setExistingImgUrl(question.img_url || null);
     setIsMandatory(!!question.is_mandatory);
 
     if (question.choices && question.choices.length > 0) {
@@ -255,7 +254,8 @@ export default function QuestionForm() {
   };
 
   const isProcessing = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
-
+  const previewUrl = image ? URL.createObjectURL(image) : existingImgUrl;
+  
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
       <div>
@@ -293,25 +293,75 @@ export default function QuestionForm() {
             </div>
           </div>
 
-          {isLocationPhase && selectedLevel?.img_url && (
-            <div className="coordinate-picker-container">
-              <div className="coordinate-picker-header">
-                <div>
-                  <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>Visual Coordinate Mapping</label>
-                  <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Click crosshair to arm targeter.</p>
+          {isLocationPhase && (
+            previewUrl ? (
+              <div className="coordinate-picker-container">
+                <div className="coordinate-picker-header">
+                  <div>
+                    <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>Visual Coordinate Mapping</label>
+                    <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Click crosshair to arm targeter.</p>
+                  </div>
+                </div>
+                <div className="coordinate-picker-image-wrapper" onClick={handleImageClick} style={{ cursor: activeCoordinateTarget ? 'crosshair' : 'default', opacity: activeCoordinateTarget ? 1 : 0.5 }}>
+                  <img src={previewUrl} alt="Map Preview" />
                 </div>
               </div>
-              <div className="coordinate-picker-image-wrapper" onClick={handleImageClick} style={{ cursor: activeCoordinateTarget ? 'crosshair' : 'default', opacity: activeCoordinateTarget ? 1 : 0.5 }}>
-                <img src={selectedLevel.img_url} alt="Map" />
+            ) : (
+              <div className="terminal-text" style={{ padding: '1rem', border: '1px dashed rgba(255,255,255,0.2)', textAlign: 'left', marginTop: '1rem' }}>
+                Upload a Question Image above to enable the interactive coordinate mapper.
               </div>
-            </div>
+            )
           )}
+
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1rem', 
+            background: isMandatory ? 'rgba(0, 229, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)', 
+            padding: '1rem', 
+            borderRadius: '8px', 
+            marginBottom: '1.5rem', 
+            border: `1px solid ${isMandatory ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)'}`,
+            transition: 'all 0.2s ease'
+          }}>
+            <input 
+              type="checkbox" 
+              id="mandatory-toggle" 
+              checked={isMandatory} 
+              onChange={(e) => setIsMandatory(e.target.checked)} 
+              style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-cyan)' }} 
+            />
+            <label htmlFor="mandatory-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: isMandatory ? 'var(--accent-cyan)' : 'var(--text-secondary)', cursor: 'pointer', margin: 0 }}>
+              <strong>Mandatory Verdict:</strong> Players must resolve this node to clear the phase. (Uncheck for optional lore/evidence sweeps).
+            </label>
+          </div>
 
           <div className="form-group">
             <label>Question Text</label>
             <textarea className="admin-textarea" required value={text} onChange={(e) => setText(e.target.value)} />
           </div>
 
+          <div className="form-group" style={{ marginTop: '1rem' }}>
+            <label>Question Image (Location Angle / Reference)</label>
+            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+              This image will be used as the interactive map for Location Phases, or as a visual aid for standard questions. Max 4MB.
+            </p>
+            <input 
+              type="file" 
+              className="admin-file-input" 
+              accept="image/*" 
+              ref={imageInputRef} 
+              onChange={(e) => setImage(e.target.files?.[0] || null)} 
+            />
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
+            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
+              <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
+            </label>
+          </div>
+          
           <div className="qf-choices-container">
             <div className="qf-choices-header">
               <label className="qf-choices-title">Dialogue & Outcomes</label>
@@ -320,13 +370,22 @@ export default function QuestionForm() {
 
             <div className="qf-choices-list">
               {choices.map((choice) => (
-                <div key={choice.id} className="qf-choice-row">
+                <div key={choice.id} className={`qf-choice-row ${activeCoordinateTarget === choice.id ? 'picking-target' : ''}`}>
                   
                   <div className="qf-choice-top">
                     <input type="text" className="admin-input qf-choice-text-input" required placeholder="Choice text..." value={choice.text} onChange={(e) => updateChoiceText(choice.id, e.target.value)} />
                     
                     {isLocationPhase && (
-                      <button type="button" className="pick-point-btn" onClick={() => setActiveCoordinateTarget(activeCoordinateTarget === choice.id ? null : choice.id)}>🎯</button>
+                      <button 
+                        type="button" 
+                        className={`pick-point-btn ${activeCoordinateTarget === choice.id ? 'active' : ''}`} 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveCoordinateTarget(activeCoordinateTarget === choice.id ? null : choice.id);
+                        }}
+                      >
+                        🎯
+                      </button>
                     )}
                     
                     <button type="button" className="qf-delete-btn" onClick={() => removeChoice(choice.id)}>×</button>

@@ -171,7 +171,7 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
                       <span className="speaker-label investigator">INVESTIGATORS</span>
                       <p>
                         <Typewriter 
-                          text={status === 'completed' ? (q.choices?.find(c => c.is_correct)?.text || '...') : (winningChoice?.text || '...')} 
+                          text={status === 'completed' ? (q.choices?.find(c => !c.outcomes?.gives_strike)?.text || '...') : (winningChoice?.text || '...')} 
                           skip={skipTyping} 
                           delay={15} 
                           cacheKey={`room_${room.id}_investigator_${q.id}`} 
