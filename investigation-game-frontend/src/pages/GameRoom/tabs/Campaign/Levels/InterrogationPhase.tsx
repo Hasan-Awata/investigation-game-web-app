@@ -54,7 +54,28 @@ interface InterrogationPhaseProps {
 }
 
 export default function InterrogationPhase({ level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice }: InterrogationPhaseProps) {
-  const { room } = useRoomContext();
+  const { room, accumulatedEvidences } = useRoomContext();
+
+  const checkIsLockedByNarrative = (choice: Choice) => {
+    if (!choice.requirements) return false;
+    const reqs = choice.requirements;
+
+    if (reqs.required_evidence?.length > 0) {
+      const hasAllEvidence = reqs.required_evidence.every((id: number) => 
+        accumulatedEvidences.some(e => e.id === id)
+      );
+      if (!hasAllEvidence) return true;
+    }
+
+    if (reqs.required_choices?.length > 0) {
+      const hasAllChoices = reqs.required_choices.every((id: number) => 
+        room.votes?.some(v => v.choice_id === id)
+      );
+      if (!hasAllChoices) return true;
+    }
+
+    return false;
+  };
 
   // Initialize state directly from sessionStorage
   const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>(() => {
@@ -152,14 +173,22 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
                     <div className="vote-choices-grid">
                       {q.choices?.map(c => {
                         const isSelected = localVotes[q.id] === c.id;
+                        const isNarrativeLocked = checkIsLockedByNarrative(c);
+                        const pillClass = isNarrativeLocked
+                          ? 'choice-pill locked-choice'
+                          : `choice-pill interactable ${isSelected ? 'selected' : ''}`;
+
                         return (
                           <span 
                             key={c.id} 
-                            className={`choice-pill interactable ${isSelected ? 'selected' : ''}`}
-                            onClick={(e) => handleSelectChoice(e, q.id, c, status)}
+                            className={pillClass}
+                            onClick={(e) => {
+                              if (isNarrativeLocked) return;
+                              handleSelectChoice(e, q.id, c, status);
+                            }}
                             style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}
                           >
-                            {c.text}
+                            {isNarrativeLocked ? '🔒 [ MISSING INTEL ]' : c.text}
                           </span>
                         );
                       })}

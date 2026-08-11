@@ -13,8 +13,29 @@ interface LocationPhaseProps {
 }
 
 export default function LocationPhase({ level, status, localVotes, handleSelectChoice, currentUserId }: LocationPhaseProps) {
-  const { room } = useRoomContext();
+  const { room, accumulatedEvidences } = useRoomContext();
   
+  const checkIsLockedByNarrative = (choice: Choice) => {
+    if (!choice.requirements) return false;
+    const reqs = choice.requirements;
+
+    if (reqs.required_evidence?.length > 0) {
+      const hasAllEvidence = reqs.required_evidence.every((id: number) => 
+        accumulatedEvidences.some(e => e.id === id)
+      );
+      if (!hasAllEvidence) return true;
+    }
+
+    if (reqs.required_choices?.length > 0) {
+      const hasAllChoices = reqs.required_choices.every((id: number) => 
+        room.votes?.some(v => v.choice_id === id)
+      );
+      if (!hasAllChoices) return true;
+    }
+
+    return false;
+  };
+
   // Track WHICH question (angle) is currently fullscreen
   const [inspectingQuestionId, setInspectingQuestionId] = useState<number | null>(null);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
@@ -146,11 +167,12 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
 
             const isSelected = localVotes[activeQuestion.id] === choice.id || foundPoints.has(choice.id) || (isCompleted && !!hasUnlocks);
             const isDeadEndClicked = clickedDeadEnds.has(choice.id);
+            const isNarrativeLocked = checkIsLockedByNarrative(choice);
 
             let zoneClass = 'loc-hover-zone';
             if (isSelected) {
               zoneClass += ' selected'; 
-            } else if (isCompleted || isDeadEndClicked) {
+            } else if (isCompleted || isDeadEndClicked || isNarrativeLocked) {
               zoneClass += ' investigated'; 
             }
 
@@ -158,11 +180,16 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
               <div
                 key={choice.id}
                 className={zoneClass}
-                style={{ top: `${y}%`, left: `${x}%` }}
-                onClick={(e) => handlePointClick(e, activeQuestion.id, choice)}
+                style={{ top: `${y}%`, left: `${x}%`, cursor: isNarrativeLocked ? 'not-allowed' : 'crosshair' }}
+                onClick={(e) => {
+                  if (isNarrativeLocked) return;
+                  handlePointClick(e, activeQuestion.id, choice);
+                }}
               >
                 <div className="loc-crosshair"></div>
-                <div className="loc-tooltip">{title}</div>
+                <div className="loc-tooltip">
+                  {isNarrativeLocked ? '🔒 [ REQUIRES ADDITIONAL INTEL ]' : title}
+                </div>
               </div>
             );
           })}

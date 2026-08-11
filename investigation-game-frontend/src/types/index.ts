@@ -124,6 +124,7 @@ export interface Choice {
   question_id: number;
   text: string;
   outcomes?: Record<string, any> | null; 
+  requirements?: Record<string, any> | null; 
 }
 
 export interface Question {

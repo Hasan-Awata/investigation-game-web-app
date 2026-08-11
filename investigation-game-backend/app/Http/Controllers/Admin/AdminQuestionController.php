@@ -24,7 +24,8 @@ class AdminQuestionController extends Controller
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
             'choices' => 'required|array|min:2',
             'choices.*.text' => 'required|string|max:255',
-            'choices.*.outcomes' => 'nullable|array', 
+            'choices.*.outcomes' => 'nullable|array',
+            'choices.*.requirements' => 'nullable|array', 
             'store_locally' => 'required|boolean',
         ]);
 
@@ -53,6 +54,7 @@ class AdminQuestionController extends Controller
                     'text' => $choice['text'],
                     // Encode the outcomes array into JSON for the DB
                     'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
+                    'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -80,6 +82,7 @@ class AdminQuestionController extends Controller
             'choices' => 'required|array|min:2',
             'choices.*.text' => 'required|string|max:255',
             'choices.*.outcomes' => 'nullable|array', 
+            'choices.*.requirements' => 'nullable|array',
             'store_locally' => 'required|boolean',
         ]);
 
@@ -111,6 +114,7 @@ class AdminQuestionController extends Controller
                     'question_id' => $question->id,
                     'text' => $choice['text'],
                     'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
+                    'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null, 
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];

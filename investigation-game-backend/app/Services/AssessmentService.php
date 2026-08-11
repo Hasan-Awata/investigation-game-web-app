@@ -39,6 +39,9 @@ class AssessmentService
                 $maxStrikes = $room->gameCase->max_strikes; 
                 $givesStrike = $choice->outcomes['gives_strike'] ?? false;
 
+                // Safely cast stringified booleans ("true"/"false") into actual PHP booleans
+                $givesStrike = filter_var($rawStrikeFlag, FILTER_VALIDATE_BOOLEAN);
+
                 // IF THE CHOICE CARRIES A PENALTY
                 if ($givesStrike) {
                     $room->increment('strikes');

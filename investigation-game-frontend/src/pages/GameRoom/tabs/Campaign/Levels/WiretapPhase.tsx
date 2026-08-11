@@ -1,4 +1,5 @@
 import React from 'react';
+import { useRoomContext } from '@/context/RoomContext';
 import type { Level, Choice, Question } from '@/types';
 import './WiretapPhase.css';
 
@@ -19,6 +20,29 @@ export default function WiretapPhase({
   level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice,
   isHost, playedWiretaps, onPlayWiretap, isTriggeringWiretap
 }: WiretapPhaseProps) {
+  const { room, accumulatedEvidences } = useRoomContext();
+
+  const checkIsLockedByNarrative = (choice: Choice) => {
+    if (!choice.requirements) return false;
+    const reqs = choice.requirements;
+
+    if (reqs.required_evidence?.length > 0) {
+      const hasAllEvidence = reqs.required_evidence.every((id: number) => 
+        accumulatedEvidences.some(e => e.id === id)
+      );
+      if (!hasAllEvidence) return true;
+    }
+
+    if (reqs.required_choices?.length > 0) {
+      const hasAllChoices = reqs.required_choices.every((id: number) => 
+        room.votes?.some(v => v.choice_id === id)
+      );
+      if (!hasAllChoices) return true;
+    }
+
+    return false;
+  };
+
   if (!level.questions || level.questions.length === 0) return null;
 
   // --- THE NODE TRAVERSAL ENGINE ---
@@ -122,23 +146,33 @@ export default function WiretapPhase({
                   {q.choices?.map(c => {
                     const isSelected = localVotes[q.id] === c.id;
                     const isHistoricalCorrect = status === 'completed' && !c.outcomes?.gives_strike;
+                    const isNarrativeLocked = checkIsLockedByNarrative(c);
                     
                     let pillClass = 'choice-pill';
-                    if (isSelected) pillClass += ' selected';
-                    if (isHistoricalCorrect) pillClass += ' historical-correct';
-                    if (status === 'active' && !isLocked && (!isAudioIntercept || hasBeenPlayed)) pillClass += ' interactable';
+                    if (isNarrativeLocked) {
+                      pillClass = 'choice-pill locked-choice';
+                    } else {
+                      if (isSelected) pillClass += ' selected';
+                      if (isHistoricalCorrect) pillClass += ' historical-correct';
+                      if (status === 'active' && !isLocked && (!isAudioIntercept || hasBeenPlayed)) pillClass += ' interactable';
+                    }
 
-                    const preventGuessing = isAudioIntercept && !hasBeenPlayed;
+                    const preventGuessing = (isAudioIntercept && !hasBeenPlayed) || isNarrativeLocked;
 
                     return (
                       <span 
                         key={c.id} 
-                        className={preventGuessing ? 'choice-pill locked-choice' : pillClass}
+                        className={pillClass}
                         onClick={(e) => {
                           if (status === 'active' && !isLocked && !preventGuessing) handleSelectChoice(e, q.id, c, status);
                         }}
                       >
-                        {preventGuessing ? '[ CLASSIFIED ]' : c.text}
+                        {isNarrativeLocked 
+                          ? '🔒 [ PATH LOCKED: PREREQUISITES NOT MET ]' 
+                          : (isAudioIntercept && !hasBeenPlayed) 
+                            ? '[ CLASSIFIED ]' 
+                            : c.text
+                        }
                       </span>
                     );
                   })}
