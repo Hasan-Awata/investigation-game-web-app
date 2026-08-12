@@ -40,7 +40,7 @@ class LevelTransitioned implements ShouldBroadcastNow
         ]);
 
         return [
-            'room' => $this->room,
+            'room_id' => $this->room->id, 
             'status' => $this->room->status->value, 
             'message' => $this->message, 
             'stats' => $this->stats, 

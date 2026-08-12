@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRoomContext } from '@/context/RoomContext';
 import type { Level, Choice } from '@/types';
+import type { ToastNotification } from '../../../../../hooks/useInvestigationPhase';
 import './LocationPhase.css';
 
 interface LocationPhaseProps {
@@ -10,9 +11,10 @@ interface LocationPhaseProps {
   localVotes: Record<number, number>;
   handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
   currentUserId: number;
+  addToast: (toast: Omit<ToastNotification, 'id'>) => void; 
 }
 
-export default function LocationPhase({ level, status, localVotes, handleSelectChoice, currentUserId }: LocationPhaseProps) {
+export default function LocationPhase({ level, status, localVotes, handleSelectChoice, currentUserId, addToast }: LocationPhaseProps) {
   const { room, accumulatedEvidences } = useRoomContext();
   
   const checkIsLockedByNarrative = (choice: Choice) => {
@@ -36,9 +38,18 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     return false;
   };
 
-  // Track WHICH question (angle) is currently fullscreen
   const [inspectingQuestionId, setInspectingQuestionId] = useState<number | null>(null);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
+  
+  // Tactical Fix: Track the active timeout so rapid clicks don't cause the popup to vanish prematurely
+  const popupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Clean up any lingering timers if the component unmounts
+  useEffect(() => {
+    return () => {
+      if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
+    };
+  }, []);
   
   const deadEndsStorageKey = `room_${room.id}_level_${level.id}_dead_ends`;
   const foundPointsStorageKey = `room_${room.id}_level_${level.id}_found_points`;
@@ -57,31 +68,56 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     } catch { return new Set(); }
   });
 
-  // Removed the level.img_url check so it doesn't fail if the parent level lacks an image
   if (!level.questions) return null;
 
   const isCompleted = status === 'completed';
   
+  // --- NON-LINEAR ENGINE ---
+  const visibleQuestionIds = new Set<number>();
+  
+  if (level.questions.length > 0) {
+    visibleQuestionIds.add(level.questions[0].id);
+  }
+
+  level.questions.forEach(q => {
+    q.choices?.forEach(c => {
+      const isSelectedLocally = foundPoints.has(c.id) || localVotes[q.id] === c.id;
+      const isSelectedGlobally = room.votes?.some(v => v.choice_id === c.id);
+
+      if (isSelectedLocally || isSelectedGlobally) {
+        if (c.outcomes?.next_question_id) {
+          visibleQuestionIds.add(Number(c.outcomes.next_question_id));
+        }
+      }
+    });
+  });
+
   const displayQuestions = isCompleted 
     ? level.questions 
     : level.questions.filter(q => 
-        q.assigned_user_id === currentUserId || 
-        q.assigned_user_id === undefined || 
-        q.assigned_user_id === null
+        visibleQuestionIds.has(q.id) &&
+        (q.assigned_user_id === currentUserId || 
+         q.assigned_user_id === undefined || 
+         q.assigned_user_id === null)
       );
 
   const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice) => {
     e.stopPropagation();
     if (status !== 'active') return;
 
+    // Clear any existing timer immediately when a new click registers
+    if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
+
     const hasUnlocks = choice.outcomes && (
       (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) || 
       (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) || 
       (choice.outcomes.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) ||
-      (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0)
+      (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0) ||
+      (choice.outcomes.next_question_id) 
     );
 
     const isCorrectFind = !!hasUnlocks;
+    const isFirstTimeDiscovery = !foundPoints.has(choice.id);
 
     if (isCorrectFind) {
       setPopup({
@@ -90,13 +126,24 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         isSuccess: true
       });
       
+      if (isFirstTimeDiscovery && choice.outcomes?.next_question_id) {
+        addToast({
+          type: 'level', 
+          title: 'NEW SCENE UNLOCKED',
+          message: 'A new vantage point or room has been discovered.',
+          icon: 'https://api.iconify.design/ph:map-pin-line-duotone.svg?color=%235a8a9e' 
+        });
+      }
+
       setFoundPoints(prev => {
         const newSet = new Set(prev).add(choice.id);
         sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(newSet)));
         return newSet;
       });
 
-      if (!localVotes[qId]) {
+      // THE FIX: Fire the API call if it's the first time discovering THIS SPECIFIC choice,
+      // regardless of whether they have clicked other things in this scene previously.
+      if (isFirstTimeDiscovery) {
         handleSelectChoice(e, qId, choice, status);
       }
     } else {
@@ -113,7 +160,10 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         });
       }
 
-    setTimeout(() => setPopup(null), 2500);
+    // Set the new timer
+    popupTimeoutRef.current = setTimeout(() => {
+      setPopup(null);
+    }, 2500);
   };
 
   const activeQuestion = displayQuestions.find(q => q.id === inspectingQuestionId);
@@ -162,7 +212,8 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
               (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) || 
               (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) || 
               (choice.outcomes.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) ||
-              (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0)
+              (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0) ||
+              (choice.outcomes.next_question_id)
             );
 
             const isSelected = localVotes[activeQuestion.id] === choice.id || foundPoints.has(choice.id) || (isCompleted && !!hasUnlocks);

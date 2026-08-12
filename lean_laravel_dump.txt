@@ -988,11 +988,7 @@ class GameRoomController extends Controller
             'gameCase.victims',    
             'unlockedVictims',
             'playedWiretaps',      
-            'votes' => function ($query) use ($room) {
-                $query->whereHas('question', function ($q) use ($room) {
-                    $q->where('level_id', $room->current_level_id);
-                });
-            }
+            'votes'
         ]);
 
         $this->roomService->distributeLocationQuestions($room);
@@ -1754,7 +1750,8 @@ class AdminQuestionController extends Controller
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
             'choices' => 'required|array|min:2',
             'choices.*.text' => 'required|string|max:255',
-            'choices.*.outcomes' => 'nullable|array', 
+            'choices.*.outcomes' => 'nullable|array',
+            'choices.*.requirements' => 'nullable|array', 
             'store_locally' => 'required|boolean',
         ]);
 
@@ -1783,6 +1780,7 @@ class AdminQuestionController extends Controller
                     'text' => $choice['text'],
                     // Encode the outcomes array into JSON for the DB
                     'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
+                    'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -1810,6 +1808,7 @@ class AdminQuestionController extends Controller
             'choices' => 'required|array|min:2',
             'choices.*.text' => 'required|string|max:255',
             'choices.*.outcomes' => 'nullable|array', 
+            'choices.*.requirements' => 'nullable|array',
             'store_locally' => 'required|boolean',
         ]);
 
@@ -1841,6 +1840,7 @@ class AdminQuestionController extends Controller
                     'question_id' => $question->id,
                     'text' => $choice['text'],
                     'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
+                    'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null, 
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -2171,13 +2171,15 @@ class Choice extends Model
     protected $fillable = [
         'question_id',
         'text',
-        'outcomes', 
+        'outcomes',
+        'requirements' 
     ];
 
     protected function casts(): array
     {
         return [
             'outcomes' => 'array', 
+            'requirements' => 'array', 
         ];
     }
 
@@ -2983,6 +2985,9 @@ class AssessmentService
 
                 $maxStrikes = $room->gameCase->max_strikes; 
                 $givesStrike = $choice->outcomes['gives_strike'] ?? false;
+
+                // Safely cast stringified booleans ("true"/"false") into actual PHP booleans
+                $givesStrike = filter_var($rawStrikeFlag, FILTER_VALIDATE_BOOLEAN);
 
                 // IF THE CHOICE CARRIES A PENALTY
                 if ($givesStrike) {
@@ -6791,6 +6796,31 @@ return new class extends Migration {
         });
     }
 };
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_11_154156_add_requirements_to_choices_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void {
+        Schema::table('choices', function (Blueprint $table) {
+            $table->json('requirements')->nullable()->after('text');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('choices', function (Blueprint $table) {
+            $table->dropColumn('requirements');
+        });
+    }
+};
+
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\BloodOperaCaseSeeder.php

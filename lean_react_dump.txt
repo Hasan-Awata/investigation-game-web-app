@@ -67,7 +67,8 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\package.json
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
     "react-markdown": "^10.1.0",
-    "react-router-dom": "^7.18.1"
+    "react-router-dom": "^7.18.1",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.29.7",
@@ -1594,27 +1595,45 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   
-  // Track wiretaps triggered by this specific client to prevent WebSocket echo
   const locallyTriggered = useRef<Set<number>>(new Set());
-
   const roomId = room.id;
 
-  // 1. CLEAN ARCHITECTURE: Bind Real-Time WebSocket Sync
+  const addToast = (toastData: Omit<ToastNotification, 'id'>) => {
+    const newToast: ToastNotification = { ...toastData, id: crypto.randomUUID() };
+    setToasts((prev) => [...prev, newToast]);
+    setTimeout(() => {
+      setToasts((prev) => prev.filter((t) => t.id !== newToast.id));
+    }, 5000);
+  };
+
   useEffect(() => {
     if (!window.Echo) return;
     const channel = window.Echo.private(`room.${roomId}`);
     
-    // Automatically fetch the fresh room state whenever any player in the world casts a vote
     channel.listen('VoteLockedIn', () => {
+      refreshRoomData();
+    });
+
+    channel.listen('WiretapTriggered', (e: any) => {
+      if (e.audio_url && !locallyTriggered.current.has(e.question_id)) {
+        const audio = new Audio(e.audio_url);
+        audio.play().catch(err => console.error('Browser blocked autoplay:', err));
+      }
+
+      addToast({
+        type: 'evidence', title: 'WIRETAP INTERCEPTED', message: e.message || 'Audio feed active. Listen carefully.',
+        icon: 'https://api.iconify.design/ph:waveform-duotone.svg?color=%23c48b36'
+      });
+
       refreshRoomData();
     });
 
     return () => {
       channel.stopListening('VoteLockedIn');
+      channel.stopListening('WiretapTriggered'); 
     };
   }, [roomId, refreshRoomData]);
 
-  // 2. Derive personal UI state strictly from the database truth
   useEffect(() => {
     const storedUser = localStorage.getItem('auth_user');
     const currentUser = storedUser ? JSON.parse(storedUser) : null;
@@ -1629,85 +1648,16 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     setLocalVotes(serverVotes);
   }, [room.votes]);
 
-  useEffect(() => {
-    if (!window.Echo) return;
-    const channel = window.Echo.private(`room.${roomId}`);
-    
-    channel.listen('VoteLockedIn', () => {
-      refreshRoomData();
-    });
-
-    channel.listen('WiretapTriggered', (e: any) => {
-      // Only play the audio if it wasn't triggered locally
-      if (e.audio_url && !locallyTriggered.current.has(e.question_id)) {
-        const audio = new Audio(e.audio_url);
-        audio.play().catch(err => console.error('Browser blocked autoplay:', err));
-      }
-
-      const newToast: ToastNotification = {
-        id: crypto.randomUUID(), type: 'evidence', title: 'WIRETAP INTERCEPTED', message: e.message || 'Audio feed active. Listen carefully.',
-        icon: 'https://api.iconify.design/ph:waveform-duotone.svg?color=%23c48b36'
-      };
-      
-      setToasts(prev => [...prev, newToast]);
-      setTimeout(() => setToasts(prev => prev.filter(t => t.id !== newToast.id)), 5000);
-
-      refreshRoomData();
-    });
-
-    return () => {
-      channel.stopListening('VoteLockedIn');
-      channel.stopListening('WiretapTriggered'); 
-    };
-  }, [roomId, refreshRoomData]);
-
   const voteMutation = useMutation({
     mutationFn: async ({ questionId, choiceId }: { questionId: number, choiceId: number }) => {
       const result = await lockVote(roomId, questionId, choiceId);
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
-    onSuccess: (data) => {
+    onSuccess: () => {
+      // The toasts have already been fired optimistically! 
+      // All we need to do now is sync the board data.
       refreshRoomData();
-      
-      if (data.unlocked_evidence?.length || data.unlocked_levels?.length || data.unlocked_suspects?.length || data.unlocked_victims?.length) {
-        setTimeout(() => {
-          const newToasts: ToastNotification[] = [];
-          
-          if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
-            newToasts.push({ 
-              id: crypto.randomUUID(), type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${data.unlocked_evidence.length} new piece(s) of physical evidence secured.`, 
-              icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
-            });
-          }
-          if (data.unlocked_levels && data.unlocked_levels.length > 0) {
-            newToasts.push({ 
-              id: crypto.randomUUID(), type: 'level', title: 'PHASE UNLOCKED', message: 'A new narrative path is now available.', 
-              icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
-            });
-          }
-          if (data.unlocked_suspects && data.unlocked_suspects.length > 0) {
-            newToasts.push({ 
-              id: crypto.randomUUID(), type: 'suspect', title: 'PERSON OF INTEREST', message: 'New suspect added to the board.', 
-              icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232' 
-            });
-          }
-          if (data.unlocked_victims && data.unlocked_victims.length > 0) {
-            newToasts.push({ 
-              id: crypto.randomUUID(), type: 'victim', title: 'CASUALTY IDENTIFIED', message: 'New victim details have been verified.', 
-              icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91' 
-            });
-          }
-
-          // Append all generated toasts at once
-          setToasts((prev) => [...prev, ...newToasts]);
-
-          // Automatically sweep them off the screen after 5 seconds
-          setTimeout(() => {
-            setToasts((prev) => prev.filter((t) => !newToasts.some((nt) => nt.id === t.id)));
-          }, 5000);
-        }, 500);
-      }
     }
   });
 
@@ -1725,7 +1675,6 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
           message: data.message 
         });
         
-        // Wait for the players to read the feedback before sweeping the board
         setTimeout(() => {
           setFeedback(null);
           setLocalVotes({}); 
@@ -1745,40 +1694,31 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
   const initiatePhaseMutation = useMutation({
     mutationFn: async (levelId: number) => {
       const result = await initiatePhase(roomId, levelId);
-      // Throw the object directly so onError can catch it
       if (!result.isSuccess) throw result.errorMessage; 
       return result.value;
     },
     onSuccess: () => refreshRoomData(),
     onError: (error: any) => setFeedback({ 
-      type: 'error', 
-      title: error.title || 'System Error', 
-      message: error.message 
+      type: 'error', title: error.title || 'System Error', message: error.message 
     })
   });
 
   const triggerWiretapMutation = useMutation({
     mutationFn: async ({ questionId, audioUrl }: { questionId: number, audioUrl: string }) => {
-      locallyTriggered.current.add(questionId); // Mark as triggered by this client
+      locallyTriggered.current.add(questionId); 
       const result = await triggerWiretap(roomId, questionId);
-      
-      // Throw the error object directly
       if (!result.isSuccess) throw result.errorMessage; 
-      
       return { value: result.value, audioUrl };
     },
     onSuccess: (data) => {
-      // Guarantee playback for the Host immediately within the trusted user-gesture chain
       if (data.audioUrl) {
         const audio = new Audio(data.audioUrl);
         audio.play().catch(err => console.error('Audio playback failed:', err));
       }
-      refreshRoomData(); // Guarantee the UI updates to the "Severed" state
+      refreshRoomData(); 
     },
     onError: (error: any) => setFeedback({ 
-      type: 'error', 
-      title: error.title || 'Transmission Error', 
-      message: error.message 
+      type: 'error', title: error.title || 'Transmission Error', message: error.message 
     })
   });
   
@@ -1786,8 +1726,36 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     e.stopPropagation(); 
     if (status !== 'active') return; 
 
-    // Instantly snap the UI for the local player, then dispatch to the server
+    // 1. Instantly snap the UI for the local player
     setLocalVotes(prev => ({ ...prev, [questionId]: choice.id }));
+
+    // 2. Fire Optimistic Toasts Instantly!
+    if (choice.outcomes?.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) {
+      addToast({ 
+        type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${choice.outcomes.unlock_evidence.length} new piece(s) of physical evidence secured.`, 
+        icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
+      });
+    }
+    if (choice.outcomes?.unlock_levels && choice.outcomes.unlock_levels.length > 0) {
+      addToast({ 
+        type: 'level', title: 'PHASE UNLOCKED', message: 'A new narrative path is now available.', 
+        icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
+      });
+    }
+    if (choice.outcomes?.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) {
+      addToast({ 
+        type: 'suspect', title: 'PERSON OF INTEREST', message: 'New suspect added to the board.', 
+        icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232' 
+      });
+    }
+    if (choice.outcomes?.unlock_victims && choice.outcomes.unlock_victims.length > 0) {
+      addToast({ 
+        type: 'victim', title: 'CASUALTY IDENTIFIED', message: 'New victim details have been verified.', 
+        icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91' 
+      });
+    }
+
+    // 3. Dispatch to the server quietly in the background
     voteMutation.mutate({ questionId, choiceId: choice.id });
   };
 
@@ -1812,7 +1780,8 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     initiatePhase: (levelId: number) => initiatePhaseMutation.mutate(levelId),
     clearFeedback,
     triggerWiretap: (questionId: number, audioUrl: string) => triggerWiretapMutation.mutate({ questionId, audioUrl }), 
-    isTriggeringWiretap: triggerWiretapMutation.isPending 
+    isTriggeringWiretap: triggerWiretapMutation.isPending,
+    addToast
   };
 }
 
@@ -4280,32 +4249,36 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAdminQuestion, updateAdminQuestion, deleteAdminQuestion, fetchAdminCases } from '@/services/adminApi';
 import './QuestionForm.css';
 
+// --- TYPES ---
 interface ChoiceOutcomes {
   feedback: string;
   next_question_id: string;
+  gives_strike: boolean;
   unlock_evidence: string[];
   unlock_levels: string[];
   unlock_suspects: string[];
   unlock_victims: string[];
 }
 
+interface ChoiceRequirements {
+  required_evidence: string[];
+  required_choices: string[];
+}
+
 interface ChoiceState {
   id: string; 
   text: string;
-  is_correct: boolean;
   outcomes: ChoiceOutcomes; 
+  requirements: ChoiceRequirements; 
 }
 
+const defaultRequirements = (): ChoiceRequirements => ({ required_evidence: [], required_choices: [] });
+
 const defaultOutcomes = (): ChoiceOutcomes => ({
-  feedback: '',
-  next_question_id: '',
-  unlock_evidence: [],
-  unlock_levels: [],
-  unlock_suspects: [],
-  unlock_victims: [],
+  feedback: '', next_question_id: '', gives_strike: false,
+  unlock_evidence: [], unlock_levels: [], unlock_suspects: [], unlock_victims: [],
 });
 
-// Helper to convert nested JSON into multipart/form-data arrays for Laravel
 const appendToFormData = (fd: FormData, rootKey: string, obj: any) => {
   if (obj === null || obj === undefined) return;
   if (Array.isArray(obj)) {
@@ -4317,6 +4290,125 @@ const appendToFormData = (fd: FormData, rootKey: string, obj: any) => {
   }
 };
 
+// --- SUB-COMPONENT: Choice Editor Card ---
+const ChoiceEditorCard = ({ 
+  choice, isLocationPhase, isActiveTarget, onToggleTarget, onUpdate, onRemove, 
+  availableEvidences, allCaseLevels, availableSuspects, availableVictims, allCaseChoices 
+}: any) => {
+  const [isExpanded, setIsExpanded] = useState(!choice.text);
+
+  const updateField = (field: 'text', val: any) => onUpdate({ ...choice, [field]: val });
+  const updateOutcome = (field: keyof ChoiceOutcomes, val: any) => onUpdate({ ...choice, outcomes: { ...choice.outcomes, [field]: val } });
+  const updateRequirement = (field: keyof ChoiceRequirements, val: any) => onUpdate({ ...choice, requirements: { ...choice.requirements, [field]: val } });
+
+  const handleMultiSelect = (e: React.ChangeEvent<HTMLSelectElement>, field: string, isReq = false) => {
+    const values = Array.from(e.target.selectedOptions, opt => opt.value);
+    if (isReq) updateRequirement(field as keyof ChoiceRequirements, values);
+    else updateOutcome(field as keyof ChoiceOutcomes, values);
+  };
+
+  return (
+    <div className={`qf-choice-row ${isActiveTarget ? 'picking-target' : ''}`}>
+      <div className="qf-choice-top" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        
+        <button 
+          type="button" 
+          onClick={() => setIsExpanded(!isExpanded)}
+          style={{ background: 'transparent', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '1rem', padding: '0.5rem', transition: 'transform 0.2s', transform: isExpanded ? 'rotate(90deg)' : 'rotate(0deg)' }}
+        >
+          ▶
+        </button>
+
+        <input type="text" className="admin-input qf-choice-text-input" required placeholder="Choice text..." value={choice.text} onChange={(e) => updateField('text', e.target.value)} />
+        
+        {isLocationPhase && (
+          <button type="button" className={`pick-point-btn ${isActiveTarget ? 'active' : ''}`} onClick={onToggleTarget}>🎯</button>
+        )}
+        <button type="button" className="qf-delete-btn" onClick={onRemove}>×</button>
+      </div>
+      
+      {isExpanded && (
+        <div className={`qf-choice-bottom ${!isLocationPhase ? 'indented' : ''}`} style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          
+          <div className="qf-outcomes-builder" style={{ borderColor: 'var(--text-secondary)', marginBottom: '1rem' }}>
+            <label className="qf-outcome-label" style={{ color: 'var(--text-secondary)' }}>Lock Requirements (Detroit Branching)</label>
+            <div className="qf-outcomes-grid">
+              <div className="qf-outcome-group">
+                <label className="qf-outcome-label">Requires Evidence (Ctrl+Click)</label>
+                <select multiple className="admin-input qf-multi-select" value={choice.requirements.required_evidence} onChange={(e) => handleMultiSelect(e, 'required_evidence', true)}>
+                  {availableEvidences.map((ev: any) => <option key={ev.id} value={ev.id}>EX-{ev.id} {ev.title}</option>)}
+                </select>
+              </div>
+              <div className="qf-outcome-group">
+                <label className="qf-outcome-label">Requires Past Choice (Ctrl+Click)</label>
+                <select 
+                  multiple 
+                  className="admin-input qf-multi-select" 
+                  value={choice.requirements.required_choices} 
+                  onChange={(e) => handleMultiSelect(e, 'required_choices', true)}
+                >
+                  {allCaseChoices.map((c: any) => (
+                    <option key={c.id} value={c.id}>
+                      [{c.level_title}] {c.question_text.substring(0, 25)}... ➔ {c.text}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="qf-outcomes-builder">
+            <div className="qf-outcome-group">
+              <label className="qf-outcome-label">Custom Feedback Message</label>
+              <input type="text" className="admin-input" placeholder="e.g., I found something useful here." value={choice.outcomes.feedback} onChange={(e) => updateOutcome('feedback', e.target.value)} />
+            </div>
+
+            <div className="qf-outcome-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '0.75rem', background: choice.outcomes.gives_strike ? 'rgba(163, 50, 50, 0.15)' : 'rgba(255, 255, 255, 0.02)', padding: '0.75rem', borderRadius: '4px', border: `1px solid ${choice.outcomes.gives_strike ? 'rgba(163, 50, 50, 0.4)' : 'rgba(255, 255, 255, 0.05)'}`, marginTop: '0.5rem', transition: 'all 0.2s ease' }}>
+              <input type="checkbox" checked={choice.outcomes.gives_strike} onChange={(e) => updateOutcome('gives_strike', e.target.checked)} style={{ transform: 'scale(1.2)', accentColor: 'var(--accent-crimson)', cursor: 'pointer' }} />
+              <label className="qf-outcome-label" style={{ color: choice.outcomes.gives_strike ? 'var(--accent-crimson)' : 'var(--text-secondary)', margin: 0, cursor: 'pointer' }} onClick={() => updateOutcome('gives_strike', !choice.outcomes.gives_strike)}>
+                Triggers Department Strike (Penalty)
+              </label>
+            </div>
+
+            <div className="qf-outcomes-grid" style={{ marginTop: '0.5rem' }}>
+              <div className="qf-outcome-group">
+                <label className="qf-outcome-label">Next Node ID (Branching)</label>
+                <input type="number" className="admin-input" placeholder="Question ID" value={choice.outcomes.next_question_id} onChange={(e) => updateOutcome('next_question_id', e.target.value)} />
+              </div>
+              <div className="qf-outcome-group">
+                <label className="qf-outcome-label">Unlock Evidence</label>
+                <select multiple className="admin-input qf-multi-select" value={choice.outcomes.unlock_evidence} onChange={(e) => handleMultiSelect(e, 'unlock_evidence')}>
+                  {availableEvidences.map((ev: any) => <option key={ev.id} value={ev.id}>EX-{ev.id} {ev.title}</option>)}
+                </select>
+              </div>
+              <div className="qf-outcome-group">
+                <label className="qf-outcome-label">Unlock Phase / Level</label>
+                <select multiple className="admin-input qf-multi-select" value={choice.outcomes.unlock_levels} onChange={(e) => handleMultiSelect(e, 'unlock_levels')}>
+                  {allCaseLevels.map((l: any) => <option key={l.id} value={l.id}>{l.phase_title}: {l.title}</option>)}
+                </select>
+              </div>
+              <div className="qf-outcome-group">
+                <label className="qf-outcome-label">Unlock Suspect</label>
+                <select multiple className="admin-input qf-multi-select" value={choice.outcomes.unlock_suspects} onChange={(e) => handleMultiSelect(e, 'unlock_suspects')}>
+                  {availableSuspects.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+              <div className="qf-outcome-group">
+                <label className="qf-outcome-label">Unlock Victim</label>
+                <select multiple className="admin-input qf-multi-select" value={choice.outcomes.unlock_victims} onChange={(e) => handleMultiSelect(e, 'unlock_victims')}>
+                  {availableVictims.map((v: any) => <option key={v.id} value={v.id}>{v.name}</option>)}
+                </select>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      )}
+    </div>
+  );
+};
+
+// --- MAIN COMPONENT ---
 export default function QuestionForm() {
   const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -4326,20 +4418,25 @@ export default function QuestionForm() {
   const [levelId, setLevelId] = useState('');
   
   const [text, setText] = useState('');
-  const [msgWhenWrong, setMsgWhenWrong] = useState('');
   const [isMandatory, setIsMandatory] = useState(true); 
-  const [image, setImage] = useState<File | null>(null);
   const [storeLocally, setStoreLocally] = useState(false);
+  
+  const [image, setImage] = useState<File | null>(null);
+  const [existingImgUrl, setExistingImgUrl] = useState<string | null>(null);
+
+  const [audio, setAudio] = useState<File | null>(null);
+  const [existingAudioUrl, setExistingAudioUrl] = useState<string | null>(null);
   
   const [activeCoordinateTarget, setActiveCoordinateTarget] = useState<string | null>(null);
   
   const [choices, setChoices] = useState<ChoiceState[]>([
-    { id: crypto.randomUUID(), text: '', is_correct: true, outcomes: defaultOutcomes() },
-    { id: crypto.randomUUID(), text: '', is_correct: false, outcomes: defaultOutcomes() }
+    { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() },
+    { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }
   ]);
   
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   const { data: cases = [], isLoading: isFetchingCases } = useQuery({
     queryKey: ['adminCases'],
@@ -4357,25 +4454,32 @@ export default function QuestionForm() {
   const selectedLevel = availableLevels.find((l: any) => l.id.toString() === levelId);
   const isLocationPhase = selectedLevel?.presentation_type === 'location';
 
-  // Data pools for the multi-select unlocks
   const availableEvidences = selectedCase?.evidences || [];
   const availableSuspects = selectedCase?.suspects || [];
   const availableVictims = selectedCase?.victims || [];
   const allCaseLevels = availablePhases.flatMap((p: any) => p.levels?.map((l: any) => ({ ...l, phase_title: p.title })) || []);
 
+  const allCaseChoices = allCaseLevels.flatMap((l: any) => 
+    (l.questions || []).flatMap((q: any) => 
+      (q.choices || []).map((c: any) => ({
+        id: c.id,
+        text: c.text,
+        question_text: q.text,
+        level_title: l.title
+      }))
+    )
+  );
+
   const clearForm = () => {
-    setEditingId(null);
-    setText('');
-    setMsgWhenWrong('');
-    setIsMandatory(true);
-    setStoreLocally(false);
-    setImage(null);
-    setActiveCoordinateTarget(null);
+    setEditingId(null); setText(''); setIsMandatory(true); setStoreLocally(false);
+    setImage(null); setExistingImgUrl(null); setActiveCoordinateTarget(null);
+    setAudio(null); setExistingAudioUrl(null);
     setChoices([
-      { id: crypto.randomUUID(), text: '', is_correct: true, outcomes: defaultOutcomes() },
-      { id: crypto.randomUUID(), text: '', is_correct: false, outcomes: defaultOutcomes() }
+      { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() },
+      { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }
     ]);
     if (imageInputRef.current) imageInputRef.current.value = '';
+    if (audioInputRef.current) audioInputRef.current.value = '';
   };
 
   const createMutation = useMutation({
@@ -4384,11 +4488,7 @@ export default function QuestionForm() {
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
-    onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Question committed to database.' });
-      clearForm();
-      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
-    },
+    onSuccess: () => { setFeedback({ type: 'success', message: 'Question committed.' }); clearForm(); queryClient.invalidateQueries({ queryKey: ['adminCases'] }); },
     onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
   });
 
@@ -4398,11 +4498,7 @@ export default function QuestionForm() {
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
-    onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Question updated successfully.' });
-      clearForm();
-      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
-    },
+    onSuccess: () => { setFeedback({ type: 'success', message: 'Question updated.' }); clearForm(); queryClient.invalidateQueries({ queryKey: ['adminCases'] }); },
     onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
   });
 
@@ -4412,20 +4508,9 @@ export default function QuestionForm() {
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
-    onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Question wiped.' });
-      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
-    },
+    onSuccess: () => { setFeedback({ type: 'success', message: 'Question wiped.' }); queryClient.invalidateQueries({ queryKey: ['adminCases'] }); },
     onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
   });
-
-  const handleDelete = (questionId: number) => {
-    if (window.confirm("Are you absolutely sure you want to delete this question? The narrative choices attached to it will also be wiped.")) {
-      setFeedback(null);
-      if (editingId === questionId) clearForm();
-      deleteMutation.mutate(questionId);
-    }
-  };
 
   const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!activeCoordinateTarget) return;
@@ -4438,28 +4523,8 @@ export default function QuestionForm() {
     if (targetChoice && targetChoice.text.includes('|')) title = targetChoice.text.split('|')[1].trim();
     else if (targetChoice && targetChoice.text.trim() !== '') title = targetChoice.text.trim();
 
-    updateChoiceText(activeCoordinateTarget, `${xPercent},${yPercent} | ${title}`);
+    setChoices(choices.map(c => c.id === activeCoordinateTarget ? { ...c, text: `${xPercent},${yPercent} | ${title}` } : c));
     setActiveCoordinateTarget(null);
-  };
-
-  const addChoice = () => setChoices([...choices, { id: crypto.randomUUID(), text: '', is_correct: false, outcomes: defaultOutcomes() }]);
-  
-  const removeChoice = (id: string) => {
-    if (choices.length <= 2) return setFeedback({ type: 'error', message: 'Minimum two choices required.' });
-    setChoices(choices.filter(c => c.id !== id));
-  };
-
-  const updateChoiceText = (id: string, text: string) => setChoices(choices.map(c => c.id === id ? { ...c, text } : c));
-  const setCorrectChoice = (id: string) => setChoices(choices.map(c => ({ ...c, is_correct: c.id === id })));
-
-  // Outcome Builders Handlers
-  const handleOutcomeText = (choiceId: string, field: keyof ChoiceOutcomes, val: string) => {
-    setChoices(choices.map(c => c.id === choiceId ? { ...c, outcomes: { ...c.outcomes, [field]: val } } : c));
-  };
-
-  const handleMultiSelect = (e: React.ChangeEvent<HTMLSelectElement>, choiceId: string, field: keyof ChoiceOutcomes) => {
-    const values = Array.from(e.target.selectedOptions, option => option.value);
-    setChoices(choices.map(c => c.id === choiceId ? { ...c, outcomes: { ...c.outcomes, [field]: values } } : c));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -4470,29 +4535,30 @@ export default function QuestionForm() {
     formData.append('level_id', levelId); 
     formData.append('text', text);
     formData.append('is_mandatory', isMandatory ? '1' : '0'); 
-    if (msgWhenWrong) formData.append('msg_when_wrong', msgWhenWrong);
     formData.append('store_locally', storeLocally ? '1' : '0');
     if (image) formData.append('image', image);
+    if (audio) formData.append('audio', audio);
 
     for (let i = 0; i < choices.length; i++) {
       const choice = choices[i];
       if (!choice.text.trim()) return setFeedback({ type: 'error', message: 'All choices must have text.' });
       
       formData.append(`choices[${i}][text]`, choice.text);
-      formData.append(`choices[${i}][is_correct]`, choice.is_correct ? '1' : '0');
       
-      // Clean up the outcomes object and pack it as JSON
+      const cleanReqs: any = {};
+      if (choice.requirements.required_evidence.length > 0) cleanReqs.required_evidence = choice.requirements.required_evidence.map(Number);
+      if (choice.requirements.required_choices.length > 0) cleanReqs.required_choices = choice.requirements.required_choices.map(Number);
+      if (Object.keys(cleanReqs).length > 0) appendToFormData(formData, `choices[${i}][requirements]`, cleanReqs);
+
       const cleanOutcomes: any = {};
+      if (choice.outcomes.gives_strike) cleanOutcomes.gives_strike = true;
       if (choice.outcomes.feedback.trim()) cleanOutcomes.feedback = choice.outcomes.feedback.trim();
       if (choice.outcomes.next_question_id.trim()) cleanOutcomes.next_question_id = parseInt(choice.outcomes.next_question_id, 10);
       if (choice.outcomes.unlock_evidence.length > 0) cleanOutcomes.unlock_evidence = choice.outcomes.unlock_evidence.map(Number);
       if (choice.outcomes.unlock_levels.length > 0) cleanOutcomes.unlock_levels = choice.outcomes.unlock_levels.map(Number);
       if (choice.outcomes.unlock_suspects.length > 0) cleanOutcomes.unlock_suspects = choice.outcomes.unlock_suspects.map(Number);
       if (choice.outcomes.unlock_victims.length > 0) cleanOutcomes.unlock_victims = choice.outcomes.unlock_victims.map(Number);
-
-      if (Object.keys(cleanOutcomes).length > 0) {
-        appendToFormData(formData, `choices[${i}][outcomes]`, cleanOutcomes);
-      }
+      if (Object.keys(cleanOutcomes).length > 0) appendToFormData(formData, `choices[${i}][outcomes]`, cleanOutcomes);
     }
 
     if (editingId) updateMutation.mutate({ id: editingId, formData });
@@ -4500,22 +4566,22 @@ export default function QuestionForm() {
   };
 
   const handleEdit = (question: any, parentCaseId: number, parentPhaseId: number, parentLevelId: number) => {
-    setEditingId(question.id);
-    setSelectedCaseId(parentCaseId.toString());
-    setPhaseId(parentPhaseId.toString());
-    setLevelId(parentLevelId.toString());
-    setText(question.text);
-    setMsgWhenWrong(question.msg_when_wrong || '');
-    setIsMandatory(!!question.is_mandatory);
+    setEditingId(question.id); setSelectedCaseId(parentCaseId.toString());
+    setPhaseId(parentPhaseId.toString()); setLevelId(parentLevelId.toString());
+    setText(question.text); setIsMandatory(!!question.is_mandatory);
 
     if (question.choices && question.choices.length > 0) {
       setChoices(question.choices.map((c: any) => ({
         id: crypto.randomUUID(), 
         text: c.text,
-        is_correct: !!c.is_correct,
+        requirements: {
+          required_evidence: c.requirements?.required_evidence?.map(String) || [],
+          required_choices: c.requirements?.required_choices?.map(String) || [],
+        },
         outcomes: {
           feedback: c.outcomes?.feedback || '',
           next_question_id: c.outcomes?.next_question_id?.toString() || '',
+          gives_strike: !!c.outcomes?.gives_strike,
           unlock_evidence: c.outcomes?.unlock_evidence?.map(String) || [],
           unlock_levels: c.outcomes?.unlock_levels?.map(String) || [],
           unlock_suspects: c.outcomes?.unlock_suspects?.map(String) || [],
@@ -4524,13 +4590,17 @@ export default function QuestionForm() {
       })));
     }
 
-    setImage(null);
-    setActiveCoordinateTarget(null);
+    setImage(null); setExistingImgUrl(question.img_url || null); setActiveCoordinateTarget(null);
+    setAudio(null); setExistingAudioUrl(question.audio_url || null);
+    
     if (imageInputRef.current) imageInputRef.current.value = '';
+    if (audioInputRef.current) audioInputRef.current.value = '';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const isProcessing = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const previewUrl = image ? URL.createObjectURL(image) : existingImgUrl;
+  const audioPreviewUrl = audio ? URL.createObjectURL(audio) : existingAudioUrl;
 
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
@@ -4569,8 +4639,55 @@ export default function QuestionForm() {
             </div>
           </div>
 
-          {isLocationPhase && selectedLevel?.img_url && (
-            <div className="coordinate-picker-container">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: isMandatory ? 'rgba(0, 229, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', border: `1px solid ${isMandatory ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)'}`, transition: 'all 0.2s ease' }}>
+            <input type="checkbox" id="mandatory-toggle" checked={isMandatory} onChange={(e) => setIsMandatory(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-cyan)' }} />
+            <label htmlFor="mandatory-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: isMandatory ? 'var(--accent-cyan)' : 'var(--text-secondary)', cursor: 'pointer', margin: 0 }}>
+              <strong>Mandatory Verdict:</strong> Players must resolve this node to clear the phase. (Uncheck for optional lore/evidence sweeps).
+            </label>
+          </div>
+
+          <div className="form-group">
+            <label>Question Text</label>
+            <textarea className="admin-textarea" required value={text} onChange={(e) => setText(e.target.value)} />
+          </div>
+
+          <div className="admin-form-row" style={{ marginTop: '1rem' }}>
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Question Image (Location Angle / Reference)</label>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                This image will be used as the interactive map for Location Phases, or as a visual aid for standard questions. Max 4MB.
+              </p>
+              <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+            </div>
+
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Question Audio (Wiretap Feed / Narrative)</label>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                Upload intercept recordings here. Optimal: MP3 or WAV. Max 10MB.
+              </p>
+              <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
+              
+              {/* LIVE AUDIO PREVIEW PLAYER */}
+              {audioPreviewUrl && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <p style={{ margin: '0 0 0.25rem 0', fontSize: '0.75rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                    {audio ? 'New Audio Selected:' : 'Existing Intercept Audio:'}
+                  </p>
+                  <audio controls src={audioPreviewUrl} style={{ height: '32px', width: '100%' }} />
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+            <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
+            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer', margin: 0 }}>
+              <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
+            </label>
+          </div>
+
+          {isLocationPhase && previewUrl ? (
+            <div className="coordinate-picker-container" style={{ marginTop: '1.5rem' }}>
               <div className="coordinate-picker-header">
                 <div>
                   <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>Visual Coordinate Mapping</label>
@@ -4578,87 +4695,43 @@ export default function QuestionForm() {
                 </div>
               </div>
               <div className="coordinate-picker-image-wrapper" onClick={handleImageClick} style={{ cursor: activeCoordinateTarget ? 'crosshair' : 'default', opacity: activeCoordinateTarget ? 1 : 0.5 }}>
-                <img src={selectedLevel.img_url} alt="Map" />
+                <img src={previewUrl} alt="Map Preview" />
               </div>
             </div>
-          )}
-
-          <div className="form-group">
-            <label>Question Text</label>
-            <textarea className="admin-textarea" required value={text} onChange={(e) => setText(e.target.value)} />
-          </div>
+          ) : isLocationPhase ? (
+            <div className="terminal-text" style={{ padding: '1rem', border: '1px dashed rgba(255,255,255,0.2)', textAlign: 'left', marginTop: '1.5rem' }}>
+              Upload a Question Image above to enable the interactive coordinate mapper.
+            </div>
+          ) : null}
 
           <div className="qf-choices-container">
             <div className="qf-choices-header">
               <label className="qf-choices-title">Dialogue & Outcomes</label>
-              <button type="button" onClick={addChoice} className="btn-secondary" style={{ padding: '0.5rem 1rem', flex: 'none' }}>+ Add Choice</button>
+              <button type="button" onClick={() => setChoices([...choices, { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }])} className="btn-secondary" style={{ padding: '0.5rem 1rem', flex: 'none' }}>+ Add Choice</button>
             </div>
 
             <div className="qf-choices-list">
               {choices.map((choice) => (
-                <div key={choice.id} className="qf-choice-row">
-                  
-                  <div className="qf-choice-top">
-                    {!isLocationPhase && (
-                      <input type="radio" name="correct_choice" className="qf-radio-input" checked={choice.is_correct} onChange={() => setCorrectChoice(choice.id)} />
-                    )}
-                    <input type="text" className="admin-input qf-choice-text-input" required placeholder="Choice text..." value={choice.text} onChange={(e) => updateChoiceText(choice.id, e.target.value)} />
-                    
-                    {isLocationPhase && (
-                      <button type="button" className="pick-point-btn" onClick={() => setActiveCoordinateTarget(activeCoordinateTarget === choice.id ? null : choice.id)}>🎯</button>
-                    )}
-                    
-                    <button type="button" className="qf-delete-btn" onClick={() => removeChoice(choice.id)}>×</button>
-                  </div>
-                  
-                  {/* The Graphic Outcomes Builder */}
-                  <div className={`qf-choice-bottom ${!isLocationPhase ? 'indented' : ''}`}>
-                    <div className="qf-outcomes-builder">
-                      
-                      <div className="qf-outcome-group">
-                        <label className="qf-outcome-label">Custom Feedback Message</label>
-                        <input type="text" className="admin-input" placeholder="e.g., I found something useful here." value={choice.outcomes.feedback} onChange={(e) => handleOutcomeText(choice.id, 'feedback', e.target.value)} />
-                      </div>
-
-                      <div className="qf-outcomes-grid">
-                        <div className="qf-outcome-group">
-                          <label className="qf-outcome-label">Next Node ID (Branching)</label>
-                          <input type="number" className="admin-input" placeholder="Question ID" value={choice.outcomes.next_question_id} onChange={(e) => handleOutcomeText(choice.id, 'next_question_id', e.target.value)} />
-                        </div>
-
-                        <div className="qf-outcome-group">
-                          <label className="qf-outcome-label">Unlock Evidence (Ctrl+Click)</label>
-                          <select multiple className="admin-input qf-multi-select" value={choice.outcomes.unlock_evidence} onChange={(e) => handleMultiSelect(e, choice.id, 'unlock_evidence')}>
-                            {availableEvidences.map((ev: any) => <option key={ev.id} value={ev.id}>EX-{ev.id} {ev.title}</option>)}
-                          </select>
-                        </div>
-
-                        <div className="qf-outcome-group">
-                          <label className="qf-outcome-label">Unlock Phase / Level</label>
-                          <select multiple className="admin-input qf-multi-select" value={choice.outcomes.unlock_levels} onChange={(e) => handleMultiSelect(e, choice.id, 'unlock_levels')}>
-                            {allCaseLevels.map((l: any) => <option key={l.id} value={l.id}>{l.phase_title}: {l.title}</option>)}
-                          </select>
-                        </div>
-
-                        <div className="qf-outcome-group">
-                          <label className="qf-outcome-label">Unlock Suspect</label>
-                          <select multiple className="admin-input qf-multi-select" value={choice.outcomes.unlock_suspects} onChange={(e) => handleMultiSelect(e, choice.id, 'unlock_suspects')}>
-                            {availableSuspects.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
-                          </select>
-                        </div>
-
-                        <div className="qf-outcome-group">
-                          <label className="qf-outcome-label">Unlock Victim</label>
-                          <select multiple className="admin-input qf-multi-select" value={choice.outcomes.unlock_victims} onChange={(e) => handleMultiSelect(e, choice.id, 'unlock_victims')}>
-                            {availableVictims.map((v: any) => <option key={v.id} value={v.id}>{v.name}</option>)}
-                          </select>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-
-                </div>
+                <ChoiceEditorCard 
+                  key={choice.id}
+                  choice={choice}
+                  isLocationPhase={isLocationPhase}
+                  isActiveTarget={activeCoordinateTarget === choice.id}
+                  onToggleTarget={(e: any) => {
+                    e.stopPropagation();
+                    setActiveCoordinateTarget(activeCoordinateTarget === choice.id ? null : choice.id);
+                  }}
+                  onUpdate={(updatedChoice: ChoiceState) => setChoices(choices.map(c => c.id === choice.id ? updatedChoice : c))}
+                  onRemove={() => {
+                    if (choices.length <= 2) return setFeedback({ type: 'error', message: 'Minimum two choices required.' });
+                    setChoices(choices.filter(c => c.id !== choice.id));
+                  }}
+                  availableEvidences={availableEvidences}
+                  allCaseLevels={allCaseLevels}
+                  availableSuspects={availableSuspects}
+                  availableVictims={availableVictims}
+                  allCaseChoices={allCaseChoices} 
+                />
               ))}
             </div>
           </div>
@@ -4669,7 +4742,6 @@ export default function QuestionForm() {
         </form>
       </div>
 
-      {/* MANAGE EXISTING QUESTIONS */}
       {selectedLevel && selectedLevel.questions && selectedLevel.questions.length > 0 && (
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', marginBottom: '1.5rem' }}>// Manage Existing Questions</h3>
@@ -4686,8 +4758,13 @@ export default function QuestionForm() {
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem', flexShrink: 0 }}>
-                  <button type="button" onClick={() => handleEdit(q, selectedCase.id, selectedPhase.id, selectedLevel.id)} disabled={isProcessing} style={{ background: 'transparent', border: '1px solid var(--accent-amber)', color: 'var(--accent-amber)', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>Edit</button>
-                  <button type="button" onClick={() => handleDelete(q.id)} disabled={isProcessing} style={{ background: 'transparent', border: '1px solid var(--accent-crimson)', color: 'var(--accent-crimson)', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>Delete</button>
+                  <button type="button" onClick={() => handleEdit(q, selectedCase.id, selectedPhase.id, selectedLevel.id)} className="btn-secondary" style={{ padding: '0.5rem 1rem', borderColor: 'var(--accent-amber)', color: 'var(--accent-amber)' }}>Edit</button>
+                  <button type="button" onClick={() => {
+                    if (window.confirm("Delete this question?")) {
+                      if (editingId === q.id) clearForm();
+                      deleteMutation.mutate(q.id);
+                    }
+                  }} className="btn-secondary" style={{ padding: '0.5rem 1rem', borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }}>Delete</button>
                 </div>
               </div>
             ))}
@@ -5526,7 +5603,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  z-index: 9999;
+  z-index: 99999; 
   pointer-events: none; 
 }
 
@@ -5864,6 +5941,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\CampaignTab.tsx
 ----------------------------------------
 import { useState } from 'react';
+import { createPortal } from 'react-dom'; 
 import { useRoomContext } from '../../../../context/RoomContext';
 import { useInvestigationPhase } from '../../../../hooks/useInvestigationPhase';
 import type { Question } from '../../../../types';
@@ -5897,7 +5975,8 @@ export default function CampaignTab() {
     initiatePhase,
     clearFeedback,
     triggerWiretap,
-    isTriggeringWiretap
+    isTriggeringWiretap,
+    addToast 
   } = useInvestigationPhase(room, refreshRoomData);
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -6034,19 +6113,22 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
       )}
 
       {/* --- TACTICAL TOAST NOTIFICATIONS --- */}
-      <div className="toast-container">
-        {toasts.map((toast) => (
-          <div key={toast.id} className="system-toast-notification">
-            <div className="toast-icon pulse-icon">
-              <img src={toast.icon} alt={toast.type} className="toast-svg-graphic" />
+      {createPortal(
+        <div className="toast-container">
+          {toasts.map((toast) => (
+            <div key={toast.id} className="system-toast-notification">
+              <div className="toast-icon pulse-icon">
+                <img src={toast.icon} alt={toast.type} className="toast-svg-graphic" />
+              </div>
+              <div className="toast-text-block">
+                <span className="toast-header">{toast.title}</span>
+                <p className="toast-message">{toast.message}</p>
+              </div>
             </div>
-            <div className="toast-text-block">
-              <span className="toast-header">{toast.title}</span>
-              <p className="toast-message">{toast.message}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>,
+        document.body
+      )}
 
       {/* --- NON-LINEAR ROADMAP (Mapped to Active Phase's Levels) --- */}
       <div className="roadmap-timeline">
@@ -6070,8 +6152,10 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
           const mandatoryQuestions = level.questions?.filter(q => q.is_mandatory) || [];
           const allMandatoryAnswered = mandatoryQuestions.every(q => getQuestionConsensus(q).isResolved);
 
-          const displayTitle = isDiscovered ? level.title : 'Encounter Undiscovered';
-          const displayDesc = isDiscovered ? level.details : 'This path remains hidden. You must deduce the correct narrative link in an available phase to unlock this lead.';
+          const displayTitle = isDiscovered ? level.title : 'Undiscovered Encounter';
+          const displayDesc = isDiscovered 
+            ? level.details 
+            : 'This path remains hidden. You must deduce the correct narrative link or locate specific evidence to unlock this lead.';
 
           return (
             <div key={level.id} className={`roadmap-node ${status}`}>
@@ -6093,8 +6177,11 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
                   </div>
                   <div className="node-details">
                     <span className="node-phase">Lead {level.order_index}</span>
+                    
+                    {/* Render the dynamic variables unconditionally */}
                     <h3 className="node-title">{displayTitle}</h3>
                     <p className="node-desc">{displayDesc}</p>
+
                     {status === 'active' && <div className="active-badge">Active Investigation</div>}
                   </div>
                 </div>
@@ -6129,6 +6216,7 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
                           <LocationPhase 
                             level={level} status={status} localVotes={localVotes} 
                             handleSelectChoice={handleSelectChoice} currentUserId={currentUser.id}
+                            addToast={addToast} 
                           />
                         ) : level.presentation_type === 'wiretap' ? (
                           <WiretapPhase 
@@ -6351,7 +6439,28 @@ interface InterrogationPhaseProps {
 }
 
 export default function InterrogationPhase({ level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice }: InterrogationPhaseProps) {
-  const { room } = useRoomContext();
+  const { room, accumulatedEvidences } = useRoomContext();
+
+  const checkIsLockedByNarrative = (choice: Choice) => {
+    if (!choice.requirements) return false;
+    const reqs = choice.requirements;
+
+    if (reqs.required_evidence?.length > 0) {
+      const hasAllEvidence = reqs.required_evidence.every((id: number) => 
+        accumulatedEvidences.some(e => e.id === id)
+      );
+      if (!hasAllEvidence) return true;
+    }
+
+    if (reqs.required_choices?.length > 0) {
+      const hasAllChoices = reqs.required_choices.every((id: number) => 
+        room.votes?.some(v => v.choice_id === id)
+      );
+      if (!hasAllChoices) return true;
+    }
+
+    return false;
+  };
 
   // Initialize state directly from sessionStorage
   const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>(() => {
@@ -6449,14 +6558,22 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
                     <div className="vote-choices-grid">
                       {q.choices?.map(c => {
                         const isSelected = localVotes[q.id] === c.id;
+                        const isNarrativeLocked = checkIsLockedByNarrative(c);
+                        const pillClass = isNarrativeLocked
+                          ? 'choice-pill locked-choice'
+                          : `choice-pill interactable ${isSelected ? 'selected' : ''}`;
+
                         return (
                           <span 
                             key={c.id} 
-                            className={`choice-pill interactable ${isSelected ? 'selected' : ''}`}
-                            onClick={(e) => handleSelectChoice(e, q.id, c, status)}
+                            className={pillClass}
+                            onClick={(e) => {
+                              if (isNarrativeLocked) return;
+                              handleSelectChoice(e, q.id, c, status);
+                            }}
                             style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}
                           >
-                            {c.text}
+                            {isNarrativeLocked ? '🔒 [ MISSING INTEL ]' : c.text}
                           </span>
                         );
                       })}
@@ -6468,9 +6585,9 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
                       <span className="speaker-label investigator">INVESTIGATORS</span>
                       <p>
                         <Typewriter 
-                          text={status === 'completed' ? (q.choices?.find(c => c.is_correct)?.text || '...') : (winningChoice?.text || '...')} 
+                          text={status === 'completed' ? (q.choices?.find(c => !c.outcomes?.gives_strike)?.text || '...') : (winningChoice?.text || '...')} 
                           skip={skipTyping} 
-                          delay={15} 
+                          delay={40} 
                           cacheKey={`room_${room.id}_investigator_${q.id}`} 
                           onComplete={() => handleInvestigatorDone(q.id)}
                         />
@@ -6707,10 +6824,11 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\LocationPhase.tsx
 ----------------------------------------
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRoomContext } from '@/context/RoomContext';
 import type { Level, Choice } from '@/types';
+import type { ToastNotification } from '../../../../../hooks/useInvestigationPhase';
 import './LocationPhase.css';
 
 interface LocationPhaseProps {
@@ -6719,15 +6837,46 @@ interface LocationPhaseProps {
   localVotes: Record<number, number>;
   handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
   currentUserId: number;
+  addToast: (toast: Omit<ToastNotification, 'id'>) => void; 
 }
 
-export default function LocationPhase({ level, status, localVotes, handleSelectChoice, currentUserId }: LocationPhaseProps) {
-  const { room } = useRoomContext();
-  const [isFullscreen, setIsFullscreen] = useState(false);
+export default function LocationPhase({ level, status, localVotes, handleSelectChoice, currentUserId, addToast }: LocationPhaseProps) {
+  const { room, accumulatedEvidences } = useRoomContext();
+  
+  const checkIsLockedByNarrative = (choice: Choice) => {
+    if (!choice.requirements) return false;
+    const reqs = choice.requirements;
+
+    if (reqs.required_evidence?.length > 0) {
+      const hasAllEvidence = reqs.required_evidence.every((id: number) => 
+        accumulatedEvidences.some(e => e.id === id)
+      );
+      if (!hasAllEvidence) return true;
+    }
+
+    if (reqs.required_choices?.length > 0) {
+      const hasAllChoices = reqs.required_choices.every((id: number) => 
+        room.votes?.some(v => v.choice_id === id)
+      );
+      if (!hasAllChoices) return true;
+    }
+
+    return false;
+  };
+
+  const [inspectingQuestionId, setInspectingQuestionId] = useState<number | null>(null);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
   
-  // 1. Scoped keys for both dead ends and found intel. 
-  // Tying it to room.id ensures it never bleeds into new cases and is wiped by our Garbage Collector.
+  // Tactical Fix: Track the active timeout so rapid clicks don't cause the popup to vanish prematurely
+  const popupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  // Clean up any lingering timers if the component unmounts
+  useEffect(() => {
+    return () => {
+      if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
+    };
+  }, []);
+  
   const deadEndsStorageKey = `room_${room.id}_level_${level.id}_dead_ends`;
   const foundPointsStorageKey = `room_${room.id}_level_${level.id}_found_points`;
   
@@ -6738,7 +6887,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     } catch { return new Set(); }
   });
 
-  // 2. Track found intel locally so multiple points per question can be remembered without overwriting the single vote
   const [foundPoints, setFoundPoints] = useState<Set<number>>(() => {
     try {
       const saved = sessionStorage.getItem(foundPointsStorageKey);
@@ -6746,54 +6894,87 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     } catch { return new Set(); }
   });
 
-  if (!level.questions || !level.img_url) return null;
+  if (!level.questions) return null;
 
   const isCompleted = status === 'completed';
   
+  // --- NON-LINEAR ENGINE ---
+  const visibleQuestionIds = new Set<number>();
+  
+  if (level.questions.length > 0) {
+    visibleQuestionIds.add(level.questions[0].id);
+  }
+
+  level.questions.forEach(q => {
+    q.choices?.forEach(c => {
+      const isSelectedLocally = foundPoints.has(c.id) || localVotes[q.id] === c.id;
+      const isSelectedGlobally = room.votes?.some(v => v.choice_id === c.id);
+
+      if (isSelectedLocally || isSelectedGlobally) {
+        if (c.outcomes?.next_question_id) {
+          visibleQuestionIds.add(Number(c.outcomes.next_question_id));
+        }
+      }
+    });
+  });
+
   const displayQuestions = isCompleted 
     ? level.questions 
     : level.questions.filter(q => 
-        q.assigned_user_id === currentUserId || 
-        q.assigned_user_id === undefined || 
-        q.assigned_user_id === null
+        visibleQuestionIds.has(q.id) &&
+        (q.assigned_user_id === currentUserId || 
+         q.assigned_user_id === undefined || 
+         q.assigned_user_id === null)
       );
 
   const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice) => {
     e.stopPropagation();
-    
     if (status !== 'active') return;
 
-    // Check if the choice unlocks anything dynamically via the new outcomes JSON
+    // Clear any existing timer immediately when a new click registers
+    if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
+
     const hasUnlocks = choice.outcomes && (
       (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) || 
       (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) || 
       (choice.outcomes.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) ||
-      (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0)
+      (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0) ||
+      (choice.outcomes.next_question_id) 
     );
 
-    const isCorrectFind = choice.is_correct || !!hasUnlocks;
+    const isCorrectFind = !!hasUnlocks;
+    const isFirstTimeDiscovery = !foundPoints.has(choice.id);
 
     if (isCorrectFind) {
       setPopup({
         title: "LEAD DISCOVERED",
-        // Dynamically insert the custom message from JSON, or fall back to the default
         message: choice.outcomes?.feedback || "I found something useful here. Logging it to the board.",
         isSuccess: true
       });
       
+      if (isFirstTimeDiscovery && choice.outcomes?.next_question_id) {
+        addToast({
+          type: 'level', 
+          title: 'NEW SCENE UNLOCKED',
+          message: 'A new vantage point or room has been discovered.',
+          icon: 'https://api.iconify.design/ph:map-pin-line-duotone.svg?color=%235a8a9e' 
+        });
+      }
+
       setFoundPoints(prev => {
         const newSet = new Set(prev).add(choice.id);
         sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(newSet)));
         return newSet;
       });
 
-      if (!localVotes[qId]) {
+      // THE FIX: Fire the API call if it's the first time discovering THIS SPECIFIC choice,
+      // regardless of whether they have clicked other things in this scene previously.
+      if (isFirstTimeDiscovery) {
         handleSelectChoice(e, qId, choice, status);
       }
     } else {
         setPopup({
           title: "DEAD END",
-          // Dynamically insert the custom message from JSON, or fall back to the default
           message: choice.outcomes?.feedback || "Nothing was found here. I should keep looking.",
           isSuccess: false
         });
@@ -6805,23 +6986,29 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         });
       }
 
-    setTimeout(() => setPopup(null), 2500);
+    // Set the new timer
+    popupTimeoutRef.current = setTimeout(() => {
+      setPopup(null);
+    }, 2500);
   };
 
-  const fullScreenViewer = isFullscreen ? createPortal(
+  const activeQuestion = displayQuestions.find(q => q.id === inspectingQuestionId);
+
+  const fullScreenViewer = activeQuestion ? createPortal(
     <div className="location-fullscreen-overlay">
       <div className="location-header glass-panel">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h2 className="section-title" style={{ margin: 0, border: 'none', padding: 0 }}>{level.title}</h2>
+          <h2 className="section-title" style={{ margin: 0, border: 'none', padding: 0 }}>
+            {activeQuestion.text || level.title}
+          </h2>
           <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Active Scene Sweep</span>
         </div>
-        <button className="btn-secondary" style={{ flex: 'none', padding: '0.5rem 1.5rem' }} onClick={() => setIsFullscreen(false)}>
+        <button className="btn-secondary" style={{ flex: 'none', padding: '0.5rem 1.5rem' }} onClick={() => setInspectingQuestionId(null)}>
           Close Viewer
         </button>
       </div>
 
       <div className="location-image-container">
-        
         {popup && (
           <div className={`loc-feedback-modal ${popup.isSuccess ? 'success' : 'error'}`}>
             <h3 style={{ margin: '0 0 0.5rem 0', color: popup.isSuccess ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em' }}>
@@ -6832,46 +7019,56 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         )}
 
         <div className="location-image-wrapper">
-          <img src={level.img_url} alt="Crime Scene" className="location-image-full" />
+          <img src={activeQuestion.img_url || '/placeholder-crime-scene.jpg'} alt="Crime Scene" className="location-image-full" />
 
-          {displayQuestions.flatMap(q => {
-            return q.choices?.map(choice => {
-              
-              const parts = choice.text.split('|');
-              if (parts.length < 2) return null;
-              
-              const coords = parts[0].trim();
-              const title = parts[1].trim();
-              
-              const coordParts = coords.split(',');
-              if (coordParts.length < 2) return null;
+          {activeQuestion.choices?.map(choice => {
+            const parts = choice.text.split('|');
+            if (parts.length < 2) return null;
+            
+            const coords = parts[0].trim();
+            const title = parts[1].trim();
+            
+            const coordParts = coords.split(',');
+            if (coordParts.length < 2) return null;
 
-              const x = coordParts[0].trim();
-              const y = coordParts[1].trim();
+            const x = coordParts[0].trim();
+            const y = coordParts[1].trim();
 
-              // Update the selection logic to honor the found points cache alongside DB votes
-              const isSelected = localVotes[q.id] === choice.id || foundPoints.has(choice.id) || (isCompleted && choice.is_correct);
-              const isDeadEndClicked = clickedDeadEnds.has(choice.id);
+            const hasUnlocks = choice.outcomes && (
+              (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) || 
+              (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) || 
+              (choice.outcomes.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) ||
+              (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0) ||
+              (choice.outcomes.next_question_id)
+            );
 
-              let zoneClass = 'loc-hover-zone';
-              if (isSelected) {
-                zoneClass += ' selected'; 
-              } else if (isCompleted || isDeadEndClicked) {
-                zoneClass += ' investigated'; 
-              }
+            const isSelected = localVotes[activeQuestion.id] === choice.id || foundPoints.has(choice.id) || (isCompleted && !!hasUnlocks);
+            const isDeadEndClicked = clickedDeadEnds.has(choice.id);
+            const isNarrativeLocked = checkIsLockedByNarrative(choice);
 
-              return (
-                <div
-                  key={choice.id}
-                  className={zoneClass}
-                  style={{ top: `${y}%`, left: `${x}%` }}
-                  onClick={(e) => handlePointClick(e, q.id, choice)}
-                >
-                  <div className="loc-crosshair"></div>
-                  <div className="loc-tooltip">{title}</div>
+            let zoneClass = 'loc-hover-zone';
+            if (isSelected) {
+              zoneClass += ' selected'; 
+            } else if (isCompleted || isDeadEndClicked || isNarrativeLocked) {
+              zoneClass += ' investigated'; 
+            }
+
+            return (
+              <div
+                key={choice.id}
+                className={zoneClass}
+                style={{ top: `${y}%`, left: `${x}%`, cursor: isNarrativeLocked ? 'not-allowed' : 'crosshair' }}
+                onClick={(e) => {
+                  if (isNarrativeLocked) return;
+                  handlePointClick(e, activeQuestion.id, choice);
+                }}
+              >
+                <div className="loc-crosshair"></div>
+                <div className="loc-tooltip">
+                  {isNarrativeLocked ? '🔒 [ REQUIRES ADDITIONAL INTEL ]' : title}
                 </div>
-              );
-            });
+              </div>
+            );
           })}
         </div>
       </div>
@@ -6880,21 +7077,23 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
   ) : null;
 
   return (
-    <div className="location-phase-wrapper">
-      <div className="location-thumbnail-container">
-        <div className="location-thumbnail" style={{ backgroundImage: `url(${level.img_url})` }}>
-          <div className="thumbnail-overlay">
-            <button 
-              className="btn-primary" 
-              onClick={() => setIsFullscreen(true)}
-              style={{ flex: 'none', width: 'auto', padding: '0.75rem 2rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}
-            >
-              <span style={{ marginRight: '0.5rem'}}>👁️</span> Inspect Location
-            </button>
+    <div className="location-phase-wrapper" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+      {displayQuestions.map(q => (
+        <div key={q.id} className="location-thumbnail-container">
+          <div className="location-thumbnail" style={{ backgroundImage: `url(${q.img_url || '/placeholder-crime-scene.jpg'})` }}>
+            <div className="thumbnail-overlay">
+              <button 
+                className="btn-primary" 
+                onClick={() => setInspectingQuestionId(q.id)}
+                style={{ flex: 'none', width: 'auto', padding: '0.75rem 2rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}
+              >
+                <span style={{ marginRight: '0.5rem'}}>👁️</span> Inspect Location
+              </button>
+            </div>
           </div>
+          <p className="location-hint">{q.text || 'Enter the full-screen viewer to sweep the scene.'}</p>
         </div>
-        <p className="location-hint">Enter the full-screen viewer to sweep the scene for evidence.</p>
-      </div>
+      ))}
 
       {fullScreenViewer}
     </div>
@@ -7057,8 +7256,8 @@ export default function StandardPhase({ level, status, localVotes, totalPlayers,
                 <div className="choices-preview">
                   {q.choices?.map(c => {
                     const isSelected = localVotes[q.id] === c.id;
-                    const isHistoricalCorrect = status === 'completed' && c.is_correct;
-                    
+                    const isHistoricalCorrect = status === 'completed' && !c.outcomes?.gives_strike;
+
                     let pillClass = 'choice-pill';
                     if (isSelected) pillClass += ' selected';
                     if (isHistoricalCorrect) pillClass += ' historical-correct';
@@ -7255,6 +7454,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\WiretapPhase.tsx
 ----------------------------------------
 import React from 'react';
+import { useRoomContext } from '@/context/RoomContext';
 import type { Level, Choice, Question } from '@/types';
 import './WiretapPhase.css';
 
@@ -7275,6 +7475,29 @@ export default function WiretapPhase({
   level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice,
   isHost, playedWiretaps, onPlayWiretap, isTriggeringWiretap
 }: WiretapPhaseProps) {
+  const { room, accumulatedEvidences } = useRoomContext();
+
+  const checkIsLockedByNarrative = (choice: Choice) => {
+    if (!choice.requirements) return false;
+    const reqs = choice.requirements;
+
+    if (reqs.required_evidence?.length > 0) {
+      const hasAllEvidence = reqs.required_evidence.every((id: number) => 
+        accumulatedEvidences.some(e => e.id === id)
+      );
+      if (!hasAllEvidence) return true;
+    }
+
+    if (reqs.required_choices?.length > 0) {
+      const hasAllChoices = reqs.required_choices.every((id: number) => 
+        room.votes?.some(v => v.choice_id === id)
+      );
+      if (!hasAllChoices) return true;
+    }
+
+    return false;
+  };
+
   if (!level.questions || level.questions.length === 0) return null;
 
   // --- THE NODE TRAVERSAL ENGINE ---
@@ -7377,24 +7600,34 @@ export default function WiretapPhase({
                 <div className="choices-preview" style={{ marginTop: '1rem' }}>
                   {q.choices?.map(c => {
                     const isSelected = localVotes[q.id] === c.id;
-                    const isHistoricalCorrect = status === 'completed' && c.is_correct;
+                    const isHistoricalCorrect = status === 'completed' && !c.outcomes?.gives_strike;
+                    const isNarrativeLocked = checkIsLockedByNarrative(c);
                     
                     let pillClass = 'choice-pill';
-                    if (isSelected) pillClass += ' selected';
-                    if (isHistoricalCorrect) pillClass += ' historical-correct';
-                    if (status === 'active' && !isLocked && (!isAudioIntercept || hasBeenPlayed)) pillClass += ' interactable';
+                    if (isNarrativeLocked) {
+                      pillClass = 'choice-pill locked-choice';
+                    } else {
+                      if (isSelected) pillClass += ' selected';
+                      if (isHistoricalCorrect) pillClass += ' historical-correct';
+                      if (status === 'active' && !isLocked && (!isAudioIntercept || hasBeenPlayed)) pillClass += ' interactable';
+                    }
 
-                    const preventGuessing = isAudioIntercept && !hasBeenPlayed;
+                    const preventGuessing = (isAudioIntercept && !hasBeenPlayed) || isNarrativeLocked;
 
                     return (
                       <span 
                         key={c.id} 
-                        className={preventGuessing ? 'choice-pill locked-choice' : pillClass}
+                        className={pillClass}
                         onClick={(e) => {
                           if (status === 'active' && !isLocked && !preventGuessing) handleSelectChoice(e, q.id, c, status);
                         }}
                       >
-                        {preventGuessing ? '[ CLASSIFIED ]' : c.text}
+                        {isNarrativeLocked 
+                          ? '🔒 [ PATH LOCKED: PREREQUISITES NOT MET ]' 
+                          : (isAudioIntercept && !hasBeenPlayed) 
+                            ? '[ CLASSIFIED ]' 
+                            : c.text
+                        }
                       </span>
                     );
                   })}
@@ -8187,19 +8420,46 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   margin-bottom: 0;
 }
 
+/* 1. Fix Headings (h1, h2, h3, etc.) */
+.evidence-text-content h1,
+.evidence-text-content h2,
+.evidence-text-content h3,
+.evidence-text-content h4,
+.evidence-text-content h5,
+.evidence-text-content h6 {
+  color: var(--text-primary);
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  font-family: var(--font-primary);
+}
+
+/* 2. Fix the Default Strong Tag */
 .evidence-text-content strong {
   color: var(--accent-cyan);
   font-weight: 700;
   letter-spacing: 0.05em;
 }
 
-.evidence-text-content.type-document strong,
-.evidence-text-content.type-forensic strong,
+/* 3. Fix the "Black Text" issue for specific evidence types */
+.evidence-text-content.type-document strong {
+  color: var(--accent-amber);
+  background: rgba(196, 139, 54, 0.1); 
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.evidence-text-content.type-forensic strong {
+  color: var(--accent-crimson);
+  background: rgba(163, 50, 50, 0.1); 
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
 .evidence-text-content.type-testimony strong {
-  color: #000;
-  font-weight: 800;
-  background: rgba(0, 0, 0, 0.08); 
-  padding: 0 2px;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1); 
+  padding: 0 4px;
+  border-radius: 2px;
 }
 
 .evidence-text-content ul {
@@ -8223,30 +8483,62 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 
 .evidence-text-content code {
   background: #111;
-  color: #111; 
+  color: var(--accent-cyan); 
   padding: 0 6px;
   border-radius: 2px;
   user-select: none; 
 }
 
-@media (max-width: 768px) {
-  .evidence-modal-content {
-    width: 95%;
-    padding: 1.5rem;
-    max-height: 90vh;
-  }
-  
-  .modal-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
+/* --- MARKDOWN TABLE STYLES --- */
+.evidence-text-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.95rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.evidence-text-content th,
+.evidence-text-content td {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.85rem 1rem;
+  text-align: start; 
+}
+
+.evidence-text-content th {
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.evidence-text-content tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* 4. Fix Document Table Header being black */
+.evidence-text-content.type-document th {
+  color: var(--accent-amber); 
+  background: rgba(196, 139, 54, 0.1); 
+}
+
+.evidence-text-content.type-document td,
+.evidence-text-content.type-document th {
+  border-color: rgba(196, 139, 54, 0.2);
+}
+
+.evidence-text-content.type-document tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.2);
 }
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceModal.tsx
 ----------------------------------------
 import ReactMarkdown from 'react-markdown'; 
+import remarkGfm from 'remark-gfm'; 
 import type { Evidence } from '@/types';
 import './EvidenceBoardTab.css';
 import './EvidenceModal.css';
@@ -8277,7 +8569,10 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
         <div className="modal-body">
           {evidence.paragraph && (
             <div className={`evidence-text-content type-${evidence.evidence_type}`}>
-              <ReactMarkdown>{evidence.paragraph}</ReactMarkdown>
+              {/* remarkGfm enables tables, strikethrough, task lists, etc. */}
+              <ReactMarkdown remarkPlugins={[remarkGfm]} >
+                {evidence.paragraph}
+              </ReactMarkdown>
             </div>
           )}
 
@@ -9957,18 +10252,43 @@ export const deleteAdminPhase = async (id: number): Promise<Result<any>> => {
 export const updateAdminLevel = async (id: number, formData: FormData): Promise<Result<any>> => {
   formData.append('_method', 'PUT');
   try {
-    const response = await fetch(`${API_BASE_URL}/levels/${id}`, { method: 'POST', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }, body: formData });
-    if (!response.ok) return failure('Failed to update level.');
+    const response = await fetch(`${API_BASE_URL}/levels/${id}`, { 
+      method: 'POST', 
+      headers: { 
+        'Accept': 'application/json', 
+        'Authorization': `Bearer ${getToken()}` 
+      }, 
+      body: formData 
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) handleUnauthorized();
+      // Parse Laravel's error payload instead of discarding it
+      const data = await response.json().catch(() => ({}));
+      // This will now pipe the exact error (e.g., "The image field must not be greater...") into your UI
+      return failure(data.message || 'Failed to update level.');
+    }
+    
     return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
+  } catch (error) { 
+    return failure((error as Error).message); 
+  }
 };
 
 export const deleteAdminLevel = async (id: number): Promise<Result<any>> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/levels/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` } });
+    const response = await fetch(`${API_BASE_URL}/levels/${id}`, { 
+      method: 'DELETE', 
+      headers: { 
+        'Accept': 'application/json', 
+        'Authorization': `Bearer ${getToken()}` 
+      } 
+    });
     if (!response.ok) return failure('Failed to delete level.');
     return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
+  } catch (error) { 
+    return failure((error as Error).message); 
+  }
 };
 
 // ==========================================
@@ -10543,8 +10863,8 @@ export interface Choice {
   id: number;
   question_id: number;
   text: string;
-  is_correct: boolean;
   outcomes?: Record<string, any> | null; 
+  requirements?: Record<string, any> | null; 
 }
 
 export interface Question {
@@ -10553,7 +10873,6 @@ export interface Question {
   text: string;
   img_url?: string;
   audio_url?: string; 
-  msg_when_wrong?: string;
   choices?: Choice[];
   is_mandatory: boolean; 
   assigned_user_id?: number; 

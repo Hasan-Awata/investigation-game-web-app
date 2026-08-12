@@ -62,19 +62,46 @@
   margin-bottom: 0;
 }
 
+/* 1. Fix Headings (h1, h2, h3, etc.) */
+.evidence-text-content h1,
+.evidence-text-content h2,
+.evidence-text-content h3,
+.evidence-text-content h4,
+.evidence-text-content h5,
+.evidence-text-content h6 {
+  color: var(--text-primary);
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  font-family: var(--font-primary);
+}
+
+/* 2. Fix the Default Strong Tag */
 .evidence-text-content strong {
   color: var(--accent-cyan);
   font-weight: 700;
   letter-spacing: 0.05em;
 }
 
-.evidence-text-content.type-document strong,
-.evidence-text-content.type-forensic strong,
+/* 3. Fix the "Black Text" issue for specific evidence types */
+.evidence-text-content.type-document strong {
+  color: var(--accent-amber);
+  background: rgba(196, 139, 54, 0.1); 
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
+.evidence-text-content.type-forensic strong {
+  color: var(--accent-crimson);
+  background: rgba(163, 50, 50, 0.1); 
+  padding: 0 4px;
+  border-radius: 2px;
+}
+
 .evidence-text-content.type-testimony strong {
-  color: #000;
-  font-weight: 800;
-  background: rgba(0, 0, 0, 0.08); 
-  padding: 0 2px;
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1); 
+  padding: 0 4px;
+  border-radius: 2px;
 }
 
 .evidence-text-content ul {
@@ -98,22 +125,53 @@
 
 .evidence-text-content code {
   background: #111;
-  color: #111; 
+  color: var(--accent-cyan); 
   padding: 0 6px;
   border-radius: 2px;
   user-select: none; 
 }
 
-@media (max-width: 768px) {
-  .evidence-modal-content {
-    width: 95%;
-    padding: 1.5rem;
-    max-height: 90vh;
-  }
-  
-  .modal-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
-  }
+/* --- MARKDOWN TABLE STYLES --- */
+.evidence-text-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1.5rem 0;
+  font-size: 0.95rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.evidence-text-content th,
+.evidence-text-content td {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.85rem 1rem;
+  text-align: start; 
+}
+
+.evidence-text-content th {
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.evidence-text-content tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+/* 4. Fix Document Table Header being black */
+.evidence-text-content.type-document th {
+  color: var(--accent-amber); 
+  background: rgba(196, 139, 54, 0.1); 
+}
+
+.evidence-text-content.type-document td,
+.evidence-text-content.type-document th {
+  border-color: rgba(196, 139, 54, 0.2);
+}
+
+.evidence-text-content.type-document tr:nth-child(even) td {
+  background: rgba(0, 0, 0, 0.2);
 }

@@ -202,7 +202,7 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
                         <Typewriter 
                           text={status === 'completed' ? (q.choices?.find(c => !c.outcomes?.gives_strike)?.text || '...') : (winningChoice?.text || '...')} 
                           skip={skipTyping} 
-                          delay={15} 
+                          delay={40} 
                           cacheKey={`room_${room.id}_investigator_${q.id}`} 
                           onComplete={() => handleInvestigatorDone(q.id)}
                         />

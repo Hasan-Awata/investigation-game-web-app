@@ -37,7 +37,7 @@ class AssessmentService
                 $choice = Choice::find($chosenId);
 
                 $maxStrikes = $room->gameCase->max_strikes; 
-                $givesStrike = $choice->outcomes['gives_strike'] ?? false;
+                $rawStrikeFlag = $choice->outcomes['gives_strike'] ?? false;
 
                 // Safely cast stringified booleans ("true"/"false") into actual PHP booleans
                 $givesStrike = filter_var($rawStrikeFlag, FILTER_VALIDATE_BOOLEAN);

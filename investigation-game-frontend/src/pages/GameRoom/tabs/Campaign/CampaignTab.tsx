@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom'; 
 import { useRoomContext } from '../../../../context/RoomContext';
 import { useInvestigationPhase } from '../../../../hooks/useInvestigationPhase';
 import type { Question } from '../../../../types';
-import InterrogationPhase from './Levels/InterrogationPhase';
+import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
 import StandardPhase from './Levels/StandardPhase'; 
 import LocationPhase from './Levels/LocationPhase';
 import WiretapPhase from './Levels/WiretapPhase';
@@ -32,7 +33,8 @@ export default function CampaignTab() {
     initiatePhase,
     clearFeedback,
     triggerWiretap,
-    isTriggeringWiretap
+    isTriggeringWiretap,
+    addToast 
   } = useInvestigationPhase(room, refreshRoomData);
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -169,19 +171,22 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
       )}
 
       {/* --- TACTICAL TOAST NOTIFICATIONS --- */}
-      <div className="toast-container">
-        {toasts.map((toast) => (
-          <div key={toast.id} className="system-toast-notification">
-            <div className="toast-icon pulse-icon">
-              <img src={toast.icon} alt={toast.type} className="toast-svg-graphic" />
+      {createPortal(
+        <div className="toast-container">
+          {toasts.map((toast) => (
+            <div key={toast.id} className="system-toast-notification">
+              <div className="toast-icon pulse-icon">
+                <img src={toast.icon} alt={toast.type} className="toast-svg-graphic" />
+              </div>
+              <div className="toast-text-block">
+                <span className="toast-header">{toast.title}</span>
+                <p className="toast-message">{toast.message}</p>
+              </div>
             </div>
-            <div className="toast-text-block">
-              <span className="toast-header">{toast.title}</span>
-              <p className="toast-message">{toast.message}</p>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>,
+        document.body
+      )}
 
       {/* --- NON-LINEAR ROADMAP (Mapped to Active Phase's Levels) --- */}
       <div className="roadmap-timeline">
@@ -205,8 +210,10 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
           const mandatoryQuestions = level.questions?.filter(q => q.is_mandatory) || [];
           const allMandatoryAnswered = mandatoryQuestions.every(q => getQuestionConsensus(q).isResolved);
 
-          const displayTitle = isDiscovered ? level.title : 'Encounter Undiscovered';
-          const displayDesc = isDiscovered ? level.details : 'This path remains hidden. You must deduce the correct narrative link in an available phase to unlock this lead.';
+          const displayTitle = isDiscovered ? level.title : 'Undiscovered Encounter';
+          const displayDesc = isDiscovered 
+            ? level.details 
+            : 'This path remains hidden. You must deduce the correct narrative link or locate specific evidence to unlock this lead.';
 
           return (
             <div key={level.id} className={`roadmap-node ${status}`}>
@@ -228,8 +235,11 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
                   </div>
                   <div className="node-details">
                     <span className="node-phase">Lead {level.order_index}</span>
+                    
+                    {/* Render the dynamic variables unconditionally */}
                     <h3 className="node-title">{displayTitle}</h3>
                     <p className="node-desc">{displayDesc}</p>
+
                     {status === 'active' && <div className="active-badge">Active Investigation</div>}
                   </div>
                 </div>
@@ -264,6 +274,7 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
                           <LocationPhase 
                             level={level} status={status} localVotes={localVotes} 
                             handleSelectChoice={handleSelectChoice} currentUserId={currentUser.id}
+                            addToast={addToast} 
                           />
                         ) : level.presentation_type === 'wiretap' ? (
                           <WiretapPhase 

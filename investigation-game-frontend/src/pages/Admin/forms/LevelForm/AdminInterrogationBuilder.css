@@ -1,0 +1,132 @@
+/* D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\AdminInterrogationBuilder.css */
+
+.interrogation-canvas-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.interrogation-workspace {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 2rem;
+  align-items: start;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  min-height: 500px;
+}
+
+.dialogue-node-card {
+  background: rgba(20, 21, 24, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 4px solid var(--accent-cyan);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.dialogue-node-card.unsaved {
+  border-top-color: var(--accent-amber);
+  box-shadow: 0 0 20px rgba(196, 139, 54, 0.1);
+}
+
+.node-header {
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.node-id-badge {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-cyan);
+  font-weight: 700;
+}
+
+.unsaved .node-id-badge {
+  color: var(--accent-amber);
+}
+
+.node-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.node-suspect-block label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-crimson);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.node-responses-block label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.response-branch {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.response-branch:last-child {
+  margin-bottom: 0;
+}
+
+.branch-link-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.link-icon {
+  color: var(--accent-cyan);
+  font-size: 1.2rem;
+}
+
+.advanced-intel-panel {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-left: 2px solid var(--accent-amber);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-radius: 0 4px 4px 0;
+}
+
+.node-footer {
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  gap: 1rem;
+}

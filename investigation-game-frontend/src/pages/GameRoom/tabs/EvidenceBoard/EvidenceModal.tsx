@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown'; 
+import remarkGfm from 'remark-gfm'; 
 import type { Evidence } from '@/types';
 import './EvidenceBoardTab.css';
 import './EvidenceModal.css';
@@ -29,7 +30,10 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
         <div className="modal-body">
           {evidence.paragraph && (
             <div className={`evidence-text-content type-${evidence.evidence_type}`}>
-              <ReactMarkdown>{evidence.paragraph}</ReactMarkdown>
+              {/* remarkGfm enables tables, strikethrough, task lists, etc. */}
+              <ReactMarkdown remarkPlugins={[remarkGfm]} >
+                {evidence.paragraph}
+              </ReactMarkdown>
             </div>
           )}
 
