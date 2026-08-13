@@ -119,3 +119,87 @@
   .admin-sidebar { border-right: none; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
   .admin-form-row { flex-direction: column; gap: 1rem; }
 }
+
+/* --- FORM STRUCTURAL SPACING --- */
+
+.admin-form { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 1.5rem; /* Forces vertical space between all form rows */
+}
+
+.form-group { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 0.5rem; /* Forces space between the label and the input */
+  flex: 1; /* Ensures side-by-side inputs stretch evenly */
+}
+
+.admin-form-row { 
+  display: flex; 
+  gap: 1.5rem; /* Forces horizontal space between side-by-side inputs */
+  width: 100%; 
+}
+
+/* --- TYPOGRAPHY & INPUT STYLING --- */
+
+.form-group label { 
+  font-family: var(--font-mono); 
+  font-size: 0.85rem; 
+  color: var(--text-secondary); 
+  text-transform: uppercase; 
+  letter-spacing: 0.05em;
+}
+
+.admin-input, .admin-textarea { 
+  background: rgba(10, 11, 13, 0.8); 
+  border: 1px solid rgba(255, 255, 255, 0.1); 
+  padding: 0.85rem 1rem; 
+  border-radius: 6px; 
+  color: #ffffff; 
+  font-family: inherit; 
+  outline: none; 
+  transition: all 0.2s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.admin-textarea { 
+  resize: vertical; 
+}
+
+.admin-input:focus, .admin-textarea:focus { 
+  border-color: var(--accent-cyan);
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 1px var(--accent-cyan);
+}
+
+/* Fallback responsive adjustment for mobile */
+@media (max-width: 768px) {
+  .admin-form-row { 
+    flex-direction: column; 
+    gap: 1rem; 
+  }
+}
+
+/* --- FORM CONTAINER SPACING --- */
+
+.admin-form-container {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 3rem; /* This gives you the top/bottom and left/right margins back */
+  box-sizing: border-box; /* Ensures the padding doesn't blow out the max-width */
+}
+
+/* If you have a global .glass-panel class controlling backgrounds, 
+   make sure it isn't overriding the padding. If it is, force it like this: */
+.admin-form-container.glass-panel {
+  padding: 3rem; 
+}
+
+/* Mobile responsive tweak so the padding isn't too massive on small screens */
+@media (max-width: 768px) {
+  .admin-form-container {
+    padding: 1.5rem;
+  }
+}
