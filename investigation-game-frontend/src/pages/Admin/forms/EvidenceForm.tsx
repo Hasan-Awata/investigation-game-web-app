@@ -1,13 +1,12 @@
 import { useState, useRef } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createAdminEvidence, updateAdminEvidence, deleteAdminEvidence, fetchAdminCases } from '@/services/adminApi';
-import type { GameCase, Evidence, EvidenceType } from '@/types';
+import { useAdminContext } from '@/context/AdminContext';
+import { useAdminMutations } from '@/hooks/useAdminMutations';
+import EntityList from './Shared/EntityList';
+import type { Evidence, EvidenceType } from '@/types';
 
 export default function EvidenceForm() {
-  const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const [caseId, setCaseId] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [paragraph, setParagraph] = useState('');
@@ -18,147 +17,92 @@ export default function EvidenceForm() {
   
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
 
-  // STRICT TYPING: Applied GameCase[] to the query
-  const { data: cases = [], isLoading: isFetchingCases } = useQuery<GameCase[]>({
-    queryKey: ['adminCases'],
-    queryFn: async () => {
-      const result = await fetchAdminCases();
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    }
-  });
+  const { caseId, selectedCase } = useAdminContext();
+
+  const { 
+    createEntity, updateEntity, deleteEntity, isProcessing, 
+    feedback, clearFeedback 
+  } = useAdminMutations('evidence');
+
+  if (!caseId || !selectedCase) {
+    return (
+      <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
+        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', margin: '0 0 1rem 0' }}>[ MISSING CONTEXT: NO CASE SELECTED ]</h3>
+        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Please select a Target Case from the Global Directory to manage Evidence.</p>
+      </div>
+    );
+  }
 
   const clearForm = () => {
     setEditingId(null);
-    setTitle('');
-    setDescription('');
-    setParagraph('');
-    setIsInitial(true);
-    setIsVitalForConviction(false);
-    setStoreLocally(false);
-    setImage(null);
-    setAudio(null);
+    setTitle(''); setDescription(''); setParagraph('');
+    setIsInitial(true); setIsVitalForConviction(false); setStoreLocally(false);
+    setImage(null); setAudio(null);
+    clearFeedback();
     if (imageInputRef.current) imageInputRef.current.value = '';
     if (audioInputRef.current) audioInputRef.current.value = '';
   };
 
-  const createMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const result = await createAdminEvidence(formData);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    },
-    onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Evidence secured in database.' });
-      clearForm();
-      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
-    },
-    onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, formData }: { id: number, formData: FormData }) => {
-      const result = await updateAdminEvidence(id, formData);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    },
-    onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Evidence updated.' });
-      clearForm();
-      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
-    },
-    onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const result = await deleteAdminEvidence(id);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    },
-    onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Evidence deleted.' });
-      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
-    },
-    onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
-  });
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setFeedback(null);
-    if (!caseId) return setFeedback({ type: 'error', message: 'Select a target case.' });
+    clearFeedback();
 
     const formData = new FormData();
-    formData.append('case_id', caseId);
-    formData.append('title', title);
-    formData.append('evidence_type', evidenceType);
-    formData.append('description', description);
-    formData.append('paragraph', paragraph);
-    formData.append('is_initial', isInitial ? '1' : '0');
+    formData.append('case_id', caseId); formData.append('title', title);
+    formData.append('evidence_type', evidenceType); formData.append('description', description);
+    formData.append('paragraph', paragraph); formData.append('is_initial', isInitial ? '1' : '0');
     formData.append('is_vital_for_conviction', isVitalForConviction ? '1' : '0');
     formData.append('store_locally', storeLocally ? '1' : '0');
     
     if (evidenceType === 'image' && image) formData.append('image', image);
     if (evidenceType === 'audio' && audio) formData.append('audio', audio);
 
-    if (editingId) updateMutation.mutate({ id: editingId, formData });
-    else createMutation.mutate(formData);
+    if (editingId) {
+      updateEntity({ id: editingId, formData }, { onSuccess: clearForm });
+    } else {
+      createEntity(formData, { onSuccess: clearForm });
+    }
   };
 
-  // STRICT TYPING: Applied Evidence interface
-  const handleEdit = (ev: Evidence, parentCaseId: number) => {
+  const handleEdit = (ev: Evidence) => {
     setEditingId(ev.id);
-    setCaseId(parentCaseId.toString());
-    setTitle(ev.title);
-    setDescription(ev.description || '');
-    setParagraph(ev.paragraph || '');
-    setEvidenceType(ev.evidence_type);
-    setIsInitial(!!ev.is_initial);
+    setTitle(ev.title); setDescription(ev.description || ''); setParagraph(ev.paragraph || '');
+    setEvidenceType(ev.evidence_type); setIsInitial(!!ev.is_initial);
     setIsVitalForConviction(!!ev.is_vital_for_conviction);
-    setImage(null);
-    setAudio(null);
+    setImage(null); setAudio(null);
+    clearFeedback();
     if (imageInputRef.current) imageInputRef.current.value = '';
     if (audioInputRef.current) audioInputRef.current.value = '';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = (evId: number, evTitle: string) => {
-    if (window.confirm(`Are you absolutely sure you want to delete "${evTitle}"?`)) {
-      setFeedback(null);
-      if (editingId === evId) clearForm();
-      deleteMutation.mutate(evId);
+  const handleDelete = (ev: Evidence) => {
+    if (window.confirm(`Are you absolutely sure you want to delete "${ev.title}"?`)) {
+      if (editingId === ev.id) clearForm();
+      deleteEntity(ev.id);
     }
   };
-
-  const isProcessing = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
-  const selectedCase = cases.find((c: GameCase) => c.id.toString() === caseId);
 
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', margin: 0 }}>
-            {editingId ? `// Editing Evidence ID: ${editingId}` : '// Initialize New Evidence'}
-          </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div>
+            <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', margin: '0 0 0.5rem 0' }}>
+              {editingId ? `// Editing Evidence ID: ${editingId}` : '// Initialize New Evidence'}
+            </h3>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>Targeting Case: {selectedCase.title}</span>
+          </div>
           {editingId && <button type="button" className="btn-secondary" onClick={clearForm} style={{ padding: '0.5rem 1rem', width: 'auto' }}>Cancel Edit</button>}
         </div>
 
         {feedback && <div className={`status-message ${feedback.type}`}>{feedback.message}</div>}
 
         <form onSubmit={handleSubmit} className="admin-form">
-          <div className="form-group" style={{ marginBottom: '1rem' }}>
-            <label>Target Case</label>
-            <select className="admin-input" required value={caseId} onChange={(e) => setCaseId(e.target.value)} disabled={isFetchingCases}>
-              <option value="" disabled>-- Select a Case --</option>
-              {cases.map((c: GameCase) => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
-          </div>
-
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
             <input type="checkbox" id="initial-toggle" checked={isInitial} onChange={(e) => setIsInitial(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }} />
             <label htmlFor="initial-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}><strong>Initial Evidence:</strong> Available on the board immediately.</label>
@@ -187,9 +131,7 @@ export default function EvidenceForm() {
           {evidenceType === 'image' && (
             <div className="form-group">
               <label>Evidence Image</label>
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                <strong>Optimal:</strong> 1:1 or 3:4 portrait. Ensure written text is legible. WEBP or JPG. Max 4MB.
-              </p>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}><strong>Optimal:</strong> 1:1 or 3:4 portrait. Ensure written text is legible. WEBP or JPG. Max 4MB.</p>
               <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
             </div>
           )}
@@ -197,34 +139,15 @@ export default function EvidenceForm() {
           {evidenceType === 'audio' && (
             <div className="form-group">
               <label>Audio Recording</label>
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                <strong>Optimal:</strong> MP3 or WAV format. Compressed for web streaming. Max 10MB.
-              </p>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}><strong>Optimal:</strong> MP3 or WAV format. Compressed for web streaming. Max 10MB.</p>
               <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
             </div>
           )}
 
           {(evidenceType === 'image' || evidenceType === 'audio') && (
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '1rem', 
-              background: 'rgba(255,255,255,0.02)', 
-              padding: '1rem', 
-              borderRadius: '8px', 
-              marginTop: '1rem',
-              border: '1px solid rgba(255,255,255,0.05)'
-            }}>
-              <input 
-                type="checkbox" 
-                id="store-locally-toggle" 
-                checked={storeLocally} 
-                onChange={(e) => setStoreLocally(e.target.checked)} 
-                style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} 
-              />
-              <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
-                <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
-              </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
+              <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}><strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.</label>
             </div>
           )}
 
@@ -234,25 +157,21 @@ export default function EvidenceForm() {
         </form>
       </div>
 
-      {selectedCase && selectedCase.evidences && selectedCase.evidences.length > 0 && (
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
-          <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', marginBottom: '1.5rem' }}>// Case Evidence</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {selectedCase.evidences.map((ev: Evidence) => (
-              <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                <div>
-                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>EX-{ev.id.toString().padStart(3, '0')}</span>
-                  <strong>{ev.title}</strong>
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
-                  <button type="button" onClick={() => handleEdit(ev, selectedCase.id)} disabled={isProcessing} style={{ background: 'transparent', border: '1px solid var(--accent-amber)', color: 'var(--accent-amber)', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>Edit</button>
-                  <button type="button" onClick={() => handleDelete(ev.id, ev.title)} disabled={isProcessing} style={{ background: 'transparent', border: '1px solid var(--accent-crimson)', color: 'var(--accent-crimson)', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>Delete</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <EntityList<Evidence>
+        title="Case Evidence"
+        items={selectedCase.evidences || []}
+        emptyMessage="No evidence secured for this case."
+        keyExtractor={(ev) => ev.id}
+        isProcessing={isProcessing}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        renderItemContent={(ev) => (
+          <>
+            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>EX-{ev.id.toString().padStart(3, '0')}</span>
+            <strong>{ev.title}</strong>
+          </>
+        )}
+      />
     </div>
   );
 }

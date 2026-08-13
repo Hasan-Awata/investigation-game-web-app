@@ -1,277 +1,215 @@
-// FILE: src/pages/Admin/forms/LevelForm/AdminInterrogationBuilder.tsx
-
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createAdminQuestion, updateAdminQuestion, deleteAdminQuestion, fetchAdminCases } from '@/services/adminApi';
-import type { GameCase, Question, Choice, Evidence } from '@/types';
-import { defaultRequirements, defaultOutcomes, appendChoicesToFormData } from '../Shared/questionUtils';
+import { useAdminContext } from '@/context/AdminContext';
+import { useAdminMutations } from '@/hooks/useAdminMutations';
+import type { Question, Choice, Evidence, Level, Suspect, Victim } from '@/types';
+import { type DraftChoice } from '../Shared/ChoiceEditorCard';
+import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '../Shared/questionUtils';
+import AdminInterrogationForm from './AdminInterrogationForm';
 import './AdminInterrogationBuilder.css';
 
-// --- SINGLE NODE (CARD) COMPONENT ---
-interface DialogueNodeProps {
-  nodeData: Question | any; // Accept Draft nodes which may not be full Questions yet
+interface DialogueNodeContainerProps {
+  nodeData: Question | any; 
   levelId: string;
   allSavedNodes: Question[];
   availableEvidences: Evidence[];
+  availableLevels: Level[];
+  availableSuspects: Suspect[];
+  availableVictims: Victim[];
   onSaved: () => void;
   onDeleted: () => void;
 }
 
-const DialogueNode = ({ 
-  nodeData, levelId, allSavedNodes, availableEvidences, onSaved, onDeleted 
-}: DialogueNodeProps) => {
+const DialogueNodeContainer = ({ 
+  nodeData, levelId, allSavedNodes, availableEvidences, availableLevels, availableSuspects, availableVictims, onSaved, onDeleted 
+}: DialogueNodeContainerProps) => {
   
-  const safeChoices = (nodeData.choices || []).map((c: Choice | any) => ({
+  // SECURE MAPPER: Forces all ID arrays to be Number[] to satisfy TS
+  const safeChoices: DraftChoice[] = (nodeData.choices || []).map((c: Choice | any) => ({
     id: c.id || crypto.randomUUID(),
     text: c.text || '',
     outcomes: {
       feedback: c.outcomes?.feedback || '',
-      next_question_id: c.outcomes?.next_question_id?.toString() || '',
+      next_question_id: c.outcomes?.next_question_id ? Number(c.outcomes.next_question_id) : null,
       gives_strike: !!c.outcomes?.gives_strike,
-      unlock_evidence: c.outcomes?.unlock_evidence?.map(String) || [],
-      unlock_levels: c.outcomes?.unlock_levels?.map(String) || [],
-      unlock_suspects: c.outcomes?.unlock_suspects?.map(String) || [],
-      unlock_victims: c.outcomes?.unlock_victims?.map(String) || []
+      unlock_evidence: c.outcomes?.unlock_evidence?.map(Number) || [],
+      unlock_levels: c.outcomes?.unlock_levels?.map(Number) || [],
+      unlock_suspects: c.outcomes?.unlock_suspects?.map(Number) || [],
+      unlock_victims: c.outcomes?.unlock_victims?.map(Number) || []
     },
     requirements: {
-      required_evidence: c.requirements?.required_evidence?.map(String) || [],
-      required_choices: c.requirements?.required_choices?.map(String) || []
+      required_evidence: c.requirements?.required_evidence?.map(Number) || [],
+      required_choices: c.requirements?.required_choices?.map(Number) || []
     }
   }));
 
   const [text, setText] = useState(nodeData.text || '');
-  const [choices, setChoices] = useState<any[]>(safeChoices.length > 0 ? safeChoices : [
+  const [choices, setChoices] = useState<DraftChoice[]>(safeChoices.length > 0 ? safeChoices : [
     { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }
   ]);
-  
   const [showAdvanced, setShowAdvanced] = useState<Record<string, boolean>>({});
-  const [feedback, setFeedback] = useState<{type: string, message: string} | null>(null);
-
+  
   const isSaved = typeof nodeData.id === 'number';
 
-  const saveMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      if (isSaved) return (await updateAdminQuestion(nodeData.id, formData)).value;
-      return (await createAdminQuestion(formData)).value;
-    },
-    onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Node synced.' });
-      setTimeout(() => setFeedback(null), 2000);
-      onSaved(); 
-    },
-    onError: (err: Error) => setFeedback({ type: 'error', message: err.message })
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async () => (await deleteAdminQuestion(nodeData.id)).value,
-    onSuccess: () => onDeleted(),
-  });
+  const { 
+    createEntity, updateEntity, deleteEntity, isProcessing, 
+    feedback, setFeedback, clearFeedback 
+  } = useAdminMutations('question');
 
   const handleSave = () => {
-    setFeedback(null);
-    const formData = new FormData();
-    formData.append('level_id', levelId.toString());
-    formData.append('text', text);
-    formData.append('is_mandatory', '1'); 
-    formData.append('store_locally', '0');
+    clearFeedback();
 
-    appendChoicesToFormData(formData, choices);
-    saveMutation.mutate(formData);
+    if (!text.trim()) return setFeedback({ type: 'error', message: 'Suspect dialogue text cannot be empty.' });
+    if (choices.some(c => !c.text.trim())) return setFeedback({ type: 'error', message: 'All response branches must have text.' });
+
+    const formData = buildNodeFormData({
+      level_id: levelId,
+      text,
+      is_mandatory: true, 
+      store_locally: false,
+      choices
+    });
+    
+    if (isSaved) {
+      updateEntity({ id: nodeData.id, formData }, { onSuccess: onSaved });
+    } else {
+      createEntity(formData, { onSuccess: onSaved });
+    }
   };
 
-  const updateChoice = (id: string, field: string, value: any, category?: 'outcomes' | 'requirements') => {
+  const handleDelete = () => {
+    if(window.confirm('Delete node?')) {
+      deleteEntity(nodeData.id, { onSuccess: onDeleted });
+    }
+  };
+
+  const updateChoice = (id: string, field: keyof DraftChoice | string, value: any, category?: 'outcomes' | 'requirements') => {
     setChoices(choices.map(c => {
       if (c.id !== id) return c;
-      if (category) return { ...c, [category]: { ...c[category], [field]: value } };
+      if (category) {
+        return { 
+          ...c, 
+          [category]: { 
+            ...(c[category] || {}), 
+            [field]: value 
+          } 
+        };
+      }
       return { ...c, [field]: value };
     }));
   };
 
+  const addChoice = () => {
+    setChoices([...choices, { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }]);
+  };
+
+  const removeChoice = (id: string) => {
+    setChoices(choices.filter(c => c.id !== id));
+  };
+
   return (
-    <div className={`dialogue-node-card ${isSaved ? '' : 'unsaved'}`}>
-      <div className="node-header">
-        <span className="node-id-badge">{isSaved ? `NODE ID: ${nodeData.id}` : 'UNSAVED DRAFT NODE'}</span>
-        {feedback && <span style={{ fontSize: '0.75rem', color: feedback.type === 'success' ? 'var(--accent-success)' : 'var(--accent-crimson)' }}>{feedback.message}</span>}
-      </div>
-
-      <div className="node-body">
-        <div className="node-suspect-block">
-          <label>Suspect Dialogue</label>
-          <textarea className="admin-textarea" dir="auto" value={text} onChange={(e) => setText(e.target.value)} style={{ minHeight: '80px' }} placeholder="Suspect says..." />
-        </div>
-
-        <div className="node-responses-block">
-          <label>Player Responses & Branches</label>
-          {choices.map((choice) => (
-            <div key={choice.id} className="response-branch">
-              <input type="text" className="admin-input" dir="auto" value={choice.text} onChange={(e) => updateChoice(choice.id, 'text', e.target.value)} placeholder="Player says..." />
-              
-              <div className="branch-link-row">
-                <span className="link-icon">➔</span>
-                <select 
-                  className="admin-input" 
-                  style={{ flex: 1, padding: '0.5rem' }}
-                  value={choice.outcomes.next_question_id || ''}
-                  onChange={(e) => updateChoice(choice.id, 'next_question_id', e.target.value, 'outcomes')}
-                >
-                  <option value="">[ END CONVERSATION / RETURN TO HUB ]</option>
-                  {allSavedNodes.filter((n) => n.id !== nodeData.id).map((n) => (
-                    <option key={n.id} value={n.id}>Leads to Node {n.id} ({n.text.substring(0, 20)}...)</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
-                <button type="button" className="btn-secondary" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', width: 'auto' }} onClick={() => setShowAdvanced({...showAdvanced, [choice.id]: !showAdvanced[choice.id]})}>
-                  {showAdvanced[choice.id] ? 'Hide Advanced Intel' : '⚙️ Advanced Intel & Locks'}
-                </button>
-                <button type="button" onClick={() => setChoices(choices.filter(c => c.id !== choice.id))} style={{ background: 'none', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer' }}>✕</button>
-              </div>
-
-              {showAdvanced[choice.id] && (
-                <div className="advanced-intel-panel">
-                  <label style={{ fontSize: '0.7rem', color: 'var(--accent-amber)' }}>Requires Evidence to Say</label>
-                  <select multiple className="admin-input" style={{ height: '60px', padding: '0.25rem' }} value={choice.requirements.required_evidence || []} onChange={(e) => updateChoice(choice.id, 'required_evidence', Array.from(e.target.selectedOptions, opt => opt.value), 'requirements')}>
-                    {availableEvidences.map((ev) => <option key={ev.id} value={ev.id}>EX-{ev.id} {ev.title}</option>)}
-                  </select>
-
-                  <label style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginTop: '0.5rem' }}>Unlocks Evidence on Click</label>
-                  <select multiple className="admin-input" style={{ height: '60px', padding: '0.25rem' }} value={choice.outcomes.unlock_evidence || []} onChange={(e) => updateChoice(choice.id, 'unlock_evidence', Array.from(e.target.selectedOptions, opt => opt.value), 'outcomes')}>
-                    {availableEvidences.map((ev) => <option key={ev.id} value={ev.id}>EX-{ev.id} {ev.title}</option>)}
-                  </select>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
-                    <input type="checkbox" checked={choice.outcomes.gives_strike} onChange={(e) => updateChoice(choice.id, 'gives_strike', e.target.checked, 'outcomes')} />
-                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-crimson)' }}>Triggers Strike (Penalty)</span>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-          <button type="button" className="btn-secondary" style={{ padding: '0.5rem', marginTop: '0.5rem' }} onClick={() => setChoices([...choices, { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }])}>
-            + Add Response Branch
-          </button>
-        </div>
-      </div>
-
-      <div className="node-footer">
-        <button className="btn-primary" onClick={handleSave} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? 'Syncing...' : isSaved ? 'Update Node' : 'Commit New Node'}
-        </button>
-        {isSaved && (
-          <button className="btn-secondary" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }} onClick={() => { if(window.confirm('Delete node?')) deleteMutation.mutate(); }}>
-            Delete
-          </button>
-        )}
-      </div>
-    </div>
+    <AdminInterrogationForm 
+      isSaved={isSaved} nodeId={nodeData.id} text={text} setText={setText}
+      choices={choices} updateChoice={updateChoice} addChoice={addChoice} removeChoice={removeChoice}
+      showAdvanced={showAdvanced} setShowAdvanced={setShowAdvanced} handleSave={handleSave}
+      handleDelete={handleDelete} isProcessing={isProcessing} feedback={feedback}
+      allSavedNodes={allSavedNodes} availableEvidences={availableEvidences}
+      availableLevels={availableLevels} availableSuspects={availableSuspects} availableVictims={availableVictims}
+    />
   );
 };
 
-// --- MAIN BUILDER ---
 export default function AdminInterrogationBuilder() {
-  const queryClient = useQueryClient();
-  const [caseId, setCaseId] = useState('');
-  const [phaseId, setPhaseId] = useState('');
-  const [levelId, setLevelId] = useState('');
   const [draftNodes, setDraftNodes] = useState<any[]>([]);
-
-  const { data: cases = [] } = useQuery<GameCase[]>({
-    queryKey: ['adminCases'],
-    queryFn: async () => {
-      const result = await fetchAdminCases();
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    }
-  });
-
-  const selectedCase = cases.find((c) => c.id.toString() === caseId);
-  const availablePhases = selectedCase?.phases || [];
-  const selectedPhase = availablePhases.find((p) => p.id.toString() === phaseId);
-  const availableLevels = (selectedPhase?.levels || []).filter((l) => l.presentation_type === 'interrogation');
-  const selectedLevel = availableLevels.find((l) => l.id.toString() === levelId);
-
-  const savedNodes: Question[] = selectedLevel?.questions || [];
   
-  const refreshData = () => queryClient.invalidateQueries({ queryKey: ['adminCases'] });
+  const { caseId, levelId, selectedCase, selectedPhase, selectedLevel } = useAdminContext();
+
+  if (!caseId || !levelId || !selectedCase || !selectedPhase || !selectedLevel) {
+    return (
+      <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
+        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', margin: '0 0 1rem 0' }}>[ MISSING CONTEXT: TARGET LEVEL REQUIRED ]</h3>
+        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Please select a Case, Phase, and Level from the sidebar to manage interrogation nodes.</p>
+      </div>
+    );
+  }
+
+  if (selectedLevel.presentation_type !== 'interrogation') {
+    return (
+      <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center', borderColor: 'var(--accent-crimson)' }}>
+        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', margin: '0 0 1rem 0' }}>[ INVALID CONTEXT: LEVEL TYPE MISMATCH ]</h3>
+        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>The currently selected level is configured for <strong>'{selectedLevel.presentation_type}'</strong>. You cannot build interrogation trees here. Please select an 'Interrogation' level from the sidebar.</p>
+      </div>
+    );
+  }
+
+  const savedNodes: Question[] = selectedLevel.questions || [];
+  
+  // Extract all the required global arrays for the UI form
+  const availableEvidences = selectedCase.evidences || [];
+  const availableSuspects = selectedCase.suspects || [];
+  const availableVictims = selectedCase.victims || [];
+  const availableLevels = selectedCase.phases?.flatMap(p => p.levels || []) || [];
 
   const addDraftNode = () => {
     setDraftNodes([...draftNodes, { id: `draft_${Date.now()}`, text: '', choices: [] }]);
   };
 
+  const handleChildSaved = () => {
+    // Data hook caches automatically; invalidation is handled in the custom hook
+  };
+
   return (
     <div className="interrogation-canvas-container">
       <div className="admin-form-container glass-panel" style={{ padding: '1.5rem', marginBottom: '0' }}>
-        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', margin: '0 0 1.5rem 0' }}>// Interrogation Tree Builder</h3>
-        <div className="admin-form-row">
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Target Case</label>
-            <select className="admin-input" value={caseId} onChange={(e) => { setCaseId(e.target.value); setPhaseId(''); setLevelId(''); }}>
-              <option value="">-- Select Case --</option>
-              {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-            </select>
-          </div>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Target Phase</label>
-            <select className="admin-input" value={phaseId} onChange={(e) => { setPhaseId(e.target.value); setLevelId(''); }} disabled={!caseId}>
-              <option value="">-- Select Phase --</option>
-              {availablePhases.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
-            </select>
-          </div>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Interrogation Level</label>
-            <select className="admin-input" value={levelId} onChange={(e) => { setLevelId(e.target.value); setDraftNodes([]); }} disabled={!phaseId}>
-              <option value="">-- Select Interrogation Level --</option>
-              {availableLevels.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
-            </select>
-          </div>
-        </div>
+        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', margin: '0 0 0.5rem 0' }}>// Interrogation Tree Builder</h3>
+        <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+          Targeting: {selectedCase.title} &gt; {selectedPhase.title} &gt; {selectedLevel.title}
+        </span>
       </div>
 
-      {levelId ? (
-        <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 1rem' }}>
-            <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-              Total Nodes: {savedNodes.length} (Saved) + {draftNodes.length} (Drafts)
-            </span>
-            <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} onClick={addDraftNode}>
-              + Append New Node
-            </button>
-          </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 1rem' }}>
+        <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+          Total Nodes: {savedNodes.length} (Saved) + {draftNodes.length} (Drafts)
+        </span>
+        <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} onClick={addDraftNode}>
+          + Append New Node
+        </button>
+      </div>
 
-          <div className="interrogation-workspace">
-            {savedNodes.map((node) => (
-              <DialogueNode 
-                key={node.id} 
-                nodeData={node} 
-                levelId={levelId} 
-                allSavedNodes={savedNodes}
-                availableEvidences={selectedCase?.evidences || []} 
-                onSaved={refreshData} 
-                onDeleted={refreshData}
-              />
-            ))}
-            
-            {draftNodes.map((node) => (
-              <DialogueNode 
-                key={node.id} 
-                nodeData={node} 
-                levelId={levelId} 
-                allSavedNodes={savedNodes}
-                availableEvidences={selectedCase?.evidences || []} 
-                onSaved={() => { setDraftNodes(draftNodes.filter(d => d.id !== node.id)); refreshData(); }} 
-                onDeleted={() => setDraftNodes(draftNodes.filter(d => d.id !== node.id))}
-              />
-            ))}
-            
-            {savedNodes.length === 0 && draftNodes.length === 0 && (
-              <div className="terminal-text" style={{ gridColumn: '1 / -1' }}>Workspace empty. Append a new node to begin the interrogation sequence.</div>
-            )}
-          </div>
-        </>
-      ) : (
-        <div className="terminal-text">Please select a valid Interrogation level to open the visual builder.</div>
-      )}
+      <div className="interrogation-workspace">
+        {savedNodes.map((node) => (
+          <DialogueNodeContainer 
+            key={node.id} 
+            nodeData={node} 
+            levelId={levelId} 
+            allSavedNodes={savedNodes}
+            availableEvidences={availableEvidences}
+            availableLevels={availableLevels}
+            availableSuspects={availableSuspects}
+            availableVictims={availableVictims}
+            onSaved={handleChildSaved} 
+            onDeleted={handleChildSaved}
+          />
+        ))}
+        
+        {draftNodes.map((node) => (
+          <DialogueNodeContainer 
+            key={node.id} 
+            nodeData={node} 
+            levelId={levelId} 
+            allSavedNodes={savedNodes}
+            availableEvidences={availableEvidences}
+            availableLevels={availableLevels}
+            availableSuspects={availableSuspects}
+            availableVictims={availableVictims}
+            onSaved={() => { setDraftNodes(draftNodes.filter(d => d.id !== node.id)); }} 
+            onDeleted={() => setDraftNodes(draftNodes.filter(d => d.id !== node.id))}
+          />
+        ))}
+        
+        {savedNodes.length === 0 && draftNodes.length === 0 && (
+          <div className="terminal-text" style={{ gridColumn: '1 / -1' }}>Workspace empty. Append a new node to begin the interrogation sequence.</div>
+        )}
+      </div>
     </div>
   );
 }

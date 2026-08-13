@@ -1,14 +1,59 @@
-.admin-dashboard {
-  max-width: 1000px;
-  margin: 0 auto;
+.admin-dashboard-layout {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  height: calc(100vh - 60px); /* Adjust based on your top nav, if any */
+  background-color: var(--bg-dark);
+  overflow: hidden;
+  border-top: 1px solid rgba(255, 51, 102, 0.3);
 }
 
-.admin-tabs {
+.admin-sidebar {
+  background: rgba(20, 21, 24, 0.95);
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
   display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.admin-global-selectors {
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
   gap: 1rem;
-  margin-bottom: 2rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 1rem;
+}
+
+.admin-nav-group {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.admin-nav-group-title {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin: 0 0 1rem 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-nav-group-title::before {
+  content: '';
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  background: var(--accent-cyan);
+  border-radius: 50%;
+}
+
+.admin-nav-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 .admin-tab-btn {
@@ -16,193 +61,61 @@
   border: 1px solid transparent;
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 0.9rem;
-  padding: 0.75rem 1.5rem;
+  font-size: 0.85rem;
+  padding: 0.75rem 1rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  text-align: left;
   transition: all 0.2s ease;
-  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .admin-tab-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--text-primary);
 }
 
 .admin-tab-btn.active {
-  background: rgba(var(--accent-crimson-rgb), 0.1);
+  background: rgba(163, 50, 50, 0.1);
   color: var(--accent-crimson);
-  border-color: rgba(var(--accent-crimson-rgb), 0.3);
+  border-color: rgba(163, 50, 50, 0.3);
+  box-shadow: inset 3px 0 0 0 var(--accent-crimson);
+}
+
+.admin-workspace {
+  padding: 2.5rem;
+  overflow-y: auto;
+  background: radial-gradient(circle at center, rgba(20, 21, 24, 0.4) 0%, rgba(10, 11, 13, 0.8) 100%);
 }
 
 .admin-form-container {
-  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
-.admin-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
+/* Same form styles as before, kept intact */
+.admin-form { display: flex; flex-direction: column; gap: 1.5rem; }
+.form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+.form-group label { font-family: var(--font-mono); font-size: 0.85rem; color: var(--text-secondary); text-transform: uppercase; }
+.admin-input, .admin-textarea { background: rgba(var(--bg-dark-rgb), 0.8); border: var(--border-thin); padding: 1rem; border-radius: var(--radius-sm); color: var(--text-primary); font-family: var(--font-primary); outline: none; transition: border-color 0.2s ease; }
+.admin-textarea { min-height: 150px; resize: vertical; }
+.admin-input:focus, .admin-textarea:focus { border-color: var(--accent-crimson); }
+.admin-file-input { font-family: var(--font-mono); color: var(--text-secondary); }
+.admin-file-input::file-selector-button { background: rgba(var(--bg-panel-rgb), 0.9); border: var(--border-thin); color: var(--text-primary); padding: 0.5rem 1rem; border-radius: var(--radius-sm); cursor: pointer; margin-right: 1rem; font-family: var(--font-mono); transition: all 0.2s; }
+.admin-file-input::file-selector-button:hover { background: rgba(var(--accent-crimson-rgb), 0.2); border-color: var(--accent-crimson); color: var(--accent-crimson); }
+.status-message { padding: 1rem; border-radius: var(--radius-sm); font-family: var(--font-mono); font-size: 0.9rem; margin-bottom: 1.5rem; }
+.status-message.success { background: rgba(var(--accent-success-rgb), 0.1); border: 1px solid rgba(var(--accent-success-rgb), 0.3); color: var(--accent-success); }
+.status-message.error { background: rgba(var(--accent-crimson-rgb), 0.1); border: 1px solid rgba(var(--accent-crimson-rgb), 0.3); color: var(--accent-crimson); }
+.admin-form-row { display: flex; gap: 1.5rem; width: 100%; }
 
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-}
-
-.admin-input, .admin-textarea {
-  background: rgba(var(--bg-dark-rgb), 0.8);
-  border: var(--border-thin);
-  padding: 1rem;
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-family: var(--font-primary);
-  outline: none;
-  transition: border-color 0.2s ease;
-}
-
-.admin-textarea {
-  min-height: 150px;
-  resize: vertical;
-}
-
-.admin-input:focus, .admin-textarea:focus {
-  border-color: var(--accent-crimson);
-}
-
-.admin-file-input {
-  font-family: var(--font-mono);
-  color: var(--text-secondary);
-}
-
-.admin-file-input::file-selector-button {
-  background: rgba(var(--bg-panel-rgb), 0.9);
-  border: var(--border-thin);
-  color: var(--text-primary);
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  margin-right: 1rem;
-  font-family: var(--font-mono);
-  transition: all 0.2s;
-}
-
-.admin-file-input::file-selector-button:hover {
-  background: rgba(var(--accent-crimson-rgb), 0.2);
-  border-color: var(--accent-crimson);
-  color: var(--accent-crimson);
-}
-
-.status-message {
-  padding: 1rem;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  margin-bottom: 1.5rem;
-}
-
-.status-message.success {
-  background: rgba(var(--accent-success-rgb), 0.1);
-  border: 1px solid rgba(var(--accent-success-rgb), 0.3);
-  color: var(--accent-success);
-}
-
-.status-message.error {
-  background: rgba(var(--accent-crimson-rgb), 0.1);
-  border: 1px solid rgba(var(--accent-crimson-rgb), 0.3);
-  color: var(--accent-crimson);
-}
-
-/* Responsive Form Rows */
-.admin-form-row {
-  display: flex;
-  gap: 1.5rem;
-  width: 100%;
+@media (max-width: 1024px) {
+  .admin-dashboard-layout { grid-template-columns: 250px 1fr; }
 }
 
 @media (max-width: 768px) {
-  .admin-form-row {
-    flex-direction: column;
-    gap: 1rem;
-  }
-  
-  .admin-tabs {
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-  
-  .admin-tab-btn {
-    flex: 1 1 calc(50% - 0.5rem);
-    padding: 0.5rem;
-  }
-}
-
-/* Visual Coordinate Picker */
-.coordinate-picker-container {
-  margin: 1.5rem 0;
-  padding: 1.5rem;
-  background: rgba(0, 229, 255, 0.05);
-  border: 1px dashed var(--accent-cyan);
-  border-radius: 8px;
-}
-
-.coordinate-picker-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.coordinate-picker-image-wrapper {
-  position: relative;
-  width: 100%;
-  border-radius: 4px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  cursor: crosshair;
-}
-
-.coordinate-picker-image-wrapper img {
-  width: 100%;
-  display: block;
-  pointer-events: none; /* Let the wrapper handle the clicks */
-}
-
-/* The active target state */
-.choice-row.picking-target {
-  box-shadow: inset 0 0 0 2px var(--accent-cyan);
-  background: rgba(0, 229, 255, 0.1) !important;
-}
-
-.pick-point-btn {
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--text-secondary);
-  color: var(--text-secondary);
-  padding: 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pick-point-btn:hover {
-  color: var(--accent-cyan);
-  border-color: var(--accent-cyan);
-}
-
-.pick-point-btn.active {
-  background: var(--accent-cyan);
-  color: var(--bg-dark);
-  border-color: var(--accent-cyan);
-  animation: pulse-icon 1.5s infinite;
+  .admin-dashboard-layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; height: auto; overflow: visible; }
+  .admin-sidebar { border-right: none; border-bottom: 1px solid rgba(255, 255, 255, 0.1); }
+  .admin-form-row { flex-direction: column; gap: 1rem; }
 }

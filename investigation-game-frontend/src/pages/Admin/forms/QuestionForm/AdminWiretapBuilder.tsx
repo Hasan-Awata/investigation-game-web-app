@@ -1,17 +1,15 @@
-// FILE: src/pages/Admin/forms/Builders/AdminWiretapBuilder.tsx
-
 import { useState, useRef } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createAdminQuestion, updateAdminQuestion, deleteAdminQuestion, fetchAdminCases } from '@/services/adminApi';
-import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
-import type { GameCase, Level, Question, Choice } from '@/types';
+import { useAdminContext } from '@/context/AdminContext';
+import { useAdminMutations } from '@/hooks/useAdminMutations';
+import type { Question, Choice } from '@/types';
+import { type DraftChoice } from '../Shared/ChoiceEditorCard';
+import { buildNodeFormData } from '../Shared/questionUtils';
+import AdminWiretapForm from './AdminWiretapForm';
+import EntityList from '../Shared/EntityList';
 
 export default function AdminWiretapBuilder() {
-  const queryClient = useQueryClient();
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const [caseId, setCaseId] = useState('');
-  const [levelId, setLevelId] = useState('');
   const [text, setText] = useState('');
   const [isMandatory, setIsMandatory] = useState(true);
   const [storeLocally, setStoreLocally] = useState(false);
@@ -29,314 +27,133 @@ export default function AdminWiretapBuilder() {
     { text: '', outcomes: {}, requirements: {} },
     { text: '', outcomes: {}, requirements: {} }
   ]);
-  
-  const [statusMessage, setStatusMessage] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const { data: cases = [], isLoading: isFetchingCases } = useQuery<GameCase[]>({
-    queryKey: ['adminCases'],
-    queryFn: async () => {
-      const result = await fetchAdminCases();
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    }
-  });
+  const { 
+    caseId, levelId, setCaseId, setPhaseId, setLevelId, 
+    selectedCase, selectedPhase, selectedLevel 
+  } = useAdminContext();
+
+  const { 
+    createEntity, updateEntity, deleteEntity, isProcessing, 
+    feedback: statusMessage, setFeedback: setStatusMessage, clearFeedback 
+  } = useAdminMutations('question');
+
+  if (!caseId || !levelId || !selectedCase || !selectedPhase || !selectedLevel) {
+    return (
+      <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
+        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', margin: '0 0 1rem 0' }}>[ MISSING CONTEXT: TARGET LEVEL REQUIRED ]</h3>
+        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Please select a Case, Phase, and Level from the sidebar to map wiretaps.</p>
+      </div>
+    );
+  }
+
+  if (selectedLevel.presentation_type !== 'wiretap') {
+    return (
+      <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center', borderColor: 'var(--accent-crimson)' }}>
+        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', margin: '0 0 1rem 0' }}>[ INVALID CONTEXT: LEVEL TYPE MISMATCH ]</h3>
+        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>The currently selected level is configured for <strong>'{selectedLevel.presentation_type}'</strong>. You cannot build communication intercepts here. Please select a 'Wiretap' level from the sidebar.</p>
+      </div>
+    );
+  }
 
   const clearForm = () => {
-    setEditingId(null);
-    setText('');
-    setIsMandatory(true);
-    setStoreLocally(false);
-    setImage(null);
-    setExistingImgUrl(null);
-    setAudio(null);
-    setExistingAudioUrl(null);
-    setChoices([
-      { text: '', outcomes: {}, requirements: {} },
-      { text: '', outcomes: {}, requirements: {} }
-    ]);
+    setEditingId(null); setText(''); setIsMandatory(true); setStoreLocally(false);
+    setImage(null); setExistingImgUrl(null); setAudio(null); setExistingAudioUrl(null);
+    setChoices([{ text: '', outcomes: {}, requirements: {} }, { text: '', outcomes: {}, requirements: {} }]);
+    clearFeedback();
     if (imageInputRef.current) imageInputRef.current.value = '';
     if (audioInputRef.current) audioInputRef.current.value = '';
   };
 
-  const createMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const result = await createAdminQuestion(formData);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    },
-    onSuccess: () => {
-      setStatusMessage({ type: 'success', message: 'Wiretap intercept node created.' });
-      clearForm();
-      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
-    },
-    onError: (error: Error) => setStatusMessage({ type: 'error', message: error.message })
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, formData }: { id: number, formData: FormData }) => {
-      const result = await updateAdminQuestion(id, formData);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    },
-    onSuccess: () => {
-      setStatusMessage({ type: 'success', message: 'Wiretap intercept node updated.' });
-      clearForm();
-      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
-    },
-    onError: (error: Error) => setStatusMessage({ type: 'error', message: error.message })
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const result = await deleteAdminQuestion(id);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    },
-    onSuccess: () => {
-      setStatusMessage({ type: 'success', message: 'Intercept deleted successfully.' });
-      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
-    },
-    onError: (error: Error) => setStatusMessage({ type: 'error', message: error.message })
-  });
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setStatusMessage(null);
+    clearFeedback();
     
-    if (!levelId) return setStatusMessage({ type: 'error', message: 'Target wiretap level is required.' });
     if (choices.length < 2) return setStatusMessage({ type: 'error', message: 'An intercept node requires at least two choices.' });
     if (choices.some(c => !c.text.trim())) return setStatusMessage({ type: 'error', message: 'All choices must have valid text.' });
 
-    const formData = new FormData();
-    formData.append('level_id', levelId);
-    formData.append('text', text);
-    formData.append('is_mandatory', isMandatory ? '1' : '0');
-    formData.append('store_locally', storeLocally ? '1' : '0');
-    
-    if (image) formData.append('image', image);
-    if (audio) formData.append('audio', audio);
-
-    choices.forEach((choice, index) => {
-      formData.append(`choices[${index}][text]`, choice.text);
-      
-      if (choice.outcomes) {
-        Object.entries(choice.outcomes).forEach(([key, value]) => {
-          if (Array.isArray(value)) {
-            value.forEach(v => formData.append(`choices[${index}][outcomes][${key}][]`, String(v)));
-          } else if (value !== null && value !== undefined) {
-            formData.append(`choices[${index}][outcomes][${key}]`, String(value));
-          }
-        });
-      }
-
-      if (choice.requirements) {
-        Object.entries(choice.requirements).forEach(([key, value]) => {
-          if (Array.isArray(value)) {
-            value.forEach(v => formData.append(`choices[${index}][requirements][${key}][]`, String(v)));
-          }
-        });
-      }
+    const formData = buildNodeFormData({
+      level_id: levelId, text, is_mandatory: isMandatory, store_locally: storeLocally, image, audio, choices
     });
 
-    if (editingId) updateMutation.mutate({ id: editingId, formData });
-    else createMutation.mutate(formData);
+    if (editingId) {
+      updateEntity({ id: editingId, formData }, { onSuccess: clearForm });
+    } else {
+      createEntity(formData, { onSuccess: clearForm });
+    }
   };
 
-  const handleEdit = (question: Question, parentCaseId: number, parentLevelId: number) => {
+  const handleEdit = (question: Question) => {
+    setCaseId(selectedCase.id.toString());
+    setPhaseId(selectedPhase.id.toString());
+    setLevelId(selectedLevel.id.toString());
+    
     setEditingId(question.id);
-    setCaseId(parentCaseId.toString());
-    setLevelId(parentLevelId.toString());
     setText(question.text);
     setIsMandatory(!!question.is_mandatory);
     
     setChoices(question.choices?.map((c: Choice) => ({
-      id: c.id,
-      text: c.text,
-      outcomes: c.outcomes || {},
-      requirements: c.requirements || {}
+      id: c.id, text: c.text, outcomes: c.outcomes || {}, requirements: c.requirements || {}
     })) || []);
     
-    setImage(null);
-    setExistingImgUrl(question.img_url || null);
-    setAudio(null);
-    setExistingAudioUrl(question.audio_url || null);
+    setImage(null); setExistingImgUrl(question.img_url || null);
+    setAudio(null); setExistingAudioUrl(question.audio_url || null);
+    clearFeedback();
 
     if (imageInputRef.current) imageInputRef.current.value = '';
     if (audioInputRef.current) audioInputRef.current.value = '';
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = (questionId: number) => {
+  const handleDelete = (question: Question) => {
     if (window.confirm('Are you sure you want to delete this wiretap intercept?')) {
-      setStatusMessage(null);
-      if (editingId === questionId) clearForm();
-      deleteMutation.mutate(questionId);
+      if (editingId === question.id) clearForm();
+      deleteEntity(question.id);
     }
   };
 
-  const addChoice = () => {
-    setChoices(prev => [...prev, { text: '', outcomes: {}, requirements: {} }]);
-  };
-
+  const addChoice = () => setChoices(prev => [...prev, { text: '', outcomes: {}, requirements: {} }]);
   const updateChoice = (index: number, updatedChoice: DraftChoice) => {
     const newChoices = [...choices];
     newChoices[index] = updatedChoice;
     setChoices(newChoices);
   };
+  const removeChoice = (index: number) => setChoices(prev => prev.filter((_, i) => i !== index));
 
-  const removeChoice = (index: number) => {
-    setChoices(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const isProcessing = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
-  
-  // ACTIVELY USED TO PREVENT LINTER WARNINGS
   const previewUrl = image ? URL.createObjectURL(image) : existingImgUrl;
   const audioPreviewUrl = audio ? URL.createObjectURL(audio) : existingAudioUrl;
-  
-  const selectedCase = cases.find((c: GameCase) => c.id.toString() === caseId);
-  const availableLevels = selectedCase?.phases
-    ?.flatMap(p => p.levels || [])
-    ?.filter((l: Level) => l.presentation_type === 'wiretap') || [];
 
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', margin: 0 }}>
-            {editingId ? `// Editing Wiretap Intercept ID: ${editingId}` : '// Compile Wiretap Intercept'}
-          </h3>
-          {editingId && <button type="button" className="btn-secondary" onClick={clearForm} style={{ padding: '0.5rem 1rem', width: 'auto' }}>Cancel Edit</button>}
-        </div>
+      
+      <AdminWiretapForm
+        image={image} audio={audio} 
+        editingId={editingId} text={text} setText={setText} isMandatory={isMandatory} setIsMandatory={setIsMandatory}
+        storeLocally={storeLocally} setStoreLocally={setStoreLocally} imageInputRef={imageInputRef} audioInputRef={audioInputRef}
+        setImage={setImage} setAudio={setAudio} choices={choices} addChoice={addChoice} updateChoice={updateChoice}
+        removeChoice={removeChoice} handleSubmit={handleSubmit} handleCancelEdit={clearForm}
+        isProcessing={isProcessing} statusMessage={statusMessage} previewUrl={previewUrl} audioPreviewUrl={audioPreviewUrl}
+        contextHeader={`Targeting: ${selectedCase.title} > ${selectedPhase.title} > ${selectedLevel.title}`}
+      />
 
-        {statusMessage && <div className={`status-message ${statusMessage.type}`}>{statusMessage.message}</div>}
+      <EntityList<Question>
+        title="Active Wiretap Intercepts"
+        items={selectedLevel.questions || []}
+        emptyMessage="No wiretap intercepts built for this level yet."
+        keyExtractor={(q) => q.id}
+        isProcessing={isProcessing}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        renderItemContent={(q) => (
+          <>
+            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', marginRight: '1rem', fontSize: '0.85rem' }}>
+              [AUDIO FEED: {q.audio_url ? 'CONNECTED' : 'MISSING'}]
+            </span>
+            <strong style={{ display: 'block', marginTop: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{q.text}</strong>
+          </>
+        )}
+      />
 
-        <form onSubmit={handleSubmit} className="admin-form">
-          <div className="admin-form-row" style={{ marginBottom: '1rem' }}>
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Target Case</label>
-              <select className="admin-input" required value={caseId} onChange={(e) => { setCaseId(e.target.value); setLevelId(''); }} disabled={isFetchingCases}>
-                <option value="" disabled>-- Select a Case --</option>
-                {cases.map((c: GameCase) => <option key={c.id} value={c.id}>{c.title}</option>)}
-              </select>
-            </div>
-            
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Target Wiretap Level</label>
-              <select className="admin-input" required value={levelId} onChange={(e) => setLevelId(e.target.value)} disabled={!caseId}>
-                <option value="" disabled>-- Select a Wiretap Level --</option>
-                {availableLevels.map((l: Level) => (
-                  <option key={l.id} value={l.id}>{l.order_index}: {l.title}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(196, 139, 54, 0.1)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', border: '1px solid rgba(196, 139, 54, 0.3)' }}>
-            <input type="checkbox" id="mandatory-toggle" checked={isMandatory} onChange={(e) => setIsMandatory(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-amber)' }} />
-            <label htmlFor="mandatory-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', cursor: 'pointer' }}>
-              <strong>Mandatory Intercept:</strong> Agents must decrypt and decode this wiretap to clear the phase.
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label>Intercept Transcript / Prompt Text</label>
-            <textarea className="admin-textarea" required value={text} onChange={(e) => setText(e.target.value)} style={{ minHeight: '100px' }} placeholder="Transcribe the audio feed or outline the wiretap objectives..." />
-          </div>
-
-          <div className="admin-form-row">
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Wiretap Audio Feed (MP3/WAV) {editingId && '(Leave blank to keep existing)'}</label>
-              <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
-              {audioPreviewUrl && (
-                <div style={{ marginTop: '0.5rem' }}>
-                  <audio controls src={audioPreviewUrl} style={{ height: '32px', width: '100%' }} />
-                </div>
-              )}
-            </div>
-            
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Associated Image / Dossier (Optional)</label>
-              <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
-              {previewUrl && (
-                <div style={{ marginTop: '0.5rem' }}>
-                  <img src={previewUrl} alt="Preview" style={{ maxHeight: '100px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }} />
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
-            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
-              <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
-            </label>
-          </div>
-
-          {/* CHOICES SECTION */}
-          <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h4 style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', margin: 0 }}>Intercept Analysis Choices</h4>
-              <button type="button" onClick={addChoice} className="btn-secondary" style={{ padding: '0.5rem 1rem', width: 'auto', fontSize: '0.85rem' }}>
-                + Add Option
-              </button>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {choices.map((choice, index) => (
-                <ChoiceEditorCard
-                  key={index}
-                  index={index}
-                  choice={choice}
-                  updateChoice={(updated) => updateChoice(index, updated)}
-                  removeChoice={() => removeChoice(index)}
-                  caseId={Number(caseId)}
-                />
-              ))}
-            </div>
-          </div>
-
-          <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', color: 'var(--bg-dark)', marginTop: '2rem' }}>
-            {isProcessing ? 'Transmitting...' : editingId ? 'Update Intercept' : 'Commit Intercept to Database'}
-          </button>
-        </form>
-      </div>
-
-      {/* MANAGE EXISTING WIRETAPS */}
-      {selectedCase && availableLevels.length > 0 && (
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
-          <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', marginBottom: '1.5rem' }}>// Active Wiretap Intercepts</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            {availableLevels.map((level: Level) => (
-              <div key={level.id}>
-                <h4 style={{ color: 'var(--text-secondary)', marginBottom: '1rem', fontFamily: 'var(--font-mono)', fontSize: '0.9rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '0.5rem' }}>
-                  Level {level.order_index}: {level.title}
-                </h4>
-                {(!level.questions || level.questions.length === 0) ? (
-                  <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem' }}>No wiretap intercepts assigned.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {level.questions.map((q: Question) => (
-                      <div key={q.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ overflow: 'hidden' }}>
-                          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', marginRight: '1rem', fontSize: '0.85rem' }}>
-                            [AUDIO FEED: {q.audio_url ? 'CONNECTED' : 'MISSING'}]
-                          </span>
-                          <strong style={{ display: 'block', marginTop: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{q.text}</strong>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.75rem', flex: 'none', marginLeft: '1rem' }}>
-                          <button type="button" onClick={() => handleEdit(q, selectedCase.id, level.id)} disabled={isProcessing} style={{ background: 'transparent', border: '1px solid var(--accent-amber)', color: 'var(--accent-amber)', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>Edit</button>
-                          <button type="button" onClick={() => handleDelete(q.id)} disabled={isProcessing} style={{ background: 'transparent', border: '1px solid var(--accent-crimson)', color: 'var(--accent-crimson)', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>Delete</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

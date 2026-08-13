@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { fetchAdminCases } from '@/services/adminApi';
-import type { GameCase, Evidence, Level, Phase, Suspect, Victim } from '@/types';
+import { useAdminContext } from '@/context/AdminContext';
+import type { Evidence, Level, Phase, Suspect, Victim } from '@/types';
 
 export interface DraftChoice {
   id?: number | string;
@@ -36,8 +35,6 @@ interface ChoiceEditorCardProps {
   choice: DraftChoice;
   updateChoice: (updated: DraftChoice) => void;
   removeChoice: () => void;
-  caseId: number;
-  // Optional props for location coordinate mapping mode
   isLocationMode?: boolean;
   isTargeting?: boolean;
   onToggleTarget?: () => void;
@@ -48,32 +45,24 @@ export default function ChoiceEditorCard({
   choice, 
   updateChoice, 
   removeChoice, 
-  caseId,
   isLocationMode = false,
   isTargeting = false,
   onToggleTarget
 }: ChoiceEditorCardProps) {
 
-  // Expand if it's a brand new string UUID (draft) or missing. 
-  // Collapse if it's a numeric ID (saved in Laravel).
   const [isExpanded, setIsExpanded] = useState<boolean>(
     typeof choice.id === 'string' || choice.id === undefined
   );
 
-  const { data: cases = [] } = useQuery<GameCase[]>({
-    queryKey: ['adminCases'],
-    queryFn: async () => {
-      const result = await fetchAdminCases();
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    }
-  });
+  const { selectedCase } = useAdminContext();
 
-  const selectedCase = cases.find(c => c.id === caseId);
-  const availableEvidence = selectedCase?.evidences || [];
-  const availableLevels = selectedCase?.phases?.flatMap(p => p.levels || []) || [];
-  const availableSuspects = selectedCase?.suspects || [];
-  const availableVictims = selectedCase?.victims || [];
+  // Protect against rendering if context drops
+  if (!selectedCase) return null;
+
+  const availableEvidence = selectedCase.evidences || [];
+  const availableLevels = selectedCase.phases?.flatMap(p => p.levels || []) || [];
+  const availableSuspects = selectedCase.suspects || [];
+  const availableVictims = selectedCase.victims || [];
 
   const updateOutcomes = <K extends keyof NonNullable<DraftChoice['outcomes']>>(
     key: K,
@@ -107,7 +96,6 @@ export default function ChoiceEditorCard({
   const unlockedVi = choice.outcomes?.unlock_victims?.map(String) || [];
   const reqEv = choice.requirements?.required_evidence?.map(String) || [];
 
-  // Extract coordinate badge text if formatted as "XX.X,YY.Y | Title"
   const hasCoords = choice.text.includes('|') && !choice.text.startsWith('|');
   const coordPreview = hasCoords ? choice.text.split('|')[0].trim() : null;
 
@@ -142,7 +130,6 @@ export default function ChoiceEditorCard({
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexShrink: 0 }} onClick={(e) => e.stopPropagation()}>
           
-          {/* LOCATION COORDINATE BUTTON EMBEDDED DIRECTLY IN HEADER */}
           {isLocationMode && onToggleTarget && (
             <button 
               type="button" 
@@ -195,7 +182,6 @@ export default function ChoiceEditorCard({
             />
           </div>
 
-          {/* OUTCOMES SECTION */}
           <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '6px' }}>
             <h6 style={{ color: 'var(--text-secondary)', margin: '0 0 1rem 0', fontFamily: 'var(--font-mono)' }}>[ NARRATIVE OUTCOMES & UNLOCKS ]</h6>
             
@@ -225,7 +211,7 @@ export default function ChoiceEditorCard({
             <div className="admin-form-row">
               <div className="form-group" style={{ flex: 1 }}>
                 <label>Unlocks Evidence</label>
-                <select multiple className="admin-input" style={{ height: '100px' }} value={unlockedEv} onChange={(e) => updateOutcomes('unlock_evidence', Array.from(e.target.selectedOptions, opt => Number(opt.value)))} disabled={!caseId}>
+                <select multiple className="admin-input" style={{ height: '100px' }} value={unlockedEv} onChange={(e) => updateOutcomes('unlock_evidence', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
                   {availableEvidence.map((ev: Evidence) => (
                     <option key={ev.id} value={ev.id.toString()}>EX-{ev.id.toString().padStart(3, '0')}: {ev.title}</option>
                   ))}
@@ -233,7 +219,7 @@ export default function ChoiceEditorCard({
               </div>
               <div className="form-group" style={{ flex: 1 }}>
                 <label>Unlocks Phase/Level</label>
-                <select multiple className="admin-input" style={{ height: '100px' }} value={unlockedLv} onChange={(e) => updateOutcomes('unlock_levels', Array.from(e.target.selectedOptions, opt => Number(opt.value)))} disabled={!caseId}>
+                <select multiple className="admin-input" style={{ height: '100px' }} value={unlockedLv} onChange={(e) => updateOutcomes('unlock_levels', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
                   {availableLevels.map((lv: Level) => (
                     <option key={lv.id} value={lv.id.toString()}>Level {lv.order_index}: {lv.title}</option>
                   ))}
@@ -244,7 +230,7 @@ export default function ChoiceEditorCard({
             <div className="admin-form-row">
               <div className="form-group" style={{ flex: 1 }}>
                 <label>Unlocks Suspects</label>
-                <select multiple className="admin-input" style={{ height: '100px' }} value={unlockedSu} onChange={(e) => updateOutcomes('unlock_suspects', Array.from(e.target.selectedOptions, opt => Number(opt.value)))} disabled={!caseId}>
+                <select multiple className="admin-input" style={{ height: '100px' }} value={unlockedSu} onChange={(e) => updateOutcomes('unlock_suspects', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
                   {availableSuspects.map((su: Suspect) => (
                     <option key={su.id} value={su.id.toString()}>{su.name}</option>
                   ))}
@@ -252,7 +238,7 @@ export default function ChoiceEditorCard({
               </div>
               <div className="form-group" style={{ flex: 1 }}>
                 <label>Unlocks Victims</label>
-                <select multiple className="admin-input" style={{ height: '100px' }} value={unlockedVi} onChange={(e) => updateOutcomes('unlock_victims', Array.from(e.target.selectedOptions, opt => Number(opt.value)))} disabled={!caseId}>
+                <select multiple className="admin-input" style={{ height: '100px' }} value={unlockedVi} onChange={(e) => updateOutcomes('unlock_victims', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
                   {availableVictims.map((vi: Victim) => (
                     <option key={vi.id} value={vi.id.toString()}>{vi.name}</option>
                   ))}
@@ -261,12 +247,11 @@ export default function ChoiceEditorCard({
             </div>
           </div>
 
-          {/* REQUIREMENTS SECTION */}
           <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', border: '1px dashed var(--accent-amber)' }}>
             <h6 style={{ color: 'var(--accent-amber)', margin: '0 0 1rem 0', fontFamily: 'var(--font-mono)' }}>[ GATEKEEPER REQUIREMENTS ]</h6>
             <div className="form-group">
               <label>Required Evidence to Select</label>
-              <select multiple className="admin-input" style={{ height: '100px' }} value={reqEv} onChange={(e) => updateRequirements('required_evidence', Array.from(e.target.selectedOptions, opt => Number(opt.value)))} disabled={!caseId}>
+              <select multiple className="admin-input" style={{ height: '100px' }} value={reqEv} onChange={(e) => updateRequirements('required_evidence', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
                 {availableEvidence.map((ev: Evidence) => (
                   <option key={ev.id} value={ev.id.toString()}>EX-{ev.id.toString().padStart(3, '0')}: {ev.title}</option>
                 ))}
