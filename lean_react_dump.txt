@@ -2170,16 +2170,17 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\
 import { useState } from 'react';
 import CaseForm from './forms/CaseForm';
 import PhaseForm from './forms/PhaseForm';
-import LevelForm from './forms/LevelForm';
+import LevelForm from './forms/LevelForm/LevelForm';
 import EvidenceForm from './forms/EvidenceForm';
 import QuestionForm from './forms/QuestionForm/QuestionForm';
 import SuspectForm from './forms/SuspectForm'; 
 import VictimForm from './forms/VictimForm'; 
+import AdminInterrogationBuilder from './forms/LevelForm/AdminInterrogationBuilder';
 
 import InvestigationRequestForm from './forms/InvestigationRequestForm';
 import './AdminDashboard.css';
 
-type AdminTab = 'cases' | 'phases' | 'levels' | 'evidences' | 'requests' | 'suspects' | 'victims' | 'questions';
+type AdminTab = 'cases' | 'phases' | 'levels' | 'evidences' | 'requests' | 'suspects' | 'victims' | 'questions' | 'interrogation';
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState<AdminTab>('cases');
@@ -2195,6 +2196,7 @@ export default function AdminDashboard() {
         <button className={`admin-tab-btn ${activeTab === 'requests' ? 'active' : ''}`} onClick={() => setActiveTab('requests')}>Combos</button>
         <button className={`admin-tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} onClick={() => setActiveTab('suspects')}>New Suspect</button>
         <button className={`admin-tab-btn ${activeTab === 'victims' ? 'active' : ''}`} onClick={() => setActiveTab('victims')}>New Victim</button>
+        <button className={`admin-tab-btn ${activeTab === 'interrogation' ? 'active' : ''}`} onClick={() => setActiveTab('interrogation')}>Interrogation Builder</button>
       </nav>
 
       <div className="admin-tab-content">
@@ -2206,6 +2208,7 @@ export default function AdminDashboard() {
         {activeTab === 'requests' && <InvestigationRequestForm />}
         {activeTab === 'suspects' && <SuspectForm />}
         {activeTab === 'victims' && <VictimForm />}
+        {activeTab === 'interrogation' && <AdminInterrogationBuilder />}
       </div>
     </div>
   );
@@ -3101,307 +3104,6 @@ export default function InvestigationRequestForm() {
 }
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\LevelForm.tsx
-----------------------------------------
-import { useState, useRef } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { createAdminLevel, updateAdminLevel, deleteAdminLevel, fetchAdminCases } from '@/services/adminApi';
-import { getInvestigationRequestLabel } from '@/types';
-
-export default function LevelForm() {
-  const queryClient = useQueryClient();
-  const [editingId, setEditingId] = useState<number | null>(null);
-
-  const [caseId, setCaseId] = useState('');
-  const [phaseId, setPhaseId] = useState(''); 
-  const [title, setTitle] = useState('');
-  const [details, setDetails] = useState('');
-  const [orderIndex, setOrderIndex] = useState('1');
-  const [image, setImage] = useState<File | null>(null);
-  const [storeLocally, setStoreLocally] = useState(false);
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [isInitial, setIsInitial] = useState(true);
-  const [presentationType, setPresentationType] = useState<string>('standard');
-  const [requiredRequestId, setRequiredRequestId] = useState<string>('');   
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const { data: cases = [], isLoading: isFetchingCases } = useQuery({
-    queryKey: ['adminCases'],
-    queryFn: async () => {
-      const result = await fetchAdminCases();
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    }
-  });
-
-  const clearForm = () => {
-    setEditingId(null);
-    setTitle('');
-    setDetails('');
-    setOrderIndex('1');
-    setIsInitial(true);
-    setStoreLocally(false);
-    setPresentationType('standard');
-    setRequiredRequestId('');
-    setImage(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-  };
-
-  const createMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
-      const result = await createAdminLevel(formData);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    },
-    onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Level successfully added to the database.' });
-      clearForm();
-      // Auto-increment for the next level creation
-      setOrderIndex((prev) => (parseInt(prev || '1') + 1).toString());
-      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
-    },
-    onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, formData }: { id: number, formData: FormData }) => {
-      const result = await updateAdminLevel(id, formData);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    },
-    onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Level successfully updated.' });
-      clearForm();
-      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
-    },
-    onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
-      const result = await deleteAdminLevel(id);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    },
-    onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Level and associated media wiped completely.' });
-      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
-    },
-    onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
-  });
-
-  const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
-  const availablePhases = selectedCase?.phases || [];
-  const availableRequests = selectedCase?.investigation_requests || [];
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setFeedback(null);
-    const formData = new FormData();
-    formData.append('phase_id', phaseId);
-    formData.append('title', title);
-    formData.append('details', details);
-    formData.append('order_index', orderIndex);
-    formData.append('is_initial', isInitial ? '1' : '0');
-    formData.append('presentation_type', presentationType);
-    formData.append('store_locally', storeLocally ? '1' : '0');
-    if (requiredRequestId) formData.append('required_request_id', requiredRequestId);
-    if (image) formData.append('image', image);
-
-    if (editingId) {
-      updateMutation.mutate({ id: editingId, formData });
-    } else {
-      createMutation.mutate(formData);
-    }
-  };
-
-  const handleEdit = (level: any, parentCaseId: number, parentPhaseId: number) => {
-    setEditingId(level.id);
-    setCaseId(parentCaseId.toString());
-    setPhaseId(parentPhaseId.toString());
-    setTitle(level.title);
-    setDetails(level.details || '');
-    setOrderIndex(level.order_index.toString());
-    setIsInitial(!!level.is_initial);
-    setPresentationType(level.presentation_type || 'standard');
-    setRequiredRequestId(level.required_request_id?.toString() || '');
-    
-    setImage(null);
-    if (fileInputRef.current) fileInputRef.current.value = '';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDelete = (levelId: number, levelTitle: string) => {
-    if (window.confirm(`Are you absolutely sure you want to delete "${levelTitle}"? All nested questions and media will be wiped permanently.`)) {
-      setFeedback(null);
-      if (editingId === levelId) clearForm();
-      deleteMutation.mutate(levelId);
-    }
-  };
-
-  const isProcessing = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
-
-  return (
-    <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-      
-      {/* FORM SECTION */}
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', margin: 0 }}>
-            {editingId ? `// Editing Level ID: ${editingId}` : '// Initialize New Level'}
-          </h3>
-          {editingId && (
-            <button type="button" className="btn-secondary" onClick={clearForm} style={{ padding: '0.5rem 1rem', width: 'auto' }}>
-              Cancel Edit
-            </button>
-          )}
-        </div>
-
-        {feedback && <div className={`status-message ${feedback.type}`}>{feedback.message}</div>}
-
-        <form onSubmit={handleSubmit} className="admin-form">
-          <div className="admin-form-row">
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Target Case</label>
-              <select className="admin-input" required value={caseId} onChange={(e) => { setCaseId(e.target.value); setPhaseId(''); }} disabled={isFetchingCases}>
-                <option value="" disabled>-- Select a Case --</option>
-                {cases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
-              </select>
-            </div>
-            
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Target Phase</label>
-              <select className="admin-input" required value={phaseId} onChange={(e) => setPhaseId(e.target.value)} disabled={!caseId}>
-                <option value="" disabled>-- Select a Phase --</option>
-                {availablePhases.map((p: any) => <option key={p.id} value={p.id}>{p.order_index}: {p.title}</option>)}
-              </select>
-            </div>
-
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Phase Order Index</label>
-              <input type="number" className="admin-input" min="1" required value={orderIndex} onChange={(e) => setOrderIndex(e.target.value)} />
-            </div>
-
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Presentation Format</label>
-              <select className="admin-input" value={presentationType} onChange={(e) => setPresentationType(e.target.value)}>
-                <option value="standard">Standard Investigation</option>
-                <option value="interrogation">Suspect Interrogation</option>
-                <option value="location">Location</option>
-                <option value="wiretap">Communications Wiretap</option> 
-              </select>
-            </div>
-
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Required Combo (Gatekeeper)</label>
-              <select className="admin-input" value={requiredRequestId} onChange={(e) => setRequiredRequestId(e.target.value)} disabled={!caseId}>
-                <option value="">-- No Requirement --</option>
-                {availableRequests.map((req: any) => (
-                  <option key={req.id} value={req.id}>
-                    REQ-{req.id}: {getInvestigationRequestLabel(req.request_type)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-            <input type="checkbox" id="initial-level-toggle" checked={isInitial} onChange={(e) => setIsInitial(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }} />
-            <label htmlFor="initial-level-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
-              <strong>Initial Phase:</strong> This phase is visible on the roadmap immediately. (Uncheck if it must be unlocked via a specific player choice).
-            </label>
-          </div>
-
-          <div className="form-group">
-            <label>Level Title</label>
-            <input type="text" className="admin-input" required value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-
-          <div className="form-group">
-            <label>Level Details (Objectives)</label>
-            <textarea className="admin-textarea" required value={details} onChange={(e) => setDetails(e.target.value)} />
-          </div>
-
-          <div className="form-group">
-            <label>Location / Background Image {editingId && '(Leave blank to keep existing)'}</label>
-            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-              <strong>Optimal:</strong> 16:9 ratio (e.g., 1920x1080) for full-screen location sweeps. High contrast recommended. Max 4MB.
-            </p>
-            <input 
-              type="file" className="admin-file-input" accept="image/*" 
-              ref={fileInputRef} 
-              onChange={(e) => setImage(e.target.files?.[0] || null)} 
-            />
-          </div>
-
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '1rem', 
-            background: 'rgba(255,255,255,0.02)', 
-            padding: '1rem', 
-            borderRadius: '8px', 
-            marginTop: '1rem',
-            border: '1px solid rgba(255,255,255,0.05)'
-          }}>
-            <input 
-              type="checkbox" 
-              id="store-locally-toggle" 
-              checked={storeLocally} 
-              onChange={(e) => setStoreLocally(e.target.checked)} 
-              style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} 
-            />
-            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
-              <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
-            </label>
-          </div>
-
-          <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>
-            {isProcessing ? 'Processing Data...' : editingId ? 'Update Level' : 'Commit Level to Database'}
-          </button>
-        </form>
-      </div>
-
-      {/* MANAGE EXISTING LEVELS */}
-      {selectedCase && availablePhases.length > 0 && (
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
-          <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', marginBottom: '1.5rem' }}>// Manage Existing Levels</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {availablePhases.map((phase: any) => (
-              <div key={`phase-group-${phase.id}`}>
-                <h4 style={{ color: 'var(--text-secondary)', marginBottom: '0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>
-                  Phase: {phase.title}
-                </h4>
-                {(!phase.levels || phase.levels.length === 0) ? (
-                  <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem', margin: '0 0 1rem 0' }}>No levels assigned to this phase.</p>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {phase.levels.sort((a: any, b: any) => a.order_index - b.order_index).map((level: any) => (
-                      <div key={level.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div>
-                          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', marginRight: '1rem' }}>IDX: {level.order_index}</span>
-                          <strong>{level.title}</strong>
-                          <span style={{ marginLeft: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({level.presentation_type})</span>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.75rem' }}>
-                          <button type="button" onClick={() => handleEdit(level, selectedCase.id, phase.id)} disabled={isProcessing} style={{ background: 'transparent', border: '1px solid var(--accent-amber)', color: 'var(--accent-amber)', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>Edit</button>
-                          <button type="button" onClick={() => handleDelete(level.id, level.title)} disabled={isProcessing} style={{ background: 'transparent', border: '1px solid var(--accent-crimson)', color: 'var(--accent-crimson)', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>Delete</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-    </div>
-  );
-}
-
-
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\PhaseForm.tsx
 ----------------------------------------
 import { useState } from 'react';
@@ -3997,6 +3699,737 @@ export default function VictimForm() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\LevelForm\AdminInterrogationBuilder.css
+----------------------------------------
+/* D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\AdminInterrogationBuilder.css */
+
+.interrogation-canvas-container {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.interrogation-workspace {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 2rem;
+  align-items: start;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 2rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  min-height: 500px;
+}
+
+.dialogue-node-card {
+  background: rgba(20, 21, 24, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 4px solid var(--accent-cyan);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.dialogue-node-card.unsaved {
+  border-top-color: var(--accent-amber);
+  box-shadow: 0 0 20px rgba(196, 139, 54, 0.1);
+}
+
+.node-header {
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.node-id-badge {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--accent-cyan);
+  font-weight: 700;
+}
+
+.unsaved .node-id-badge {
+  color: var(--accent-amber);
+}
+
+.node-body {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.node-suspect-block label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--accent-crimson);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.node-responses-block label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.response-branch {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.response-branch:last-child {
+  margin-bottom: 0;
+}
+
+.branch-link-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 0.5rem;
+  border-radius: 4px;
+}
+
+.link-icon {
+  color: var(--accent-cyan);
+  font-size: 1.2rem;
+}
+
+.advanced-intel-panel {
+  margin-top: 0.5rem;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.4);
+  border-left: 2px solid var(--accent-amber);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  border-radius: 0 4px 4px 0;
+}
+
+.node-footer {
+  padding: 1rem 1.5rem;
+  background: rgba(0, 0, 0, 0.2);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  gap: 1rem;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\LevelForm\AdminInterrogationBuilder.tsx
+----------------------------------------
+// D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\AdminInterrogationBuilder.tsx
+
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createAdminQuestion, updateAdminQuestion, deleteAdminQuestion, fetchAdminCases } from '@/services/adminApi';
+import './AdminInterrogationBuilder.css';
+
+// --- SHARED UTILS ---
+const defaultOutcomes = () => ({ feedback: '', next_question_id: '', gives_strike: false, unlock_evidence: [] });
+const defaultRequirements = () => ({ required_evidence: [], required_choices: [] });
+
+const appendToFormData = (fd: FormData, rootKey: string, obj: any) => {
+  if (obj === null || obj === undefined) return;
+  if (Array.isArray(obj)) {
+      obj.forEach((val, i) => appendToFormData(fd, `${rootKey}[${i}]`, val));
+  } else if (typeof obj === 'object') {
+      Object.keys(obj).forEach(key => appendToFormData(fd, `${rootKey}[${key}]`, obj[key]));
+  } else {
+      fd.append(rootKey, obj.toString());
+  }
+};
+
+// --- SINGLE NODE (CARD) COMPONENT ---
+const DialogueNode = ({ 
+  nodeData, levelId, allSavedNodes, availableEvidences, onSaved, onDeleted 
+}: any) => {
+  
+  // THE FIX: Safely parse incoming database JSON to prevent null pointer crashes
+  const safeChoices = (nodeData.choices || []).map((c: any) => ({
+    id: c.id || crypto.randomUUID(),
+    text: c.text || '',
+    outcomes: {
+      feedback: c.outcomes?.feedback || '',
+      next_question_id: c.outcomes?.next_question_id?.toString() || '',
+      gives_strike: !!c.outcomes?.gives_strike,
+      unlock_evidence: c.outcomes?.unlock_evidence?.map(String) || []
+    },
+    requirements: {
+      required_evidence: c.requirements?.required_evidence?.map(String) || [],
+      required_choices: c.requirements?.required_choices?.map(String) || []
+    }
+  }));
+
+  const [text, setText] = useState(nodeData.text || '');
+  const [choices, setChoices] = useState<any[]>(safeChoices.length > 0 ? safeChoices : [
+    { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }
+  ]);
+  
+  const [showAdvanced, setShowAdvanced] = useState<Record<string, boolean>>({});
+  const [feedback, setFeedback] = useState<{type: string, message: string} | null>(null);
+
+  const isSaved = typeof nodeData.id === 'number';
+
+  const saveMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      if (isSaved) return (await updateAdminQuestion(nodeData.id, formData)).value;
+      return (await createAdminQuestion(formData)).value;
+    },
+    onSuccess: () => {
+      setFeedback({ type: 'success', message: 'Node synced.' });
+      setTimeout(() => setFeedback(null), 2000);
+      onSaved(); 
+    },
+    onError: (err: Error) => setFeedback({ type: 'error', message: err.message })
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => (await deleteAdminQuestion(nodeData.id)).value,
+    onSuccess: () => onDeleted(),
+  });
+
+  const handleSave = () => {
+    setFeedback(null);
+    const formData = new FormData();
+    formData.append('level_id', levelId.toString());
+    formData.append('text', text);
+    formData.append('is_mandatory', '1'); 
+    formData.append('store_locally', '0');
+
+    choices.forEach((choice, i) => {
+      if (!choice.text.trim()) return; // Skip empty choices
+      
+      formData.append(`choices[${i}][text]`, choice.text);
+      
+      const cleanOutcomes: any = {};
+      if (choice.outcomes.gives_strike) cleanOutcomes.gives_strike = true;
+      if (choice.outcomes.next_question_id) cleanOutcomes.next_question_id = parseInt(choice.outcomes.next_question_id, 10);
+      if (choice.outcomes.unlock_evidence?.length > 0) cleanOutcomes.unlock_evidence = choice.outcomes.unlock_evidence.map(Number);
+      if (Object.keys(cleanOutcomes).length > 0) appendToFormData(formData, `choices[${i}][outcomes]`, cleanOutcomes);
+      
+      const cleanReqs: any = {};
+      if (choice.requirements.required_evidence?.length > 0) cleanReqs.required_evidence = choice.requirements.required_evidence.map(Number);
+      if (Object.keys(cleanReqs).length > 0) appendToFormData(formData, `choices[${i}][requirements]`, cleanReqs);
+    });
+
+    saveMutation.mutate(formData);
+  };
+
+  const updateChoice = (id: string, field: string, value: any, category?: 'outcomes' | 'requirements') => {
+    setChoices(choices.map(c => {
+      if (c.id !== id) return c;
+      if (category) return { ...c, [category]: { ...c[category], [field]: value } };
+      return { ...c, [field]: value };
+    }));
+  };
+
+  return (
+    <div className={`dialogue-node-card ${isSaved ? '' : 'unsaved'}`}>
+      <div className="node-header">
+        <span className="node-id-badge">{isSaved ? `NODE ID: ${nodeData.id}` : 'UNSAVED DRAFT NODE'}</span>
+        {feedback && <span style={{ fontSize: '0.75rem', color: feedback.type === 'success' ? 'var(--accent-success)' : 'var(--accent-crimson)' }}>{feedback.message}</span>}
+      </div>
+
+      <div className="node-body">
+        <div className="node-suspect-block">
+          <label>Suspect Dialogue</label>
+          <textarea className="admin-textarea" dir="auto" value={text} onChange={(e) => setText(e.target.value)} style={{ minHeight: '80px' }} placeholder="Suspect says..." />
+        </div>
+
+        <div className="node-responses-block">
+          <label>Player Responses & Branches</label>
+          {choices.map((choice) => (
+            <div key={choice.id} className="response-branch">
+              <input type="text" className="admin-input" dir="auto" value={choice.text} onChange={(e) => updateChoice(choice.id, 'text', e.target.value)} placeholder="Player says..." />
+              
+              <div className="branch-link-row">
+                <span className="link-icon">➔</span>
+                <select 
+                  className="admin-input" 
+                  style={{ flex: 1, padding: '0.5rem' }}
+                  value={choice.outcomes.next_question_id || ''}
+                  onChange={(e) => updateChoice(choice.id, 'next_question_id', e.target.value, 'outcomes')}
+                >
+                  <option value="">[ END CONVERSATION / RETURN TO HUB ]</option>
+                  {allSavedNodes.filter((n: any) => n.id !== nodeData.id).map((n: any) => (
+                    <option key={n.id} value={n.id}>Leads to Node {n.id} ({n.text.substring(0, 20)}...)</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '0.5rem' }}>
+                <button type="button" className="btn-secondary" style={{ fontSize: '0.75rem', padding: '0.25rem 0.5rem', width: 'auto' }} onClick={() => setShowAdvanced({...showAdvanced, [choice.id]: !showAdvanced[choice.id]})}>
+                  {showAdvanced[choice.id] ? 'Hide Advanced Intel' : '⚙️ Advanced Intel & Locks'}
+                </button>
+                <button type="button" onClick={() => setChoices(choices.filter(c => c.id !== choice.id))} style={{ background: 'none', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer' }}>✕</button>
+              </div>
+
+              {showAdvanced[choice.id] && (
+                <div className="advanced-intel-panel">
+                  <label style={{ fontSize: '0.7rem', color: 'var(--accent-amber)' }}>Requires Evidence to Say</label>
+                  <select multiple className="admin-input" style={{ height: '60px', padding: '0.25rem' }} value={choice.requirements.required_evidence || []} onChange={(e) => updateChoice(choice.id, 'required_evidence', Array.from(e.target.selectedOptions, opt => opt.value), 'requirements')}>
+                    {availableEvidences.map((ev: any) => <option key={ev.id} value={ev.id}>EX-{ev.id} {ev.title}</option>)}
+                  </select>
+
+                  <label style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginTop: '0.5rem' }}>Unlocks Evidence on Click</label>
+                  <select multiple className="admin-input" style={{ height: '60px', padding: '0.25rem' }} value={choice.outcomes.unlock_evidence || []} onChange={(e) => updateChoice(choice.id, 'unlock_evidence', Array.from(e.target.selectedOptions, opt => opt.value), 'outcomes')}>
+                    {availableEvidences.map((ev: any) => <option key={ev.id} value={ev.id}>EX-{ev.id} {ev.title}</option>)}
+                  </select>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    <input type="checkbox" checked={choice.outcomes.gives_strike} onChange={(e) => updateChoice(choice.id, 'gives_strike', e.target.checked, 'outcomes')} />
+                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-crimson)' }}>Triggers Strike (Penalty)</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+          <button type="button" className="btn-secondary" style={{ padding: '0.5rem', marginTop: '0.5rem' }} onClick={() => setChoices([...choices, { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }])}>
+            + Add Response Branch
+          </button>
+        </div>
+      </div>
+
+      <div className="node-footer">
+        <button className="btn-primary" onClick={handleSave} disabled={saveMutation.isPending}>
+          {saveMutation.isPending ? 'Syncing...' : isSaved ? 'Update Node' : 'Commit New Node'}
+        </button>
+        {isSaved && (
+          <button className="btn-secondary" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }} onClick={() => { if(window.confirm('Delete node?')) deleteMutation.mutate(); }}>
+            Delete
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- MAIN BUILDER ---
+export default function AdminInterrogationBuilder() {
+  const queryClient = useQueryClient();
+  const [caseId, setCaseId] = useState('');
+  const [phaseId, setPhaseId] = useState('');
+  const [levelId, setLevelId] = useState('');
+  const [draftNodes, setDraftNodes] = useState<any[]>([]);
+
+  const { data: cases = [] } = useQuery({
+    queryKey: ['adminCases'],
+    queryFn: async () => (await fetchAdminCases()).value
+  });
+
+  const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
+  const availablePhases = selectedCase?.phases || [];
+  const selectedPhase = availablePhases.find((p: any) => p.id.toString() === phaseId);
+  const availableLevels = (selectedPhase?.levels || []).filter((l: any) => l.presentation_type === 'interrogation');
+  const selectedLevel = availableLevels.find((l: any) => l.id.toString() === levelId);
+
+  const savedNodes = selectedLevel?.questions || [];
+  
+  const refreshData = () => queryClient.invalidateQueries({ queryKey: ['adminCases'] });
+
+  const addDraftNode = () => {
+    setDraftNodes([...draftNodes, { id: `draft_${Date.now()}`, text: '', choices: [] }]);
+  };
+
+  return (
+    <div className="interrogation-canvas-container">
+      <div className="admin-form-container glass-panel" style={{ padding: '1.5rem', marginBottom: '0' }}>
+        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', margin: '0 0 1.5rem 0' }}>// Interrogation Tree Builder</h3>
+        <div className="admin-form-row">
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Target Case</label>
+            <select className="admin-input" value={caseId} onChange={(e) => { setCaseId(e.target.value); setPhaseId(''); setLevelId(''); }}>
+              <option value="">-- Select Case --</option>
+              {cases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Target Phase</label>
+            <select className="admin-input" value={phaseId} onChange={(e) => { setPhaseId(e.target.value); setLevelId(''); }} disabled={!caseId}>
+              <option value="">-- Select Phase --</option>
+              {availablePhases.map((p: any) => <option key={p.id} value={p.id}>{p.title}</option>)}
+            </select>
+          </div>
+          <div className="form-group" style={{ flex: 1 }}>
+            <label>Interrogation Level</label>
+            <select className="admin-input" value={levelId} onChange={(e) => { setLevelId(e.target.value); setDraftNodes([]); }} disabled={!phaseId}>
+              <option value="">-- Select Interrogation Level --</option>
+              {availableLevels.map((l: any) => <option key={l.id} value={l.id}>{l.title}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {levelId ? (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 1rem' }}>
+            <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+              Total Nodes: {savedNodes.length} (Saved) + {draftNodes.length} (Drafts)
+            </span>
+            <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} onClick={addDraftNode}>
+              + Append New Node
+            </button>
+          </div>
+
+          <div className="interrogation-workspace">
+            {savedNodes.map((node: any) => (
+              <DialogueNode 
+                key={node.id} 
+                nodeData={node} 
+                levelId={levelId} 
+                allSavedNodes={savedNodes}
+                availableEvidences={selectedCase?.evidences || []} 
+                onSaved={refreshData} 
+                onDeleted={refreshData}
+              />
+            ))}
+            
+            {draftNodes.map((node: any) => (
+              <DialogueNode 
+                key={node.id} 
+                nodeData={node} 
+                levelId={levelId} 
+                allSavedNodes={savedNodes}
+                availableEvidences={selectedCase?.evidences || []} 
+                onSaved={() => { setDraftNodes(draftNodes.filter(d => d.id !== node.id)); refreshData(); }} 
+                onDeleted={() => setDraftNodes(draftNodes.filter(d => d.id !== node.id))}
+              />
+            ))}
+            
+            {savedNodes.length === 0 && draftNodes.length === 0 && (
+              <div className="terminal-text" style={{ gridColumn: '1 / -1' }}>Workspace empty. Append a new node to begin the interrogation sequence.</div>
+            )}
+          </div>
+        </>
+      ) : (
+        <div className="terminal-text">Please select a valid Interrogation level to open the visual builder.</div>
+      )}
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\LevelForm\LevelForm.tsx
+----------------------------------------
+import { useState, useRef } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { createAdminLevel, updateAdminLevel, deleteAdminLevel, fetchAdminCases } from '@/services/adminApi';
+import { getInvestigationRequestLabel } from '@/types';
+
+export default function LevelForm() {
+  const queryClient = useQueryClient();
+  const [editingId, setEditingId] = useState<number | null>(null);
+
+  const [caseId, setCaseId] = useState('');
+  const [phaseId, setPhaseId] = useState(''); 
+  const [title, setTitle] = useState('');
+  const [details, setDetails] = useState('');
+  const [orderIndex, setOrderIndex] = useState('1');
+  const [image, setImage] = useState<File | null>(null);
+  const [storeLocally, setStoreLocally] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [isInitial, setIsInitial] = useState(true);
+  const [presentationType, setPresentationType] = useState<string>('standard');
+  const [requiredRequestId, setRequiredRequestId] = useState<string>('');   
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: cases = [], isLoading: isFetchingCases } = useQuery({
+    queryKey: ['adminCases'],
+    queryFn: async () => {
+      const result = await fetchAdminCases();
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    }
+  });
+
+  const clearForm = () => {
+    setEditingId(null);
+    setTitle('');
+    setDetails('');
+    setOrderIndex('1');
+    setIsInitial(true);
+    setStoreLocally(false);
+    setPresentationType('standard');
+    setRequiredRequestId('');
+    setImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const createMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const result = await createAdminLevel(formData);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: () => {
+      setFeedback({ type: 'success', message: 'Level successfully added to the database.' });
+      clearForm();
+      // Auto-increment for the next level creation
+      setOrderIndex((prev) => (parseInt(prev || '1') + 1).toString());
+      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
+    },
+    onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, formData }: { id: number, formData: FormData }) => {
+      const result = await updateAdminLevel(id, formData);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: () => {
+      setFeedback({ type: 'success', message: 'Level successfully updated.' });
+      clearForm();
+      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
+    },
+    onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const result = await deleteAdminLevel(id);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: () => {
+      setFeedback({ type: 'success', message: 'Level and associated media wiped completely.' });
+      queryClient.invalidateQueries({ queryKey: ['adminCases'] });
+    },
+    onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
+  });
+
+  const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
+  const availablePhases = selectedCase?.phases || [];
+  const availableRequests = selectedCase?.investigation_requests || [];
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setFeedback(null);
+    const formData = new FormData();
+    formData.append('phase_id', phaseId);
+    formData.append('title', title);
+    formData.append('details', details);
+    formData.append('order_index', orderIndex);
+    formData.append('is_initial', isInitial ? '1' : '0');
+    formData.append('presentation_type', presentationType);
+    formData.append('store_locally', storeLocally ? '1' : '0');
+    if (requiredRequestId) formData.append('required_request_id', requiredRequestId);
+    if (image) formData.append('image', image);
+
+    if (editingId) {
+      updateMutation.mutate({ id: editingId, formData });
+    } else {
+      createMutation.mutate(formData);
+    }
+  };
+
+  const handleEdit = (level: any, parentCaseId: number, parentPhaseId: number) => {
+    setEditingId(level.id);
+    setCaseId(parentCaseId.toString());
+    setPhaseId(parentPhaseId.toString());
+    setTitle(level.title);
+    setDetails(level.details || '');
+    setOrderIndex(level.order_index.toString());
+    setIsInitial(!!level.is_initial);
+    setPresentationType(level.presentation_type || 'standard');
+    setRequiredRequestId(level.required_request_id?.toString() || '');
+    
+    setImage(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = (levelId: number, levelTitle: string) => {
+    if (window.confirm(`Are you absolutely sure you want to delete "${levelTitle}"? All nested questions and media will be wiped permanently.`)) {
+      setFeedback(null);
+      if (editingId === levelId) clearForm();
+      deleteMutation.mutate(levelId);
+    }
+  };
+
+  const isProcessing = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+
+  return (
+    <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+      
+      {/* FORM SECTION */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', margin: 0 }}>
+            {editingId ? `// Editing Level ID: ${editingId}` : '// Initialize New Level'}
+          </h3>
+          {editingId && (
+            <button type="button" className="btn-secondary" onClick={clearForm} style={{ padding: '0.5rem 1rem', width: 'auto' }}>
+              Cancel Edit
+            </button>
+          )}
+        </div>
+
+        {feedback && <div className={`status-message ${feedback.type}`}>{feedback.message}</div>}
+
+        <form onSubmit={handleSubmit} className="admin-form">
+          <div className="admin-form-row">
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Target Case</label>
+              <select className="admin-input" required value={caseId} onChange={(e) => { setCaseId(e.target.value); setPhaseId(''); }} disabled={isFetchingCases}>
+                <option value="" disabled>-- Select a Case --</option>
+                {cases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              </select>
+            </div>
+            
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Target Phase</label>
+              <select className="admin-input" required value={phaseId} onChange={(e) => setPhaseId(e.target.value)} disabled={!caseId}>
+                <option value="" disabled>-- Select a Phase --</option>
+                {availablePhases.map((p: any) => <option key={p.id} value={p.id}>{p.order_index}: {p.title}</option>)}
+              </select>
+            </div>
+
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Phase Order Index</label>
+              <input type="number" className="admin-input" min="1" required value={orderIndex} onChange={(e) => setOrderIndex(e.target.value)} />
+            </div>
+
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Presentation Format</label>
+              <select className="admin-input" value={presentationType} onChange={(e) => setPresentationType(e.target.value)}>
+                <option value="standard">Standard Investigation</option>
+                <option value="interrogation">Suspect Interrogation</option>
+                <option value="location">Location</option>
+                <option value="wiretap">Communications Wiretap</option> 
+              </select>
+            </div>
+
+            <div className="form-group" style={{ flex: 1 }}>
+              <label>Required Combo (Gatekeeper)</label>
+              <select className="admin-input" value={requiredRequestId} onChange={(e) => setRequiredRequestId(e.target.value)} disabled={!caseId}>
+                <option value="">-- No Requirement --</option>
+                {availableRequests.map((req: any) => (
+                  <option key={req.id} value={req.id}>
+                    REQ-{req.id}: {getInvestigationRequestLabel(req.request_type)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+            <input type="checkbox" id="initial-level-toggle" checked={isInitial} onChange={(e) => setIsInitial(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }} />
+            <label htmlFor="initial-level-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
+              <strong>Initial Phase:</strong> This phase is visible on the roadmap immediately. (Uncheck if it must be unlocked via a specific player choice).
+            </label>
+          </div>
+
+          <div className="form-group">
+            <label>Level Title</label>
+            <input type="text" className="admin-input" required value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+
+          <div className="form-group">
+            <label>Level Details (Objectives)</label>
+            <textarea className="admin-textarea" required value={details} onChange={(e) => setDetails(e.target.value)} />
+          </div>
+
+          <div className="form-group">
+            <label>Location / Background Image {editingId && '(Leave blank to keep existing)'}</label>
+            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+              <strong>Optimal:</strong> 16:9 ratio (e.g., 1920x1080) for full-screen location sweeps. High contrast recommended. Max 4MB.
+            </p>
+            <input 
+              type="file" className="admin-file-input" accept="image/*" 
+              ref={fileInputRef} 
+              onChange={(e) => setImage(e.target.files?.[0] || null)} 
+            />
+          </div>
+
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1rem', 
+            background: 'rgba(255,255,255,0.02)', 
+            padding: '1rem', 
+            borderRadius: '8px', 
+            marginTop: '1rem',
+            border: '1px solid rgba(255,255,255,0.05)'
+          }}>
+            <input 
+              type="checkbox" 
+              id="store-locally-toggle" 
+              checked={storeLocally} 
+              onChange={(e) => setStoreLocally(e.target.checked)} 
+              style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} 
+            />
+            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
+              <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
+            </label>
+          </div>
+
+          <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>
+            {isProcessing ? 'Processing Data...' : editingId ? 'Update Level' : 'Commit Level to Database'}
+          </button>
+        </form>
+      </div>
+
+      {/* MANAGE EXISTING LEVELS */}
+      {selectedCase && availablePhases.length > 0 && (
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
+          <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', marginBottom: '1.5rem' }}>// Manage Existing Levels</h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {availablePhases.map((phase: any) => (
+              <div key={`phase-group-${phase.id}`}>
+                <h4 style={{ color: 'var(--text-secondary)', marginBottom: '0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>
+                  Phase: {phase.title}
+                </h4>
+                {(!phase.levels || phase.levels.length === 0) ? (
+                  <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem', margin: '0 0 1rem 0' }}>No levels assigned to this phase.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {phase.levels.sort((a: any, b: any) => a.order_index - b.order_index).map((level: any) => (
+                      <div key={level.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                        <div>
+                          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', marginRight: '1rem' }}>IDX: {level.order_index}</span>
+                          <strong>{level.title}</strong>
+                          <span style={{ marginLeft: '1rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>({level.presentation_type})</span>
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                          <button type="button" onClick={() => handleEdit(level, selectedCase.id, phase.id)} disabled={isProcessing} style={{ background: 'transparent', border: '1px solid var(--accent-amber)', color: 'var(--accent-amber)', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>Edit</button>
+                          <button type="button" onClick={() => handleDelete(level.id, level.title)} disabled={isProcessing} style={{ background: 'transparent', border: '1px solid var(--accent-crimson)', color: 'var(--accent-crimson)', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>Delete</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
@@ -5945,7 +6378,7 @@ import { createPortal } from 'react-dom';
 import { useRoomContext } from '../../../../context/RoomContext';
 import { useInvestigationPhase } from '../../../../hooks/useInvestigationPhase';
 import type { Question } from '../../../../types';
-import InterrogationPhase from './Levels/InterrogationPhase';
+import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
 import StandardPhase from './Levels/StandardPhase'; 
 import LocationPhase from './Levels/LocationPhase';
 import WiretapPhase from './Levels/WiretapPhase';
@@ -6274,332 +6707,6 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\InterrogationPhase.css
-----------------------------------------
-.interrogation-log {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  padding-bottom: 2rem;
-}
-
-.chat-exchange {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-  animation: fadeIn 0.4s ease-out forwards;
-}
-
-.chat-bubble {
-  padding: 1rem;
-  border-radius: 4px;
-  max-width: 85%;
-}
-
-.chat-bubble p {
-  margin: 0;
-  color: var(--text-primary);
-  line-height: 1.6;
-}
-
-.speaker-label {
-  display: block;
-  font-family: var(--font-mono);
-  font-size: 0.75rem;
-  margin-bottom: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-/* Suspect Styles */
-.suspect-bubble {
-  align-self: flex-start;
-  background: rgba(20, 21, 24, 0.8);
-  border-left: 3px solid var(--accent-crimson);
-  box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
-}
-
-.speaker-label.suspect {
-  color: var(--accent-crimson);
-}
-
-/* Investigator Styles */
-.agent-bubble {
-  background: rgba(90, 138, 158, 0.1);
-  border-right: 3px solid var(--accent-cyan);
-  box-shadow: -4px 4px 0px rgba(0,0,0,0.3);
-  width: 100%;
-}
-
-.speaker-label.investigator {
-  color: var(--accent-cyan);
-  text-align: left;
-}
-
-/* Interactive Area */
-.investigator-interaction-area {
-  align-self: flex-end;
-  max-width: 85%;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 0.5rem;
-  animation: fadeIn 0.4s ease-out;
-}
-
-.vote-status-box {
-  border-radius: 4px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  transition: all 0.3s ease;
-}
-
-.vote-status-box.has-vote {
-  background: rgba(255, 179, 0, 0.05);
-  border: 1px dashed var(--accent-amber);
-  padding: 1rem;
-}
-
-.vote-status-box.no-vote {
-  background: transparent;
-  border: 1px solid transparent;
-  padding: 0;
-}
-
-.vote-choices-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: flex-end;
-  margin-top: 0.5rem;
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\InterrogationPhase.tsx
-----------------------------------------
-import React, { useState, useEffect, useRef } from 'react';
-import { useRoomContext } from '@/context/RoomContext';
-import type { Level, Choice, Question } from '@/types';
-import './InterrogationPhase.css';
-
-const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
-  const spanRef = useRef<HTMLSpanElement>(null);
-  const savedOnComplete = useRef(onComplete);
-  
-  useEffect(() => { 
-    savedOnComplete.current = onComplete; 
-  }, [onComplete]);
-
-  useEffect(() => {
-    const el = spanRef.current;
-    if (!el) return;
-
-    // 1. Instantly complete if skipping or already cached in session storage
-    if (skip || (cacheKey && sessionStorage.getItem(cacheKey))) {
-      el.textContent = text;
-      if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
-      if (savedOnComplete.current) savedOnComplete.current();
-      return;
-    }
-
-    // 2. Perform raw DOM manipulation to bypass React's render cycle (fixes the stutter/half-way cutoffs)
-    let i = 0;
-    el.textContent = '';
-    
-    const interval = setInterval(() => {
-      el.textContent += text.charAt(i);
-      i++;
-      if (i >= text.length) {
-        clearInterval(interval);
-        if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
-        if (savedOnComplete.current) savedOnComplete.current();
-      }
-    }, delay);
-
-    // Cleanup interval on unmount
-    return () => clearInterval(interval);
-  }, [text, delay, skip, cacheKey]);
-
-  return <span ref={spanRef} />;
-};
-
-interface InterrogationPhaseProps {
-  level: Level;
-  status: string;
-  localVotes: Record<number, number>;
-  totalPlayers: number;
-  getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
-  handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
-}
-
-export default function InterrogationPhase({ level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice }: InterrogationPhaseProps) {
-  const { room, accumulatedEvidences } = useRoomContext();
-
-  const checkIsLockedByNarrative = (choice: Choice) => {
-    if (!choice.requirements) return false;
-    const reqs = choice.requirements;
-
-    if (reqs.required_evidence?.length > 0) {
-      const hasAllEvidence = reqs.required_evidence.every((id: number) => 
-        accumulatedEvidences.some(e => e.id === id)
-      );
-      if (!hasAllEvidence) return true;
-    }
-
-    if (reqs.required_choices?.length > 0) {
-      const hasAllChoices = reqs.required_choices.every((id: number) => 
-        room.votes?.some(v => v.choice_id === id)
-      );
-      if (!hasAllChoices) return true;
-    }
-
-    return false;
-  };
-
-  // Initialize state directly from sessionStorage
-  const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>(() => {
-    const initial: Record<number, boolean> = {};
-    level.questions?.forEach(q => {
-      if (sessionStorage.getItem(`room_${room.id}_suspect_${q.id}`)) initial[q.id] = true;
-    });
-    return initial;
-  });
-
-  const [investigatorTypingComplete, setInvestigatorTypingComplete] = useState<Record<number, boolean>>(() => {
-    const initial: Record<number, boolean> = {};
-    level.questions?.forEach(q => {
-      if (sessionStorage.getItem(`room_${room.id}_investigator_${q.id}`)) initial[q.id] = true;
-    });
-    return initial;
-  });
-
-  if (!level.questions || level.questions.length === 0) return null;
-
-  // --- THE NODE TRAVERSAL ENGINE ---
-  const visibleQuestions: Question[] = [];
-  let currentId: number | null = level.questions[0].id; // Root Node
-  
-  while (currentId) {
-    const q = level.questions.find(x => x.id === currentId);
-    if (!q) break;
-    visibleQuestions.push(q);
-    
-    const consensus = getQuestionConsensus(q);
-    if (consensus.isResolved && consensus.winningChoiceId) {
-      const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
-      
-      // If outcomes dictate a branch, follow it. Otherwise, fall back to linear progression.
-      if (winningChoice?.outcomes?.next_question_id) {
-        currentId = winningChoice.outcomes.next_question_id;
-      } else {
-        const currentIndex = level.questions.findIndex(x => x.id === q.id);
-        currentId = level.questions[currentIndex + 1]?.id || null;
-      }
-    } else {
-      currentId = null; // Traversal stops, awaiting player consensus
-    }
-  }
-
-  const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
-  const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
-
-  return (
-    <div className="interrogation-log">
-      {visibleQuestions.map((q, qIdx) => {
-        const consensus = getQuestionConsensus(q);
-        const prevQ = qIdx > 0 ? visibleQuestions[qIdx - 1] : null;
-        const isVisible = status === 'completed' || qIdx === 0 || (prevQ && investigatorTypingComplete[prevQ.id]);
-        
-        if (!isVisible) return null;
-
-        const isGloballyLocked = consensus.isResolved;
-        const skipTyping = status === 'completed'; 
-        const isSuspectDone = suspectTypingComplete[q.id] || skipTyping;
-        const hasLocalVote = !!localVotes[q.id];
-
-        // Read specific suspect reactions if they exist
-        const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
-        const customReaction = winningChoice?.outcomes?.suspect_reaction; 
-
-        return (
-          <div key={q.id} className="chat-exchange">
-            
-            <div className="chat-bubble suspect-bubble">
-              <span className="speaker-label suspect">SUSPECT {customReaction ? `[${customReaction}]` : ''}</span>
-              <p>
-                <Typewriter 
-                  text={q.text} 
-                  skip={skipTyping} 
-                  delay={15} 
-                  cacheKey={`room_${room.id}_suspect_${q.id}`} 
-                  onComplete={() => handleSuspectDone(q.id)} 
-                />
-              </p>
-            </div>
-
-            {isSuspectDone && (
-              <div className="investigator-interaction-area">
-                {status === 'active' && !isGloballyLocked ? (
-                  <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
-                    <span className="speaker-label" style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
-                      {consensus.isTie 
-                        ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
-                        : hasLocalVote 
-                          ? `VOTE CAST (${consensus.votesCast}/${totalPlayers}) - YOU MAY REASSIGN` 
-                          : `SELECT RESPONSE (${consensus.votesCast}/${totalPlayers})`
-                      }
-                    </span>
-                    <div className="vote-choices-grid">
-                      {q.choices?.map(c => {
-                        const isSelected = localVotes[q.id] === c.id;
-                        const isNarrativeLocked = checkIsLockedByNarrative(c);
-                        const pillClass = isNarrativeLocked
-                          ? 'choice-pill locked-choice'
-                          : `choice-pill interactable ${isSelected ? 'selected' : ''}`;
-
-                        return (
-                          <span 
-                            key={c.id} 
-                            className={pillClass}
-                            onClick={(e) => {
-                              if (isNarrativeLocked) return;
-                              handleSelectChoice(e, q.id, c, status);
-                            }}
-                            style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}
-                          >
-                            {isNarrativeLocked ? '🔒 [ MISSING INTEL ]' : c.text}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  (isGloballyLocked || status === 'completed') && (
-                    <div className="chat-bubble agent-bubble">
-                      <span className="speaker-label investigator">INVESTIGATORS</span>
-                      <p>
-                        <Typewriter 
-                          text={status === 'completed' ? (q.choices?.find(c => !c.outcomes?.gives_strike)?.text || '...') : (winningChoice?.text || '...')} 
-                          skip={skipTyping} 
-                          delay={40} 
-                          cacheKey={`room_${room.id}_investigator_${q.id}`} 
-                          onComplete={() => handleInvestigatorDone(q.id)}
-                        />
-                      </p>
-                    </div>
-                  )
-                )}
-              </div>
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -7637,6 +7744,332 @@ export default function WiretapPhase({
           );
         })}
       </div>
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\Interrogation\InterrogationPhase.css
+----------------------------------------
+.interrogation-log {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding-bottom: 2rem;
+}
+
+.chat-exchange {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  animation: fadeIn 0.4s ease-out forwards;
+}
+
+.chat-bubble {
+  padding: 1rem;
+  border-radius: 4px;
+  max-width: 85%;
+}
+
+.chat-bubble p {
+  margin: 0;
+  color: var(--text-primary);
+  line-height: 1.6;
+}
+
+.speaker-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  margin-bottom: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Suspect Styles */
+.suspect-bubble {
+  align-self: flex-start;
+  background: rgba(20, 21, 24, 0.8);
+  border-left: 3px solid var(--accent-crimson);
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+}
+
+.speaker-label.suspect {
+  color: var(--accent-crimson);
+}
+
+/* Investigator Styles */
+.agent-bubble {
+  background: rgba(90, 138, 158, 0.1);
+  border-right: 3px solid var(--accent-cyan);
+  box-shadow: -4px 4px 0px rgba(0,0,0,0.3);
+  width: 100%;
+}
+
+.speaker-label.investigator {
+  color: var(--accent-cyan);
+  text-align: left;
+}
+
+/* Interactive Area */
+.investigator-interaction-area {
+  align-self: flex-end;
+  max-width: 85%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.vote-status-box {
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  transition: all 0.3s ease;
+}
+
+.vote-status-box.has-vote {
+  background: rgba(255, 179, 0, 0.05);
+  border: 1px dashed var(--accent-amber);
+  padding: 1rem;
+}
+
+.vote-status-box.no-vote {
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 0;
+}
+
+.vote-choices-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\Interrogation\InterrogationPhase.tsx
+----------------------------------------
+import React, { useState, useEffect, useRef } from 'react';
+import { useRoomContext } from '@/context/RoomContext';
+import type { Level, Choice, Question } from '@/types';
+import './InterrogationPhase.css';
+
+const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
+  const spanRef = useRef<HTMLSpanElement>(null);
+  const savedOnComplete = useRef(onComplete);
+  
+  useEffect(() => { 
+    savedOnComplete.current = onComplete; 
+  }, [onComplete]);
+
+  useEffect(() => {
+    const el = spanRef.current;
+    if (!el) return;
+
+    // 1. Instantly complete if skipping or already cached in session storage
+    if (skip || (cacheKey && sessionStorage.getItem(cacheKey))) {
+      el.textContent = text;
+      if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
+      if (savedOnComplete.current) savedOnComplete.current();
+      return;
+    }
+
+    // 2. Perform raw DOM manipulation to bypass React's render cycle (fixes the stutter/half-way cutoffs)
+    let i = 0;
+    el.textContent = '';
+    
+    const interval = setInterval(() => {
+      el.textContent += text.charAt(i);
+      i++;
+      if (i >= text.length) {
+        clearInterval(interval);
+        if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
+        if (savedOnComplete.current) savedOnComplete.current();
+      }
+    }, delay);
+
+    // Cleanup interval on unmount
+    return () => clearInterval(interval);
+  }, [text, delay, skip, cacheKey]);
+
+  return <span ref={spanRef} />;
+};
+
+interface InterrogationPhaseProps {
+  level: Level;
+  status: string;
+  localVotes: Record<number, number>;
+  totalPlayers: number;
+  getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
+  handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
+}
+
+export default function InterrogationPhase({ level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice }: InterrogationPhaseProps) {
+  const { room, accumulatedEvidences } = useRoomContext();
+
+  const checkIsLockedByNarrative = (choice: Choice) => {
+    if (!choice.requirements) return false;
+    const reqs = choice.requirements;
+
+    if (reqs.required_evidence?.length > 0) {
+      const hasAllEvidence = reqs.required_evidence.every((id: number) => 
+        accumulatedEvidences.some(e => e.id === id)
+      );
+      if (!hasAllEvidence) return true;
+    }
+
+    if (reqs.required_choices?.length > 0) {
+      const hasAllChoices = reqs.required_choices.every((id: number) => 
+        room.votes?.some(v => v.choice_id === id)
+      );
+      if (!hasAllChoices) return true;
+    }
+
+    return false;
+  };
+
+  // Initialize state directly from sessionStorage
+  const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>(() => {
+    const initial: Record<number, boolean> = {};
+    level.questions?.forEach(q => {
+      if (sessionStorage.getItem(`room_${room.id}_suspect_${q.id}`)) initial[q.id] = true;
+    });
+    return initial;
+  });
+
+  const [investigatorTypingComplete, setInvestigatorTypingComplete] = useState<Record<number, boolean>>(() => {
+    const initial: Record<number, boolean> = {};
+    level.questions?.forEach(q => {
+      if (sessionStorage.getItem(`room_${room.id}_investigator_${q.id}`)) initial[q.id] = true;
+    });
+    return initial;
+  });
+
+  if (!level.questions || level.questions.length === 0) return null;
+
+  // --- THE NODE TRAVERSAL ENGINE ---
+  const visibleQuestions: Question[] = [];
+  let currentId: number | null = level.questions[0].id; // Root Node
+  
+  while (currentId) {
+    const q = level.questions.find(x => x.id === currentId);
+    if (!q) break;
+    visibleQuestions.push(q);
+    
+    const consensus = getQuestionConsensus(q);
+    if (consensus.isResolved && consensus.winningChoiceId) {
+      const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
+      
+      // If outcomes dictate a branch, follow it. Otherwise, fall back to linear progression.
+      if (winningChoice?.outcomes?.next_question_id) {
+        currentId = winningChoice.outcomes.next_question_id;
+      } else {
+        const currentIndex = level.questions.findIndex(x => x.id === q.id);
+        currentId = level.questions[currentIndex + 1]?.id || null;
+      }
+    } else {
+      currentId = null; // Traversal stops, awaiting player consensus
+    }
+  }
+
+  const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
+  const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
+
+  return (
+    <div className="interrogation-log">
+      {visibleQuestions.map((q, qIdx) => {
+        const consensus = getQuestionConsensus(q);
+        const prevQ = qIdx > 0 ? visibleQuestions[qIdx - 1] : null;
+        const isVisible = status === 'completed' || qIdx === 0 || (prevQ && investigatorTypingComplete[prevQ.id]);
+        
+        if (!isVisible) return null;
+
+        const isGloballyLocked = consensus.isResolved;
+        const skipTyping = status === 'completed'; 
+        const isSuspectDone = suspectTypingComplete[q.id] || skipTyping;
+        const hasLocalVote = !!localVotes[q.id];
+
+        // Read specific suspect reactions if they exist
+        const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
+        const customReaction = winningChoice?.outcomes?.suspect_reaction; 
+
+        return (
+          <div key={q.id} className="chat-exchange">
+            
+            <div className="chat-bubble suspect-bubble">
+              <span className="speaker-label suspect">SUSPECT {customReaction ? `[${customReaction}]` : ''}</span>
+              <p>
+                <Typewriter 
+                  text={q.text} 
+                  skip={skipTyping} 
+                  delay={15} 
+                  cacheKey={`room_${room.id}_suspect_${q.id}`} 
+                  onComplete={() => handleSuspectDone(q.id)} 
+                />
+              </p>
+            </div>
+
+            {isSuspectDone && (
+              <div className="investigator-interaction-area">
+                {status === 'active' && !isGloballyLocked ? (
+                  <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
+                    <span className="speaker-label" style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
+                      {consensus.isTie 
+                        ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
+                        : hasLocalVote 
+                          ? `VOTE CAST (${consensus.votesCast}/${totalPlayers}) - YOU MAY REASSIGN` 
+                          : `SELECT RESPONSE (${consensus.votesCast}/${totalPlayers})`
+                      }
+                    </span>
+                    <div className="vote-choices-grid">
+                      {q.choices?.map(c => {
+                        const isSelected = localVotes[q.id] === c.id;
+                        const isNarrativeLocked = checkIsLockedByNarrative(c);
+                        const pillClass = isNarrativeLocked
+                          ? 'choice-pill locked-choice'
+                          : `choice-pill interactable ${isSelected ? 'selected' : ''}`;
+
+                        return (
+                          <span 
+                            key={c.id} 
+                            className={pillClass}
+                            onClick={(e) => {
+                              if (isNarrativeLocked) return;
+                              handleSelectChoice(e, q.id, c, status);
+                            }}
+                            style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}
+                          >
+                            {isNarrativeLocked ? '🔒 [ MISSING INTEL ]' : c.text}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : (
+                  (isGloballyLocked || status === 'completed') && (
+                    <div className="chat-bubble agent-bubble">
+                      <span className="speaker-label investigator">INVESTIGATORS</span>
+                      <p>
+                        <Typewriter 
+                          text={status === 'completed' ? (q.choices?.find(c => !c.outcomes?.gives_strike)?.text || '...') : (winningChoice?.text || '...')} 
+                          skip={skipTyping} 
+                          delay={40} 
+                          cacheKey={`room_${room.id}_investigator_${q.id}`} 
+                          onComplete={() => handleInvestigatorDone(q.id)}
+                        />
+                      </p>
+                    </div>
+                  )
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

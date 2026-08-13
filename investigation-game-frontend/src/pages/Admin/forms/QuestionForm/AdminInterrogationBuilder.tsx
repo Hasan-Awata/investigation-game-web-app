@@ -1,39 +1,37 @@
-// D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\AdminInterrogationBuilder.tsx
+// FILE: src/pages/Admin/forms/LevelForm/AdminInterrogationBuilder.tsx
 
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAdminQuestion, updateAdminQuestion, deleteAdminQuestion, fetchAdminCases } from '@/services/adminApi';
+import type { GameCase, Question, Choice, Evidence } from '@/types';
+import { defaultRequirements, defaultOutcomes, appendChoicesToFormData } from '../QuestionForm/questionUtils';
 import './AdminInterrogationBuilder.css';
 
-// --- SHARED UTILS ---
-const defaultOutcomes = () => ({ feedback: '', next_question_id: '', gives_strike: false, unlock_evidence: [] });
-const defaultRequirements = () => ({ required_evidence: [], required_choices: [] });
-
-const appendToFormData = (fd: FormData, rootKey: string, obj: any) => {
-  if (obj === null || obj === undefined) return;
-  if (Array.isArray(obj)) {
-      obj.forEach((val, i) => appendToFormData(fd, `${rootKey}[${i}]`, val));
-  } else if (typeof obj === 'object') {
-      Object.keys(obj).forEach(key => appendToFormData(fd, `${rootKey}[${key}]`, obj[key]));
-  } else {
-      fd.append(rootKey, obj.toString());
-  }
-};
-
 // --- SINGLE NODE (CARD) COMPONENT ---
+interface DialogueNodeProps {
+  nodeData: Question | any; // Accept Draft nodes which may not be full Questions yet
+  levelId: string;
+  allSavedNodes: Question[];
+  availableEvidences: Evidence[];
+  onSaved: () => void;
+  onDeleted: () => void;
+}
+
 const DialogueNode = ({ 
   nodeData, levelId, allSavedNodes, availableEvidences, onSaved, onDeleted 
-}: any) => {
+}: DialogueNodeProps) => {
   
-  // THE FIX: Safely parse incoming database JSON to prevent null pointer crashes
-  const safeChoices = (nodeData.choices || []).map((c: any) => ({
+  const safeChoices = (nodeData.choices || []).map((c: Choice | any) => ({
     id: c.id || crypto.randomUUID(),
     text: c.text || '',
     outcomes: {
       feedback: c.outcomes?.feedback || '',
       next_question_id: c.outcomes?.next_question_id?.toString() || '',
       gives_strike: !!c.outcomes?.gives_strike,
-      unlock_evidence: c.outcomes?.unlock_evidence?.map(String) || []
+      unlock_evidence: c.outcomes?.unlock_evidence?.map(String) || [],
+      unlock_levels: c.outcomes?.unlock_levels?.map(String) || [],
+      unlock_suspects: c.outcomes?.unlock_suspects?.map(String) || [],
+      unlock_victims: c.outcomes?.unlock_victims?.map(String) || []
     },
     requirements: {
       required_evidence: c.requirements?.required_evidence?.map(String) || [],
@@ -77,22 +75,7 @@ const DialogueNode = ({
     formData.append('is_mandatory', '1'); 
     formData.append('store_locally', '0');
 
-    choices.forEach((choice, i) => {
-      if (!choice.text.trim()) return; // Skip empty choices
-      
-      formData.append(`choices[${i}][text]`, choice.text);
-      
-      const cleanOutcomes: any = {};
-      if (choice.outcomes.gives_strike) cleanOutcomes.gives_strike = true;
-      if (choice.outcomes.next_question_id) cleanOutcomes.next_question_id = parseInt(choice.outcomes.next_question_id, 10);
-      if (choice.outcomes.unlock_evidence?.length > 0) cleanOutcomes.unlock_evidence = choice.outcomes.unlock_evidence.map(Number);
-      if (Object.keys(cleanOutcomes).length > 0) appendToFormData(formData, `choices[${i}][outcomes]`, cleanOutcomes);
-      
-      const cleanReqs: any = {};
-      if (choice.requirements.required_evidence?.length > 0) cleanReqs.required_evidence = choice.requirements.required_evidence.map(Number);
-      if (Object.keys(cleanReqs).length > 0) appendToFormData(formData, `choices[${i}][requirements]`, cleanReqs);
-    });
-
+    appendChoicesToFormData(formData, choices);
     saveMutation.mutate(formData);
   };
 
@@ -132,7 +115,7 @@ const DialogueNode = ({
                   onChange={(e) => updateChoice(choice.id, 'next_question_id', e.target.value, 'outcomes')}
                 >
                   <option value="">[ END CONVERSATION / RETURN TO HUB ]</option>
-                  {allSavedNodes.filter((n: any) => n.id !== nodeData.id).map((n: any) => (
+                  {allSavedNodes.filter((n) => n.id !== nodeData.id).map((n) => (
                     <option key={n.id} value={n.id}>Leads to Node {n.id} ({n.text.substring(0, 20)}...)</option>
                   ))}
                 </select>
@@ -149,12 +132,12 @@ const DialogueNode = ({
                 <div className="advanced-intel-panel">
                   <label style={{ fontSize: '0.7rem', color: 'var(--accent-amber)' }}>Requires Evidence to Say</label>
                   <select multiple className="admin-input" style={{ height: '60px', padding: '0.25rem' }} value={choice.requirements.required_evidence || []} onChange={(e) => updateChoice(choice.id, 'required_evidence', Array.from(e.target.selectedOptions, opt => opt.value), 'requirements')}>
-                    {availableEvidences.map((ev: any) => <option key={ev.id} value={ev.id}>EX-{ev.id} {ev.title}</option>)}
+                    {availableEvidences.map((ev) => <option key={ev.id} value={ev.id}>EX-{ev.id} {ev.title}</option>)}
                   </select>
 
                   <label style={{ fontSize: '0.7rem', color: 'var(--accent-cyan)', marginTop: '0.5rem' }}>Unlocks Evidence on Click</label>
                   <select multiple className="admin-input" style={{ height: '60px', padding: '0.25rem' }} value={choice.outcomes.unlock_evidence || []} onChange={(e) => updateChoice(choice.id, 'unlock_evidence', Array.from(e.target.selectedOptions, opt => opt.value), 'outcomes')}>
-                    {availableEvidences.map((ev: any) => <option key={ev.id} value={ev.id}>EX-{ev.id} {ev.title}</option>)}
+                    {availableEvidences.map((ev) => <option key={ev.id} value={ev.id}>EX-{ev.id} {ev.title}</option>)}
                   </select>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -193,18 +176,22 @@ export default function AdminInterrogationBuilder() {
   const [levelId, setLevelId] = useState('');
   const [draftNodes, setDraftNodes] = useState<any[]>([]);
 
-  const { data: cases = [] } = useQuery({
+  const { data: cases = [] } = useQuery<GameCase[]>({
     queryKey: ['adminCases'],
-    queryFn: async () => (await fetchAdminCases()).value
+    queryFn: async () => {
+      const result = await fetchAdminCases();
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    }
   });
 
-  const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
+  const selectedCase = cases.find((c) => c.id.toString() === caseId);
   const availablePhases = selectedCase?.phases || [];
-  const selectedPhase = availablePhases.find((p: any) => p.id.toString() === phaseId);
-  const availableLevels = (selectedPhase?.levels || []).filter((l: any) => l.presentation_type === 'interrogation');
-  const selectedLevel = availableLevels.find((l: any) => l.id.toString() === levelId);
+  const selectedPhase = availablePhases.find((p) => p.id.toString() === phaseId);
+  const availableLevels = (selectedPhase?.levels || []).filter((l) => l.presentation_type === 'interrogation');
+  const selectedLevel = availableLevels.find((l) => l.id.toString() === levelId);
 
-  const savedNodes = selectedLevel?.questions || [];
+  const savedNodes: Question[] = selectedLevel?.questions || [];
   
   const refreshData = () => queryClient.invalidateQueries({ queryKey: ['adminCases'] });
 
@@ -221,21 +208,21 @@ export default function AdminInterrogationBuilder() {
             <label>Target Case</label>
             <select className="admin-input" value={caseId} onChange={(e) => { setCaseId(e.target.value); setPhaseId(''); setLevelId(''); }}>
               <option value="">-- Select Case --</option>
-              {cases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
           <div className="form-group" style={{ flex: 1 }}>
             <label>Target Phase</label>
             <select className="admin-input" value={phaseId} onChange={(e) => { setPhaseId(e.target.value); setLevelId(''); }} disabled={!caseId}>
               <option value="">-- Select Phase --</option>
-              {availablePhases.map((p: any) => <option key={p.id} value={p.id}>{p.title}</option>)}
+              {availablePhases.map((p) => <option key={p.id} value={p.id}>{p.title}</option>)}
             </select>
           </div>
           <div className="form-group" style={{ flex: 1 }}>
             <label>Interrogation Level</label>
             <select className="admin-input" value={levelId} onChange={(e) => { setLevelId(e.target.value); setDraftNodes([]); }} disabled={!phaseId}>
               <option value="">-- Select Interrogation Level --</option>
-              {availableLevels.map((l: any) => <option key={l.id} value={l.id}>{l.title}</option>)}
+              {availableLevels.map((l) => <option key={l.id} value={l.id}>{l.title}</option>)}
             </select>
           </div>
         </div>
@@ -253,7 +240,7 @@ export default function AdminInterrogationBuilder() {
           </div>
 
           <div className="interrogation-workspace">
-            {savedNodes.map((node: any) => (
+            {savedNodes.map((node) => (
               <DialogueNode 
                 key={node.id} 
                 nodeData={node} 
@@ -265,7 +252,7 @@ export default function AdminInterrogationBuilder() {
               />
             ))}
             
-            {draftNodes.map((node: any) => (
+            {draftNodes.map((node) => (
               <DialogueNode 
                 key={node.id} 
                 nodeData={node} 

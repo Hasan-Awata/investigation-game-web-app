@@ -2,10 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { joinRoom, fetchRoomState } from '@/services/api';
 import type { Evidence, Suspect, Victim } from '@/types';
 
-// Track BOTH the invite code and the ID to prevent cross-room contamination
-let joinedInviteCode: string | null = null;
-let activeRoomId: number | null = null;
-
 export function useGameRoom(inviteCode: string | undefined) {
   
   const { 
@@ -18,18 +14,21 @@ export function useGameRoom(inviteCode: string | undefined) {
     queryFn: async () => {
       if (!inviteCode) throw new Error('No invite code provided.');
       
-      // Only hit the join endpoint if we haven't joined THIS specific room yet
-      if (joinedInviteCode !== inviteCode || !activeRoomId) {
+      // 1. Isolate the session data to the specific tab and invite code
+      const storageKey = `active_room_id_for_${inviteCode}`;
+      let roomId = sessionStorage.getItem(storageKey);
+
+      // 2. Only hit the join endpoint if this tab hasn't resolved the ID yet
+      if (!roomId) {
         const joinResult = await joinRoom(inviteCode);
         if (!joinResult.isSuccess) throw new Error(joinResult.errorMessage);
         
-        // Sync the global cache with the new session
-        joinedInviteCode = inviteCode;
-        activeRoomId = joinResult.value.id;
+        roomId = joinResult.value.id.toString();
+        sessionStorage.setItem(storageKey, roomId);
       }
 
-      // Safely fetch the state using the correctly matched Room ID
-      const stateResult = await fetchRoomState(activeRoomId);
+      // 3. Safely fetch the state using the localized Room ID
+      const stateResult = await fetchRoomState(parseInt(roomId, 10));
       if (!stateResult.isSuccess) throw new Error(stateResult.errorMessage);
 
       return stateResult.value;
@@ -37,22 +36,23 @@ export function useGameRoom(inviteCode: string | undefined) {
     enabled: !!inviteCode, 
   });
 
+  // Apply strict typings to eradicate implicit 'any' warnings
   const caseEvidences = room?.game_case?.evidences || [];
-  const unlockedEvidenceIds = new Set(room?.unlocked_evidences?.map(e => e.id) || []);
+  const unlockedEvidenceIds = new Set(room?.unlocked_evidences?.map((e: Evidence) => e.id) || []);
   const accumulatedEvidences: Evidence[] = caseEvidences.filter(
-    (evidence) => evidence.is_initial || unlockedEvidenceIds.has(evidence.id)
+    (evidence: Evidence) => evidence.is_initial || unlockedEvidenceIds.has(evidence.id)
   );
 
   const caseSuspects = room?.game_case?.suspects || [];
-  const unlockedSuspectIds = new Set(room?.unlocked_suspects?.map(s => s.id) || []);
+  const unlockedSuspectIds = new Set(room?.unlocked_suspects?.map((s: Suspect) => s.id) || []);
   const accumulatedSuspects: Suspect[] = caseSuspects.filter(
-    (suspect) => suspect.is_initial || unlockedSuspectIds.has(suspect.id)
+    (suspect: Suspect) => suspect.is_initial || unlockedSuspectIds.has(suspect.id)
   );
 
   const caseVictims = room?.game_case?.victims || [];
-  const unlockedVictimIds = new Set(room?.unlocked_victims?.map(v => v.id) || []);
+  const unlockedVictimIds = new Set(room?.unlocked_victims?.map((v: Victim) => v.id) || []);
   const accumulatedVictims: Victim[] = caseVictims.filter(
-    (victim) => victim.is_initial || unlockedVictimIds.has(victim.id)
+    (victim: Victim) => victim.is_initial || unlockedVictimIds.has(victim.id)
   );
 
   return { 

@@ -1,212 +1,34 @@
+// FILE: src/services/adminApi.ts
+
 import { type Result, success, failure } from '@/utils/Result';
 import { getToken } from './auth';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
 const API_BASE_URL = `${BASE_URL}/admin`;
 
-// Reusing the event dispatcher from your standard API setup
 const handleUnauthorized = () => {
   window.dispatchEvent(new CustomEvent('auth:unauthorized')); 
 };
 
-export const createAdminCase = async (formData: FormData): Promise<Result<any>> => {
+/**
+ * Centralized API Request Handler
+ * Automatically injects headers, parses JSON, handles 401/403s, and wraps responses in the Result pattern.
+ */
+const adminRequest = async <T = any>(endpoint: string, options: RequestInit): Promise<Result<T>> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/cases`, {
-      method: 'POST',
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
       headers: {
         'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-        // Notice: NO Content-Type header. Let the browser handle the multipart boundary.
+        'Authorization': `Bearer ${getToken()}`,
+        ...options.headers, // Allows overriding specific headers if ever needed
       },
-      body: formData,
     });
     
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) handleUnauthorized();
       const data = await response.json().catch(() => ({}));
-      return failure(data.message || 'Failed to create case.');
-    }
-    
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
-};
-
-export const createAdminLevel = async (formData: FormData): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/levels`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: formData,
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
-      const data = await response.json().catch(() => ({}));
-      return failure(data.message || 'Failed to create level.');
-    }
-    
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
-};
-
-export const createAdminEvidence = async (formData: FormData): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/evidences`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: formData,
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
-      const data = await response.json().catch(() => ({}));
-      return failure(data.message || 'Failed to create evidence.');
-    }
-    
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
-};
-
-export const createAdminQuestion = async (formData: FormData): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/questions`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: formData,
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
-      const data = await response.json().catch(() => ({}));
-      return failure(data.message || 'Failed to create question.');
-    }
-    
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
-};
-
-export const fetchAdminCases = async (): Promise<Result<any[]>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/cases`, {
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      }
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
-      const data = await response.json().catch(() => ({}));
-      return failure(data.message || 'Failed to fetch admin cases.');
-    }
-    
-    const data = await response.json();
-    return success(data.cases);
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
-};
-
-export const deleteAdminCase = async (caseId: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/cases/${caseId}`, {
-      method: 'DELETE',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      }
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
-      const data = await response.json().catch(() => ({}));
-      return failure(data.message || 'Failed to delete case.');
-    }
-    
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
-};
-
-export const createAdminSuspect = async (formData: FormData): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/suspects`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: formData,
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
-      const data = await response.json().catch(() => ({}));
-      return failure(data.message || 'Failed to create suspect.');
-    }
-    
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
-};
-
-export const createAdminInvestigationRequest = async (formData: FormData): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/investigation-requests`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: formData, // Sending as FormData to match the rest of your admin architecture seamlessly
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
-      const data = await response.json().catch(() => ({}));
-      return failure(data.message || 'Failed to create investigation request.');
-    }
-    
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
-};
-
-export const createAdminPhase = async (formData: FormData): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/phases`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: formData,
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
-      const data = await response.json().catch(() => ({}));
-      return failure(data.message || 'Failed to create phase.');
+      return failure(data.message || `Operation failed (${response.status}).`);
     }
     
     return success(await response.json());
@@ -218,201 +40,60 @@ export const createAdminPhase = async (formData: FormData): Promise<Result<any>>
 // ==========================================
 // CASES
 // ==========================================
-export const updateAdminCase = async (caseId: number, formData: FormData): Promise<Result<any>> => {
-  // Laravel requires spoofing PUT requests when sending multipart/form-data (images)
-  formData.append('_method', 'PUT'); 
-  
-  try {
-    const response = await fetch(`${API_BASE_URL}/cases/${caseId}`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: formData,
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
-      const data = await response.json().catch(() => ({}));
-      return failure(data.message || 'Failed to update case.');
-    }
-    
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+export const fetchAdminCases = async (): Promise<Result<any[]>> => {
+  const result = await adminRequest('/cases', { method: 'GET' });
+  // The API returns { cases: [...] }, so we unwrap it specifically for this endpoint
+  return result.isSuccess ? success(result.value.cases) : result;
 };
+export const createAdminCase = (fd: FormData) => adminRequest('/cases', { method: 'POST', body: fd });
+export const updateAdminCase = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/cases/${id}`, { method: 'POST', body: fd }); };
+export const deleteAdminCase = (id: number) => adminRequest(`/cases/${id}`, { method: 'DELETE' });
 
 // ==========================================
 // PHASES
 // ==========================================
-export const updateAdminPhase = async (id: number, formData: FormData): Promise<Result<any>> => {
-  formData.append('_method', 'PUT');
-  try {
-    const response = await fetch(`${API_BASE_URL}/phases/${id}`, { method: 'POST', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }, body: formData });
-    if (!response.ok) return failure('Failed to update phase.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
-
-export const deleteAdminPhase = async (id: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/phases/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` } });
-    if (!response.ok) return failure('Failed to delete phase.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
+export const createAdminPhase = (fd: FormData) => adminRequest('/phases', { method: 'POST', body: fd });
+export const updateAdminPhase = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/phases/${id}`, { method: 'POST', body: fd }); };
+export const deleteAdminPhase = (id: number) => adminRequest(`/phases/${id}`, { method: 'DELETE' });
 
 // ==========================================
 // LEVELS
 // ==========================================
-export const updateAdminLevel = async (id: number, formData: FormData): Promise<Result<any>> => {
-  formData.append('_method', 'PUT');
-  try {
-    const response = await fetch(`${API_BASE_URL}/levels/${id}`, { 
-      method: 'POST', 
-      headers: { 
-        'Accept': 'application/json', 
-        'Authorization': `Bearer ${getToken()}` 
-      }, 
-      body: formData 
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
-      // Parse Laravel's error payload instead of discarding it
-      const data = await response.json().catch(() => ({}));
-      // This will now pipe the exact error (e.g., "The image field must not be greater...") into your UI
-      return failure(data.message || 'Failed to update level.');
-    }
-    
-    return success(await response.json());
-  } catch (error) { 
-    return failure((error as Error).message); 
-  }
-};
+export const createAdminLevel = (fd: FormData) => adminRequest('/levels', { method: 'POST', body: fd });
+export const updateAdminLevel = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/levels/${id}`, { method: 'POST', body: fd }); };
+export const deleteAdminLevel = (id: number) => adminRequest(`/levels/${id}`, { method: 'DELETE' });
 
-export const deleteAdminLevel = async (id: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/levels/${id}`, { 
-      method: 'DELETE', 
-      headers: { 
-        'Accept': 'application/json', 
-        'Authorization': `Bearer ${getToken()}` 
-      } 
-    });
-    if (!response.ok) return failure('Failed to delete level.');
-    return success(await response.json());
-  } catch (error) { 
-    return failure((error as Error).message); 
-  }
-};
+// ==========================================
+// QUESTIONS (Nodes, Intercepts, Locations)
+// ==========================================
+export const createAdminQuestion = (fd: FormData) => adminRequest('/questions', { method: 'POST', body: fd });
+export const updateAdminQuestion = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/questions/${id}`, { method: 'POST', body: fd }); };
+export const deleteAdminQuestion = (id: number) => adminRequest(`/questions/${id}`, { method: 'DELETE' });
 
 // ==========================================
 // EVIDENCES
 // ==========================================
-export const updateAdminEvidence = async (id: number, formData: FormData): Promise<Result<any>> => {
-  formData.append('_method', 'PUT');
-  try {
-    const response = await fetch(`${API_BASE_URL}/evidences/${id}`, { method: 'POST', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }, body: formData });
-    if (!response.ok) return failure('Failed to update evidence.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
-
-export const deleteAdminEvidence = async (id: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/evidences/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` } });
-    if (!response.ok) return failure('Failed to delete evidence.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
+export const createAdminEvidence = (fd: FormData) => adminRequest('/evidences', { method: 'POST', body: fd });
+export const updateAdminEvidence = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/evidences/${id}`, { method: 'POST', body: fd }); };
+export const deleteAdminEvidence = (id: number) => adminRequest(`/evidences/${id}`, { method: 'DELETE' });
 
 // ==========================================
-// QUESTIONS & CHOICES
+// INVESTIGATION REQUESTS (Combos)
 // ==========================================
-export const updateAdminQuestion = async (id: number, formData: FormData): Promise<Result<any>> => {
-  formData.append('_method', 'PUT');
-  try {
-    const response = await fetch(`${API_BASE_URL}/questions/${id}`, { method: 'POST', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }, body: formData });
-    if (!response.ok) return failure('Failed to update question.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
-
-export const deleteAdminQuestion = async (id: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/questions/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` } });
-    if (!response.ok) return failure('Failed to delete question.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
+export const createAdminInvestigationRequest = (fd: FormData) => adminRequest('/investigation-requests', { method: 'POST', body: fd });
+export const updateAdminInvestigationRequest = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/investigation-requests/${id}`, { method: 'POST', body: fd }); };
+export const deleteAdminInvestigationRequest = (id: number) => adminRequest(`/investigation-requests/${id}`, { method: 'DELETE' });
 
 // ==========================================
 // SUSPECTS
 // ==========================================
-export const updateAdminSuspect = async (id: number, formData: FormData): Promise<Result<any>> => {
-  formData.append('_method', 'PUT');
-  try {
-    const response = await fetch(`${API_BASE_URL}/suspects/${id}`, { method: 'POST', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }, body: formData });
-    if (!response.ok) return failure('Failed to update suspect.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
-
-export const deleteAdminSuspect = async (id: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/suspects/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` } });
-    if (!response.ok) return failure('Failed to delete suspect.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
+export const createAdminSuspect = (fd: FormData) => adminRequest('/suspects', { method: 'POST', body: fd });
+export const updateAdminSuspect = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/suspects/${id}`, { method: 'POST', body: fd }); };
+export const deleteAdminSuspect = (id: number) => adminRequest(`/suspects/${id}`, { method: 'DELETE' });
 
 // ==========================================
 // VICTIMS
 // ==========================================
-export const createAdminVictim = async (formData: FormData): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/victims`, { method: 'POST', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }, body: formData });
-    if (!response.ok) return failure('Failed to create victim.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
-
-export const updateAdminVictim = async (id: number, formData: FormData): Promise<Result<any>> => {
-  formData.append('_method', 'PUT');
-  try {
-    const response = await fetch(`${API_BASE_URL}/victims/${id}`, { method: 'POST', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }, body: formData });
-    if (!response.ok) return failure('Failed to update victim.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
-
-export const deleteAdminVictim = async (id: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/victims/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` } });
-    if (!response.ok) return failure('Failed to delete victim.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
-
-// ==========================================
-// INVESTIGATION REQUESTS
-// ==========================================
-export const updateAdminInvestigationRequest = async (id: number, formData: FormData): Promise<Result<any>> => {
-  formData.append('_method', 'PUT');
-  try {
-    const response = await fetch(`${API_BASE_URL}/investigation-requests/${id}`, { method: 'POST', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` }, body: formData });
-    if (!response.ok) return failure('Failed to update request.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
-
-export const deleteAdminInvestigationRequest = async (id: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/investigation-requests/${id}`, { method: 'DELETE', headers: { 'Accept': 'application/json', 'Authorization': `Bearer ${getToken()}` } });
-    if (!response.ok) return failure('Failed to delete request.');
-    return success(await response.json());
-  } catch (error) { return failure((error as Error).message); }
-};
+export const createAdminVictim = (fd: FormData) => adminRequest('/victims', { method: 'POST', body: fd });
+export const updateAdminVictim = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/victims/${id}`, { method: 'POST', body: fd }); };
+export const deleteAdminVictim = (id: number) => adminRequest(`/victims/${id}`, { method: 'DELETE' });
