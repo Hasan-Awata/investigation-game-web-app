@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAdminCase, updateAdminCase, fetchAdminCases, deleteAdminCase } from '@/services/adminApi';
+import type { GameCase } from '@/types';
 
 export default function CaseForm() {
   const queryClient = useQueryClient();
@@ -23,7 +24,8 @@ export default function CaseForm() {
   const [storeLocally, setStoreLocally] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: cases = [], isLoading: isFetchingCases } = useQuery({
+  // STRICT TYPING: Applied GameCase[] to the query
+  const { data: cases = [], isLoading: isFetchingCases } = useQuery<GameCase[]>({
     queryKey: ['adminCases'],
     queryFn: async () => {
       const result = await fetchAdminCases();
@@ -119,7 +121,8 @@ export default function CaseForm() {
     }
   };
 
-  const handleEditInit = (caseObj: any) => {
+  // STRICT TYPING: Applied GameCase interface
+  const handleEditInit = (caseObj: GameCase) => {
     setFeedback(null);
     setEditingCaseId(caseObj.id);
     setTitle(caseObj.title);
@@ -135,7 +138,6 @@ export default function CaseForm() {
     setAuthorName(caseObj.author_name || 'System');
     setIsPublished(!!caseObj.is_published); 
     
-    // Clear the file input so they don't accidentally re-upload an old image
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
 
@@ -334,7 +336,7 @@ export default function CaseForm() {
           <div className="terminal-text" style={{ padding: 0, textAlign: 'left', color: 'var(--text-secondary)' }}>No cases in database.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {cases.map((c: any) => (
+            {cases.map((c: GameCase) => (
               <div key={c.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <div>
                   <span style={{ fontFamily: 'var(--font-mono)', color: c.is_published ? 'var(--accent-success)' : 'var(--accent-amber)', marginRight: '1rem', fontSize: '0.85rem' }}>

@@ -1,8 +1,10 @@
+// FILE: src/pages/GameRoom/tabs/Campaign/Levels/Interrogation/InterrogationPhase.tsx
+
 import React, { useState, useEffect, useRef } from 'react';
-import { useRoomContext } from '@/context/RoomContext';
-import type { Level, Choice, Question } from '@/types';
+import type { Level, Choice, Question, GameRoom, Evidence } from '@/types';
 import './InterrogationPhase.css';
 
+// --- TYPEWRITER COMPONENT ---
 const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
   const spanRef = useRef<HTMLSpanElement>(null);
   const savedOnComplete = useRef(onComplete);
@@ -15,7 +17,6 @@ const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' 
     const el = spanRef.current;
     if (!el) return;
 
-    // 1. Instantly complete if skipping or already cached in session storage
     if (skip || (cacheKey && sessionStorage.getItem(cacheKey))) {
       el.textContent = text;
       if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
@@ -23,7 +24,6 @@ const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' 
       return;
     }
 
-    // 2. Perform raw DOM manipulation to bypass React's render cycle (fixes the stutter/half-way cutoffs)
     let i = 0;
     el.textContent = '';
     
@@ -37,13 +37,13 @@ const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' 
       }
     }, delay);
 
-    // Cleanup interval on unmount
     return () => clearInterval(interval);
   }, [text, delay, skip, cacheKey]);
 
   return <span ref={spanRef} />;
 };
 
+// --- PROPS INTERFACE ---
 interface InterrogationPhaseProps {
   level: Level;
   status: string;
@@ -51,10 +51,13 @@ interface InterrogationPhaseProps {
   totalPlayers: number;
   getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
   handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
+  room: GameRoom;                     
+  accumulatedEvidences: Evidence[];   
 }
 
-export default function InterrogationPhase({ level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice }: InterrogationPhaseProps) {
-  const { room, accumulatedEvidences } = useRoomContext();
+export default function InterrogationPhase({ 
+  level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice, room, accumulatedEvidences 
+}: InterrogationPhaseProps) {
 
   const checkIsLockedByNarrative = (choice: Choice) => {
     if (!choice.requirements) return false;
@@ -77,7 +80,6 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
     return false;
   };
 
-  // Initialize state directly from sessionStorage
   const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>(() => {
     const initial: Record<number, boolean> = {};
     level.questions?.forEach(q => {
@@ -98,7 +100,7 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
 
   // --- THE NODE TRAVERSAL ENGINE ---
   const visibleQuestions: Question[] = [];
-  let currentId: number | null = level.questions[0].id; // Root Node
+  let currentId: number | null = level.questions[0].id; 
   
   while (currentId) {
     const q = level.questions.find(x => x.id === currentId);
@@ -109,7 +111,6 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
     if (consensus.isResolved && consensus.winningChoiceId) {
       const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
       
-      // If outcomes dictate a branch, follow it. Otherwise, fall back to linear progression.
       if (winningChoice?.outcomes?.next_question_id) {
         currentId = winningChoice.outcomes.next_question_id;
       } else {
@@ -117,7 +118,7 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
         currentId = level.questions[currentIndex + 1]?.id || null;
       }
     } else {
-      currentId = null; // Traversal stops, awaiting player consensus
+      currentId = null; 
     }
   }
 
@@ -138,7 +139,6 @@ export default function InterrogationPhase({ level, status, localVotes, totalPla
         const isSuspectDone = suspectTypingComplete[q.id] || skipTyping;
         const hasLocalVote = !!localVotes[q.id];
 
-        // Read specific suspect reactions if they exist
         const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
         const customReaction = winningChoice?.outcomes?.suspect_reaction; 
 

@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAdminVictim, updateAdminVictim, deleteAdminVictim, fetchAdminCases } from '@/services/adminApi';
+import type { GameCase, Victim } from '@/types';
 
 export default function VictimForm() {
   const queryClient = useQueryClient();
@@ -16,7 +17,8 @@ export default function VictimForm() {
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: cases = [], isLoading: isFetchingCases } = useQuery({
+  // STRICT TYPING: Applied GameCase[] to the query
+  const { data: cases = [], isLoading: isFetchingCases } = useQuery<GameCase[]>({
     queryKey: ['adminCases'],
     queryFn: async () => {
       const result = await fetchAdminCases();
@@ -42,7 +44,7 @@ export default function VictimForm() {
       return result.value;
     },
     onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Victim profile filed successfully.' });
+      setFeedback({ type: 'success', message: 'Casualty profile filed successfully.' });
       clearForm();
       queryClient.invalidateQueries({ queryKey: ['adminCases'] });
     },
@@ -56,7 +58,7 @@ export default function VictimForm() {
       return result.value;
     },
     onSuccess: () => {
-      setFeedback({ type: 'success', message: 'Victim profile updated successfully.' });
+      setFeedback({ type: 'success', message: 'Casualty profile updated successfully.' });
       clearForm();
       queryClient.invalidateQueries({ queryKey: ['adminCases'] });
     },
@@ -92,7 +94,8 @@ export default function VictimForm() {
     else createMutation.mutate(formData);
   };
 
-  const handleEdit = (victim: any, parentCaseId: number) => {
+  // STRICT TYPING: Applied Victim interface
+  const handleEdit = (victim: Victim, parentCaseId: number) => {
     setEditingId(victim.id);
     setCaseId(parentCaseId.toString());
     setName(victim.name);
@@ -112,14 +115,14 @@ export default function VictimForm() {
   };
 
   const isProcessing = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
-  const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
+  const selectedCase = cases.find((c: GameCase) => c.id.toString() === caseId);
 
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', margin: 0 }}>
-            {editingId ? `// Editing Victim ID: ${editingId}` : '// Initialize New Victim'}
+            {editingId ? `// Editing Victim ID: ${editingId}` : '// Initialize New Casualty'}
           </h3>
           {editingId && <button type="button" className="btn-secondary" onClick={clearForm} style={{ padding: '0.5rem 1rem', width: 'auto' }}>Cancel Edit</button>}
         </div>
@@ -131,23 +134,24 @@ export default function VictimForm() {
             <label>Target Case</label>
             <select className="admin-input" required value={caseId} onChange={(e) => setCaseId(e.target.value)} disabled={isFetchingCases}>
               <option value="" disabled>-- Select a Case --</option>
-              {cases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              {cases.map((c: GameCase) => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
             <input type="checkbox" id="victim-initial-toggle" checked={isInitial} onChange={(e) => setIsInitial(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }} />
             <label htmlFor="victim-initial-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
-              <strong>Initial Victim:</strong> Available on the board immediately when the case starts.
+              <strong>Initial Victim:</strong> Details available on the board immediately when the case starts.
             </label>
           </div>
 
           <div className="form-group"><label>Full Name / Alias</label><input type="text" className="admin-input" required value={name} onChange={(e) => setName(e.target.value)} /></div>
-          <div className="form-group"><label>Background Intel</label><textarea className="admin-textarea" value={background} onChange={(e) => setBackground(e.target.value)} /></div>
+          <div className="form-group"><label>Background Intel / Autopsy Notes</label><textarea className="admin-textarea" value={background} onChange={(e) => setBackground(e.target.value)} /></div>
+          
           <div className="form-group">
-            <label>Mugshot {editingId && '(Leave blank to keep existing)'}</label>
+            <label>Victim Image {editingId && '(Leave blank to keep existing)'}</label>
             <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-              <strong>Optimal:</strong> 1:1 (Square) ratio. Face centered. Min 400x400px. WEBP or JPG. Max 4MB.
+              <strong>Optimal:</strong> 1:1 (Square) ratio. Min 400x400px. WEBP or JPG. Max 4MB.
             </p>
             <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
           </div>
@@ -182,9 +186,9 @@ export default function VictimForm() {
 
       {selectedCase && selectedCase.victims && selectedCase.victims.length > 0 && (
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
-          <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', marginBottom: '1.5rem' }}>// Case Victims</h3>
+          <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', marginBottom: '1.5rem' }}>// Identified Casualties</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {selectedCase.victims.map((v: any) => (
+            {selectedCase.victims.map((v: Victim) => (
               <div key={v.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <div>
                   <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>VIC-{v.id.toString().padStart(4, '0')}</span>

@@ -48,23 +48,27 @@ export default function GameRoom() {
     }
   };
 
-  // 1. CREATE THE UNIFIED STATE UPDATER
   const setGameOverData = (message: string, stats?: any) => {
     setResolutionMessage(message);
     if (stats) setFinalStats(stats);
   };
 
-  // 2. UPDATE THE WEBSOCKET TO USE THE NEW FUNCTION
+  interface LevelTransitionedPayload {
+    message: string;
+    status: string;
+    stats?: any; // You can strictly type your final stats interface here if desired
+  }
+
   useEffect(() => {
     if (!room || !window.Echo) return;
     const channel = window.Echo.private(`room.${room.id}`);
     
-    channel.listen('LevelTransitioned', (e: any) => {
+    // STRICT TYPING APPLIED HERE
+    channel.listen('LevelTransitioned', (e: LevelTransitionedPayload) => {
       if (e.message) {
         if (e.status === 'active') {
            window.alert(`🚨 DEPARTMENT UPDATE:\n\n${e.message}`);
         } else {
-           // If the game is actually over, update the overlay data
            setGameOverData(e.message, e.stats);
         }
       }

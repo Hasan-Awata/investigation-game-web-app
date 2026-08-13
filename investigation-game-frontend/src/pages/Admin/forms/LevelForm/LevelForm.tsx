@@ -2,6 +2,13 @@ import { useState, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAdminLevel, updateAdminLevel, deleteAdminLevel, fetchAdminCases } from '@/services/adminApi';
 import { getInvestigationRequestLabel } from '@/types';
+import type { GameCase, Phase, Level } from '@/types';
+
+// Inline type for the requests dropdown to avoid 'any'
+interface InvRequest {
+  id: number;
+  request_type: string;
+}
 
 export default function LevelForm() {
   const queryClient = useQueryClient();
@@ -20,7 +27,8 @@ export default function LevelForm() {
   const [requiredRequestId, setRequiredRequestId] = useState<string>('');   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: cases = [], isLoading: isFetchingCases } = useQuery({
+  // STRICT TYPING: Applied GameCase[] to the query
+  const { data: cases = [], isLoading: isFetchingCases } = useQuery<GameCase[]>({
     queryKey: ['adminCases'],
     queryFn: async () => {
       const result = await fetchAdminCases();
@@ -51,7 +59,6 @@ export default function LevelForm() {
     onSuccess: () => {
       setFeedback({ type: 'success', message: 'Level successfully added to the database.' });
       clearForm();
-      // Auto-increment for the next level creation
       setOrderIndex((prev) => (parseInt(prev || '1') + 1).toString());
       queryClient.invalidateQueries({ queryKey: ['adminCases'] });
     },
@@ -85,9 +92,10 @@ export default function LevelForm() {
     onError: (error: Error) => setFeedback({ type: 'error', message: error.message })
   });
 
-  const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
+  const selectedCase = cases.find((c) => c.id.toString() === caseId);
   const availablePhases = selectedCase?.phases || [];
-  const availableRequests = selectedCase?.investigation_requests || [];
+  // Using type assertion here since investigation_requests might be loosely typed in the main GameCase interface
+  const availableRequests = (selectedCase as any)?.investigation_requests as InvRequest[] || [];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -110,7 +118,8 @@ export default function LevelForm() {
     }
   };
 
-  const handleEdit = (level: any, parentCaseId: number, parentPhaseId: number) => {
+  // STRICT TYPING: Applied Level interface
+  const handleEdit = (level: Level, parentCaseId: number, parentPhaseId: number) => {
     setEditingId(level.id);
     setCaseId(parentCaseId.toString());
     setPhaseId(parentPhaseId.toString());
@@ -119,7 +128,10 @@ export default function LevelForm() {
     setOrderIndex(level.order_index.toString());
     setIsInitial(!!level.is_initial);
     setPresentationType(level.presentation_type || 'standard');
-    setRequiredRequestId(level.required_request_id?.toString() || '');
+    
+    // Safely parse the required_request_id if it exists
+    const reqId = (level as any).required_request_id;
+    setRequiredRequestId(reqId ? reqId.toString() : '');
     
     setImage(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
@@ -160,7 +172,7 @@ export default function LevelForm() {
               <label>Target Case</label>
               <select className="admin-input" required value={caseId} onChange={(e) => { setCaseId(e.target.value); setPhaseId(''); }} disabled={isFetchingCases}>
                 <option value="" disabled>-- Select a Case --</option>
-                {cases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
               </select>
             </div>
             
@@ -168,7 +180,7 @@ export default function LevelForm() {
               <label>Target Phase</label>
               <select className="admin-input" required value={phaseId} onChange={(e) => setPhaseId(e.target.value)} disabled={!caseId}>
                 <option value="" disabled>-- Select a Phase --</option>
-                {availablePhases.map((p: any) => <option key={p.id} value={p.id}>{p.order_index}: {p.title}</option>)}
+                {availablePhases.map((p) => <option key={p.id} value={p.id}>{p.order_index}: {p.title}</option>)}
               </select>
             </div>
 
@@ -191,7 +203,7 @@ export default function LevelForm() {
               <label>Required Combo (Gatekeeper)</label>
               <select className="admin-input" value={requiredRequestId} onChange={(e) => setRequiredRequestId(e.target.value)} disabled={!caseId}>
                 <option value="">-- No Requirement --</option>
-                {availableRequests.map((req: any) => (
+                {availableRequests.map((req) => (
                   <option key={req.id} value={req.id}>
                     REQ-{req.id}: {getInvestigationRequestLabel(req.request_type)}
                   </option>
@@ -262,7 +274,7 @@ export default function LevelForm() {
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', marginBottom: '1.5rem' }}>// Manage Existing Levels</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {availablePhases.map((phase: any) => (
+            {availablePhases.map((phase: Phase) => (
               <div key={`phase-group-${phase.id}`}>
                 <h4 style={{ color: 'var(--text-secondary)', marginBottom: '0.75rem', fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>
                   Phase: {phase.title}
@@ -271,7 +283,7 @@ export default function LevelForm() {
                   <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '0.85rem', margin: '0 0 1rem 0' }}>No levels assigned to this phase.</p>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    {phase.levels.sort((a: any, b: any) => a.order_index - b.order_index).map((level: any) => (
+                    {[...phase.levels].sort((a: Level, b: Level) => a.order_index - b.order_index).map((level: Level) => (
                       <div key={level.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
                         <div>
                           <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', marginRight: '1rem' }}>IDX: {level.order_index}</span>

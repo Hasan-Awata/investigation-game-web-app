@@ -1,10 +1,7 @@
-// FILE: src/pages/Admin/forms/LevelForm/AdminLocationBuilder.tsx
-
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAdminQuestion, updateAdminQuestion, deleteAdminQuestion, fetchAdminCases } from '@/services/adminApi';
-import ChoiceEditorCard, { type FlattenedChoice, type LevelWithPhase } from '../QuestionForm/ChoiceEditorCard';
-import { type ChoiceState, defaultRequirements, defaultOutcomes, appendChoicesToFormData } from '../QuestionForm/questionUtils';
+import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
 import type { GameCase, Question, Choice } from '@/types';
 import './AdminLocationBuilder.css';
 
@@ -25,8 +22,9 @@ export default function AdminLocationBuilder() {
   const [audio, setAudio] = useState<File | null>(null);
   const [existingAudioUrl, setExistingAudioUrl] = useState<string | null>(null);
   
-  const [activeCoordinateTarget, setActiveCoordinateTarget] = useState<string | null>(null);
-  const [choices, setChoices] = useState<ChoiceState[]>([]);
+  const [activeCoordinateTarget, setActiveCoordinateTarget] = useState<string | number | null>(null);
+  
+  const [choices, setChoices] = useState<DraftChoice[]>([]);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -49,20 +47,6 @@ export default function AdminLocationBuilder() {
   const selectedLevel = availableLevels.find((l) => l.id.toString() === levelId);
   const locationScenes = selectedLevel?.questions || [];
 
-  const availableEvidences = selectedCase?.evidences || [];
-  const availableSuspects = selectedCase?.suspects || [];
-  const availableVictims = selectedCase?.victims || [];
-  
-  const allCaseLevels: LevelWithPhase[] = availablePhases.flatMap((p) => 
-    (p.levels || []).map((l) => ({ ...l, phase_title: p.title }))
-  );
-
-  const allCaseChoices: FlattenedChoice[] = allCaseLevels.flatMap((l) => 
-    (l.questions || []).flatMap((q) => 
-      (q.choices || []).map((c) => ({ id: c.id, text: c.text, question_text: q.text, level_title: l.phase_title }))
-    )
-  );
-
   const clearForm = () => {
     setEditingId(null); setText(''); setIsMandatory(true); setStoreLocally(false);
     setImage(null); setExistingImgUrl(null); setActiveCoordinateTarget(null);
@@ -76,7 +60,7 @@ export default function AdminLocationBuilder() {
   const handleCreateNewScene = () => {
     clearForm();
     setIsFormOpen(true);
-    setChoices([{ id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }]);
+    setChoices([{ id: crypto.randomUUID(), text: '', outcomes: {}, requirements: {} }]);
   };
 
   const createMutation = useMutation({
@@ -140,7 +124,27 @@ export default function AdminLocationBuilder() {
       return setFeedback({ type: 'error', message: 'All points must have coordinate mapping text.' });
     }
 
-    appendChoicesToFormData(formData, choices);
+    choices.forEach((choice, index) => {
+      formData.append(`choices[${index}][text]`, choice.text);
+      
+      if (choice.outcomes) {
+        Object.entries(choice.outcomes).forEach(([key, value]) => {
+          if (Array.isArray(value)) {
+            value.forEach(v => formData.append(`choices[${index}][outcomes][${key}][]`, String(v)));
+          } else if (value !== null && value !== undefined) {
+            formData.append(`choices[${index}][outcomes][${key}]`, String(value));
+          }
+        });
+      }
+
+      if (choice.requirements) {
+        Object.entries(choice.requirements).forEach(([key, value]) => {
+          if (Array.isArray(value)) {
+            value.forEach(v => formData.append(`choices[${index}][requirements][${key}][]`, String(v)));
+          }
+        });
+      }
+    });
 
     if (editingId) updateMutation.mutate({ id: editingId, formData });
     else createMutation.mutate(formData);
@@ -154,21 +158,10 @@ export default function AdminLocationBuilder() {
 
     if (scene.choices && scene.choices.length > 0) {
       setChoices(scene.choices.map((c: Choice) => ({
-        id: crypto.randomUUID(), 
+        id: c.id, 
         text: c.text,
-        requirements: {
-          required_evidence: c.requirements?.required_evidence?.map(String) || [],
-          required_choices: c.requirements?.required_choices?.map(String) || [],
-        },
-        outcomes: {
-          feedback: c.outcomes?.feedback || '',
-          next_question_id: c.outcomes?.next_question_id?.toString() || '',
-          gives_strike: !!c.outcomes?.gives_strike,
-          unlock_evidence: c.outcomes?.unlock_evidence?.map(String) || [],
-          unlock_levels: c.outcomes?.unlock_levels?.map(String) || [],
-          unlock_suspects: c.outcomes?.unlock_suspects?.map(String) || [],
-          unlock_victims: c.outcomes?.unlock_victims?.map(String) || [],
-        }
+        requirements: c.requirements || {},
+        outcomes: c.outcomes || {}
       })));
     } else {
       setChoices([]);
@@ -216,7 +209,7 @@ export default function AdminLocationBuilder() {
       </div>
 
       {levelId && !isFormOpen && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', margin: 0 }}>Location Scenes</h3>
             <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} onClick={handleCreateNewScene}>
@@ -225,16 +218,16 @@ export default function AdminLocationBuilder() {
           </div>
           
           {locationScenes.length === 0 ? (
-            <div className="terminal-text" style={{ textAlign: 'left' }}>No scenes configured for this location yet.</div>
+            <div className="terminal-text" style={{ textAlign: 'left', padding: '2rem', background: 'rgba(0,0,0,0.2)', borderRadius: '8px' }}>No scenes configured for this location yet. Click above to initialize one.</div>
           ) : (
             locationScenes.map((scene: Question) => (
               <div key={scene.id} className="scene-item-card glass-panel">
                 <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
                   <div className="scene-thumbnail" style={{ backgroundImage: `url(${scene.img_url || '/placeholder-crime-scene.jpg'})` }} />
                   <div>
-                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontSize: '0.85rem' }}>SCENE ID: {scene.id}</span>
+                    <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontSize: '0.8rem' }}>SCENE ID: {scene.id}</span>
                     <h4 style={{ margin: '0.25rem 0', color: 'var(--text-primary)' }}>{scene.text || 'Unnamed Scene'}</h4>
-                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{scene.choices?.length || 0} Interactable Points</p>
+                    <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{scene.choices?.length || 0} Interactable Points Mapped</p>
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -248,7 +241,7 @@ export default function AdminLocationBuilder() {
       )}
 
       {isFormOpen && (
-        <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+        <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', marginTop: '1rem' }}>
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', margin: 0 }}>
@@ -269,7 +262,7 @@ export default function AdminLocationBuilder() {
 
               <div className="form-group">
                 <label>Scene Title / Hint Text</label>
-                <textarea className="admin-textarea" style={{ minHeight: '80px' }} required value={text} onChange={(e) => setText(e.target.value)} />
+                <textarea className="admin-textarea" style={{ minHeight: '80px' }} required value={text} onChange={(e) => setText(e.target.value)} placeholder="Describe the overview of this environment zone..." />
               </div>
 
               <div className="admin-form-row" style={{ marginTop: '1rem' }}>
@@ -278,7 +271,6 @@ export default function AdminLocationBuilder() {
                   <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
                 </div>
                 
-                {/* AMBIENT AUDIO RESTORED */}
                 <div className="form-group" style={{ flex: 1 }}>
                   <label>Ambient Audio / Dialogue (Optional)</label>
                   <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
@@ -303,54 +295,47 @@ export default function AdminLocationBuilder() {
 
               {previewUrl ? (
                 <div className="coordinate-picker-container" style={{ marginTop: '1.5rem' }}>
+                  {activeCoordinateTarget && (
+                    <div className="targeting-active-banner">
+                      <span>⚠️ TARGETING MATRIX ENGAGED: Click anywhere on the map below to lock target coordinates.</span>
+                      <button type="button" onClick={() => setActiveCoordinateTarget(null)} style={{ background: 'transparent', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)', padding: '0.2rem 0.5rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}>Cancel</button>
+                    </div>
+                  )}
                   <div className="coordinate-picker-header">
                     <div>
-                      <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>Visual Coordinate Mapping</label>
-                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Click 🎯 on a point below, then click the image to map.</p>
+                      <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>Visual Coordinate Mapping Matrix</label>
+                      <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                        {activeCoordinateTarget ? 'Click the blueprint image to pin location.' : 'Click "MAP COORDINATES" on any point item below.'}
+                      </p>
                     </div>
                   </div>
-                  <div className="coordinate-picker-image-wrapper" onClick={handleImageClick} style={{ cursor: activeCoordinateTarget ? 'crosshair' : 'default', opacity: activeCoordinateTarget ? 1 : 0.5 }}>
+                  <div className={`coordinate-picker-image-wrapper ${activeCoordinateTarget ? 'mapping-active' : ''}`} onClick={handleImageClick}>
                     <img src={previewUrl} alt="Map Preview" />
                   </div>
                 </div>
               ) : (
-                <div className="terminal-text" style={{ padding: '1rem', border: '1px dashed rgba(255,255,255,0.2)', textAlign: 'left', marginTop: '1.5rem' }}>
-                  Upload an Environment Map above to enable the interactive coordinate mapper.
+                <div className="terminal-text" style={{ padding: '1.5rem', border: '1px dashed rgba(255,255,255,0.2)', textAlign: 'center', marginTop: '1.5rem', borderRadius: '6px', color: 'var(--text-secondary)' }}>
+                  Upload an Environment Map above to activate the visual coordinate targeting matrix.
                 </div>
               )}
 
-              <div className="qf-choices-container">
-                <div className="qf-choices-header">
-                  <label className="qf-choices-title">Interactable Points & Evidence</label>
-                  <button type="button" onClick={() => setChoices([...choices, { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }])} className="btn-secondary" style={{ padding: '0.5rem 1rem', flex: 'none' }}>+ Add Point</button>
-                </div>
-
-                <div className="qf-choices-list">
-                  {choices.map((choice) => (
-                    <ChoiceEditorCard 
-                      key={choice.id}
-                      choice={choice}
-                      isLocationPhase={true}
-                      isActiveTarget={activeCoordinateTarget === choice.id}
-                      placeholderText="x.x,y.y | Location Title"
-                      onToggleTarget={(e: React.MouseEvent) => {
-                        e.stopPropagation();
-                        setActiveCoordinateTarget(activeCoordinateTarget === choice.id ? null : choice.id);
-                      }}
-                      onUpdate={(updatedChoice: ChoiceState) => setChoices(choices.map(c => c.id === choice.id ? updatedChoice : c))}
-                      onRemove={() => setChoices(choices.filter(c => c.id !== choice.id))}
-                      availableEvidences={availableEvidences}
-                      allCaseLevels={allCaseLevels}
-                      availableSuspects={availableSuspects}
-                      availableVictims={availableVictims}
-                      allCaseChoices={allCaseChoices} 
-                    />
-                  ))}
-                  {choices.length === 0 && <div style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>No points mapped. Add a point to allow interaction.</div>}
-                </div>
+              <div className="qf-choices-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {choices.map((choice, index) => (
+                  <ChoiceEditorCard 
+                    key={choice.id}
+                    index={index}
+                    choice={choice}
+                    updateChoice={(updated) => setChoices(choices.map(c => c.id === choice.id ? updated : c))}
+                    removeChoice={() => setChoices(choices.filter(c => c.id !== choice.id))}
+                    caseId={Number(selectedCaseId)}
+                    isLocationMode={true}
+                    isTargeting={activeCoordinateTarget === choice.id}
+                    onToggleTarget={() => setActiveCoordinateTarget(activeCoordinateTarget === choice.id ? null : (choice.id ?? null))}                  />
+                ))}
+                {choices.length === 0 && <div style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', padding: '1rem', background: 'rgba(0,0,0,0.1)', borderRadius: '6px' }}>No points mapped. Add a point to allow spatial inspection.</div>}
               </div>
 
-              <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', color: 'var(--bg-dark)' }}>
+              <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', color: 'var(--bg-dark)', marginTop: '2rem' }}>
                 {isProcessing ? 'Processing...' : 'Commit Scene Layout'}
               </button>
             </form>

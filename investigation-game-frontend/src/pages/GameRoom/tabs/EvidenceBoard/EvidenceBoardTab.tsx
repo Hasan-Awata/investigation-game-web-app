@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useRoomContext } from '@/context/RoomContext';
+import { useRoomState, useRoomActions } from '@/context/RoomContext';
 import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
 import type { Evidence } from '@/types';
 import EvidenceCard from './EvidenceCard';
@@ -8,7 +8,9 @@ import ProceduralRequestTray from './ProceduralRequestTray';
 import './EvidenceBoardTab.css';
 
 export default function EvidenceBoardTab() {
-  const { room, accumulatedEvidences, viewedEvidences, markEvidenceAsViewed, refreshRoomData } = useRoomContext();
+  const { room, accumulatedEvidences, viewedEvidences } = useRoomState();
+  const { markEvidenceAsViewed, refreshRoomData } = useRoomActions();
+  
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
 
   const {
@@ -36,7 +38,7 @@ export default function EvidenceBoardTab() {
     if (!scrollContainer) return;
 
     const rect = scrollContainer.getBoundingClientRect();
-    const threshold = 80; // Distance from edge in pixels to trigger scroll
+    const threshold = 80;
     const speed = 15;
 
     if (e.clientY - rect.top < threshold) {
@@ -84,7 +86,7 @@ export default function EvidenceBoardTab() {
           <div className="terminal-text">No evidence recovered for this phase.</div>
         ) : (
           <div className="evidence-scatter-grid">
-            {accumulatedEvidences.map((evidence, index) => (
+            {accumulatedEvidences.map((evidence: Evidence, index: number) => (
               <EvidenceCard 
                 key={evidence.id} 
                 evidence={evidence} 

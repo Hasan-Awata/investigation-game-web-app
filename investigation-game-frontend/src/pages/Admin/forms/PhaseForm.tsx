@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAdminPhase, updateAdminPhase, deleteAdminPhase, fetchAdminCases } from '@/services/adminApi';
+import type { GameCase, Phase } from '@/types';
 
 export default function PhaseForm() {
   const queryClient = useQueryClient();
@@ -12,7 +13,8 @@ export default function PhaseForm() {
   const [orderIndex, setOrderIndex] = useState('1');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const { data: cases = [], isLoading: isFetchingCases } = useQuery({
+  // STRICT TYPING: Applied GameCase[] to the query
+  const { data: cases = [], isLoading: isFetchingCases } = useQuery<GameCase[]>({
     queryKey: ['adminCases'],
     queryFn: async () => {
       const result = await fetchAdminCases();
@@ -82,7 +84,8 @@ export default function PhaseForm() {
     else createMutation.mutate(formData);
   };
 
-  const handleEdit = (phase: any, parentCaseId: number) => {
+  // STRICT TYPING: Applied Phase interface
+  const handleEdit = (phase: Phase, parentCaseId: number) => {
     setEditingId(phase.id);
     setCaseId(parentCaseId.toString());
     setTitle(phase.title);
@@ -100,7 +103,7 @@ export default function PhaseForm() {
   };
 
   const isProcessing = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
-  const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
+  const selectedCase = cases.find((c: GameCase) => c.id.toString() === caseId);
 
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
@@ -120,7 +123,7 @@ export default function PhaseForm() {
               <label>Target Case</label>
               <select className="admin-input" required value={caseId} onChange={(e) => setCaseId(e.target.value)} disabled={isFetchingCases}>
                 <option value="" disabled>-- Select a Case --</option>
-                {cases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
+                {cases.map((c: GameCase) => <option key={c.id} value={c.id}>{c.title}</option>)}
               </select>
             </div>
             <div className="form-group" style={{ flex: 1 }}>
@@ -149,7 +152,7 @@ export default function PhaseForm() {
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', marginBottom: '1.5rem' }}>// Case Phases</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {selectedCase.phases.map((p: any) => (
+            {selectedCase.phases.map((p: Phase) => (
               <div key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <div>
                   <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>IDX: {p.order_index}</span>

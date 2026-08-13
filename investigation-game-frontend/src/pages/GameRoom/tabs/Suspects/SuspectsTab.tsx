@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useRoomContext } from '../../../../context/RoomContext';
+import { useRoomState, useRoomActions } from '../../../../context/RoomContext';
 import { submitSuspectVerdict } from '../../../../services/api';
 import { useMutation } from '@tanstack/react-query';
 import SuspectCard from './SuspectCard'; 
@@ -8,14 +8,8 @@ import './SuspectsTab.css';
 type PoolType = 'unassigned' | 'guilty' | 'innocent';
 
 export default function SuspectsTab() {
-  const { 
-    room, 
-    accumulatedSuspects, 
-    refreshRoomData,
-    viewedSuspects,
-    markSuspectAsViewed,
-    setGameOverData 
-  } = useRoomContext();
+  const { room, accumulatedSuspects, viewedSuspects } = useRoomState();
+  const { refreshRoomData, markSuspectAsViewed, setGameOverData } = useRoomActions();
   
   const [guiltyIds, setGuiltyIds] = useState<number[]>(() => {
     try {
@@ -52,7 +46,6 @@ export default function SuspectsTab() {
         setFeedback({ type: 'error', message: data.message });
         refreshRoomData();
       } else {
-        // Complete Garbage Collection: Wipe all session memory tied to this room
         Object.keys(sessionStorage).forEach(key => {
           if (key.includes(`room_${room.invite_code}`) || key.includes(`room_${room.id}`)) {
             sessionStorage.removeItem(key);
@@ -93,7 +86,6 @@ export default function SuspectsTab() {
   };
 
   const handleSubmitVerdict = () => {
-    // Empty array submission is now allowed for the No Foul Play scenario.
     verdictMutation.mutate(guiltyIds);
   };
 
@@ -102,7 +94,6 @@ export default function SuspectsTab() {
     refreshRoomData();
   };
 
-  // Helper booleans for clean rendering
   const isAllAssigned = unassignedPool.length === 0;
   const isReadyToSubmit = allInitialCompleted && isAllAssigned;
   const isNoFoulPlay = isAllAssigned && guiltyPool.length === 0;

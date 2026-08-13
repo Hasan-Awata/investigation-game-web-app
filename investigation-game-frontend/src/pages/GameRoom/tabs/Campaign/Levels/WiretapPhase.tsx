@@ -1,6 +1,7 @@
+// FILE: src/pages/GameRoom/tabs/Campaign/Levels/WiretapPhase.tsx
+
 import React from 'react';
-import { useRoomContext } from '@/context/RoomContext';
-import type { Level, Choice, Question } from '@/types';
+import type { Level, Choice, Question, GameRoom, Evidence } from '@/types';
 import './WiretapPhase.css';
 
 interface WiretapPhaseProps {
@@ -14,13 +15,14 @@ interface WiretapPhaseProps {
   playedWiretaps: Set<number>;
   onPlayWiretap: (questionId: number, audioUrl: string) => void;
   isTriggeringWiretap: boolean;
+  room: GameRoom;                     
+  accumulatedEvidences: Evidence[];   
 }
 
 export default function WiretapPhase({ 
   level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice,
-  isHost, playedWiretaps, onPlayWiretap, isTriggeringWiretap
+  isHost, playedWiretaps, onPlayWiretap, isTriggeringWiretap, room, accumulatedEvidences
 }: WiretapPhaseProps) {
-  const { room, accumulatedEvidences } = useRoomContext();
 
   const checkIsLockedByNarrative = (choice: Choice) => {
     if (!choice.requirements) return false;
@@ -47,7 +49,7 @@ export default function WiretapPhase({
 
   // --- THE NODE TRAVERSAL ENGINE ---
   const visibleQuestions: Question[] = [];
-  let currentId: number | null = level.questions[0].id; // Root Node
+  let currentId: number | null = level.questions[0].id; 
 
   while (currentId) {
     const q = level.questions.find(x => x.id === currentId);
@@ -58,7 +60,6 @@ export default function WiretapPhase({
     if (consensus.isResolved && consensus.winningChoiceId) {
       const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
       
-      // If outcomes dictate a branch, follow it. Otherwise, fall back to linear progression.
       if (winningChoice?.outcomes?.next_question_id) {
         currentId = winningChoice.outcomes.next_question_id;
       } else {
@@ -66,7 +67,7 @@ export default function WiretapPhase({
         currentId = level.questions[currentIndex + 1]?.id || null;
       }
     } else {
-      currentId = null; // Traversal stops, awaiting player consensus
+      currentId = null; 
     }
   }
 
@@ -90,13 +91,11 @@ export default function WiretapPhase({
           const hasBeenPlayed = playedWiretaps.has(q.id);
           const isAudioIntercept = !!q.audio_url;
           
-          // Pad the number for a more tactical feel (e.g. 01, 02)
           const interceptNumber = String(qIdx + 1).padStart(2, '0');
 
           return (
             <div key={q.id} className="question-item wiretap-item">
               
-              {/* Tactical Sidebar */}
               <div className="wiretap-sidebar">
                 <span className="question-number">INT-{interceptNumber}</span>
                 {isAudioIntercept && !hasBeenPlayed && (
@@ -107,7 +106,6 @@ export default function WiretapPhase({
                 )}
               </div>
 
-              {/* Main Content Body */}
               <div className="question-body" style={{ width: '100%' }}>
                 <p className="question-text" style={{ marginTop: 0 }}>
                   {q.text}

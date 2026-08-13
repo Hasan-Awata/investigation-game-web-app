@@ -1,12 +1,16 @@
+// FILE: src/pages/GameRoom/tabs/CaseDetails/CaseDetailsTab.tsx
+
 import { useState } from 'react';
-import { useRoomContext } from '../../../../context/RoomContext';
+import { useRoomState, useRoomActions } from '../../../../context/RoomContext';
 import VictimModal from './VictimModal';
 import type { Victim } from '../../../../types';
 import '../SharedOverlay.css';
 import './CaseDetailsTab.css';
 
 export default function CaseDetailsTab() {
-  const { room, accumulatedVictims, viewedVictims, markVictimAsViewed } = useRoomContext();
+  const { room, accumulatedVictims, viewedVictims } = useRoomState();
+  const { markVictimAsViewed } = useRoomActions();
+  
   const [inspectedVictim, setInspectedVictim] = useState<Victim | null>(null);
   
   const gameCase = room.game_case || {
@@ -46,7 +50,7 @@ export default function CaseDetailsTab() {
       <div className="case-full-story">
         <h2 className="section-title">Official Briefing</h2>
         <div className="story-text-block">
-          {gameCase.story.split('\n').map((paragraph, idx) => (
+          {gameCase.story.split('\n').map((paragraph: string, idx: number) => (
             <p key={idx}>{paragraph}</p>
           ))}
         </div>
@@ -56,7 +60,7 @@ export default function CaseDetailsTab() {
         <div className="case-victims-section" style={{ marginTop: '3rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '3rem' }}>
           <h2 className="section-title" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }}>Identified Casualties</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
-            {accumulatedVictims.map((victim) => {
+            {accumulatedVictims.map((victim: Victim) => {
               const isNew = !viewedVictims.has(victim.id);
               
               return (
@@ -103,7 +107,6 @@ export default function CaseDetailsTab() {
         </div>
       )}
 
-      {/* The Victim Modal */}
       <VictimModal 
         victim={inspectedVictim} 
         onClose={() => setInspectedVictim(null)} 

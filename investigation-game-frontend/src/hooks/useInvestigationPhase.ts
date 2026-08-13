@@ -11,6 +11,19 @@ export interface ToastNotification {
   icon: string;
 }
 
+// --- NEW: STRICT PAYLOAD INTERFACES ---
+interface WiretapTriggeredPayload {
+  question_id: number;
+  audio_url: string | null;
+  message?: string;
+}
+
+// Standardize expected API error structure
+interface ApiError {
+  title?: string;
+  message: string;
+}
+
 export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => void) {
   const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
@@ -35,14 +48,17 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
       refreshRoomData();
     });
 
-    channel.listen('WiretapTriggered', (e: any) => {
+    // STRICT TYPING APPLIED HERE
+    channel.listen('WiretapTriggered', (e: WiretapTriggeredPayload) => {
       if (e.audio_url && !locallyTriggered.current.has(e.question_id)) {
         const audio = new Audio(e.audio_url);
         audio.play().catch(err => console.error('Browser blocked autoplay:', err));
       }
 
       addToast({
-        type: 'evidence', title: 'WIRETAP INTERCEPTED', message: e.message || 'Audio feed active. Listen carefully.',
+        type: 'evidence', 
+        title: 'WIRETAP INTERCEPTED', 
+        message: e.message || 'Audio feed active. Listen carefully.',
         icon: 'https://api.iconify.design/ph:waveform-duotone.svg?color=%23c48b36'
       });
 
@@ -76,8 +92,6 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
       return result.value;
     },
     onSuccess: () => {
-      // The toasts have already been fired optimistically! 
-      // All we need to do now is sync the board data.
       refreshRoomData();
     }
   });
@@ -85,7 +99,7 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
   const submitTheoryMutation = useMutation({
     mutationFn: async () => {
       const result = await submitAssessment(roomId);
-      if (!result.isSuccess) throw result.errorMessage;
+      if (!result.isSuccess) throw { message: result.errorMessage }; // Wrapped as ApiError structure
       return result.value;
     },
     onSuccess: async (data) => {
@@ -107,7 +121,8 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
         refreshRoomData(); 
       }
     },
-    onError: (error: any) => {
+    // STRICT TYPING APPLIED HERE
+    onError: (error: ApiError) => {
       setFeedback({ type: 'error', title: error.title || 'Error', message: error.message });
     }
   });
@@ -115,11 +130,12 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
   const initiatePhaseMutation = useMutation({
     mutationFn: async (levelId: number) => {
       const result = await initiatePhase(roomId, levelId);
-      if (!result.isSuccess) throw result.errorMessage; 
+      if (!result.isSuccess) throw { message: result.errorMessage }; 
       return result.value;
     },
     onSuccess: () => refreshRoomData(),
-    onError: (error: any) => setFeedback({ 
+    // STRICT TYPING APPLIED HERE
+    onError: (error: ApiError) => setFeedback({ 
       type: 'error', title: error.title || 'System Error', message: error.message 
     })
   });
@@ -128,7 +144,7 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     mutationFn: async ({ questionId, audioUrl }: { questionId: number, audioUrl: string }) => {
       locallyTriggered.current.add(questionId); 
       const result = await triggerWiretap(roomId, questionId);
-      if (!result.isSuccess) throw result.errorMessage; 
+      if (!result.isSuccess) throw { message: result.errorMessage }; 
       return { value: result.value, audioUrl };
     },
     onSuccess: (data) => {
@@ -138,7 +154,8 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
       }
       refreshRoomData(); 
     },
-    onError: (error: any) => setFeedback({ 
+    // STRICT TYPING APPLIED HERE
+    onError: (error: ApiError) => setFeedback({ 
       type: 'error', title: error.title || 'Transmission Error', message: error.message 
     })
   });
@@ -147,10 +164,8 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     e.stopPropagation(); 
     if (status !== 'active') return; 
 
-    // 1. Instantly snap the UI for the local player
     setLocalVotes(prev => ({ ...prev, [questionId]: choice.id }));
 
-    // 2. Fire Optimistic Toasts Instantly!
     if (choice.outcomes?.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) {
       addToast({ 
         type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${choice.outcomes.unlock_evidence.length} new piece(s) of physical evidence secured.`, 
@@ -176,7 +191,6 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
       });
     }
 
-    // 3. Dispatch to the server quietly in the background
     voteMutation.mutate({ questionId, choiceId: choice.id });
   };
 

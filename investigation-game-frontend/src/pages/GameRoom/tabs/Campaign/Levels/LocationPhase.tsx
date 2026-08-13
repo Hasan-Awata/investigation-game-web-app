@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useRoomContext } from '@/context/RoomContext';
-import type { Level, Choice } from '@/types';
+import type { Level, Choice, GameRoom, Evidence } from '@/types';
 import type { ToastNotification } from '../../../../../hooks/useInvestigationPhase';
 import './LocationPhase.css';
 
@@ -11,11 +10,14 @@ interface LocationPhaseProps {
   localVotes: Record<number, number>;
   handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
   currentUserId: number;
-  addToast: (toast: Omit<ToastNotification, 'id'>) => void; 
+  addToast: (toast: Omit<ToastNotification, 'id'>) => void;
+  room: GameRoom;
+  accumulatedEvidences: Evidence[];
 }
 
-export default function LocationPhase({ level, status, localVotes, handleSelectChoice, currentUserId, addToast }: LocationPhaseProps) {
-  const { room, accumulatedEvidences } = useRoomContext();
+export default function LocationPhase({ 
+  level, status, localVotes, handleSelectChoice, currentUserId, addToast, room, accumulatedEvidences 
+}: LocationPhaseProps) {
   
   const checkIsLockedByNarrative = (choice: Choice) => {
     if (!choice.requirements) return false;
@@ -41,10 +43,8 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
   const [inspectingQuestionId, setInspectingQuestionId] = useState<number | null>(null);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
   
-  // Tactical Fix: Track the active timeout so rapid clicks don't cause the popup to vanish prematurely
   const popupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   
-  // Clean up any lingering timers if the component unmounts
   useEffect(() => {
     return () => {
       if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
@@ -72,7 +72,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
 
   const isCompleted = status === 'completed';
   
-  // --- NON-LINEAR ENGINE ---
   const visibleQuestionIds = new Set<number>();
   
   if (level.questions.length > 0) {
@@ -105,7 +104,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
     e.stopPropagation();
     if (status !== 'active') return;
 
-    // Clear any existing timer immediately when a new click registers
     if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
 
     const hasUnlocks = choice.outcomes && (
@@ -141,8 +139,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         return newSet;
       });
 
-      // THE FIX: Fire the API call if it's the first time discovering THIS SPECIFIC choice,
-      // regardless of whether they have clicked other things in this scene previously.
       if (isFirstTimeDiscovery) {
         handleSelectChoice(e, qId, choice, status);
       }
@@ -160,7 +156,6 @@ export default function LocationPhase({ level, status, localVotes, handleSelectC
         });
       }
 
-    // Set the new timer
     popupTimeoutRef.current = setTimeout(() => {
       setPopup(null);
     }, 2500);

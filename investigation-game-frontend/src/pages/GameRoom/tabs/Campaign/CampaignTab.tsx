@@ -1,6 +1,8 @@
+// FILE: src/pages/GameRoom/tabs/Campaign/CampaignTab.tsx
+
 import { useState } from 'react';
 import { createPortal } from 'react-dom'; 
-import { useRoomContext } from '../../../../context/RoomContext';
+import { useRoomState, useRoomActions } from '../../../../context/RoomContext';
 import { useInvestigationPhase } from '../../../../hooks/useInvestigationPhase';
 import type { Question } from '../../../../types';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
@@ -11,9 +13,10 @@ import '../SharedOverlay.css';
 import './CampaignTab.css';
 
 export default function CampaignTab() {
-  const { room, refreshRoomData } = useRoomContext();
+  // THE FIX: Destructuring accumulatedEvidences so it can be passed to the children
+  const { room, accumulatedEvidences } = useRoomState();
+  const { refreshRoomData } = useRoomActions();
   
-  // Now iterating over phases instead of flat levels
   const phases = room.game_case?.phases || [];
   const currentLevelId = room.current_level_id;
   const roomStatus = room.status;
@@ -39,20 +42,17 @@ export default function CampaignTab() {
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  // --- HIERARCHICAL MASKING ---
-  const unlockedLevelIds = new Set(room.unlocked_levels?.map(l => l.id) || []);
-  const playedWiretaps = new Set(room.played_wiretaps?.map(q => q.id) || []);
-  const sortedPhases = [...phases].sort((a, b) => a.order_index - b.order_index);
+  const unlockedLevelIds = new Set(room.unlocked_levels?.map((l: any) => l.id) || []);
+  const playedWiretaps = new Set(room.played_wiretaps?.map((q: any) => q.id) || []);
+  const sortedPhases = [...phases].sort((a: any, b: any) => a.order_index - b.order_index);
 
-  // Auto-select the most relevant Phase on load
   const phaseStorageKey = `room_${room.id}_active_phase`;
 
-const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
+  const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
     try {
       const saved = sessionStorage.getItem(phaseStorageKey);
       if (saved) {
         const parsedId = parseInt(saved, 10);
-        // Ensure the cached ID actually exists in the current room's phases
         if (sortedPhases.some(p => p.id === parsedId)) {
           return parsedId;
         }
@@ -61,19 +61,14 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
       // Silently catch parsing errors
     }
     
-    // Synchronous fallback: Default strictly to the FIRST phase 
-    // This eliminates the "Unknown Phase" rendering flash completely.
     return sortedPhases.length > 0 ? sortedPhases[0].id : null;
   });
-
-  // (You can delete the old useEffect block entirely, as it is no longer needed)
 
   const toggleExpand = (levelId: number, status: string) => {
     if (status === 'locked') return; 
     setExpandedId(expandedId === levelId ? null : levelId);
   };
 
-  // --- CONSENSUS ENGINE ---
   const totalPlayers = room.users?.length || 1; 
 
   const getQuestionConsensus = (question: Question) => {
@@ -81,9 +76,9 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
     let votesCast = 0;
     const participants = room.users || [];
 
-    room.votes?.forEach(v => {
+    room.votes?.forEach((v: any) => {
       if (v.question_id === question.id) {
-        const role = participants.find(p => p.user_id === v.user_id)?.role || 'participant';
+        const role = participants.find((p: any) => p.user_id === v.user_id)?.role || 'participant';
         const weight = role === 'host' ? 2 : 1; 
         tally[v.choice_id] = (tally[v.choice_id] || 0) + weight;
         votesCast++;
@@ -91,7 +86,7 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
     });
 
     if (question.assigned_user_id !== undefined && question.assigned_user_id !== null) {
-      const assignedVote = room.votes?.find(v => v.question_id === question.id && v.user_id === question.assigned_user_id);
+      const assignedVote = room.votes?.find((v: any) => v.question_id === question.id && v.user_id === question.assigned_user_id);
       return { votesCast, isResolved: !!assignedVote, isTie: false, winningChoiceId: assignedVote ? assignedVote.choice_id : null };
     }
 
@@ -105,18 +100,14 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
     return { votesCast, isResolved: !isTie, isTie, winningChoiceId: isTie ? null : winningChoiceId };
   };
 
-  // Grab the currently active phase and its levels
-  const activePhaseData = sortedPhases.find(p => p.id === activePhaseId);
-  const sortedLevels = activePhaseData?.levels ? [...activePhaseData.levels].sort((a, b) => a.order_index - b.order_index) : [];
+  const activePhaseData = sortedPhases.find((p: any) => p.id === activePhaseId);
+  const sortedLevels = activePhaseData?.levels ? [...activePhaseData.levels].sort((a: any, b: any) => a.order_index - b.order_index) : [];
 
   return (
     <div className="campaign-roadmap-container">
-      
-      {/* PHASE SUB-NAVIGATION */}
       <div className="phase-subnav">
-        {sortedPhases.map((phase) => {
-          // A phase is "unlocked" if ANY level inside it is initial or unlocked by a choice
-          const isPhaseUnlocked = phase.levels?.some(l => l.is_initial || unlockedLevelIds.has(l.id));
+        {sortedPhases.map((phase: any) => {
+          const isPhaseUnlocked = phase.levels?.some((l: any) => l.is_initial || unlockedLevelIds.has(l.id));
 
           return (
             <button
@@ -145,7 +136,6 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
         )}
       </div>
 
-      {/* --- FEEDBACK MODAL --- */}
       {feedback && (
         <div className="feedback-modal-overlay">
           <div className={`feedback-modal-content ${feedback.type}`}>
@@ -170,7 +160,6 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
         </div>
       )}
 
-      {/* --- TACTICAL TOAST NOTIFICATIONS --- */}
       {createPortal(
         <div className="toast-container">
           {toasts.map((toast) => (
@@ -188,15 +177,14 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
         document.body
       )}
 
-      {/* --- NON-LINEAR ROADMAP (Mapped to Active Phase's Levels) --- */}
       <div className="roadmap-timeline">
         {sortedLevels.length === 0 && (
           <div className="terminal-text" style={{ padding: 0, textAlign: 'left' }}>No leads currently available in this phase.</div>
         )}
         
-        {sortedLevels.map((level) => {
+        {sortedLevels.map((level: any) => {
           const isDiscovered = level.is_initial || unlockedLevelIds.has(level.id);
-          const isCompleted = room.completed_levels?.some(cl => cl.id === level.id);
+          const isCompleted = room.completed_levels?.some((cl: any) => cl.id === level.id);
           const isActive = currentLevelId === level.id;
           const isAnotherPhaseRunning = currentLevelId !== null;
 
@@ -207,8 +195,8 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
           else if (isAnotherPhaseRunning) status = 'locked'; 
 
           const isExpanded = expandedId === level.id;
-          const mandatoryQuestions = level.questions?.filter(q => q.is_mandatory) || [];
-          const allMandatoryAnswered = mandatoryQuestions.every(q => getQuestionConsensus(q).isResolved);
+          const mandatoryQuestions = level.questions?.filter((q: any) => q.is_mandatory) || [];
+          const allMandatoryAnswered = mandatoryQuestions.every((q: any) => getQuestionConsensus(q).isResolved);
 
           const displayTitle = isDiscovered ? level.title : 'Undiscovered Encounter';
           const displayDesc = isDiscovered 
@@ -235,11 +223,8 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
                   </div>
                   <div className="node-details">
                     <span className="node-phase">Lead {level.order_index}</span>
-                    
-                    {/* Render the dynamic variables unconditionally */}
                     <h3 className="node-title">{displayTitle}</h3>
                     <p className="node-desc">{displayDesc}</p>
-
                     {status === 'active' && <div className="active-badge">Active Investigation</div>}
                   </div>
                 </div>
@@ -269,12 +254,14 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
                             level={level} status={status} localVotes={localVotes} 
                             totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} 
                             handleSelectChoice={handleSelectChoice}
+                            room={room} accumulatedEvidences={accumulatedEvidences}
                           />
                         ) : level.presentation_type === 'location' ? (
                           <LocationPhase 
                             level={level} status={status} localVotes={localVotes} 
                             handleSelectChoice={handleSelectChoice} currentUserId={currentUser.id}
                             addToast={addToast} 
+                            room={room} accumulatedEvidences={accumulatedEvidences}
                           />
                         ) : level.presentation_type === 'wiretap' ? (
                           <WiretapPhase 
@@ -283,6 +270,7 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
                             handleSelectChoice={handleSelectChoice}
                             isHost={isHost} playedWiretaps={playedWiretaps}
                             onPlayWiretap={triggerWiretap} isTriggeringWiretap={isTriggeringWiretap}
+                            room={room} accumulatedEvidences={accumulatedEvidences}
                           />
                         ) : (
                           <StandardPhase 
@@ -292,7 +280,6 @@ const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
                           />
                         )}
 
-                        {/* UNIVERSAL SUBMIT BUTTON WITH LOCATION EXCEPTION */}
                         {status === 'active' && (
                           <div className="submit-theory-container">
                             {isHost ? (

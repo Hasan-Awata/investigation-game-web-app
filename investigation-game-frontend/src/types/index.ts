@@ -22,6 +22,7 @@ export interface Suspect {
   background?: string;
   img_url?: string;
   is_initial: boolean;
+  is_guilty: boolean;
 }
 
 export interface Victim {
@@ -63,6 +64,7 @@ export interface GameCase {
   evidences?: Evidence[]; 
   suspects?: Suspect[];
   victims?: Victim[];
+  investigation_requests?: InvestigationRequest[];
   user_status?: CaseUserStatus | null; 
 }
 
@@ -193,3 +195,14 @@ export const getInvestigationRequestLabel = (type: string): string => {
   };
   return labels[type] || 'Procedural Request';
 };
+
+export interface InvestigationRequest {
+  id: number;
+  case_id: number;
+  request_type: InvestigationRequestType | string; 
+  unlocks_evidence_id?: number | null;
+  unlocks_level_id?: number | null;
+  required_evidences?: Evidence[]; 
+  created_at?: string;
+  updated_at?: string;
+}

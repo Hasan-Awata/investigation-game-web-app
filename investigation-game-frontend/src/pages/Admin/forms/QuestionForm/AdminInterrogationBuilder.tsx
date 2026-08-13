@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAdminQuestion, updateAdminQuestion, deleteAdminQuestion, fetchAdminCases } from '@/services/adminApi';
 import type { GameCase, Question, Choice, Evidence } from '@/types';
-import { defaultRequirements, defaultOutcomes, appendChoicesToFormData } from '../QuestionForm/questionUtils';
+import { defaultRequirements, defaultOutcomes, appendChoicesToFormData } from '../Shared/questionUtils';
 import './AdminInterrogationBuilder.css';
 
 // --- SINGLE NODE (CARD) COMPONENT ---

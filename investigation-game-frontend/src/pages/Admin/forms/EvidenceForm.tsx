@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { createAdminEvidence, updateAdminEvidence, deleteAdminEvidence, fetchAdminCases } from '@/services/adminApi';
-import type { EvidenceType } from '@/types';
+import type { GameCase, Evidence, EvidenceType } from '@/types';
 
 export default function EvidenceForm() {
   const queryClient = useQueryClient();
@@ -23,7 +23,8 @@ export default function EvidenceForm() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: cases = [], isLoading: isFetchingCases } = useQuery({
+  // STRICT TYPING: Applied GameCase[] to the query
+  const { data: cases = [], isLoading: isFetchingCases } = useQuery<GameCase[]>({
     queryKey: ['adminCases'],
     queryFn: async () => {
       const result = await fetchAdminCases();
@@ -109,7 +110,8 @@ export default function EvidenceForm() {
     else createMutation.mutate(formData);
   };
 
-  const handleEdit = (ev: any, parentCaseId: number) => {
+  // STRICT TYPING: Applied Evidence interface
+  const handleEdit = (ev: Evidence, parentCaseId: number) => {
     setEditingId(ev.id);
     setCaseId(parentCaseId.toString());
     setTitle(ev.title);
@@ -134,7 +136,7 @@ export default function EvidenceForm() {
   };
 
   const isProcessing = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
-  const selectedCase = cases.find((c: any) => c.id.toString() === caseId);
+  const selectedCase = cases.find((c: GameCase) => c.id.toString() === caseId);
 
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
@@ -153,7 +155,7 @@ export default function EvidenceForm() {
             <label>Target Case</label>
             <select className="admin-input" required value={caseId} onChange={(e) => setCaseId(e.target.value)} disabled={isFetchingCases}>
               <option value="" disabled>-- Select a Case --</option>
-              {cases.map((c: any) => <option key={c.id} value={c.id}>{c.title}</option>)}
+              {cases.map((c: GameCase) => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
 
@@ -236,7 +238,7 @@ export default function EvidenceForm() {
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
           <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', marginBottom: '1.5rem' }}>// Case Evidence</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {selectedCase.evidences.map((ev: any) => (
+            {selectedCase.evidences.map((ev: Evidence) => (
               <div key={ev.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}>
                 <div>
                   <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>EX-{ev.id.toString().padStart(3, '0')}</span>

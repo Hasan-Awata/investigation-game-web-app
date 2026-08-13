@@ -1,16 +1,37 @@
-/* FILE: src/pages/Admin/forms/LevelForm/AdminLocationBuilder.css */
-
 .location-builder-container {
   display: flex;
   flex-direction: column;
   gap: 2rem;
 }
 
+/* Tactical Targeting Banner */
+.targeting-active-banner {
+  background: rgba(0, 229, 255, 0.15);
+  border: 1px solid var(--accent-cyan);
+  color: var(--accent-cyan);
+  padding: 1rem 1.5rem;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  animation: pulse-banner 2s infinite;
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.2);
+  margin-bottom: 1.5rem;
+}
+
+@keyframes pulse-banner {
+  0% { border-color: rgba(0, 229, 255, 0.4); }
+  50% { border-color: rgba(0, 229, 255, 1); box-shadow: 0 0 25px rgba(0, 229, 255, 0.4); }
+  100% { border-color: rgba(0, 229, 255, 0.4); }
+}
+
 .coordinate-picker-container {
   margin: 1.5rem 0;
   padding: 1.5rem;
-  background: rgba(0, 229, 255, 0.05);
-  border: 1px dashed var(--accent-cyan);
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(0, 229, 255, 0.2);
   border-radius: 8px;
 }
 
@@ -24,10 +45,18 @@
 .coordinate-picker-image-wrapper {
   position: relative;
   width: 100%;
-  border-radius: 4px;
+  border-radius: 6px;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  cursor: crosshair;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  cursor: default;
+  transition: all 0.3s ease;
+  background: #000;
+}
+
+.coordinate-picker-image-wrapper.mapping-active {
+  cursor: crosshair !important;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 25px rgba(0, 229, 255, 0.4);
 }
 
 .coordinate-picker-image-wrapper img {
@@ -36,49 +65,37 @@
   pointer-events: none; 
 }
 
-.choice-row.picking-target {
-  box-shadow: inset 0 0 0 2px var(--accent-cyan);
-  background: rgba(0, 229, 255, 0.1) !important;
-}
-
-.pick-point-btn {
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid var(--text-secondary);
-  color: var(--text-secondary);
-  padding: 0.5rem;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
+/* Coordinate Badge Style inside the Point Item */
+.coordinate-badge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-}
-
-.pick-point-btn:hover {
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  background: rgba(0, 229, 255, 0.1);
   color: var(--accent-cyan);
-  border-color: var(--accent-cyan);
-}
-
-.pick-point-btn.active {
-  background: var(--accent-cyan);
-  color: var(--bg-dark);
-  border-color: var(--accent-cyan);
-  animation: pulse-icon 1.5s infinite;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  border-radius: 4px;
+  margin-top: 0.4rem;
 }
 
 .scene-item-card {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(0,0,0,0.3);
+  background: rgba(0,0,0,0.35);
   padding: 1.5rem;
-  border-radius: 6px;
-  border: 1px solid rgba(255,255,255,0.05);
-  transition: border-color 0.2s;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: all 0.25s ease;
 }
 
 .scene-item-card:hover {
-  border-color: rgba(0, 229, 255, 0.3);
+  border-color: rgba(0, 229, 255, 0.4);
+  background: rgba(0,0,0,0.5);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
 }
 
 .scene-thumbnail {
@@ -86,7 +103,7 @@
   height: 80px;
   background-size: cover;
   background-position: center;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
   flex-shrink: 0;
 }
