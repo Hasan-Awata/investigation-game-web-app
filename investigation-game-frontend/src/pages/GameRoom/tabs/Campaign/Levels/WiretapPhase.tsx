@@ -1,28 +1,27 @@
-// FILE: src/pages/GameRoom/tabs/Campaign/Levels/WiretapPhase.tsx
-
-import React from 'react';
-import type { Level, Choice, Question, GameRoom, Evidence } from '@/types';
+import { useRoomState } from '@/context/RoomContext';
+import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
+import type { Level, Choice, Question } from '@/types';
 import './WiretapPhase.css';
 
 interface WiretapPhaseProps {
   level: Level;
   status: string;
-  localVotes: Record<number, number>;
   totalPlayers: number;
   getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
-  handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
-  isHost: boolean;
-  playedWiretaps: Set<number>;
-  onPlayWiretap: (questionId: number, audioUrl: string) => void;
-  isTriggeringWiretap: boolean;
-  room: GameRoom;                     
-  accumulatedEvidences: Evidence[];   
 }
 
 export default function WiretapPhase({ 
-  level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice,
-  isHost, playedWiretaps, onPlayWiretap, isTriggeringWiretap, room, accumulatedEvidences
+  level, status, totalPlayers, getQuestionConsensus
 }: WiretapPhaseProps) {
+
+  const { room, accumulatedEvidences } = useRoomState();
+  const { localVotes, handleSelectChoice, triggerWiretap, isTriggeringWiretap } = useInvestigationPhase();
+
+  const storedUser = localStorage.getItem('auth_user');
+  const currentUser = storedUser ? JSON.parse(storedUser) : null;
+  const isHost = currentUser?.id === room.host_user_id;
+
+  const playedWiretaps = new Set(room.played_wiretaps?.map((q: any) => q.id) || []);
 
   const checkIsLockedByNarrative = (choice: Choice) => {
     if (!choice.requirements) return false;
@@ -47,7 +46,6 @@ export default function WiretapPhase({
 
   if (!level.questions || level.questions.length === 0) return null;
 
-  // --- THE NODE TRAVERSAL ENGINE ---
   const visibleQuestions: Question[] = [];
   let currentId: number | null = level.questions[0].id; 
 
@@ -61,7 +59,8 @@ export default function WiretapPhase({
       const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
       
       if (winningChoice?.outcomes?.next_question_id) {
-        currentId = winningChoice.outcomes.next_question_id;
+        // FIXED: Explicitly cast to Number
+        currentId = Number(winningChoice.outcomes.next_question_id);
       } else {
         const currentIndex = level.questions.findIndex(x => x.id === q.id);
         currentId = level.questions[currentIndex + 1]?.id || null;
@@ -132,7 +131,7 @@ export default function WiretapPhase({
                       <button 
                         className="btn-primary play-wiretap-btn"
                         disabled={!isHost || isTriggeringWiretap}
-                        onClick={(e) => { e.stopPropagation(); onPlayWiretap(q.id, q.audio_url!); }}
+                        onClick={(e) => { e.stopPropagation(); triggerWiretap(q.id, q.audio_url!); }}
                       >
                         {isHost ? '▶ INITIATE AUDIO FEED (ONCE)' : 'AWAITING HOST TO INITIATE'}
                       </button>

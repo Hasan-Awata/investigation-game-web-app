@@ -1,22 +1,21 @@
-import React from 'react';
-import type { Level, Choice, Question } from '@/types';
+import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
+import type { Level, Question } from '@/types';
 import './StandardPhase.css';
 
 interface StandardPhaseProps {
   level: Level;
   status: string;
-  localVotes: Record<number, number>;
   totalPlayers: number;
   getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
-  handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
 }
 
-export default function StandardPhase({ level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice }: StandardPhaseProps) {
+export default function StandardPhase({ level, status, totalPlayers, getQuestionConsensus }: StandardPhaseProps) {
+  const { localVotes, handleSelectChoice } = useInvestigationPhase();
+  
   if (!level.questions || level.questions.length === 0) return null;
 
-  // --- THE NODE TRAVERSAL ENGINE ---
   const visibleQuestions: Question[] = [];
-  let currentId: number | null = level.questions[0].id; // Root Node
+  let currentId: number | null = level.questions[0].id; 
 
   while (currentId) {
     const q = level.questions.find(x => x.id === currentId);
@@ -27,15 +26,14 @@ export default function StandardPhase({ level, status, localVotes, totalPlayers,
     if (consensus.isResolved && consensus.winningChoiceId) {
       const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
       
-      // If outcomes dictate a branch, follow it. Otherwise, fall back to linear progression.
       if (winningChoice?.outcomes?.next_question_id) {
-        currentId = winningChoice.outcomes.next_question_id;
+        currentId = Number(winningChoice.outcomes.next_question_id);
       } else {
         const currentIndex = level.questions.findIndex(x => x.id === q.id);
         currentId = level.questions[currentIndex + 1]?.id || null;
       }
     } else {
-      currentId = null; // Traversal stops, awaiting player consensus
+      currentId = null; 
     }
   }
 
@@ -51,7 +49,6 @@ export default function StandardPhase({ level, status, localVotes, totalPlayers,
           const isVisible = status === 'completed' || qIdx === 0 || (prevConsensus && prevConsensus.isResolved);
           if (!isVisible) return null;
 
-          // The question locks ONLY when all players have voted AND there is no tie.
           const isLocked = consensus.isResolved; 
           const hasLocalVote = !!localVotes[q.id];
 

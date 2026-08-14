@@ -1,23 +1,23 @@
+// FILE: src/pages/GameRoom/tabs/Campaign/Levels/LocationPhase.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import type { Level, Choice, GameRoom, Evidence } from '@/types';
-import type { ToastNotification } from '../../../../../hooks/useInvestigationPhase';
+import { useRoomState } from '@/context/RoomContext';
+import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
+import type { Level, Choice } from '@/types';
 import './LocationPhase.css';
 
 interface LocationPhaseProps {
   level: Level;
   status: string;
-  localVotes: Record<number, number>;
-  handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
-  currentUserId: number;
-  addToast: (toast: Omit<ToastNotification, 'id'>) => void;
-  room: GameRoom;
-  accumulatedEvidences: Evidence[];
 }
 
-export default function LocationPhase({ 
-  level, status, localVotes, handleSelectChoice, currentUserId, addToast, room, accumulatedEvidences 
-}: LocationPhaseProps) {
+export default function LocationPhase({ level, status }: LocationPhaseProps) {
+  const { room, accumulatedEvidences } = useRoomState();
+  const { localVotes, handleSelectChoice, addToast } = useInvestigationPhase();
+
+  const storedUser = localStorage.getItem('auth_user');
+  const currentUser = storedUser ? JSON.parse(storedUser) : null;
+  const currentUserId = currentUser?.id;
   
   const checkIsLockedByNarrative = (choice: Choice) => {
     if (!choice.requirements) return false;
@@ -71,7 +71,6 @@ export default function LocationPhase({
   if (!level.questions) return null;
 
   const isCompleted = status === 'completed';
-  
   const visibleQuestionIds = new Set<number>();
   
   if (level.questions.length > 0) {

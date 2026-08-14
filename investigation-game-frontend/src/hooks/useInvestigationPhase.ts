@@ -1,75 +1,27 @@
-import { useState, useEffect, useRef } from 'react';
+// FILE: src/hooks/useInvestigationPhase.ts
+import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import type { Choice, GameRoom } from '@/types';
+import { useRoomState, useRoomActions } from '@/context/RoomContext';
+import type { Choice } from '@/types';
 import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/services/api'; 
 
-export interface ToastNotification {
-  id: string;
-  type: 'evidence' | 'level' | 'suspect' | 'victim';
-  title: string;
-  message: string;
-  icon: string;
-}
+// Export the type from Context so we don't break existing imports in Phase 3
+export type { ToastNotification } from '@/context/RoomContext';
 
-// --- NEW: STRICT PAYLOAD INTERFACES ---
-interface WiretapTriggeredPayload {
-  question_id: number;
-  audio_url: string | null;
-  message?: string;
-}
-
-// Standardize expected API error structure
 interface ApiError {
   title?: string;
   message: string;
 }
 
-export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => void) {
+export function useInvestigationPhase() {
+  // 1. Consume the global state and actions directly!
+  const { room } = useRoomState();
+  const { refreshRoomData, addGlobalToast } = useRoomActions();
+  
   const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
-  const [toasts, setToasts] = useState<ToastNotification[]>([]);
   
-  const locallyTriggered = useRef<Set<number>>(new Set());
   const roomId = room.id;
-
-  const addToast = (toastData: Omit<ToastNotification, 'id'>) => {
-    const newToast: ToastNotification = { ...toastData, id: crypto.randomUUID() };
-    setToasts((prev) => [...prev, newToast]);
-    setTimeout(() => {
-      setToasts((prev) => prev.filter((t) => t.id !== newToast.id));
-    }, 5000);
-  };
-
-  useEffect(() => {
-    if (!window.Echo) return;
-    const channel = window.Echo.private(`room.${roomId}`);
-    
-    channel.listen('VoteLockedIn', () => {
-      refreshRoomData();
-    });
-
-    // STRICT TYPING APPLIED HERE
-    channel.listen('WiretapTriggered', (e: WiretapTriggeredPayload) => {
-      if (e.audio_url && !locallyTriggered.current.has(e.question_id)) {
-        const audio = new Audio(e.audio_url);
-        audio.play().catch(err => console.error('Browser blocked autoplay:', err));
-      }
-
-      addToast({
-        type: 'evidence', 
-        title: 'WIRETAP INTERCEPTED', 
-        message: e.message || 'Audio feed active. Listen carefully.',
-        icon: 'https://api.iconify.design/ph:waveform-duotone.svg?color=%23c48b36'
-      });
-
-      refreshRoomData();
-    });
-
-    return () => {
-      channel.stopListening('VoteLockedIn');
-      channel.stopListening('WiretapTriggered'); 
-    };
-  }, [roomId, refreshRoomData]);
 
   useEffect(() => {
     const storedUser = localStorage.getItem('auth_user');
@@ -99,7 +51,7 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
   const submitTheoryMutation = useMutation({
     mutationFn: async () => {
       const result = await submitAssessment(roomId);
-      if (!result.isSuccess) throw { message: result.errorMessage }; // Wrapped as ApiError structure
+      if (!result.isSuccess) throw { message: result.errorMessage }; 
       return result.value;
     },
     onSuccess: async (data) => {
@@ -121,7 +73,6 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
         refreshRoomData(); 
       }
     },
-    // STRICT TYPING APPLIED HERE
     onError: (error: ApiError) => {
       setFeedback({ type: 'error', title: error.title || 'Error', message: error.message });
     }
@@ -134,7 +85,6 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
       return result.value;
     },
     onSuccess: () => refreshRoomData(),
-    // STRICT TYPING APPLIED HERE
     onError: (error: ApiError) => setFeedback({ 
       type: 'error', title: error.title || 'System Error', message: error.message 
     })
@@ -142,19 +92,13 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
 
   const triggerWiretapMutation = useMutation({
     mutationFn: async ({ questionId, audioUrl }: { questionId: number, audioUrl: string }) => {
-      locallyTriggered.current.add(questionId); 
       const result = await triggerWiretap(roomId, questionId);
       if (!result.isSuccess) throw { message: result.errorMessage }; 
       return { value: result.value, audioUrl };
     },
-    onSuccess: (data) => {
-      if (data.audioUrl) {
-        const audio = new Audio(data.audioUrl);
-        audio.play().catch(err => console.error('Audio playback failed:', err));
-      }
+    onSuccess: () => {
       refreshRoomData(); 
     },
-    // STRICT TYPING APPLIED HERE
     onError: (error: ApiError) => setFeedback({ 
       type: 'error', title: error.title || 'Transmission Error', message: error.message 
     })
@@ -166,26 +110,27 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
 
     setLocalVotes(prev => ({ ...prev, [questionId]: choice.id }));
 
+    // 2. Dispatch to the Global Toast system instead of maintaining a local array
     if (choice.outcomes?.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) {
-      addToast({ 
+      addGlobalToast({ 
         type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${choice.outcomes.unlock_evidence.length} new piece(s) of physical evidence secured.`, 
         icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
       });
     }
     if (choice.outcomes?.unlock_levels && choice.outcomes.unlock_levels.length > 0) {
-      addToast({ 
+      addGlobalToast({ 
         type: 'level', title: 'PHASE UNLOCKED', message: 'A new narrative path is now available.', 
         icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
       });
     }
     if (choice.outcomes?.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) {
-      addToast({ 
+      addGlobalToast({ 
         type: 'suspect', title: 'PERSON OF INTEREST', message: 'New suspect added to the board.', 
         icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232' 
       });
     }
     if (choice.outcomes?.unlock_victims && choice.outcomes.unlock_victims.length > 0) {
-      addToast({ 
+      addGlobalToast({ 
         type: 'victim', title: 'CASUALTY IDENTIFIED', message: 'New victim details have been verified.', 
         icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91' 
       });
@@ -209,13 +154,12 @@ export function useInvestigationPhase(room: GameRoom, refreshRoomData: () => voi
     isSubmitting: submitTheoryMutation.isPending || voteMutation.isPending,
     isInitiating: initiatePhaseMutation.isPending,
     feedback,
-    toasts, 
     handleSelectChoice,
     handleSubmitTheory,
     initiatePhase: (levelId: number) => initiatePhaseMutation.mutate(levelId),
     clearFeedback,
     triggerWiretap: (questionId: number, audioUrl: string) => triggerWiretapMutation.mutate({ questionId, audioUrl }), 
     isTriggeringWiretap: triggerWiretapMutation.isPending,
-    addToast
+    addToast: addGlobalToast // Aliased for backward compatibility until Phase 4
   };
 }

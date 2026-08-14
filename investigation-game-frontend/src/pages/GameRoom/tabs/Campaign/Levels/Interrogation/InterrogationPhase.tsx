@@ -1,7 +1,7 @@
-// FILE: src/pages/GameRoom/tabs/Campaign/Levels/Interrogation/InterrogationPhase.tsx
-
-import React, { useState, useEffect, useRef } from 'react';
-import type { Level, Choice, Question, GameRoom, Evidence } from '@/types';
+import { useState, useEffect, useRef } from 'react';
+import { useRoomState } from '@/context/RoomContext';
+import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
+import type { Level, Choice, Question } from '@/types';
 import './InterrogationPhase.css';
 
 // --- TYPEWRITER COMPONENT ---
@@ -16,6 +16,12 @@ const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' 
   useEffect(() => {
     const el = spanRef.current;
     if (!el) return;
+
+    // Safety check for empty strings
+    if (!text) {
+      if (savedOnComplete.current) savedOnComplete.current();
+      return;
+    }
 
     if (skip || (cacheKey && sessionStorage.getItem(cacheKey))) {
       el.textContent = text;
@@ -43,21 +49,19 @@ const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' 
   return <span ref={spanRef} />;
 };
 
-// --- PROPS INTERFACE ---
 interface InterrogationPhaseProps {
   level: Level;
   status: string;
-  localVotes: Record<number, number>;
   totalPlayers: number;
   getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
-  handleSelectChoice: (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => void;
-  room: GameRoom;                     
-  accumulatedEvidences: Evidence[];   
 }
 
 export default function InterrogationPhase({ 
-  level, status, localVotes, totalPlayers, getQuestionConsensus, handleSelectChoice, room, accumulatedEvidences 
+  level, status, totalPlayers, getQuestionConsensus
 }: InterrogationPhaseProps) {
+
+  const { room, accumulatedEvidences } = useRoomState();
+  const { localVotes, handleSelectChoice } = useInvestigationPhase();
 
   const checkIsLockedByNarrative = (choice: Choice) => {
     if (!choice.requirements) return false;
@@ -98,7 +102,6 @@ export default function InterrogationPhase({
 
   if (!level.questions || level.questions.length === 0) return null;
 
-  // --- THE NODE TRAVERSAL ENGINE ---
   const visibleQuestions: Question[] = [];
   let currentId: number | null = level.questions[0].id; 
   
@@ -112,7 +115,8 @@ export default function InterrogationPhase({
       const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
       
       if (winningChoice?.outcomes?.next_question_id) {
-        currentId = winningChoice.outcomes.next_question_id;
+        // FIXED: Explicitly cast to Number to prevent strict equality JSON failures
+        currentId = Number(winningChoice.outcomes.next_question_id);
       } else {
         const currentIndex = level.questions.findIndex(x => x.id === q.id);
         currentId = level.questions[currentIndex + 1]?.id || null;

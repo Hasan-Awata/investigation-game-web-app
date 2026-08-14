@@ -1,10 +1,7 @@
-// FILE: src/pages/GameRoom/tabs/Campaign/CampaignTab.tsx
-
 import { useState } from 'react';
-import { createPortal } from 'react-dom'; 
-import { useRoomState, useRoomActions } from '../../../../context/RoomContext';
-import { useInvestigationPhase } from '../../../../hooks/useInvestigationPhase';
-import type { Question } from '../../../../types';
+import { useRoomState } from '@/context/RoomContext';
+import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
+import type { Question } from '@/types';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
 import StandardPhase from './Levels/StandardPhase'; 
 import LocationPhase from './Levels/LocationPhase';
@@ -13,9 +10,7 @@ import '../SharedOverlay.css';
 import './CampaignTab.css';
 
 export default function CampaignTab() {
-  // THE FIX: Destructuring accumulatedEvidences so it can be passed to the children
-  const { room, accumulatedEvidences } = useRoomState();
-  const { refreshRoomData } = useRoomActions();
+  const { room } = useRoomState();
   
   const phases = room.game_case?.phases || [];
   const currentLevelId = room.current_level_id;
@@ -25,27 +20,20 @@ export default function CampaignTab() {
   const currentUser = storedUser ? JSON.parse(storedUser) : null;
   const isHost = currentUser?.id === room.host_user_id;
 
+  // We only extract what CampaignTab strictly needs to manage its own UI
   const {
-    localVotes,
     isSubmitting,
     isInitiating,
     feedback,
-    toasts, 
-    handleSelectChoice,
     handleSubmitTheory,
     initiatePhase,
     clearFeedback,
-    triggerWiretap,
-    isTriggeringWiretap,
-    addToast 
-  } = useInvestigationPhase(room, refreshRoomData);
+  } = useInvestigationPhase();
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const unlockedLevelIds = new Set(room.unlocked_levels?.map((l: any) => l.id) || []);
-  const playedWiretaps = new Set(room.played_wiretaps?.map((q: any) => q.id) || []);
   const sortedPhases = [...phases].sort((a: any, b: any) => a.order_index - b.order_index);
-
   const phaseStorageKey = `room_${room.id}_active_phase`;
 
   const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
@@ -53,14 +41,9 @@ export default function CampaignTab() {
       const saved = sessionStorage.getItem(phaseStorageKey);
       if (saved) {
         const parsedId = parseInt(saved, 10);
-        if (sortedPhases.some(p => p.id === parsedId)) {
-          return parsedId;
-        }
+        if (sortedPhases.some(p => p.id === parsedId)) return parsedId;
       }
-    } catch {
-      // Silently catch parsing errors
-    }
-    
+    } catch { }
     return sortedPhases.length > 0 ? sortedPhases[0].id : null;
   });
 
@@ -149,32 +132,13 @@ export default function CampaignTab() {
                 </svg>
               </div>
             )}
-            <h3 className="feedback-title">
-              {feedback.title}
-            </h3>
+            <h3 className="feedback-title">{feedback.title}</h3>
             <p className="feedback-message">{feedback.message}</p>
             {feedback.type === 'error' && (
               <button className="btn-secondary mt-1" onClick={clearFeedback}>Reassess Evidence</button>
             )}
           </div>
         </div>
-      )}
-
-      {createPortal(
-        <div className="toast-container">
-          {toasts.map((toast) => (
-            <div key={toast.id} className="system-toast-notification">
-              <div className="toast-icon pulse-icon">
-                <img src={toast.icon} alt={toast.type} className="toast-svg-graphic" />
-              </div>
-              <div className="toast-text-block">
-                <span className="toast-header">{toast.title}</span>
-                <p className="toast-message">{toast.message}</p>
-              </div>
-            </div>
-          ))}
-        </div>,
-        document.body
       )}
 
       <div className="roadmap-timeline">
@@ -249,35 +213,15 @@ export default function CampaignTab() {
 
                     {(status === 'active' || status === 'completed') && level.questions && (
                       <>
+                        {/* THE CLEANUP: Drilled props have been fully removed */}
                         {level.presentation_type === 'interrogation' ? (
-                          <InterrogationPhase 
-                            level={level} status={status} localVotes={localVotes} 
-                            totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} 
-                            handleSelectChoice={handleSelectChoice}
-                            room={room} accumulatedEvidences={accumulatedEvidences}
-                          />
+                          <InterrogationPhase level={level} status={status} totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} />
                         ) : level.presentation_type === 'location' ? (
-                          <LocationPhase 
-                            level={level} status={status} localVotes={localVotes} 
-                            handleSelectChoice={handleSelectChoice} currentUserId={currentUser.id}
-                            addToast={addToast} 
-                            room={room} accumulatedEvidences={accumulatedEvidences}
-                          />
+                          <LocationPhase level={level} status={status} />
                         ) : level.presentation_type === 'wiretap' ? (
-                          <WiretapPhase 
-                            level={level} status={status} localVotes={localVotes} 
-                            totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} 
-                            handleSelectChoice={handleSelectChoice}
-                            isHost={isHost} playedWiretaps={playedWiretaps}
-                            onPlayWiretap={triggerWiretap} isTriggeringWiretap={isTriggeringWiretap}
-                            room={room} accumulatedEvidences={accumulatedEvidences}
-                          />
+                          <WiretapPhase level={level} status={status} totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} />
                         ) : (
-                          <StandardPhase 
-                            level={level} status={status} localVotes={localVotes} 
-                            totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} 
-                            handleSelectChoice={handleSelectChoice}
-                          />
+                          <StandardPhase level={level} status={status} totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} />
                         )}
 
                         {status === 'active' && (
