@@ -64,7 +64,6 @@ const DialogueNodeContainer = ({
     const formData = buildNodeFormData({
       level_id: levelId,
       text,
-      is_mandatory: true, 
       store_locally: false,
       choices
     });

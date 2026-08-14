@@ -10,7 +10,6 @@ import EntityList from '../Shared/EntityList';
 export default function AdminStandardBuilder() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [text, setText] = useState('');
-  const [isMandatory, setIsMandatory] = useState(true);
   const [storeLocally, setStoreLocally] = useState(false);
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
@@ -54,7 +53,6 @@ export default function AdminStandardBuilder() {
   const clearForm = () => {
     setEditingId(null);
     setText('');
-    setIsMandatory(true);
     setStoreLocally(false);
     setImage(null);
     setAudio(null);
@@ -72,7 +70,7 @@ export default function AdminStandardBuilder() {
     if (choices.some(c => !c.text.trim())) return setStatusMessage({ type: 'error', message: 'All choices must have valid text.' });
 
     const formData = buildNodeFormData({
-      level_id: levelId, text, is_mandatory: isMandatory, store_locally: storeLocally, image, audio, choices
+      level_id: levelId, text, store_locally: storeLocally, image, audio, choices
     });
 
     if (editingId) {
@@ -89,7 +87,6 @@ export default function AdminStandardBuilder() {
     
     setEditingId(question.id);
     setText(question.text);
-    setIsMandatory(!!question.is_mandatory);
     
     setChoices(question.choices?.map((c: Choice) => ({
       id: c.id, text: c.text, outcomes: c.outcomes || {}, requirements: c.requirements || {}
@@ -123,7 +120,7 @@ export default function AdminStandardBuilder() {
       
       <AdminStandardForm 
         image={image} audio={audio}
-        editingId={editingId} text={text} setText={setText} isMandatory={isMandatory} setIsMandatory={setIsMandatory}
+        editingId={editingId} text={text} setText={setText}
         storeLocally={storeLocally} setStoreLocally={setStoreLocally} imageInputRef={imageInputRef} audioInputRef={audioInputRef}
         setImage={setImage} setAudio={setAudio} choices={choices} addChoice={addChoice} updateChoice={updateChoice}
         removeChoice={removeChoice} handleSubmit={handleSubmit} handleCancelEdit={clearForm}
@@ -141,9 +138,6 @@ export default function AdminStandardBuilder() {
         onDelete={handleDelete}
         renderItemContent={(q) => (
           <>
-            <span style={{ fontFamily: 'var(--font-mono)', color: q.is_mandatory ? 'var(--accent-cyan)' : 'var(--text-secondary)', marginRight: '1rem', fontSize: '0.85rem' }}>
-              [{q.is_mandatory ? 'MANDATORY' : 'OPTIONAL'}]
-            </span>
             <strong style={{ display: 'block', marginTop: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{q.text}</strong>
             <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
               {q.choices?.length || 0} Diverging Paths

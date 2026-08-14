@@ -135,8 +135,6 @@ export default function CampaignTab() {
           else if (isAnotherPhaseRunning) status = 'locked'; 
 
           const isExpanded = expandedId === level.id;
-          const mandatoryQuestions = level.questions?.filter((q: any) => q.is_mandatory) || [];
-          const allMandatoryAnswered = mandatoryQuestions.every((q: any) => getQuestionConsensus(q).isResolved);
 
           const displayTitle = isDiscovered ? level.title : 'Undiscovered Encounter';
           const displayDesc = isDiscovered 
@@ -204,10 +202,7 @@ export default function CampaignTab() {
                             {isHost ? (
                               <button 
                                 className="btn-primary submit-theory-btn"
-                                disabled={
-                                  isSubmitting || 
-                                  (level.presentation_type !== 'location' && !allMandatoryAnswered)
-                                }
+                                disabled={isSubmitting}
                                 onClick={handleSubmitTheory}
                               >
                                 {isSubmitting 
@@ -221,9 +216,7 @@ export default function CampaignTab() {
                               <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
                                 {level.presentation_type === 'location'
                                   ? 'Sweep in progress. Awaiting Host to conclude the search...'
-                                  : allMandatoryAnswered 
-                                    ? 'Consensus reached. Awaiting Host to submit final verdict...' 
-                                    : 'Awaiting team consensus on all active leads...'
+                                  : 'Awaiting Host to submit final verdict...'
                                 }
                               </div>
                             )}

@@ -23,31 +23,21 @@ class AssessmentService
     {
         return DB::transaction(function () use ($room) {
             $level = $room->currentLevel;
-            $consensus = $this->votingService->calculateLevelConsensus($room, $level->id);
             
-            $mandatoryQuestions = $level->questions()->where('is_mandatory', true)->get();
+            // Loop through all votes currently cast in this level to check for penalty strikes
+            $votes = \App\Models\RoomVote::where('room_id', $room->id)
+                ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
+                ->get();
 
-            // 1. Check Mandatory Progression
-            foreach ($mandatoryQuestions as $question) {
-                if (!isset($consensus[$question->id])) {
-                    return Result::failure("Not all mandatory verdicts have a locked-in consensus yet.");
-                }
+            foreach ($votes as $vote) {
+                $choice = Choice::find($vote->choice_id);
+                $givesStrike = filter_var($choice->outcomes['gives_strike'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-                $chosenId = $consensus[$question->id];
-                $choice = Choice::find($chosenId);
-
-                $maxStrikes = $room->gameCase->max_strikes; 
-                $rawStrikeFlag = $choice->outcomes['gives_strike'] ?? false;
-
-                // Safely cast stringified booleans ("true"/"false") into actual PHP booleans
-                $givesStrike = filter_var($rawStrikeFlag, FILTER_VALIDATE_BOOLEAN);
-
-                // IF THE CHOICE CARRIES A PENALTY
                 if ($givesStrike) {
                     $room->increment('strikes');
                     $room->refresh();
 
-                    if ($room->strikes >= $maxStrikes) {
+                    if ($room->strikes >= $room->gameCase->max_strikes) {
                         $totalGuilty = \App\Models\Suspect::where('case_id', $room->case_id)->where('is_guilty', true)->count();
                         $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
 
@@ -64,13 +54,12 @@ class AssessmentService
 
                     // Extract the Persona hint for the exact question they failed
                     $hint = $choice->outcomes['feedback'] ?? "Re-evaluate the evidence thoroughly.";
-
-                    // REWIND LOGIC: Wipe all votes for this phase so they must start over
+                    
+                    // Wipe votes so they must restart the phase
                     \App\Models\RoomVote::where('room_id', $room->id)
                         ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
                         ->delete();
 
-                    // Return standard failure, embedding the hint directly into the message
                     return \App\Support\Result::success([
                         'status' => 'success', 
                         'message' => $hint,  

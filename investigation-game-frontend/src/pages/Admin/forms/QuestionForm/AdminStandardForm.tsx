@@ -5,8 +5,6 @@ interface AdminStandardFormProps {
   editingId: number | null;
   text: string;
   setText: (text: string) => void;
-  isMandatory: boolean;
-  setIsMandatory: (val: boolean) => void;
   storeLocally: boolean;
   setStoreLocally: (val: boolean) => void;
   imageInputRef: RefObject<HTMLInputElement | null>;
@@ -27,7 +25,7 @@ interface AdminStandardFormProps {
 }
 
 export default function AdminStandardForm({
-  editingId, text, setText, isMandatory, setIsMandatory, storeLocally, setStoreLocally,
+  editingId, text, setText, storeLocally, setStoreLocally,
   imageInputRef, audioInputRef, setImage, setAudio, choices, addChoice, updateChoice,
   removeChoice, handleSubmit, handleCancelEdit, isProcessing, statusMessage, contextHeader
 }: AdminStandardFormProps) {
@@ -48,13 +46,6 @@ export default function AdminStandardForm({
       {statusMessage && <div className={`status-message ${statusMessage.type}`}>{statusMessage.message}</div>}
 
       <form onSubmit={handleSubmit} className="admin-form">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0, 229, 255, 0.1)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', border: '1px solid rgba(0, 229, 255, 0.3)' }}>
-          <input type="checkbox" id="mandatory-toggle" checked={isMandatory} onChange={(e) => setIsMandatory(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }} />
-          <label htmlFor="mandatory-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', cursor: 'pointer' }}>
-            <strong>Mandatory Node:</strong> Players MUST reach a consensus on this verdict before the team is allowed to transition to the next phase.
-          </label>
-        </div>
-
         <div className="form-group">
           <label>Prompt Text (The Verdict)</label>
           <textarea className="admin-textarea" required value={text} onChange={(e) => setText(e.target.value)} style={{ minHeight: '120px' }} />

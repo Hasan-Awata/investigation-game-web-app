@@ -56,7 +56,6 @@ export const appendChoicesToFormData = (formData: FormData, choices: any[]) => {
 interface NodePayload {
   level_id: string;
   text: string;
-  is_mandatory: boolean;
   store_locally: boolean;
   choices: any[];
   image?: File | null;
@@ -67,7 +66,6 @@ export const buildNodeFormData = (payload: NodePayload): FormData => {
   const formData = new FormData();
   formData.append('level_id', payload.level_id);
   formData.append('text', payload.text);
-  formData.append('is_mandatory', payload.is_mandatory ? '1' : '0');
   formData.append('store_locally', payload.store_locally ? '1' : '0');
   
   if (payload.image) formData.append('image', payload.image);

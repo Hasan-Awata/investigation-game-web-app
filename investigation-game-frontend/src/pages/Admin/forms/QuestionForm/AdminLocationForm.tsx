@@ -5,8 +5,6 @@ interface AdminLocationFormProps {
   editingId: number | null;
   text: string;
   setText: (text: string) => void;
-  isMandatory: boolean;
-  setIsMandatory: (val: boolean) => void;
   storeLocally: boolean;
   setStoreLocally: (val: boolean) => void;
   imageInputRef: RefObject<HTMLInputElement | null>;
@@ -28,7 +26,7 @@ interface AdminLocationFormProps {
 }
 
 export default function AdminLocationForm({
-  editingId, text, setText, isMandatory, setIsMandatory, storeLocally, setStoreLocally,
+  editingId, text, setText, storeLocally, setStoreLocally,
   imageInputRef, setImage, choices, setChoices, 
   activeCoordinateTarget, setActiveCoordinateTarget, handleImageClick,
   handleSubmit, handleCancelEdit, isProcessing, statusMessage, contextHeader,
@@ -55,13 +53,6 @@ export default function AdminLocationForm({
         {statusMessage && <div className={`status-message ${statusMessage.type}`}>{statusMessage.message}</div>}
 
         <form onSubmit={handleSubmit} className="admin-form">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: isMandatory ? 'rgba(0, 229, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', border: `1px solid ${isMandatory ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)'}`, transition: 'all 0.2s ease' }}>
-            <input type="checkbox" id="mandatory-toggle" checked={isMandatory} onChange={(e) => setIsMandatory(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-cyan)' }} />
-            <label htmlFor="mandatory-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: isMandatory ? 'var(--accent-cyan)' : 'var(--text-secondary)', cursor: 'pointer', margin: 0 }}>
-              <strong>Mandatory Scene:</strong> Required for phase completion. Uncheck if this is just a transitional room.
-            </label>
-          </div>
-
           <div className="form-group">
             <label>Scene Title / Hint Text</label>
             <textarea className="admin-textarea" style={{ minHeight: '80px' }} required value={text} onChange={(e) => setText(e.target.value)} placeholder="Describe the overview of this environment zone..." />

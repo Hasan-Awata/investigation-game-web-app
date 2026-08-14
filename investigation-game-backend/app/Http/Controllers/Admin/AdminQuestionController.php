@@ -19,10 +19,9 @@ class AdminQuestionController extends Controller
         $validated = $request->validate([
             'level_id' => 'required|exists:levels,id',
             'text' => 'required|string',
-            'is_mandatory' => 'required|boolean', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
-            'choices' => 'required|array|min:2',
+            'choices' => 'sometimes|array',
             'choices.*.text' => 'required|string|max:255',
             'choices.*.outcomes' => 'nullable|array',
             'choices.*.requirements' => 'nullable|array', 
@@ -76,13 +75,12 @@ class AdminQuestionController extends Controller
         $validated = $request->validate([
             'level_id' => 'required|exists:levels,id',
             'text' => 'required|string',
-            'is_mandatory' => 'required|boolean', 
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
-            'choices' => 'required|array|min:2',
+            'choices' => 'sometimes|array',
             'choices.*.text' => 'required|string|max:255',
-            'choices.*.outcomes' => 'nullable|array', 
-            'choices.*.requirements' => 'nullable|array',
+            'choices.*.outcomes' => 'nullable|array',
+            'choices.*.requirements' => 'nullable|array', 
             'store_locally' => 'required|boolean',
         ]);
 

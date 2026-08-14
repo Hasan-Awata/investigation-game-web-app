@@ -56,9 +56,6 @@ export default function StandardPhase({ level, status, totalPlayers, getQuestion
             <div key={q.id} className="question-item">
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <span className="question-number">Q{qIdx + 1}</span>
-                {!q.is_mandatory && (
-                  <span title="Optional narrative evidence." style={{ color: 'var(--accent-amber)', marginTop: '0.35rem', fontSize: '1.1rem', cursor: 'help', animation: 'pulse-icon 2s infinite' }}>📄</span>
-                )}
               </div>
 
               <div className="question-body">

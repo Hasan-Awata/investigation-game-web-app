@@ -12,7 +12,6 @@ export default function AdminLocationBuilder() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [text, setText] = useState('');
-  const [isMandatory, setIsMandatory] = useState(true); 
   const [storeLocally, setStoreLocally] = useState(false);
   const [image, setImage] = useState<File | null>(null);
   const [existingImgUrl, setExistingImgUrl] = useState<string | null>(null);
@@ -51,7 +50,7 @@ export default function AdminLocationBuilder() {
   }
 
   const clearForm = () => {
-    setEditingId(null); setText(''); setIsMandatory(true); setStoreLocally(false);
+    setEditingId(null); setText(''); setStoreLocally(false);
     setImage(null); setExistingImgUrl(null); setActiveCoordinateTarget(null);
     setAudio(null); setExistingAudioUrl(null);
     setChoices([]);
@@ -91,7 +90,7 @@ export default function AdminLocationBuilder() {
     }
 
     const formData = buildNodeFormData({
-      level_id: levelId, text, is_mandatory: isMandatory, store_locally: storeLocally, image, audio, choices
+      level_id: levelId, text, store_locally: storeLocally, image, audio, choices
     });
 
     if (editingId) {
@@ -109,7 +108,6 @@ export default function AdminLocationBuilder() {
     setIsFormOpen(true);
     setEditingId(scene.id); 
     setText(scene.text || ''); 
-    setIsMandatory(!!scene.is_mandatory);
 
     if (scene.choices && scene.choices.length > 0) {
       setChoices(scene.choices.map((c: Choice) => ({
@@ -179,7 +177,7 @@ export default function AdminLocationBuilder() {
 
       {isFormOpen && (
         <AdminLocationForm
-          editingId={editingId} text={text} setText={setText} isMandatory={isMandatory} setIsMandatory={setIsMandatory}
+          editingId={editingId} text={text} setText={setText}
           storeLocally={storeLocally} setStoreLocally={setStoreLocally} imageInputRef={imageInputRef} audioInputRef={audioInputRef}
           setImage={setImage} setAudio={setAudio} choices={choices} setChoices={setChoices}
           activeCoordinateTarget={activeCoordinateTarget} setActiveCoordinateTarget={setActiveCoordinateTarget}

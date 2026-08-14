@@ -1,4 +1,3 @@
-// FILE: src/pages/GameRoom/tabs/Campaign/Levels/LocationPhase.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRoomState } from '@/context/RoomContext';

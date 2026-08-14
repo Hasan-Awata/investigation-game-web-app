@@ -15,7 +15,6 @@ class Question extends Model
         'img_url',
         'audio_url',
         'msg_when_wrong',
-        'is_mandatory', 
     ];
 
     protected function audioUrl(): Attribute
