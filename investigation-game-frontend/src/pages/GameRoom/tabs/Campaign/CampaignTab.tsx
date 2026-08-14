@@ -20,14 +20,12 @@ export default function CampaignTab() {
   const currentUser = storedUser ? JSON.parse(storedUser) : null;
   const isHost = currentUser?.id === room.host_user_id;
 
-  // We only extract what CampaignTab strictly needs to manage its own UI
+  // Feedback and clearFeedback have been removed; UI logic now lives in the parent layout
   const {
     isSubmitting,
     isInitiating,
-    feedback,
     handleSubmitTheory,
     initiatePhase,
-    clearFeedback,
   } = useInvestigationPhase();
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -119,28 +117,6 @@ export default function CampaignTab() {
         )}
       </div>
 
-      {feedback && (
-        <div className="feedback-modal-overlay">
-          <div className={`feedback-modal-content ${feedback.type}`}>
-            {feedback.type === 'error' && (
-              <div className="persona-container">
-                <svg className="persona-silhouette" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-                  <path d="M100 50 C100 20, 156 20, 156 50 L160 80 L96 80 Z" />
-                  <ellipse cx="128" cy="85" rx="70" ry="12" />
-                  <path d="M105 100 L151 100 C151 125, 138 145, 128 145 C118 145, 105 125, 105 100 Z" />
-                  <path d="M128 135 C80 135, 40 190, 20 256 L236 256 C216 190, 176 135, 128 135 Z" />
-                </svg>
-              </div>
-            )}
-            <h3 className="feedback-title">{feedback.title}</h3>
-            <p className="feedback-message">{feedback.message}</p>
-            {feedback.type === 'error' && (
-              <button className="btn-secondary mt-1" onClick={clearFeedback}>Reassess Evidence</button>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="roadmap-timeline">
         {sortedLevels.length === 0 && (
           <div className="terminal-text" style={{ padding: 0, textAlign: 'left' }}>No leads currently available in this phase.</div>
@@ -213,7 +189,6 @@ export default function CampaignTab() {
 
                     {(status === 'active' || status === 'completed') && level.questions && (
                       <>
-                        {/* THE CLEANUP: Drilled props have been fully removed */}
                         {level.presentation_type === 'interrogation' ? (
                           <InterrogationPhase level={level} status={status} totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} />
                         ) : level.presentation_type === 'location' ? (

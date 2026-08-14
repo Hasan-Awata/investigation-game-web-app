@@ -1,3 +1,4 @@
+// FILE: src/context/RoomContext.tsx
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { GameRoom, Evidence, Suspect, Victim } from '../types';
 
@@ -9,6 +10,13 @@ export interface ToastNotification {
   icon: string;
 }
 
+// 1. Define the Global Feedback Type
+export interface GlobalFeedback {
+  type: 'success' | 'error';
+  title: string;
+  message: string;
+}
+
 interface RoomState {
   room: GameRoom;
   accumulatedEvidences: Evidence[];
@@ -17,6 +25,7 @@ interface RoomState {
   viewedEvidences: Set<number>;
   viewedSuspects: Set<number>;
   viewedVictims: Set<number>;
+  globalFeedback: GlobalFeedback | null; // Added
 }
 
 interface RoomActions {
@@ -25,7 +34,8 @@ interface RoomActions {
   markSuspectAsViewed: (id: number) => void;
   markVictimAsViewed: (id: number) => void;
   setGameOverData: (message: string, stats?: any) => void;
-  addGlobalToast: (toast: Omit<ToastNotification, 'id'>) => void; // Added
+  addGlobalToast: (toast: Omit<ToastNotification, 'id'>) => void; 
+  setGlobalFeedback: (feedback: GlobalFeedback | null) => void; // Added
 }
 
 const RoomStateContext = createContext<RoomState | undefined>(undefined);
@@ -37,19 +47,19 @@ interface RoomProviderProps extends RoomState, RoomActions {
 
 export function RoomProvider({ 
   children, room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims,
-  viewedEvidences, viewedSuspects, viewedVictims,
+  viewedEvidences, viewedSuspects, viewedVictims, globalFeedback, 
   refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed,
-  setGameOverData, addGlobalToast 
+  setGameOverData, addGlobalToast, setGlobalFeedback 
 }: RoomProviderProps) {
   
   const state = useMemo<RoomState>(() => ({
     room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims,
-    viewedEvidences, viewedSuspects, viewedVictims
-  }), [room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims, viewedEvidences, viewedSuspects, viewedVictims]);
+    viewedEvidences, viewedSuspects, viewedVictims, globalFeedback
+  }), [room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims, viewedEvidences, viewedSuspects, viewedVictims, globalFeedback]);
 
   const actions = useMemo<RoomActions>(() => ({
-    refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed, setGameOverData, addGlobalToast
-  }), [refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed, setGameOverData, addGlobalToast]);
+    refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed, setGameOverData, addGlobalToast, setGlobalFeedback
+  }), [refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed, setGameOverData, addGlobalToast, setGlobalFeedback]);
 
   return (
     <RoomActionContext.Provider value={actions}>

@@ -1,6 +1,7 @@
+// FILE: src/pages/GameRoom/GameRoomLayout.tsx
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useRoomState } from '@/context/RoomContext';
+import { useRoomState, useRoomActions } from '@/context/RoomContext';
 import type { ToastNotification } from '@/context/RoomContext';
 import CaseDetailsTab from './tabs/CaseDetails/CaseDetailsTab';
 import EvidenceBoardTab from './tabs/EvidenceBoard/EvidenceBoardTab';
@@ -25,8 +26,10 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
     accumulatedVictims, 
     viewedEvidences, 
     viewedSuspects, 
-    viewedVictims 
+    viewedVictims, 
+    globalFeedback 
   } = useRoomState();
+  const { setGlobalFeedback } = useRoomActions();
   
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [isCopied, setIsCopied] = useState(false);
@@ -49,7 +52,28 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
   return (
     <div className="game-room-layout">
       
-      {/* GLOBAL TOAST RENDERER */}
+      {/* 1. THE NEW GLOBAL MODAL */}
+      {globalFeedback && (
+        <div className="feedback-modal-overlay" style={{ zIndex: 9999 }}>
+          <div className={`feedback-modal-content ${globalFeedback.type}`}>
+            {globalFeedback.type === 'error' && (
+              <div className="persona-container">
+                <svg className="persona-silhouette" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                  <path d="M100 50 C100 20, 156 20, 156 50 L160 80 L96 80 Z" />
+                  <ellipse cx="128" cy="85" rx="70" ry="12" />
+                  <path d="M105 100 L151 100 C151 125, 138 145, 128 145 C118 145, 105 125, 105 100 Z" />
+                  <path d="M128 135 C80 135, 40 190, 20 256 L236 256 C216 190, 176 135, 128 135 Z" />
+                </svg>
+              </div>
+            )}
+            <h3 className="feedback-title">{globalFeedback.title}</h3>
+            <p className="feedback-message">{globalFeedback.message}</p>
+            <button className="btn-secondary mt-1" onClick={() => setGlobalFeedback(null)}>Acknowledge</button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. GLOBAL TOAST RENDERER */}
       {createPortal(
         <div className="toast-container">
           {toasts.map((toast) => (

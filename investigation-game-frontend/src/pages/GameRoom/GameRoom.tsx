@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useViewedItems } from '@/hooks/useViewedItems'; 
-import { RoomProvider, type ToastNotification } from '@/context/RoomContext';
+import { RoomProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
 import GameRoomLayout from './GameRoomLayout';
 import './GameRoom.css';
 
@@ -20,6 +20,7 @@ export default function GameRoom() {
   const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
   const [finalStats, setFinalStats] = useState<any>(room?.final_stats || null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  const [globalFeedback, setGlobalFeedback] = useState<GlobalFeedback | null>(null); // Added
   
   const playedAudioTracker = useRef<Set<number>>(new Set());
 
@@ -41,12 +42,13 @@ export default function GameRoom() {
     channel.listen('LevelTransitioned', (e: LevelTransitionedPayload) => {
       if (e.message) {
         if (e.status === 'active') {
-          addGlobalToast({
-            type: 'system',
+          // Replaced window.alert with the global modal
+          setGlobalFeedback({
+            type: 'success',
             title: 'DEPARTMENT UPDATE',
-            message: e.message,
-            icon: 'https://api.iconify.design/ph:warning-duotone.svg?color=%23c48b36' 
+            message: e.message
           });
+          setTimeout(() => setGlobalFeedback(null), 4000);
         } else {
           setGameOverData(e.message, e.stats);
         }
@@ -92,6 +94,7 @@ export default function GameRoom() {
       viewedSuspects={viewedSuspects} markSuspectAsViewed={markSuspectAsViewed}
       viewedVictims={viewedVictims} markVictimAsViewed={markVictimAsViewed}
       setGameOverData={setGameOverData} addGlobalToast={addGlobalToast} 
+      globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback} // Added
     >
       <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={finalStats} toasts={toasts} />
     </RoomProvider>

@@ -1,26 +1,18 @@
-// FILE: src/hooks/useInvestigationPhase.ts
 import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useRoomState, useRoomActions } from '@/context/RoomContext';
 import type { Choice } from '@/types';
 import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/services/api'; 
 
-// Export the type from Context so we don't break existing imports in Phase 3
-export type { ToastNotification } from '@/context/RoomContext';
+export type { ToastNotification, GlobalFeedback } from '@/context/RoomContext';
 
-interface ApiError {
-  title?: string;
-  message: string;
-}
+interface ApiError { title?: string; message: string; }
 
 export function useInvestigationPhase() {
-  // 1. Consume the global state and actions directly!
   const { room } = useRoomState();
-  const { refreshRoomData, addGlobalToast } = useRoomActions();
+  const { refreshRoomData, addGlobalToast, setGlobalFeedback } = useRoomActions();
   
   const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
-  
   const roomId = room.id;
 
   useEffect(() => {
@@ -56,25 +48,25 @@ export function useInvestigationPhase() {
     },
     onSuccess: async (data) => {
       if (data.status === 'success' || data.status === 'failed_final') {
-        setFeedback({ 
+        setGlobalFeedback({ 
           type: data.status === 'success' ? 'success' : 'error', 
           title: data.status === 'success' ? 'Consensus Verified' : 'Theory Rejected',
           message: data.message 
         });
         
         setTimeout(() => {
-          setFeedback(null);
+          setGlobalFeedback(null);
           setLocalVotes({}); 
           refreshRoomData(); 
-        }, 2000);
+        }, 4000);
       } else {
-        setFeedback({ type: 'error', title: 'Theory Rejected', message: data.message });
+        setGlobalFeedback({ type: 'error', title: 'Theory Rejected', message: data.message });
         setLocalVotes({}); 
         refreshRoomData(); 
       }
     },
     onError: (error: ApiError) => {
-      setFeedback({ type: 'error', title: error.title || 'Error', message: error.message });
+      setGlobalFeedback({ type: 'error', title: error.title || 'Error', message: error.message });
     }
   });
 
@@ -85,7 +77,7 @@ export function useInvestigationPhase() {
       return result.value;
     },
     onSuccess: () => refreshRoomData(),
-    onError: (error: ApiError) => setFeedback({ 
+    onError: (error: ApiError) => setGlobalFeedback({ 
       type: 'error', title: error.title || 'System Error', message: error.message 
     })
   });
@@ -99,7 +91,7 @@ export function useInvestigationPhase() {
     onSuccess: () => {
       refreshRoomData(); 
     },
-    onError: (error: ApiError) => setFeedback({ 
+    onError: (error: ApiError) => setGlobalFeedback({ // <-- FIXED HERE
       type: 'error', title: error.title || 'Transmission Error', message: error.message 
     })
   });
@@ -110,7 +102,6 @@ export function useInvestigationPhase() {
 
     setLocalVotes(prev => ({ ...prev, [questionId]: choice.id }));
 
-    // 2. Dispatch to the Global Toast system instead of maintaining a local array
     if (choice.outcomes?.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) {
       addGlobalToast({ 
         type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${choice.outcomes.unlock_evidence.length} new piece(s) of physical evidence secured.`, 
@@ -146,20 +137,19 @@ export function useInvestigationPhase() {
 
   const clearFeedback = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setFeedback(null);
+    setGlobalFeedback(null); 
   };
 
   return {
     localVotes,
     isSubmitting: submitTheoryMutation.isPending || voteMutation.isPending,
     isInitiating: initiatePhaseMutation.isPending,
-    feedback,
     handleSelectChoice,
     handleSubmitTheory,
     initiatePhase: (levelId: number) => initiatePhaseMutation.mutate(levelId),
     clearFeedback,
     triggerWiretap: (questionId: number, audioUrl: string) => triggerWiretapMutation.mutate({ questionId, audioUrl }), 
     isTriggeringWiretap: triggerWiretapMutation.isPending,
-    addToast: addGlobalToast // Aliased for backward compatibility until Phase 4
+    addToast: addGlobalToast 
   };
 }
