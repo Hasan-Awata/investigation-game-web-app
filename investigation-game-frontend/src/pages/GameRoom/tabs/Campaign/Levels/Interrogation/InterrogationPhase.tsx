@@ -54,10 +54,13 @@ interface InterrogationPhaseProps {
   status: string;
   totalPlayers: number;
   getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
+  isHost: boolean;
+  isSubmitting: boolean;
+  handleSubmitTheory: (e: React.MouseEvent) => void;
 }
 
 export default function InterrogationPhase({ 
-  level, status, totalPlayers, getQuestionConsensus
+  level, status, totalPlayers, getQuestionConsensus, isHost, isSubmitting, handleSubmitTheory
 }: InterrogationPhaseProps) {
 
   const { room, accumulatedEvidences } = useRoomState();
@@ -128,6 +131,10 @@ export default function InterrogationPhase({
 
   const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
   const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
+
+  const lastQuestion = visibleQuestions[visibleQuestions.length - 1];
+  const isTerminalNode = lastQuestion && (!lastQuestion.choices || lastQuestion.choices.length === 0);
+  const isLastSuspectDone = lastQuestion && (suspectTypingComplete[lastQuestion.id] || status === 'completed');
 
   return (
     <div className="interrogation-log">
@@ -219,6 +226,20 @@ export default function InterrogationPhase({
           </div>
         );
       })}
+      
+      {isTerminalNode && isLastSuspectDone && status === 'active' && (
+        <div className="submit-theory-container" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '1.5rem' }}>
+          {isHost ? (
+            <button className="btn-primary submit-theory-btn" disabled={isSubmitting} onClick={handleSubmitTheory}>
+              {isSubmitting ? 'Processing...' : 'Submit Final Verdict'}
+            </button>
+          ) : (
+            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
+              Awaiting Host to submit final verdict...
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

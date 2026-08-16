@@ -3,7 +3,6 @@ import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Question } from '@/types';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
-import StandardPhase from './Levels/StandardPhase'; 
 import LocationPhase from './Levels/LocationPhase';
 import WiretapPhase from './Levels/WiretapPhase';
 import '../SharedOverlay.css';
@@ -188,16 +187,22 @@ export default function CampaignTab() {
                     {(status === 'active' || status === 'completed') && level.questions && (
                       <>
                         {level.presentation_type === 'interrogation' ? (
-                          <InterrogationPhase level={level} status={status} totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} />
+                          <InterrogationPhase 
+                            level={level} 
+                            status={status} 
+                            totalPlayers={totalPlayers} 
+                            getQuestionConsensus={getQuestionConsensus} 
+                            isHost={isHost}
+                            isSubmitting={isSubmitting}
+                            handleSubmitTheory={handleSubmitTheory}
+                          />
                         ) : level.presentation_type === 'location' ? (
                           <LocationPhase level={level} status={status} />
                         ) : level.presentation_type === 'wiretap' ? (
                           <WiretapPhase level={level} status={status} totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} />
-                        ) : (
-                          <StandardPhase level={level} status={status} totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} />
-                        )}
+                        ) : null}
 
-                        {status === 'active' && (
+                        {status === 'active' && level.presentation_type !== 'interrogation' && (
                           <div className="submit-theory-container">
                             {isHost ? (
                               <button 

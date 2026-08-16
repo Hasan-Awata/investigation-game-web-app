@@ -598,6 +598,9 @@ import './index.css'
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 
+// 1. Import your token helper
+import { getToken } from '@/services/auth';
+
 declare global {
   interface Window {
     Pusher: typeof Pusher;
@@ -607,8 +610,9 @@ declare global {
 
 window.Pusher = Pusher;
 
-// Automatically use Pusher if the production key is provided, else fall back to Reverb
 const isProduction = Boolean(import.meta.env.VITE_PUSHER_APP_KEY);
+// 2. Define the Laravel backend URL
+const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 
 window.Echo = new Echo(
   isProduction
@@ -617,6 +621,14 @@ window.Echo = new Echo(
         key: import.meta.env.VITE_PUSHER_APP_KEY,
         cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
         forceTLS: true,
+        // 3. Explicitly point to the Laravel auth endpoint and attach the token
+        authEndpoint: `${backendUrl}/api/broadcasting/auth`,
+        auth: {
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+            Accept: 'application/json',
+          },
+        },
       }
     : {
         broadcaster: 'reverb',
@@ -626,6 +638,14 @@ window.Echo = new Echo(
         wssPort: Number(import.meta.env.VITE_REVERB_PORT ?? 8080),
         forceTLS: false,
         enabledTransports: ['ws', 'wss'],
+        // 3. Explicitly point to the Laravel auth endpoint and attach the token
+        authEndpoint: `${backendUrl}/api/broadcasting/auth`,
+        auth: {
+          headers: {
+            Authorization: `Bearer ${getToken()}`,
+            Accept: 'application/json',
+          },
+        },
       }
 );
 
@@ -1444,6 +1464,7 @@ export function useAdminContext() {
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\context\RoomContext.tsx
 ----------------------------------------
+// FILE: src/context/RoomContext.tsx
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { GameRoom, Evidence, Suspect, Victim } from '../types';
 
@@ -1455,6 +1476,13 @@ export interface ToastNotification {
   icon: string;
 }
 
+// 1. Define the Global Feedback Type
+export interface GlobalFeedback {
+  type: 'success' | 'error';
+  title: string;
+  message: string;
+}
+
 interface RoomState {
   room: GameRoom;
   accumulatedEvidences: Evidence[];
@@ -1463,6 +1491,7 @@ interface RoomState {
   viewedEvidences: Set<number>;
   viewedSuspects: Set<number>;
   viewedVictims: Set<number>;
+  globalFeedback: GlobalFeedback | null; // Added
 }
 
 interface RoomActions {
@@ -1471,7 +1500,8 @@ interface RoomActions {
   markSuspectAsViewed: (id: number) => void;
   markVictimAsViewed: (id: number) => void;
   setGameOverData: (message: string, stats?: any) => void;
-  addGlobalToast: (toast: Omit<ToastNotification, 'id'>) => void; // Added
+  addGlobalToast: (toast: Omit<ToastNotification, 'id'>) => void; 
+  setGlobalFeedback: (feedback: GlobalFeedback | null) => void; // Added
 }
 
 const RoomStateContext = createContext<RoomState | undefined>(undefined);
@@ -1483,19 +1513,19 @@ interface RoomProviderProps extends RoomState, RoomActions {
 
 export function RoomProvider({ 
   children, room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims,
-  viewedEvidences, viewedSuspects, viewedVictims,
+  viewedEvidences, viewedSuspects, viewedVictims, globalFeedback, 
   refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed,
-  setGameOverData, addGlobalToast 
+  setGameOverData, addGlobalToast, setGlobalFeedback 
 }: RoomProviderProps) {
   
   const state = useMemo<RoomState>(() => ({
     room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims,
-    viewedEvidences, viewedSuspects, viewedVictims
-  }), [room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims, viewedEvidences, viewedSuspects, viewedVictims]);
+    viewedEvidences, viewedSuspects, viewedVictims, globalFeedback
+  }), [room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims, viewedEvidences, viewedSuspects, viewedVictims, globalFeedback]);
 
   const actions = useMemo<RoomActions>(() => ({
-    refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed, setGameOverData, addGlobalToast
-  }), [refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed, setGameOverData, addGlobalToast]);
+    refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed, setGameOverData, addGlobalToast, setGlobalFeedback
+  }), [refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed, setGameOverData, addGlobalToast, setGlobalFeedback]);
 
   return (
     <RoomActionContext.Provider value={actions}>
@@ -1761,29 +1791,21 @@ export function useGameRoom(inviteCode: string | undefined) {
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\hooks\useInvestigationPhase.ts
 ----------------------------------------
-// FILE: src/hooks/useInvestigationPhase.ts
 import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useRoomState, useRoomActions } from '@/context/RoomContext';
 import type { Choice } from '@/types';
 import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/services/api'; 
 
-// Export the type from Context so we don't break existing imports in Phase 3
-export type { ToastNotification } from '@/context/RoomContext';
+export type { ToastNotification, GlobalFeedback } from '@/context/RoomContext';
 
-interface ApiError {
-  title?: string;
-  message: string;
-}
+interface ApiError { title?: string; message: string; }
 
 export function useInvestigationPhase() {
-  // 1. Consume the global state and actions directly!
   const { room } = useRoomState();
-  const { refreshRoomData, addGlobalToast } = useRoomActions();
+  const { refreshRoomData, addGlobalToast, setGlobalFeedback } = useRoomActions();
   
   const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
-  
   const roomId = room.id;
 
   useEffect(() => {
@@ -1819,25 +1841,25 @@ export function useInvestigationPhase() {
     },
     onSuccess: async (data) => {
       if (data.status === 'success' || data.status === 'failed_final') {
-        setFeedback({ 
+        setGlobalFeedback({ 
           type: data.status === 'success' ? 'success' : 'error', 
           title: data.status === 'success' ? 'Consensus Verified' : 'Theory Rejected',
           message: data.message 
         });
         
         setTimeout(() => {
-          setFeedback(null);
+          setGlobalFeedback(null);
           setLocalVotes({}); 
           refreshRoomData(); 
-        }, 2000);
+        }, 4000);
       } else {
-        setFeedback({ type: 'error', title: 'Theory Rejected', message: data.message });
+        setGlobalFeedback({ type: 'error', title: 'Theory Rejected', message: data.message });
         setLocalVotes({}); 
         refreshRoomData(); 
       }
     },
     onError: (error: ApiError) => {
-      setFeedback({ type: 'error', title: error.title || 'Error', message: error.message });
+      setGlobalFeedback({ type: 'error', title: error.title || 'Error', message: error.message });
     }
   });
 
@@ -1848,7 +1870,7 @@ export function useInvestigationPhase() {
       return result.value;
     },
     onSuccess: () => refreshRoomData(),
-    onError: (error: ApiError) => setFeedback({ 
+    onError: (error: ApiError) => setGlobalFeedback({ 
       type: 'error', title: error.title || 'System Error', message: error.message 
     })
   });
@@ -1862,7 +1884,7 @@ export function useInvestigationPhase() {
     onSuccess: () => {
       refreshRoomData(); 
     },
-    onError: (error: ApiError) => setFeedback({ 
+    onError: (error: ApiError) => setGlobalFeedback({ // <-- FIXED HERE
       type: 'error', title: error.title || 'Transmission Error', message: error.message 
     })
   });
@@ -1873,7 +1895,6 @@ export function useInvestigationPhase() {
 
     setLocalVotes(prev => ({ ...prev, [questionId]: choice.id }));
 
-    // 2. Dispatch to the Global Toast system instead of maintaining a local array
     if (choice.outcomes?.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) {
       addGlobalToast({ 
         type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${choice.outcomes.unlock_evidence.length} new piece(s) of physical evidence secured.`, 
@@ -1909,21 +1930,20 @@ export function useInvestigationPhase() {
 
   const clearFeedback = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setFeedback(null);
+    setGlobalFeedback(null); 
   };
 
   return {
     localVotes,
     isSubmitting: submitTheoryMutation.isPending || voteMutation.isPending,
     isInitiating: initiatePhaseMutation.isPending,
-    feedback,
     handleSelectChoice,
     handleSubmitTheory,
     initiatePhase: (levelId: number) => initiatePhaseMutation.mutate(levelId),
     clearFeedback,
     triggerWiretap: (questionId: number, audioUrl: string) => triggerWiretapMutation.mutate({ questionId, audioUrl }), 
     isTriggeringWiretap: triggerWiretapMutation.isPending,
-    addToast: addGlobalToast // Aliased for backward compatibility until Phase 4
+    addToast: addGlobalToast 
   };
 }
 
@@ -2313,7 +2333,6 @@ import CaseForm from './forms/CaseForm';
 import PhaseForm from './forms/PhaseForm';
 import LevelForm from './forms/LevelForm/LevelForm';
 import EvidenceForm from './forms/EvidenceForm';
-import QuestionForm from './forms/QuestionForm/AdminStandardBuilder';
 import SuspectForm from './forms/SuspectForm'; 
 import VictimForm from './forms/VictimForm'; 
 import AdminInterrogationBuilder from './forms/QuestionForm/AdminInterrogationBuilder';
@@ -2322,7 +2341,7 @@ import AdminWiretapBuilder from './forms/QuestionForm/AdminWiretapBuilder';
 import InvestigationRequestForm from './forms/InvestigationRequestForm';
 import './AdminDashboard.css';
 
-type AdminTab = 'cases' | 'phases' | 'levels' | 'questions' | 'interrogation' | 'location' | 'wiretap' | 'evidences' | 'suspects' | 'victims' | 'requests';
+type AdminTab = 'cases' | 'phases' | 'levels' | 'interrogation' | 'location' | 'wiretap' | 'evidences' | 'suspects' | 'victims' | 'requests';
 
 function AdminDashboardContent() {
   const [activeTab, setActiveTab] = useState<AdminTab>('cases');
@@ -2393,7 +2412,6 @@ function AdminDashboardContent() {
         <div className="admin-nav-group">
           <h4 className="admin-nav-group-title">Node Builders</h4>
           <nav className="admin-nav-menu">
-            <button className={`admin-tab-btn ${activeTab === 'questions' ? 'active' : ''}`} onClick={() => setActiveTab('questions')}>📝 Standard Narrative</button>
             <button className={`admin-tab-btn ${activeTab === 'interrogation' ? 'active' : ''}`} onClick={() => setActiveTab('interrogation')}>💬 Interrogation Tree</button>
             <button className={`admin-tab-btn ${activeTab === 'location' ? 'active' : ''}`} onClick={() => setActiveTab('location')}>🎯 Location Sweeps</button>
             <button className={`admin-tab-btn ${activeTab === 'wiretap' ? 'active' : ''}`} onClick={() => setActiveTab('wiretap')}>🎙️ Wiretap Intercepts</button>
@@ -2416,7 +2434,6 @@ function AdminDashboardContent() {
         {activeTab === 'cases' && <CaseForm />}
         {activeTab === 'phases' && <PhaseForm />}
         {activeTab === 'levels' && <LevelForm />}
-        {activeTab === 'questions' && <QuestionForm />}
         {activeTab === 'interrogation' && <AdminInterrogationBuilder />}
         {activeTab === 'location' && <AdminLocationBuilder />}
         {activeTab === 'wiretap' && <AdminWiretapBuilder />}
@@ -3415,7 +3432,7 @@ export default function LevelForm() {
   const [image, setImage] = useState<File | null>(null);
   const [storeLocally, setStoreLocally] = useState(false);
   const [isInitial, setIsInitial] = useState(true);
-  const [presentationType, setPresentationType] = useState<string>('standard');
+  const [presentationType, setPresentationType] = useState<string>('interrogation');
   const [requiredRequestId, setRequiredRequestId] = useState<string>('');   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -3525,7 +3542,6 @@ export default function LevelForm() {
             <div className="form-group" style={{ flex: 1 }}>
               <label>Presentation Format</label>
               <select className="admin-input" value={presentationType} onChange={(e) => setPresentationType(e.target.value)}>
-                <option value="standard">Standard Investigation</option>
                 <option value="interrogation">Suspect Interrogation</option>
                 <option value="location">Location</option>
                 <option value="wiretap">Communications Wiretap</option> 
@@ -3815,7 +3831,6 @@ const DialogueNodeContainer = ({
     const formData = buildNodeFormData({
       level_id: levelId,
       text,
-      is_mandatory: true, 
       store_locally: false,
       choices
     });
@@ -3895,6 +3910,7 @@ export default function AdminInterrogationBuilder() {
   const savedNodes: Question[] = selectedLevel.questions || [];
   
   // Extract all the required global arrays for the UI form
+  const hasTerminalNode = savedNodes.some((n: Question) => !n.choices || n.choices.length === 0);
   const availableEvidences = selectedCase.evidences || [];
   const availableSuspects = selectedCase.suspects || [];
   const availableVictims = selectedCase.victims || [];
@@ -3917,6 +3933,12 @@ export default function AdminInterrogationBuilder() {
         </span>
       </div>
 
+      {!hasTerminalNode && savedNodes.length > 0 && (
+        <div className="terminal-text error" style={{ background: 'rgba(163, 50, 50, 0.1)', padding: '1rem', border: '1px solid var(--accent-crimson)', borderRadius: '8px', margin: '0 1rem' }}>
+          ⚠️ CRITICAL WARNING: This interrogation tree lacks a terminal node (a node with zero responses). The team will be soft-locked during gameplay. Please append at least one node with empty choices to conclude the interaction.
+        </div>
+      )}
+      
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 1rem' }}>
         <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
           Total Nodes: {savedNodes.length} (Saved) + {draftNodes.length} (Drafts)
@@ -4268,7 +4290,6 @@ export default function AdminLocationBuilder() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [text, setText] = useState('');
-  const [isMandatory, setIsMandatory] = useState(true); 
   const [storeLocally, setStoreLocally] = useState(false);
   const [image, setImage] = useState<File | null>(null);
   const [existingImgUrl, setExistingImgUrl] = useState<string | null>(null);
@@ -4307,7 +4328,7 @@ export default function AdminLocationBuilder() {
   }
 
   const clearForm = () => {
-    setEditingId(null); setText(''); setIsMandatory(true); setStoreLocally(false);
+    setEditingId(null); setText(''); setStoreLocally(false);
     setImage(null); setExistingImgUrl(null); setActiveCoordinateTarget(null);
     setAudio(null); setExistingAudioUrl(null);
     setChoices([]);
@@ -4347,7 +4368,7 @@ export default function AdminLocationBuilder() {
     }
 
     const formData = buildNodeFormData({
-      level_id: levelId, text, is_mandatory: isMandatory, store_locally: storeLocally, image, audio, choices
+      level_id: levelId, text, store_locally: storeLocally, image, audio, choices
     });
 
     if (editingId) {
@@ -4365,7 +4386,6 @@ export default function AdminLocationBuilder() {
     setIsFormOpen(true);
     setEditingId(scene.id); 
     setText(scene.text || ''); 
-    setIsMandatory(!!scene.is_mandatory);
 
     if (scene.choices && scene.choices.length > 0) {
       setChoices(scene.choices.map((c: Choice) => ({
@@ -4435,7 +4455,7 @@ export default function AdminLocationBuilder() {
 
       {isFormOpen && (
         <AdminLocationForm
-          editingId={editingId} text={text} setText={setText} isMandatory={isMandatory} setIsMandatory={setIsMandatory}
+          editingId={editingId} text={text} setText={setText}
           storeLocally={storeLocally} setStoreLocally={setStoreLocally} imageInputRef={imageInputRef} audioInputRef={audioInputRef}
           setImage={setImage} setAudio={setAudio} choices={choices} setChoices={setChoices}
           activeCoordinateTarget={activeCoordinateTarget} setActiveCoordinateTarget={setActiveCoordinateTarget}
@@ -4458,8 +4478,6 @@ interface AdminLocationFormProps {
   editingId: number | null;
   text: string;
   setText: (text: string) => void;
-  isMandatory: boolean;
-  setIsMandatory: (val: boolean) => void;
   storeLocally: boolean;
   setStoreLocally: (val: boolean) => void;
   imageInputRef: RefObject<HTMLInputElement | null>;
@@ -4481,7 +4499,7 @@ interface AdminLocationFormProps {
 }
 
 export default function AdminLocationForm({
-  editingId, text, setText, isMandatory, setIsMandatory, storeLocally, setStoreLocally,
+  editingId, text, setText, storeLocally, setStoreLocally,
   imageInputRef, setImage, choices, setChoices, 
   activeCoordinateTarget, setActiveCoordinateTarget, handleImageClick,
   handleSubmit, handleCancelEdit, isProcessing, statusMessage, contextHeader,
@@ -4508,13 +4526,6 @@ export default function AdminLocationForm({
         {statusMessage && <div className={`status-message ${statusMessage.type}`}>{statusMessage.message}</div>}
 
         <form onSubmit={handleSubmit} className="admin-form">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: isMandatory ? 'rgba(0, 229, 255, 0.05)' : 'rgba(255, 255, 255, 0.02)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', border: `1px solid ${isMandatory ? 'rgba(0, 229, 255, 0.2)' : 'rgba(255, 255, 255, 0.05)'}`, transition: 'all 0.2s ease' }}>
-            <input type="checkbox" id="mandatory-toggle" checked={isMandatory} onChange={(e) => setIsMandatory(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-cyan)' }} />
-            <label htmlFor="mandatory-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: isMandatory ? 'var(--accent-cyan)' : 'var(--text-secondary)', cursor: 'pointer', margin: 0 }}>
-              <strong>Mandatory Scene:</strong> Required for phase completion. Uncheck if this is just a transitional room.
-            </label>
-          </div>
-
           <div className="form-group">
             <label>Scene Title / Hint Text</label>
             <textarea className="admin-textarea" style={{ minHeight: '80px' }} required value={text} onChange={(e) => setText(e.target.value)} placeholder="Describe the overview of this environment zone..." />
@@ -4585,518 +4596,6 @@ export default function AdminLocationForm({
           </button>
         </form>
       </div>
-    </div>
-  );
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\QuestionForm\AdminStandardBuilder.css
-----------------------------------------
-/* --- src/pages/Admin/forms/QuestionForm.css --- */
-
-.qf-header-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.qf-header-title {
-  font-family: var(--font-mono);
-  margin: 0;
-}
-
-.qf-header-title.editing {
-  color: var(--accent-amber);
-}
-
-.qf-header-title.new {
-  color: var(--accent-crimson);
-}
-
-.qf-choices-container {
-  margin: 1.5rem 0;
-  padding: 1.5rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-}
-
-.qf-choices-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.qf-choices-title {
-  font-family: var(--font-mono);
-  color: var(--accent-cyan);
-}
-
-.qf-choices-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.qf-choice-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.02);
-  padding: 1rem;
-  border-radius: 6px;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  transition: all 0.2s ease;
-}
-
-.qf-choice-top {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.qf-radio-input {
-  transform: scale(1.5);
-  accent-color: var(--accent-success);
-}
-
-.qf-choice-text-input {
-  flex: 1;
-}
-
-.qf-delete-btn {
-  background: transparent;
-  border: none;
-  color: var(--accent-crimson);
-  cursor: pointer;
-  font-size: 1.5rem;
-  line-height: 1;
-}
-
-.qf-delete-btn:hover {
-  opacity: 0.8;
-}
-
-.qf-choice-bottom {
-  display: flex;
-  flex-direction: column;
-  margin-top: 0.5rem;
-}
-
-.qf-choice-bottom.indented {
-  padding-left: 2.5rem;
-}
-
-.qf-header-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
-}
-
-.qf-header-title {
-  font-family: var(--font-mono);
-  margin: 0;
-}
-
-.qf-header-title.editing {
-  color: var(--accent-amber);
-}
-
-.qf-header-title.new {
-  color: var(--accent-crimson);
-}
-
-.qf-choices-container {
-  margin: 1.5rem 0;
-  padding: 1.5rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-}
-
-.qf-choices-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-}
-
-.qf-choices-title {
-  font-family: var(--font-mono);
-  color: var(--accent-cyan);
-}
-
-.qf-choices-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.qf-choice-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.02);
-  padding: 1rem;
-  border-radius: 6px;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
-  transition: all 0.2s ease;
-}
-
-.qf-choice-top {
-  display: flex;
-  gap: 1rem;
-  align-items: center;
-}
-
-.qf-radio-input {
-  transform: scale(1.5);
-  accent-color: var(--accent-success);
-}
-
-.qf-choice-text-input {
-  flex: 1;
-}
-
-.qf-delete-btn {
-  background: transparent;
-  border: none;
-  color: var(--accent-crimson);
-  cursor: pointer;
-  font-size: 1.5rem;
-  line-height: 1;
-}
-
-.qf-delete-btn:hover {
-  opacity: 0.8;
-}
-
-.qf-choice-bottom {
-  display: flex;
-  flex-direction: column;
-  margin-top: 0.5rem;
-}
-
-.qf-choice-bottom.indented {
-  padding-left: 2.5rem;
-}
-
-/* --- THE NEW OUTCOMES BUILDER --- */
-.qf-outcomes-builder {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-top: 0.5rem;
-  padding: 1.25rem;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.qf-outcomes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 1rem;
-}
-
-.qf-outcome-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.qf-outcome-label {
-  font-size: 0.75rem;
-  color: var(--accent-amber);
-  font-family: var(--font-mono);
-  text-transform: uppercase;
-}
-
-.qf-multi-select {
-  height: 90px;
-  padding: 0.5rem;
-}
-
-.qf-multi-select option {
-  padding: 0.25rem 0.5rem;
-  margin-bottom: 2px;
-  border-radius: 2px;
-}
-
-.qf-multi-select option:checked {
-  background: rgba(0, 229, 255, 0.2);
-  color: var(--accent-cyan);
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\QuestionForm\AdminStandardBuilder.tsx
-----------------------------------------
-import { useState, useRef } from 'react';
-import { useAdminContext } from '@/context/AdminContext';
-import { useAdminMutations } from '@/hooks/useAdminMutations';
-import type { Question, Choice } from '@/types';
-import { type DraftChoice } from '../Shared/ChoiceEditorCard';
-import { buildNodeFormData } from '../Shared/questionUtils';
-import AdminStandardForm from './AdminStandardForm';
-import EntityList from '../Shared/EntityList';
-
-export default function AdminStandardBuilder() {
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [text, setText] = useState('');
-  const [isMandatory, setIsMandatory] = useState(true);
-  const [storeLocally, setStoreLocally] = useState(false);
-  const [image, setImage] = useState<File | null>(null);
-  const [audio, setAudio] = useState<File | null>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const audioInputRef = useRef<HTMLInputElement>(null);
-  
-
-  const [choices, setChoices] = useState<DraftChoice[]>([
-    { text: '', outcomes: {} },
-    { text: '', outcomes: {} }
-  ]);
-  
-  const { 
-    caseId, levelId, setCaseId, setPhaseId, setLevelId, 
-    selectedCase, selectedPhase, selectedLevel 
-  } = useAdminContext();
-
-  const { 
-    createEntity, updateEntity, deleteEntity, isProcessing, 
-    feedback: statusMessage, setFeedback: setStatusMessage, clearFeedback 
-  } = useAdminMutations('question');
-
-  if (!caseId || !levelId || !selectedCase || !selectedPhase || !selectedLevel) {
-    return (
-      <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
-        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', margin: '0 0 1rem 0' }}>[ MISSING CONTEXT: TARGET LEVEL REQUIRED ]</h3>
-        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Please select a Case, Phase, and Level from the sidebar to manage standard nodes.</p>
-      </div>
-    );
-  }
-
-  if (selectedLevel.presentation_type !== 'standard') {
-    return (
-      <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center', borderColor: 'var(--accent-crimson)' }}>
-        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', margin: '0 0 1rem 0' }}>[ INVALID CONTEXT: LEVEL TYPE MISMATCH ]</h3>
-        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>The currently selected level is configured for <strong>'{selectedLevel.presentation_type}'</strong>. You cannot build standard narrative nodes here. Please select a 'Standard Investigation' level from the sidebar.</p>
-      </div>
-    );
-  }
-
-  const clearForm = () => {
-    setEditingId(null);
-    setText('');
-    setIsMandatory(true);
-    setStoreLocally(false);
-    setImage(null);
-    setAudio(null);
-    setChoices([{ text: '', outcomes: {} }, { text: '', outcomes: {} }]);
-    clearFeedback();
-    if (imageInputRef.current) imageInputRef.current.value = '';
-    if (audioInputRef.current) audioInputRef.current.value = '';
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    clearFeedback();
-    
-    if (choices.length < 2) return setStatusMessage({ type: 'error', message: 'A standard node requires at least two choices.' });
-    if (choices.some(c => !c.text.trim())) return setStatusMessage({ type: 'error', message: 'All choices must have valid text.' });
-
-    const formData = buildNodeFormData({
-      level_id: levelId, text, is_mandatory: isMandatory, store_locally: storeLocally, image, audio, choices
-    });
-
-    if (editingId) {
-      updateEntity({ id: editingId, formData }, { onSuccess: clearForm });
-    } else {
-      createEntity(formData, { onSuccess: clearForm });
-    }
-  };
-
-  const handleEdit = (question: Question) => {
-    setCaseId(selectedCase.id.toString());
-    setPhaseId(selectedPhase.id.toString());
-    setLevelId(selectedLevel.id.toString());
-    
-    setEditingId(question.id);
-    setText(question.text);
-    setIsMandatory(!!question.is_mandatory);
-    
-    setChoices(question.choices?.map((c: Choice) => ({
-      id: c.id, text: c.text, outcomes: c.outcomes || {}, requirements: c.requirements || {}
-    })) || []);
-    
-    setImage(null);
-    setAudio(null);
-    clearFeedback();
-    if (imageInputRef.current) imageInputRef.current.value = '';
-    if (audioInputRef.current) audioInputRef.current.value = '';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDelete = (question: Question) => {
-    if (window.confirm('Are you absolutely sure you want to delete this question? This will permanently break any narrative chains pointing to it.')) {
-      if (editingId === question.id) clearForm();
-      deleteEntity(question.id);
-    }
-  };
-
-  const addChoice = () => setChoices(prev => [...prev, { text: '', outcomes: {} }]);
-  const updateChoice = (index: number, updatedChoice: DraftChoice) => {
-    const newChoices = [...choices];
-    newChoices[index] = updatedChoice;
-    setChoices(newChoices);
-  };
-  const removeChoice = (index: number) => setChoices(prev => prev.filter((_, i) => i !== index));
-
-  return (
-    <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-      
-      <AdminStandardForm 
-        image={image} audio={audio}
-        editingId={editingId} text={text} setText={setText} isMandatory={isMandatory} setIsMandatory={setIsMandatory}
-        storeLocally={storeLocally} setStoreLocally={setStoreLocally} imageInputRef={imageInputRef} audioInputRef={audioInputRef}
-        setImage={setImage} setAudio={setAudio} choices={choices} addChoice={addChoice} updateChoice={updateChoice}
-        removeChoice={removeChoice} handleSubmit={handleSubmit} handleCancelEdit={clearForm}
-        isProcessing={isProcessing} statusMessage={statusMessage}
-        contextHeader={`Targeting: ${selectedCase.title} > ${selectedPhase.title} > ${selectedLevel.title}`}
-      />
-
-      <EntityList<Question>
-        title="Active Standard Nodes"
-        items={selectedLevel.questions || []}
-        emptyMessage="No nodes built for this level yet."
-        keyExtractor={(q) => q.id}
-        isProcessing={isProcessing}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        renderItemContent={(q) => (
-          <>
-            <span style={{ fontFamily: 'var(--font-mono)', color: q.is_mandatory ? 'var(--accent-cyan)' : 'var(--text-secondary)', marginRight: '1rem', fontSize: '0.85rem' }}>
-              [{q.is_mandatory ? 'MANDATORY' : 'OPTIONAL'}]
-            </span>
-            <strong style={{ display: 'block', marginTop: '0.5rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{q.text}</strong>
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
-              {q.choices?.length || 0} Diverging Paths
-            </div>
-          </>
-        )}
-      />
-    </div>
-  );
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\QuestionForm\AdminStandardForm.tsx
-----------------------------------------
-import { type RefObject } from 'react';
-import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
-
-interface AdminStandardFormProps {
-  editingId: number | null;
-  text: string;
-  setText: (text: string) => void;
-  isMandatory: boolean;
-  setIsMandatory: (val: boolean) => void;
-  storeLocally: boolean;
-  setStoreLocally: (val: boolean) => void;
-  imageInputRef: RefObject<HTMLInputElement | null>;
-  audioInputRef: RefObject<HTMLInputElement | null>;
-  image: File | null;  
-  audio: File | null;  
-  setImage: (file: File | null) => void;
-  setAudio: (file: File | null) => void;
-  choices: DraftChoice[];
-  addChoice: () => void;
-  updateChoice: (index: number, choice: DraftChoice) => void;
-  removeChoice: (index: number) => void;
-  handleSubmit: (e: React.FormEvent) => void;
-  handleCancelEdit: () => void;
-  isProcessing: boolean;
-  statusMessage: { type: 'success' | 'error'; message: string } | null;
-  contextHeader: string;
-}
-
-export default function AdminStandardForm({
-  editingId, text, setText, isMandatory, setIsMandatory, storeLocally, setStoreLocally,
-  imageInputRef, audioInputRef, setImage, setAudio, choices, addChoice, updateChoice,
-  removeChoice, handleSubmit, handleCancelEdit, isProcessing, statusMessage, contextHeader
-}: AdminStandardFormProps) {
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <div>
-          <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', margin: '0 0 0.5rem 0' }}>
-            {editingId ? `// Editing Standard Node: ${editingId}` : '// Compile Standard Node'}
-          </h3>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-            {contextHeader}
-          </span>
-        </div>
-        {editingId && <button type="button" className="btn-secondary" onClick={handleCancelEdit} style={{ padding: '0.5rem 1rem', width: 'auto' }}>Cancel Edit</button>}
-      </div>
-
-      {statusMessage && <div className={`status-message ${statusMessage.type}`}>{statusMessage.message}</div>}
-
-      <form onSubmit={handleSubmit} className="admin-form">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0, 229, 255, 0.1)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', border: '1px solid rgba(0, 229, 255, 0.3)' }}>
-          <input type="checkbox" id="mandatory-toggle" checked={isMandatory} onChange={(e) => setIsMandatory(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }} />
-          <label htmlFor="mandatory-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', cursor: 'pointer' }}>
-            <strong>Mandatory Node:</strong> Players MUST reach a consensus on this verdict before the team is allowed to transition to the next phase.
-          </label>
-        </div>
-
-        <div className="form-group">
-          <label>Prompt Text (The Verdict)</label>
-          <textarea className="admin-textarea" required value={text} onChange={(e) => setText(e.target.value)} style={{ minHeight: '120px' }} />
-        </div>
-
-        <div className="admin-form-row">
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Accompanying Image {editingId && '(Leave blank to keep existing)'}</label>
-            <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
-          </div>
-          <div className="form-group" style={{ flex: 1 }}>
-            <label>Accompanying Audio {editingId && '(Leave blank to keep existing)'}</label>
-            <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
-          <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
-            <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
-          </label>
-        </div>
-
-        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h4 style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', margin: 0 }}>Choices & Divergence</h4>
-            <button type="button" onClick={addChoice} className="btn-secondary" style={{ padding: '0.5rem 1rem', width: 'auto', fontSize: '0.85rem' }}>
-              + Add Option
-            </button>
-          </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            {choices.map((choice, index) => (
-              <ChoiceEditorCard
-                key={index}
-                index={index}
-                choice={choice}
-                updateChoice={(updated) => updateChoice(index, updated)}
-                removeChoice={() => removeChoice(index)}
-              />
-            ))}
-          </div>
-        </div>
-
-        <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', color: 'var(--bg-dark)', marginTop: '2rem' }}>
-          {isProcessing ? 'Transmitting...' : editingId ? 'Update Node' : 'Commit Node to Database'}
-        </button>
-      </form>
     </div>
   );
 }
@@ -5793,7 +5292,6 @@ export const appendChoicesToFormData = (formData: FormData, choices: any[]) => {
 interface NodePayload {
   level_id: string;
   text: string;
-  is_mandatory: boolean;
   store_locally: boolean;
   choices: any[];
   image?: File | null;
@@ -5804,7 +5302,6 @@ export const buildNodeFormData = (payload: NodePayload): FormData => {
   const formData = new FormData();
   formData.append('level_id', payload.level_id);
   formData.append('text', payload.text);
-  formData.append('is_mandatory', payload.is_mandatory ? '1' : '0');
   formData.append('store_locally', payload.store_locally ? '1' : '0');
   
   if (payload.image) formData.append('image', payload.image);
@@ -6323,7 +5820,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useViewedItems } from '@/hooks/useViewedItems'; 
-import { RoomProvider, type ToastNotification } from '@/context/RoomContext';
+import { RoomProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
 import GameRoomLayout from './GameRoomLayout';
 import './GameRoom.css';
 
@@ -6341,6 +5838,7 @@ export default function GameRoom() {
   const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
   const [finalStats, setFinalStats] = useState<any>(room?.final_stats || null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  const [globalFeedback, setGlobalFeedback] = useState<GlobalFeedback | null>(null); // Added
   
   const playedAudioTracker = useRef<Set<number>>(new Set());
 
@@ -6361,8 +5859,17 @@ export default function GameRoom() {
     
     channel.listen('LevelTransitioned', (e: LevelTransitionedPayload) => {
       if (e.message) {
-        if (e.status === 'active') window.alert(`🚨 DEPARTMENT UPDATE:\n\n${e.message}`);
-        else setGameOverData(e.message, e.stats);
+        if (e.status === 'active') {
+          // Replaced window.alert with the global modal
+          setGlobalFeedback({
+            type: 'success',
+            title: 'DEPARTMENT UPDATE',
+            message: e.message
+          });
+          setTimeout(() => setGlobalFeedback(null), 4000);
+        } else {
+          setGameOverData(e.message, e.stats);
+        }
       }
       refreshRoomData();
     });
@@ -6405,6 +5912,7 @@ export default function GameRoom() {
       viewedSuspects={viewedSuspects} markSuspectAsViewed={markSuspectAsViewed}
       viewedVictims={viewedVictims} markVictimAsViewed={markVictimAsViewed}
       setGameOverData={setGameOverData} addGlobalToast={addGlobalToast} 
+      globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback} // Added
     >
       <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={finalStats} toasts={toasts} />
     </RoomProvider>
@@ -6414,9 +5922,10 @@ export default function GameRoom() {
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\GameRoomLayout.tsx
 ----------------------------------------
+// FILE: src/pages/GameRoom/GameRoomLayout.tsx
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useRoomState } from '@/context/RoomContext';
+import { useRoomState, useRoomActions } from '@/context/RoomContext';
 import type { ToastNotification } from '@/context/RoomContext';
 import CaseDetailsTab from './tabs/CaseDetails/CaseDetailsTab';
 import EvidenceBoardTab from './tabs/EvidenceBoard/EvidenceBoardTab';
@@ -6441,8 +5950,10 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
     accumulatedVictims, 
     viewedEvidences, 
     viewedSuspects, 
-    viewedVictims 
+    viewedVictims, 
+    globalFeedback 
   } = useRoomState();
+  const { setGlobalFeedback } = useRoomActions();
   
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [isCopied, setIsCopied] = useState(false);
@@ -6465,7 +5976,28 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
   return (
     <div className="game-room-layout">
       
-      {/* GLOBAL TOAST RENDERER */}
+      {/* 1. THE NEW GLOBAL MODAL */}
+      {globalFeedback && (
+        <div className="feedback-modal-overlay" style={{ zIndex: 9999 }}>
+          <div className={`feedback-modal-content ${globalFeedback.type}`}>
+            {globalFeedback.type === 'error' && (
+              <div className="persona-container">
+                <svg className="persona-silhouette" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
+                  <path d="M100 50 C100 20, 156 20, 156 50 L160 80 L96 80 Z" />
+                  <ellipse cx="128" cy="85" rx="70" ry="12" />
+                  <path d="M105 100 L151 100 C151 125, 138 145, 128 145 C118 145, 105 125, 105 100 Z" />
+                  <path d="M128 135 C80 135, 40 190, 20 256 L236 256 C216 190, 176 135, 128 135 Z" />
+                </svg>
+              </div>
+            )}
+            <h3 className="feedback-title">{globalFeedback.title}</h3>
+            <p className="feedback-message">{globalFeedback.message}</p>
+            <button className="btn-secondary mt-1" onClick={() => setGlobalFeedback(null)}>Acknowledge</button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. GLOBAL TOAST RENDERER */}
       {createPortal(
         <div className="toast-container">
           {toasts.map((toast) => (
@@ -7052,7 +6584,6 @@ import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Question } from '@/types';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
-import StandardPhase from './Levels/StandardPhase'; 
 import LocationPhase from './Levels/LocationPhase';
 import WiretapPhase from './Levels/WiretapPhase';
 import '../SharedOverlay.css';
@@ -7069,14 +6600,12 @@ export default function CampaignTab() {
   const currentUser = storedUser ? JSON.parse(storedUser) : null;
   const isHost = currentUser?.id === room.host_user_id;
 
-  // We only extract what CampaignTab strictly needs to manage its own UI
+  // Feedback and clearFeedback have been removed; UI logic now lives in the parent layout
   const {
     isSubmitting,
     isInitiating,
-    feedback,
     handleSubmitTheory,
     initiatePhase,
-    clearFeedback,
   } = useInvestigationPhase();
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -7168,28 +6697,6 @@ export default function CampaignTab() {
         )}
       </div>
 
-      {feedback && (
-        <div className="feedback-modal-overlay">
-          <div className={`feedback-modal-content ${feedback.type}`}>
-            {feedback.type === 'error' && (
-              <div className="persona-container">
-                <svg className="persona-silhouette" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg" fill="currentColor">
-                  <path d="M100 50 C100 20, 156 20, 156 50 L160 80 L96 80 Z" />
-                  <ellipse cx="128" cy="85" rx="70" ry="12" />
-                  <path d="M105 100 L151 100 C151 125, 138 145, 128 145 C118 145, 105 125, 105 100 Z" />
-                  <path d="M128 135 C80 135, 40 190, 20 256 L236 256 C216 190, 176 135, 128 135 Z" />
-                </svg>
-              </div>
-            )}
-            <h3 className="feedback-title">{feedback.title}</h3>
-            <p className="feedback-message">{feedback.message}</p>
-            {feedback.type === 'error' && (
-              <button className="btn-secondary mt-1" onClick={clearFeedback}>Reassess Evidence</button>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="roadmap-timeline">
         {sortedLevels.length === 0 && (
           <div className="terminal-text" style={{ padding: 0, textAlign: 'left' }}>No leads currently available in this phase.</div>
@@ -7208,8 +6715,6 @@ export default function CampaignTab() {
           else if (isAnotherPhaseRunning) status = 'locked'; 
 
           const isExpanded = expandedId === level.id;
-          const mandatoryQuestions = level.questions?.filter((q: any) => q.is_mandatory) || [];
-          const allMandatoryAnswered = mandatoryQuestions.every((q: any) => getQuestionConsensus(q).isResolved);
 
           const displayTitle = isDiscovered ? level.title : 'Undiscovered Encounter';
           const displayDesc = isDiscovered 
@@ -7262,26 +6767,28 @@ export default function CampaignTab() {
 
                     {(status === 'active' || status === 'completed') && level.questions && (
                       <>
-                        {/* THE CLEANUP: Drilled props have been fully removed */}
                         {level.presentation_type === 'interrogation' ? (
-                          <InterrogationPhase level={level} status={status} totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} />
+                          <InterrogationPhase 
+                            level={level} 
+                            status={status} 
+                            totalPlayers={totalPlayers} 
+                            getQuestionConsensus={getQuestionConsensus} 
+                            isHost={isHost}
+                            isSubmitting={isSubmitting}
+                            handleSubmitTheory={handleSubmitTheory}
+                          />
                         ) : level.presentation_type === 'location' ? (
                           <LocationPhase level={level} status={status} />
                         ) : level.presentation_type === 'wiretap' ? (
                           <WiretapPhase level={level} status={status} totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} />
-                        ) : (
-                          <StandardPhase level={level} status={status} totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} />
-                        )}
+                        ) : null}
 
-                        {status === 'active' && (
+                        {status === 'active' && level.presentation_type !== 'interrogation' && (
                           <div className="submit-theory-container">
                             {isHost ? (
                               <button 
                                 className="btn-primary submit-theory-btn"
-                                disabled={
-                                  isSubmitting || 
-                                  (level.presentation_type !== 'location' && !allMandatoryAnswered)
-                                }
+                                disabled={isSubmitting}
                                 onClick={handleSubmitTheory}
                               >
                                 {isSubmitting 
@@ -7295,9 +6802,7 @@ export default function CampaignTab() {
                               <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
                                 {level.presentation_type === 'location'
                                   ? 'Sweep in progress. Awaiting Host to conclude the search...'
-                                  : allMandatoryAnswered 
-                                    ? 'Consensus reached. Awaiting Host to submit final verdict...' 
-                                    : 'Awaiting team consensus on all active leads...'
+                                  : 'Awaiting Host to submit final verdict...'
                                 }
                               </div>
                             )}
@@ -7536,7 +7041,6 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\LocationPhase.tsx
 ----------------------------------------
-// FILE: src/pages/GameRoom/tabs/Campaign/Levels/LocationPhase.tsx
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRoomState } from '@/context/RoomContext';
@@ -7877,118 +7381,6 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 }
 
 
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\StandardPhase.tsx
-----------------------------------------
-import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
-import type { Level, Question } from '@/types';
-import './StandardPhase.css';
-
-interface StandardPhaseProps {
-  level: Level;
-  status: string;
-  totalPlayers: number;
-  getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
-}
-
-export default function StandardPhase({ level, status, totalPlayers, getQuestionConsensus }: StandardPhaseProps) {
-  const { localVotes, handleSelectChoice } = useInvestigationPhase();
-  
-  if (!level.questions || level.questions.length === 0) return null;
-
-  const visibleQuestions: Question[] = [];
-  let currentId: number | null = level.questions[0].id; 
-
-  while (currentId) {
-    const q = level.questions.find(x => x.id === currentId);
-    if (!q) break;
-    visibleQuestions.push(q);
-    
-    const consensus = getQuestionConsensus(q);
-    if (consensus.isResolved && consensus.winningChoiceId) {
-      const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
-      
-      if (winningChoice?.outcomes?.next_question_id) {
-        currentId = winningChoice.outcomes.next_question_id;
-      } else {
-        const currentIndex = level.questions.findIndex(x => x.id === q.id);
-        currentId = level.questions[currentIndex + 1]?.id || null;
-      }
-    } else {
-      currentId = null; 
-    }
-  }
-
-  return (
-    <>
-      <h4 className="drawer-title">Required Verdicts</h4>
-      <div className="questions-list">
-        {visibleQuestions.map((q, qIdx) => {
-          
-          const consensus = getQuestionConsensus(q);
-          const prevConsensus = qIdx > 0 ? getQuestionConsensus(visibleQuestions[qIdx - 1]) : null;
-          
-          const isVisible = status === 'completed' || qIdx === 0 || (prevConsensus && prevConsensus.isResolved);
-          if (!isVisible) return null;
-
-          const isLocked = consensus.isResolved; 
-          const hasLocalVote = !!localVotes[q.id];
-
-          return (
-            <div key={q.id} className="question-item">
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                <span className="question-number">Q{qIdx + 1}</span>
-                {!q.is_mandatory && (
-                  <span title="Optional narrative evidence." style={{ color: 'var(--accent-amber)', marginTop: '0.35rem', fontSize: '1.1rem', cursor: 'help', animation: 'pulse-icon 2s infinite' }}>📄</span>
-                )}
-              </div>
-
-              <div className="question-body">
-                <p className="question-text">
-                  {q.text}
-                  {status === 'active' && !isLocked && (
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: consensus.isTie ? 'var(--accent-crimson)' : 'var(--accent-amber)', marginTop: '0.5rem', fontFamily: 'var(--font-mono)' }}>
-                      ↳ {consensus.isTie 
-                          ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
-                          : hasLocalVote 
-                            ? `Vote recorded (${consensus.votesCast} / ${totalPlayers}). You may still change your choice.` 
-                            : `Awaiting Agent consensus: ${consensus.votesCast} / ${totalPlayers} cast`
-                        }
-                    </span>
-                  )}
-                </p>
-                <div className="choices-preview">
-                  {q.choices?.map(c => {
-                    const isSelected = localVotes[q.id] === c.id;
-                    const isHistoricalCorrect = status === 'completed' && !c.outcomes?.gives_strike;
-
-                    let pillClass = 'choice-pill';
-                    if (isSelected) pillClass += ' selected';
-                    if (isHistoricalCorrect) pillClass += ' historical-correct';
-                    if (status === 'active' && !isLocked) pillClass += ' interactable';
-
-                    return (
-                      <span 
-                        key={c.id} 
-                        className={pillClass}
-                        onClick={(e) => {
-                          if (status === 'active' && !isLocked) handleSelectChoice(e, q.id, c, status);
-                        }}
-                      >
-                        {c.text}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </>
-  );
-}
-
-
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\WiretapPhase.css
 ----------------------------------------
 .wiretap-phase-wrapper {
@@ -8217,7 +7609,8 @@ export default function WiretapPhase({
       const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
       
       if (winningChoice?.outcomes?.next_question_id) {
-        currentId = winningChoice.outcomes.next_question_id;
+        // FIXED: Explicitly cast to Number
+        currentId = Number(winningChoice.outcomes.next_question_id);
       } else {
         const currentIndex = level.questions.findIndex(x => x.id === q.id);
         currentId = level.questions[currentIndex + 1]?.id || null;
@@ -8464,6 +7857,12 @@ const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' 
     const el = spanRef.current;
     if (!el) return;
 
+    // Safety check for empty strings
+    if (!text) {
+      if (savedOnComplete.current) savedOnComplete.current();
+      return;
+    }
+
     if (skip || (cacheKey && sessionStorage.getItem(cacheKey))) {
       el.textContent = text;
       if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
@@ -8495,10 +7894,13 @@ interface InterrogationPhaseProps {
   status: string;
   totalPlayers: number;
   getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
+  isHost: boolean;
+  isSubmitting: boolean;
+  handleSubmitTheory: (e: React.MouseEvent) => void;
 }
 
 export default function InterrogationPhase({ 
-  level, status, totalPlayers, getQuestionConsensus
+  level, status, totalPlayers, getQuestionConsensus, isHost, isSubmitting, handleSubmitTheory
 }: InterrogationPhaseProps) {
 
   const { room, accumulatedEvidences } = useRoomState();
@@ -8556,7 +7958,8 @@ export default function InterrogationPhase({
       const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
       
       if (winningChoice?.outcomes?.next_question_id) {
-        currentId = winningChoice.outcomes.next_question_id;
+        // FIXED: Explicitly cast to Number to prevent strict equality JSON failures
+        currentId = Number(winningChoice.outcomes.next_question_id);
       } else {
         const currentIndex = level.questions.findIndex(x => x.id === q.id);
         currentId = level.questions[currentIndex + 1]?.id || null;
@@ -8568,6 +7971,10 @@ export default function InterrogationPhase({
 
   const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
   const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
+
+  const lastQuestion = visibleQuestions[visibleQuestions.length - 1];
+  const isTerminalNode = lastQuestion && (!lastQuestion.choices || lastQuestion.choices.length === 0);
+  const isLastSuspectDone = lastQuestion && (suspectTypingComplete[lastQuestion.id] || status === 'completed');
 
   return (
     <div className="interrogation-log">
@@ -8659,6 +8066,20 @@ export default function InterrogationPhase({
           </div>
         );
       })}
+      
+      {isTerminalNode && isLastSuspectDone && status === 'active' && (
+        <div className="submit-theory-container" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '1.5rem' }}>
+          {isHost ? (
+            <button className="btn-primary submit-theory-btn" disabled={isSubmitting} onClick={handleSubmitTheory}>
+              {isSubmitting ? 'Processing...' : 'Submit Final Verdict'}
+            </button>
+          ) : (
+            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
+              Awaiting Host to submit final verdict...
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -11575,7 +10996,6 @@ export interface Question {
   img_url?: string;
   audio_url?: string; 
   choices?: Choice[];
-  is_mandatory: boolean; 
   assigned_user_id?: number; 
 }
 

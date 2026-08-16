@@ -143,6 +143,7 @@ export default function AdminInterrogationBuilder() {
   const savedNodes: Question[] = selectedLevel.questions || [];
   
   // Extract all the required global arrays for the UI form
+  const hasTerminalNode = savedNodes.some((n: Question) => !n.choices || n.choices.length === 0);
   const availableEvidences = selectedCase.evidences || [];
   const availableSuspects = selectedCase.suspects || [];
   const availableVictims = selectedCase.victims || [];
@@ -165,6 +166,12 @@ export default function AdminInterrogationBuilder() {
         </span>
       </div>
 
+      {!hasTerminalNode && savedNodes.length > 0 && (
+        <div className="terminal-text error" style={{ background: 'rgba(163, 50, 50, 0.1)', padding: '1rem', border: '1px solid var(--accent-crimson)', borderRadius: '8px', margin: '0 1rem' }}>
+          ⚠️ CRITICAL WARNING: This interrogation tree lacks a terminal node (a node with zero responses). The team will be soft-locked during gameplay. Please append at least one node with empty choices to conclude the interaction.
+        </div>
+      )}
+      
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 1rem' }}>
         <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
           Total Nodes: {savedNodes.length} (Saved) + {draftNodes.length} (Drafts)

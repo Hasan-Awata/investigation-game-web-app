@@ -19,7 +19,7 @@ export default function LevelForm() {
   const [image, setImage] = useState<File | null>(null);
   const [storeLocally, setStoreLocally] = useState(false);
   const [isInitial, setIsInitial] = useState(true);
-  const [presentationType, setPresentationType] = useState<string>('standard');
+  const [presentationType, setPresentationType] = useState<string>('interrogation');
   const [requiredRequestId, setRequiredRequestId] = useState<string>('');   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -129,7 +129,6 @@ export default function LevelForm() {
             <div className="form-group" style={{ flex: 1 }}>
               <label>Presentation Format</label>
               <select className="admin-input" value={presentationType} onChange={(e) => setPresentationType(e.target.value)}>
-                <option value="standard">Standard Investigation</option>
                 <option value="interrogation">Suspect Interrogation</option>
                 <option value="location">Location</option>
                 <option value="wiretap">Communications Wiretap</option> 

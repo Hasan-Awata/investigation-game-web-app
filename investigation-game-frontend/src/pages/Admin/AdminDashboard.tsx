@@ -5,7 +5,6 @@ import CaseForm from './forms/CaseForm';
 import PhaseForm from './forms/PhaseForm';
 import LevelForm from './forms/LevelForm/LevelForm';
 import EvidenceForm from './forms/EvidenceForm';
-import QuestionForm from './forms/QuestionForm/AdminStandardBuilder';
 import SuspectForm from './forms/SuspectForm'; 
 import VictimForm from './forms/VictimForm'; 
 import AdminInterrogationBuilder from './forms/QuestionForm/AdminInterrogationBuilder';
@@ -14,7 +13,7 @@ import AdminWiretapBuilder from './forms/QuestionForm/AdminWiretapBuilder';
 import InvestigationRequestForm from './forms/InvestigationRequestForm';
 import './AdminDashboard.css';
 
-type AdminTab = 'cases' | 'phases' | 'levels' | 'questions' | 'interrogation' | 'location' | 'wiretap' | 'evidences' | 'suspects' | 'victims' | 'requests';
+type AdminTab = 'cases' | 'phases' | 'levels' | 'interrogation' | 'location' | 'wiretap' | 'evidences' | 'suspects' | 'victims' | 'requests';
 
 function AdminDashboardContent() {
   const [activeTab, setActiveTab] = useState<AdminTab>('cases');
@@ -85,7 +84,6 @@ function AdminDashboardContent() {
         <div className="admin-nav-group">
           <h4 className="admin-nav-group-title">Node Builders</h4>
           <nav className="admin-nav-menu">
-            <button className={`admin-tab-btn ${activeTab === 'questions' ? 'active' : ''}`} onClick={() => setActiveTab('questions')}>📝 Standard Narrative</button>
             <button className={`admin-tab-btn ${activeTab === 'interrogation' ? 'active' : ''}`} onClick={() => setActiveTab('interrogation')}>💬 Interrogation Tree</button>
             <button className={`admin-tab-btn ${activeTab === 'location' ? 'active' : ''}`} onClick={() => setActiveTab('location')}>🎯 Location Sweeps</button>
             <button className={`admin-tab-btn ${activeTab === 'wiretap' ? 'active' : ''}`} onClick={() => setActiveTab('wiretap')}>🎙️ Wiretap Intercepts</button>
@@ -108,7 +106,6 @@ function AdminDashboardContent() {
         {activeTab === 'cases' && <CaseForm />}
         {activeTab === 'phases' && <PhaseForm />}
         {activeTab === 'levels' && <LevelForm />}
-        {activeTab === 'questions' && <QuestionForm />}
         {activeTab === 'interrogation' && <AdminInterrogationBuilder />}
         {activeTab === 'location' && <AdminLocationBuilder />}
         {activeTab === 'wiretap' && <AdminWiretapBuilder />}
