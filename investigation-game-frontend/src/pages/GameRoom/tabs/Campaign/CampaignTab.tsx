@@ -197,36 +197,24 @@ export default function CampaignTab() {
                             handleSubmitTheory={handleSubmitTheory}
                           />
                         ) : level.presentation_type === 'location' ? (
-                          <LocationPhase level={level} status={status} />
+                          <LocationPhase 
+                            level={level} 
+                            status={status} 
+                            isHost={isHost}
+                            isSubmitting={isSubmitting}
+                            handleSubmitTheory={handleSubmitTheory}
+                          />
                         ) : level.presentation_type === 'wiretap' ? (
-                          <WiretapPhase level={level} status={status} totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} />
+                          <WiretapPhase 
+                            level={level} 
+                            status={status} 
+                            totalPlayers={totalPlayers} 
+                            getQuestionConsensus={getQuestionConsensus} 
+                            isHost={isHost}
+                            isSubmitting={isSubmitting}
+                            handleSubmitTheory={handleSubmitTheory}
+                          />
                         ) : null}
-
-                        {status === 'active' && level.presentation_type !== 'interrogation' && (
-                          <div className="submit-theory-container">
-                            {isHost ? (
-                              <button 
-                                className="btn-primary submit-theory-btn"
-                                disabled={isSubmitting}
-                                onClick={handleSubmitTheory}
-                              >
-                                {isSubmitting 
-                                  ? 'Processing...' 
-                                  : level.presentation_type === 'location' 
-                                    ? 'Conclude Scene Sweep' 
-                                    : 'Submit Final Verdict'
-                                }
-                              </button>
-                            ) : (
-                              <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
-                                {level.presentation_type === 'location'
-                                  ? 'Sweep in progress. Awaiting Host to conclude the search...'
-                                  : 'Awaiting Host to submit final verdict...'
-                                }
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </>
                     )}
                   </div>

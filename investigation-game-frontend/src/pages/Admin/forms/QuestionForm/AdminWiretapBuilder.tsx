@@ -11,7 +11,6 @@ export default function AdminWiretapBuilder() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [text, setText] = useState('');
-  const [isMandatory, setIsMandatory] = useState(true);
   const [storeLocally, setStoreLocally] = useState(false);
   
   const [image, setImage] = useState<File | null>(null);
@@ -57,7 +56,7 @@ export default function AdminWiretapBuilder() {
   }
 
   const clearForm = () => {
-    setEditingId(null); setText(''); setIsMandatory(true); setStoreLocally(false);
+    setEditingId(null); setText(''); setStoreLocally(false);
     setImage(null); setExistingImgUrl(null); setAudio(null); setExistingAudioUrl(null);
     setChoices([{ text: '', outcomes: {}, requirements: {} }, { text: '', outcomes: {}, requirements: {} }]);
     clearFeedback();
@@ -73,7 +72,7 @@ export default function AdminWiretapBuilder() {
     if (choices.some(c => !c.text.trim())) return setStatusMessage({ type: 'error', message: 'All choices must have valid text.' });
 
     const formData = buildNodeFormData({
-      level_id: levelId, text, is_mandatory: isMandatory, store_locally: storeLocally, image, audio, choices
+      level_id: levelId, text, store_locally: storeLocally, image, audio, choices
     });
 
     if (editingId) {
@@ -90,7 +89,6 @@ export default function AdminWiretapBuilder() {
     
     setEditingId(question.id);
     setText(question.text);
-    setIsMandatory(!!question.is_mandatory);
     
     setChoices(question.choices?.map((c: Choice) => ({
       id: c.id, text: c.text, outcomes: c.outcomes || {}, requirements: c.requirements || {}
@@ -128,7 +126,7 @@ export default function AdminWiretapBuilder() {
       
       <AdminWiretapForm
         image={image} audio={audio} 
-        editingId={editingId} text={text} setText={setText} isMandatory={isMandatory} setIsMandatory={setIsMandatory}
+        editingId={editingId} text={text} setText={setText}
         storeLocally={storeLocally} setStoreLocally={setStoreLocally} imageInputRef={imageInputRef} audioInputRef={audioInputRef}
         setImage={setImage} setAudio={setAudio} choices={choices} addChoice={addChoice} updateChoice={updateChoice}
         removeChoice={removeChoice} handleSubmit={handleSubmit} handleCancelEdit={clearForm}

@@ -1,11 +1,11 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Level, Choice, Question } from '@/types';
 import './InterrogationPhase.css';
 
 // --- TYPEWRITER COMPONENT ---
-const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
+const Typewriter = ({ text, delay = 30, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
   const spanRef = useRef<HTMLSpanElement>(null);
   const savedOnComplete = useRef(onComplete);
   
@@ -103,43 +103,72 @@ export default function InterrogationPhase({
     return initial;
   });
 
-  if (!level.questions || level.questions.length === 0) return null;
-
-  const visibleQuestions: Question[] = [];
-  let currentId: number | null = level.questions[0].id; 
-  
-  while (currentId) {
-    const q = level.questions.find(x => x.id === currentId);
-    if (!q) break;
-    visibleQuestions.push(q);
+  // --- PERFORMANCE OPTIMIZATION: Memoize the heavy tree traversal ---
+  const { visibleQuestions, consensusMap } = useMemo(() => {
+    const questions: Question[] = [];
+    const map: Record<number, ReturnType<typeof getQuestionConsensus>> = {};
     
-    const consensus = getQuestionConsensus(q);
-    if (consensus.isResolved && consensus.winningChoiceId) {
-      const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
-      
-      if (winningChoice?.outcomes?.next_question_id) {
-        // FIXED: Explicitly cast to Number to prevent strict equality JSON failures
-        currentId = Number(winningChoice.outcomes.next_question_id);
-      } else {
-        const currentIndex = level.questions.findIndex(x => x.id === q.id);
-        currentId = level.questions[currentIndex + 1]?.id || null;
-      }
-    } else {
-      currentId = null; 
+    if (!level.questions || level.questions.length === 0) {
+      return { visibleQuestions: questions, consensusMap: map };
     }
-  }
+
+    let currentId: number | null = level.questions[0].id; 
+    
+    while (currentId) {
+      const q = level.questions.find(x => x.id === currentId);
+      if (!q) break;
+      questions.push(q);
+      
+      const consensus = getQuestionConsensus(q);
+      map[q.id] = consensus;
+      
+      if (consensus.isResolved && consensus.winningChoiceId) {
+        const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
+        
+        if (winningChoice?.outcomes?.next_question_id) {
+          currentId = Number(winningChoice.outcomes.next_question_id);
+        } else {
+          currentId = null; 
+        }
+      } else {
+        currentId = null; 
+      }
+    }
+    return { visibleQuestions: questions, consensusMap: map };
+  }, [level.questions, room.votes, getQuestionConsensus]);
+
+  if (visibleQuestions.length === 0) return null;
 
   const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
   const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
 
+  // --- HYBRID TERMINAL NODE LOGIC ---
   const lastQuestion = visibleQuestions[visibleQuestions.length - 1];
-  const isTerminalNode = lastQuestion && (!lastQuestion.choices || lastQuestion.choices.length === 0);
-  const isLastSuspectDone = lastQuestion && (suspectTypingComplete[lastQuestion.id] || status === 'completed');
+  
+  // Scenario A: The Suspect gets the last word (Zero choices)
+  const hasNoChoices = !lastQuestion?.choices || lastQuestion.choices.length === 0;
+  
+  // Scenario B: The Investigators get the last word (Choice points to null)
+  const lastConsensus = lastQuestion ? consensusMap[lastQuestion.id] : null;
+  const finalWinningChoice = lastConsensus?.winningChoiceId 
+    ? lastQuestion.choices?.find(c => c.id === lastConsensus.winningChoiceId) 
+    : null;
+  const isPlayerTerminal = lastConsensus?.isResolved && finalWinningChoice && !finalWinningChoice?.outcomes?.next_question_id;
+
+  // The node is terminal if EITHER scenario is true
+  const isTerminalNode = hasNoChoices || isPlayerTerminal;
+  
+  // Dynamically check which typewriter animation to wait for
+  const isReadyToSubmit = lastQuestion && (
+    hasNoChoices 
+      ? (suspectTypingComplete[lastQuestion.id] || status === 'completed') 
+      : (investigatorTypingComplete[lastQuestion.id] || status === 'completed')
+  );
 
   return (
     <div className="interrogation-log">
       {visibleQuestions.map((q, qIdx) => {
-        const consensus = getQuestionConsensus(q);
+        const consensus = consensusMap[q.id];
         const prevQ = qIdx > 0 ? visibleQuestions[qIdx - 1] : null;
         const isVisible = status === 'completed' || qIdx === 0 || (prevQ && investigatorTypingComplete[prevQ.id]);
         
@@ -162,14 +191,14 @@ export default function InterrogationPhase({
                 <Typewriter 
                   text={q.text} 
                   skip={skipTyping} 
-                  delay={15} 
                   cacheKey={`room_${room.id}_suspect_${q.id}`} 
                   onComplete={() => handleSuspectDone(q.id)} 
                 />
               </p>
             </div>
 
-            {isSuspectDone && (
+            {/* --- UI FIX: Only render investigator area if choices exist --- */}
+            {isSuspectDone && q.choices && q.choices.length > 0 && (
               <div className="investigator-interaction-area">
                 {status === 'active' && !isGloballyLocked ? (
                   <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
@@ -213,7 +242,6 @@ export default function InterrogationPhase({
                         <Typewriter 
                           text={status === 'completed' ? (q.choices?.find(c => !c.outcomes?.gives_strike)?.text || '...') : (winningChoice?.text || '...')} 
                           skip={skipTyping} 
-                          delay={40} 
                           cacheKey={`room_${room.id}_investigator_${q.id}`} 
                           onComplete={() => handleInvestigatorDone(q.id)}
                         />
@@ -227,7 +255,7 @@ export default function InterrogationPhase({
         );
       })}
       
-      {isTerminalNode && isLastSuspectDone && status === 'active' && (
+      {isTerminalNode && isReadyToSubmit && status === 'active' && (
         <div className="submit-theory-container" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '1.5rem' }}>
           {isHost ? (
             <button className="btn-primary submit-theory-btn" disabled={isSubmitting} onClick={handleSubmitTheory}>

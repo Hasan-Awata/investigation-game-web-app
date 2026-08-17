@@ -8,18 +8,17 @@ interface WiretapPhaseProps {
   status: string;
   totalPlayers: number;
   getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
+  isHost: boolean;
+  isSubmitting: boolean;
+  handleSubmitTheory: (e: React.MouseEvent) => void;
 }
 
 export default function WiretapPhase({ 
-  level, status, totalPlayers, getQuestionConsensus
+  level, status, totalPlayers, getQuestionConsensus, isHost, isSubmitting, handleSubmitTheory
 }: WiretapPhaseProps) {
 
   const { room, accumulatedEvidences } = useRoomState();
   const { localVotes, handleSelectChoice, triggerWiretap, isTriggeringWiretap } = useInvestigationPhase();
-
-  const storedUser = localStorage.getItem('auth_user');
-  const currentUser = storedUser ? JSON.parse(storedUser) : null;
-  const isHost = currentUser?.id === room.host_user_id;
 
   const playedWiretaps = new Set(room.played_wiretaps?.map((q: any) => q.id) || []);
 
@@ -59,7 +58,6 @@ export default function WiretapPhase({
       const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
       
       if (winningChoice?.outcomes?.next_question_id) {
-        // FIXED: Explicitly cast to Number
         currentId = Number(winningChoice.outcomes.next_question_id);
       } else {
         const currentIndex = level.questions.findIndex(x => x.id === q.id);
@@ -69,6 +67,10 @@ export default function WiretapPhase({
       currentId = null; 
     }
   }
+
+  // --- NEW: Audio Completion Validation ---
+  const requiredAudios = level.questions?.filter(q => q.audio_url) || [];
+  const allAudiosPlayed = requiredAudios.length === 0 || requiredAudios.every(q => playedWiretaps.has(q.id));
 
   return (
     <div className="wiretap-phase-wrapper">
@@ -179,6 +181,26 @@ export default function WiretapPhase({
           );
         })}
       </div>
+
+      {/* --- NEW: Conditional Submission Button --- */}
+      {status === 'active' && (
+        <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(0, 229, 255, 0.2)', paddingTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+          {isHost ? (
+            <button
+              className="btn-primary"
+              disabled={!allAudiosPlayed || isSubmitting}
+              onClick={handleSubmitTheory}
+              style={{ padding: '1rem 3rem', width: 'auto' }}
+            >
+              {isSubmitting ? 'Processing...' : 'Submit Intercept Analysis'}
+            </button>
+          ) : (
+            <div style={{ padding: '1rem', background: 'rgba(0, 229, 255, 0.05)', border: '1px dashed rgba(0, 229, 255, 0.2)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
+              Awaiting Host to submit intercept analysis...
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

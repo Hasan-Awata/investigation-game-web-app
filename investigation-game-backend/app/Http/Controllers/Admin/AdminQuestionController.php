@@ -21,7 +21,7 @@ class AdminQuestionController extends Controller
             'text' => 'required|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
-            'choices' => 'sometimes|array',
+            'choices' => 'nullable|array',
             'choices.*.text' => 'required|string|max:255',
             'choices.*.outcomes' => 'nullable|array',
             'choices.*.requirements' => 'nullable|array', 
@@ -38,28 +38,32 @@ class AdminQuestionController extends Controller
         $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, $subfolder, $storeLocally);
         $audioUrl = $this->storeMedia($request->file('audio'), $caseTitle, $subfolder, $storeLocally);
 
-        return DB::transaction(function () use ($validated, $imageUrl, $audioUrl) {
+        return DB::transaction(function () use ($validated, $request, $imageUrl, $audioUrl) {
             $question = Question::create([
                 'level_id' => $validated['level_id'],
                 'text' => $validated['text'],
-                'is_mandatory' => $validated['is_mandatory'],
                 'img_url' => $imageUrl,
                 'audio_url' => $audioUrl, 
             ]);
 
-            $choicesData = array_map(function ($choice) use ($question) {
-                return [
-                    'question_id' => $question->id,
-                    'text' => $choice['text'],
-                    // Encode the outcomes array into JSON for the DB
-                    'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
-                    'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }, $validated['choices']);
+            // Safely retrieve choices, falling back to an empty array if completely omitted
+            $choices = $request->input('choices', []);
 
-            $question->choices()->insert($choicesData);
+            // Only attempt to map and insert if choices actually exist
+            if (!empty($choices)) {
+                $choicesData = array_map(function ($choice) use ($question) {
+                    return [
+                        'question_id' => $question->id,
+                        'text' => $choice['text'],
+                        'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
+                        'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }, $choices);
+
+                $question->choices()->insert($choicesData);
+            }
 
             return response()->json([
                 'message' => 'Question and choices created successfully.',
@@ -77,7 +81,7 @@ class AdminQuestionController extends Controller
             'text' => 'required|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
-            'choices' => 'sometimes|array',
+            'choices' => 'nullable|array',
             'choices.*.text' => 'required|string|max:255',
             'choices.*.outcomes' => 'nullable|array',
             'choices.*.requirements' => 'nullable|array', 
@@ -90,7 +94,6 @@ class AdminQuestionController extends Controller
         $updateData = [
             'level_id' => $validated['level_id'],
             'text' => $validated['text'],
-            'is_mandatory' => $validated['is_mandatory'],
         ];
 
         if ($request->hasFile('image')) {
@@ -103,22 +106,30 @@ class AdminQuestionController extends Controller
             $updateData['audio_url'] = $this->storeMedia($request->file('audio'), $caseTitle, 'Levels/Questions', $storeLocally);
         }
 
-        return DB::transaction(function () use ($question, $validated, $updateData) {
+        return DB::transaction(function () use ($question, $validated, $request, $updateData) {
             $question->update($updateData);
+            
+            // Delete old choices unconditionally
             $question->choices()->delete();
 
-            $choicesData = array_map(function ($choice) use ($question) {
-                return [
-                    'question_id' => $question->id,
-                    'text' => $choice['text'],
-                    'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
-                    'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null, 
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }, $validated['choices']);
+            // Safely retrieve choices, falling back to an empty array
+            $choices = $request->input('choices', []);
 
-            $question->choices()->insert($choicesData);
+            // Only attempt to map and insert if choices actually exist
+            if (!empty($choices)) {
+                $choicesData = array_map(function ($choice) use ($question) {
+                    return [
+                        'question_id' => $question->id,
+                        'text' => $choice['text'],
+                        'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
+                        'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null, 
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }, $choices);
+
+                $question->choices()->insert($choicesData);
+            }
 
             return response()->json(['message' => 'Question updated.', 'question' => $question->load('choices')], 200);
         });

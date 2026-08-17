@@ -8,9 +8,12 @@ import './LocationPhase.css';
 interface LocationPhaseProps {
   level: Level;
   status: string;
+  isHost: boolean;
+  isSubmitting: boolean;
+  handleSubmitTheory: (e: React.MouseEvent) => void;
 }
 
-export default function LocationPhase({ level, status }: LocationPhaseProps) {
+export default function LocationPhase({ level, status, isHost, isSubmitting, handleSubmitTheory }: LocationPhaseProps) {
   const { room, accumulatedEvidences } = useRoomState();
   const { localVotes, handleSelectChoice, addToast } = useInvestigationPhase();
 
@@ -66,6 +69,71 @@ export default function LocationPhase({ level, status }: LocationPhaseProps) {
       return saved ? new Set(JSON.parse(saved)) : new Set();
     } catch { return new Set(); }
   });
+
+  // --- NEW: P2P State Synchronization ---
+  const stateRef = useRef({ deadEnds: clickedDeadEnds, found: foundPoints });
+  useEffect(() => {
+    stateRef.current = { deadEnds: clickedDeadEnds, found: foundPoints };
+  }, [clickedDeadEnds, foundPoints]);
+
+  useEffect(() => {
+    if (!window.Echo) return;
+    const channel = window.Echo.private(`room.${room.id}`);
+
+    // 1. Listen for real-time clicks from other agents
+    channel.listenForWhisper('location-interacted', (e: { type: string, choiceId: number }) => {
+      if (e.type === 'deadEnd') {
+        setClickedDeadEnds(prev => {
+          const next = new Set(prev).add(e.choiceId);
+          sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(next)));
+          return next;
+        });
+      } else if (e.type === 'foundPoint') {
+        setFoundPoints(prev => {
+          const next = new Set(prev).add(e.choiceId);
+          sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(next)));
+          return next;
+        });
+      }
+    });
+
+    // 2. Listen for late-joiners requesting the current board state
+    channel.listenForWhisper('request-location-sync', () => {
+      const { deadEnds, found } = stateRef.current;
+      if (deadEnds.size > 0 || found.size > 0) {
+        channel.whisper('location-sync-reply', {
+          deadEnds: Array.from(deadEnds),
+          foundPoints: Array.from(found)
+        });
+      }
+    });
+
+    // 3. Receive the sync data if we were the late-joiner
+    channel.listenForWhisper('location-sync-reply', (e: { deadEnds: number[], foundPoints: number[] }) => {
+      if (e.deadEnds?.length) {
+        setClickedDeadEnds(prev => {
+          const next = new Set([...prev, ...e.deadEnds]);
+          sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(next)));
+          return next;
+        });
+      }
+      if (e.foundPoints?.length) {
+        setFoundPoints(prev => {
+          const next = new Set([...prev, ...e.foundPoints]);
+          sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(next)));
+          return next;
+        });
+      }
+    });
+
+    // 4. Trigger the sync request 1 second after mount to ensure connections are stable
+    const syncTimer = setTimeout(() => {
+      channel.whisper('request-location-sync', {});
+    }, 1000);
+
+    return () => clearTimeout(syncTimer);
+  }, [room.id, deadEndsStorageKey, foundPointsStorageKey]);
+  // ----------------------------------------
 
   if (!level.questions) return null;
 
@@ -137,6 +205,9 @@ export default function LocationPhase({ level, status }: LocationPhaseProps) {
         return newSet;
       });
 
+      // Broadcast correct find
+      window.Echo?.private(`room.${room.id}`).whisper('location-interacted', { type: 'foundPoint', choiceId: choice.id });
+
       if (isFirstTimeDiscovery) {
         handleSelectChoice(e, qId, choice, status);
       }
@@ -152,6 +223,9 @@ export default function LocationPhase({ level, status }: LocationPhaseProps) {
           sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(newSet)));
           return newSet;
         });
+
+        // Broadcast dead end
+        window.Echo?.private(`room.${room.id}`).whisper('location-interacted', { type: 'deadEnd', choiceId: choice.id });
       }
 
     popupTimeoutRef.current = setTimeout(() => {
@@ -243,6 +317,10 @@ export default function LocationPhase({ level, status }: LocationPhaseProps) {
     document.body
   ) : null;
 
+  // Evaluate if any interaction has occurred globally or via our synced local state
+  const hasGlobalInteraction = level.questions?.some(q => room.votes?.some((v: any) => v.question_id === q.id));
+  const hasInteracted = foundPoints.size > 0 || clickedDeadEnds.size > 0 || hasGlobalInteraction;
+
   return (
     <div className="location-phase-wrapper" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
       {displayQuestions.map(q => (
@@ -261,6 +339,26 @@ export default function LocationPhase({ level, status }: LocationPhaseProps) {
           <p className="location-hint">{q.text || 'Enter the full-screen viewer to sweep the scene.'}</p>
         </div>
       ))}
+
+      {/* Conditional Leave Location Button */}
+      {status === 'active' && (
+        <div style={{ gridColumn: '1 / -1', marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
+          {isHost ? (
+            <button
+              className="btn-primary"
+              disabled={!hasInteracted || isSubmitting}
+              onClick={handleSubmitTheory}
+              style={{ padding: '1rem 3rem', width: 'auto' }}
+            >
+              {isSubmitting ? 'Processing...' : 'Leave Location'}
+            </button>
+          ) : (
+            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
+              Sweep in progress. Awaiting Host to conclude the search...
+            </div>
+          )}
+        </div>
+      )}
 
       {fullScreenViewer}
     </div>

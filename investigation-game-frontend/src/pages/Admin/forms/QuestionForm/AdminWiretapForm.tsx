@@ -5,8 +5,6 @@ interface AdminWiretapFormProps {
   editingId: number | null;
   text: string;
   setText: (text: string) => void;
-  isMandatory: boolean;
-  setIsMandatory: (val: boolean) => void;
   storeLocally: boolean;
   setStoreLocally: (val: boolean) => void;
   imageInputRef: RefObject<HTMLInputElement | null>;
@@ -29,7 +27,7 @@ interface AdminWiretapFormProps {
 }
 
 export default function AdminWiretapForm({
-  editingId, text, setText, isMandatory, setIsMandatory, storeLocally, setStoreLocally,
+  editingId, text, setText, storeLocally, setStoreLocally,
   imageInputRef, audioInputRef, setImage, setAudio, choices, addChoice, updateChoice,
   removeChoice, handleSubmit, handleCancelEdit, isProcessing, statusMessage, contextHeader,
   previewUrl, audioPreviewUrl
@@ -51,13 +49,6 @@ export default function AdminWiretapForm({
       {statusMessage && <div className={`status-message ${statusMessage.type}`}>{statusMessage.message}</div>}
 
       <form onSubmit={handleSubmit} className="admin-form">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(196, 139, 54, 0.1)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', border: '1px solid rgba(196, 139, 54, 0.3)' }}>
-          <input type="checkbox" id="mandatory-toggle" checked={isMandatory} onChange={(e) => setIsMandatory(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-amber)' }} />
-          <label htmlFor="mandatory-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', cursor: 'pointer' }}>
-            <strong>Mandatory Intercept:</strong> Agents must decrypt and decode this wiretap to clear the phase.
-          </label>
-        </div>
-
         <div className="form-group">
           <label>Intercept Transcript / Prompt Text</label>
           <textarea className="admin-textarea" required value={text} onChange={(e) => setText(e.target.value)} style={{ minHeight: '100px' }} placeholder="Transcribe the audio feed or outline the wiretap objectives..." />

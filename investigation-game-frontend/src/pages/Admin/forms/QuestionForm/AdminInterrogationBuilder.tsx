@@ -142,8 +142,15 @@ export default function AdminInterrogationBuilder() {
 
   const savedNodes: Question[] = selectedLevel.questions || [];
   
-  // Extract all the required global arrays for the UI form
-  const hasTerminalNode = savedNodes.some((n: Question) => !n.choices || n.choices.length === 0);
+  // Accepts zero-choice nodes OR player-terminal branches
+  const hasTerminalNode = savedNodes.some((n: Question) => {
+    // Scenario A: Suspect-ends scenario (Zero choices)
+    if (!n.choices || n.choices.length === 0) return true;
+    
+    // Scenario B: Investigator-ends scenario (At least one choice points to null/empty)
+    return n.choices.some((c: Choice | any) => !c.outcomes?.next_question_id);
+  });
+
   const availableEvidences = selectedCase.evidences || [];
   const availableSuspects = selectedCase.suspects || [];
   const availableVictims = selectedCase.victims || [];
@@ -168,7 +175,7 @@ export default function AdminInterrogationBuilder() {
 
       {!hasTerminalNode && savedNodes.length > 0 && (
         <div className="terminal-text error" style={{ background: 'rgba(163, 50, 50, 0.1)', padding: '1rem', border: '1px solid var(--accent-crimson)', borderRadius: '8px', margin: '0 1rem' }}>
-          ⚠️ CRITICAL WARNING: This interrogation tree lacks a terminal node (a node with zero responses). The team will be soft-locked during gameplay. Please append at least one node with empty choices to conclude the interaction.
+          ⚠️ CRITICAL WARNING: This interrogation tree lacks a terminal state. The team will be soft-locked during gameplay. Please ensure at least one node has zero choices OR a player response is set to [ END CONVERSATION / RETURN TO HUB ].
         </div>
       )}
       
