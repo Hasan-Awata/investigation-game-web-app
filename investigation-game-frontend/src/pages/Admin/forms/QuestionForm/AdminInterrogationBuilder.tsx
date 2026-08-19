@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useAdminContext } from '@/context/AdminContext';
 import { useAdminMutations } from '@/hooks/useAdminMutations';
-import type { Question, Choice, Evidence, Level, Suspect, Victim } from '@/types';
+import type { Evidence } from '@/types/evidence';
+import type { Question, Choice, Level, Suspect, Victim } from '@/types';
 import { type DraftChoice } from '../Shared/ChoiceEditorCard';
 import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '../Shared/questionUtils';
 import AdminInterrogationForm from './AdminInterrogationForm';

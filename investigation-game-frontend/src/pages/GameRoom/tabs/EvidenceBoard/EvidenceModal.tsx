@@ -1,7 +1,7 @@
-import ReactMarkdown from 'react-markdown'; 
-import remarkGfm from 'remark-gfm'; 
-import type { Evidence } from '@/types';
-import './EvidenceBoardTab.css';
+import type { Evidence, ForensicEvidence, DocumentEvidence, MediaEvidence } from '@/types/evidence';
+import ForensicViewer from './Viewers/ForensicViewer';
+import DocumentViewer from './Viewers/DocumentViewer';
+import MediaViewer from './Viewers/MediaViewer';
 import './EvidenceModal.css';
 
 interface EvidenceModalProps {
@@ -12,6 +12,29 @@ interface EvidenceModalProps {
 export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps) {
   if (!evidence) return null;
 
+  // Route the evidence to its highly specialized component
+  const renderEvidenceContent = () => {
+    switch (evidence.evidence_type) {
+      case 'forensic':
+        return <ForensicViewer evidence={evidence as ForensicEvidence} />;
+      
+      case 'document':
+        return <DocumentViewer evidence={evidence as DocumentEvidence} />;
+      
+      case 'image':
+      case 'audio':
+      case 'testimony':
+        return <MediaViewer evidence={evidence as MediaEvidence} />;
+        
+      default:
+        return (
+          <div style={{ color: 'var(--accent-crimson)', fontFamily: 'var(--font-mono)' }}>
+            Error: Unrecognized evidence classification.
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="evidence-modal-overlay" onClick={onClose}>
       <div className="evidence-modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
@@ -21,42 +44,12 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
             <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
             <span className="evidence-type-badge">{evidence.evidence_type}</span>
           </div>
-          <button className="modal-close-btn" onClick={onClose}>×</button>
+          <button className="modal-close-btn" onClick={onClose} title="Close File">×</button>
         </header>
 
-        <h2 className="modal-title">{evidence.title}</h2>
-        <p className="modal-desc">{evidence.description}</p>
-
+        {/* Dynamic Inner Viewer */}
         <div className="modal-body">
-          {evidence.paragraph && (
-            <div className={`evidence-text-content type-${evidence.evidence_type}`}>
-              {/* remarkGfm enables tables, strikethrough, task lists, etc. */}
-              <ReactMarkdown remarkPlugins={[remarkGfm]} >
-                {evidence.paragraph}
-              </ReactMarkdown>
-            </div>
-          )}
-
-          {/* Media renderer for Images */}
-          {evidence.evidence_type === 'image' && (
-            <div className="evidence-media-container">
-              <img 
-                src={evidence.img_url || '/placeholder-crime-scene.jpg'} 
-                alt={evidence.title} 
-                className="evidence-full-image" 
-              />
-            </div>
-          )}
-
-          {/* Media renderer for Audio */}
-          {evidence.evidence_type === 'audio' && (
-            <div className="evidence-media-container audio-container">
-              <div className="audio-visualizer-mock"></div>
-              <audio controls src={evidence.audio_url} className="evidence-audio-player">
-                Your browser does not support the audio element.
-              </audio>
-            </div>
-          )}
+          {renderEvidenceContent()}
         </div>
 
       </div>

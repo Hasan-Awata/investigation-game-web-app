@@ -16,9 +16,10 @@ class Evidence extends Model
         'title',
         'description',
         'evidence_type',
+        'sub_type',    
+        'metadata',    
         'audio_url',
         'img_url',
-        'paragraph',
         'is_initial',
         'is_vital_for_conviction', 
     ];
@@ -27,6 +28,7 @@ class Evidence extends Model
     {
         return [
             'evidence_type' => EvidenceType::class,
+            'metadata' => 'array', 
             'is_initial' => 'boolean',
             'is_vital_for_conviction' => 'boolean', 
         ];

@@ -1,3 +1,5 @@
+import type { Evidence } from './evidence/index';
+
 export interface User {
   id: number;
   username: string;
@@ -104,21 +106,6 @@ export interface FinalStats {
   suspects_caught: number;
   total_guilty: number;
   innocents_accused: number;
-}
-
-export type EvidenceType = 'document' | 'testimony' | 'audio' | 'image' | 'forensic';
-
-export interface Evidence {
-  id: number;
-  case_id: number; 
-  title: string;
-  description?: string;
-  evidence_type: EvidenceType;
-  audio_url?: string;
-  img_url?: string;
-  paragraph?: string;
-  is_initial: boolean; 
-  is_vital_for_conviction: boolean;
 }
 
 export interface Choice {

@@ -2638,15 +2638,18 @@ import { useState, useRef } from 'react';
 import { useAdminContext } from '@/context/AdminContext';
 import { useAdminMutations } from '@/hooks/useAdminMutations';
 import EntityList from './Shared/EntityList';
-import type { Evidence, EvidenceType } from '@/types';
+import EvidenceMetadataFields from './Shared/EvidenceMetadataFields';
+import type { Evidence } from '@/types/evidence';
 
 export default function EvidenceForm() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [paragraph, setParagraph] = useState('');
-  const [evidenceType, setEvidenceType] = useState<EvidenceType>('document');
+  const [evidenceType, setEvidenceType] = useState<string>('document');
+  const [subType, setSubType] = useState('');
+  const [metadata, setMetadata] = useState<Record<string, any>>({});
+  
   const [isInitial, setIsInitial] = useState(true);
   const [isVitalForConviction, setIsVitalForConviction] = useState(false);
   const [storeLocally, setStoreLocally] = useState(false);
@@ -2675,7 +2678,8 @@ export default function EvidenceForm() {
 
   const clearForm = () => {
     setEditingId(null);
-    setTitle(''); setDescription(''); setParagraph('');
+    setTitle(''); setDescription(''); 
+    setSubType(''); setMetadata({});
     setIsInitial(true); setIsVitalForConviction(false); setStoreLocally(false);
     setImage(null); setAudio(null);
     clearFeedback();
@@ -2683,16 +2687,35 @@ export default function EvidenceForm() {
     if (audioInputRef.current) audioInputRef.current.value = '';
   };
 
+  // When changing the top-level type, wipe the previous sub_type and metadata payload to prevent corruption
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setEvidenceType(e.target.value);
+    setSubType('');
+    setMetadata({});
+  };
+
+  const updateMeta = (key: string, value: any) => {
+    setMetadata(prev => ({ ...prev, [key]: value }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearFeedback();
 
     const formData = new FormData();
-    formData.append('case_id', caseId); formData.append('title', title);
-    formData.append('evidence_type', evidenceType); formData.append('description', description);
-    formData.append('paragraph', paragraph); formData.append('is_initial', isInitial ? '1' : '0');
+    formData.append('case_id', caseId); 
+    formData.append('title', title);
+    formData.append('evidence_type', evidenceType); 
+    formData.append('description', description);
+    formData.append('is_initial', isInitial ? '1' : '0');
     formData.append('is_vital_for_conviction', isVitalForConviction ? '1' : '0');
     formData.append('store_locally', storeLocally ? '1' : '0');
+    
+    // Append the new structured fields
+    if (subType) formData.append('sub_type', subType);
+    if (Object.keys(metadata).length > 0) {
+      formData.append('metadata', JSON.stringify(metadata));
+    }
     
     if (evidenceType === 'image' && image) formData.append('image', image);
     if (evidenceType === 'audio' && audio) formData.append('audio', audio);
@@ -2704,13 +2727,19 @@ export default function EvidenceForm() {
     }
   };
 
-  const handleEdit = (ev: Evidence) => {
+  const handleEdit = (ev: Evidence | any) => {
     setEditingId(ev.id);
-    setTitle(ev.title); setDescription(ev.description || ''); setParagraph(ev.paragraph || '');
-    setEvidenceType(ev.evidence_type); setIsInitial(!!ev.is_initial);
+    setTitle(ev.title); 
+    setDescription(ev.description || ''); 
+    setEvidenceType(ev.evidence_type); 
+    setSubType(ev.sub_type || '');
+    setMetadata(ev.metadata || {});
+    
+    setIsInitial(!!ev.is_initial);
     setIsVitalForConviction(!!ev.is_vital_for_conviction);
     setImage(null); setAudio(null);
     clearFeedback();
+    
     if (imageInputRef.current) imageInputRef.current.value = '';
     if (audioInputRef.current) audioInputRef.current.value = '';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2750,22 +2779,30 @@ export default function EvidenceForm() {
           </div>
 
           <div className="form-group">
-            <label>Evidence Category</label>
-            <select className="admin-input" value={evidenceType} onChange={(e) => setEvidenceType(e.target.value as EvidenceType)}>
+            <label>Master Evidence Category</label>
+            <select className="admin-input" value={evidenceType} onChange={handleTypeChange}>
               <option value="document">Written Document</option>
               <option value="testimony">Witness Testimony</option>
+              <option value="forensic">Forensic Report</option>
               <option value="audio">Audio Recording</option>
               <option value="image">Photographic Evidence</option>
-              <option value="forensic">Forensic Report</option>
             </select>
           </div>
 
           <div className="form-group"><label>Evidence Title</label><input type="text" className="admin-input" required value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <div className="form-group"><label>Short Description</label><input type="text" className="admin-input" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
-          <div className="form-group"><label>Text Content (Markdown)</label><textarea className="admin-textarea" value={paragraph} onChange={(e) => setParagraph(e.target.value)} /></div>
+          <div className="form-group"><label>Short Description (Hover text / Caption)</label><input type="text" className="admin-input" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+
+          {/* DYNAMIC METADATA COMPONENT INJECTION */}
+          <EvidenceMetadataFields 
+            evidenceType={evidenceType} 
+            subType={subType} 
+            setSubType={setSubType} 
+            metadata={metadata} 
+            updateMeta={updateMeta} 
+          />
 
           {evidenceType === 'image' && (
-            <div className="form-group">
+            <div className="form-group" style={{ marginTop: '1.5rem' }}>
               <label>Evidence Image</label>
               <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}><strong>Optimal:</strong> 1:1 or 3:4 portrait. Ensure written text is legible. WEBP or JPG. Max 4MB.</p>
               <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
@@ -2773,7 +2810,7 @@ export default function EvidenceForm() {
           )}
           
           {evidenceType === 'audio' && (
-            <div className="form-group">
+            <div className="form-group" style={{ marginTop: '1.5rem' }}>
               <label>Audio Recording</label>
               <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}><strong>Optimal:</strong> MP3 or WAV format. Compressed for web streaming. Max 10MB.</p>
               <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
@@ -2783,11 +2820,11 @@ export default function EvidenceForm() {
           {(evidenceType === 'image' || evidenceType === 'audio') && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
               <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
-              <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}><strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.</label>
+              <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer', margin: 0 }}><strong>Store Locally on Server</strong></label>
             </div>
           )}
 
-          <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>
+          <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '2rem' }}>
             {isProcessing ? 'Processing Data...' : editingId ? 'Update Evidence' : 'Commit Evidence'}
           </button>
         </form>
@@ -2797,14 +2834,21 @@ export default function EvidenceForm() {
         title="Case Evidence"
         items={selectedCase.evidences || []}
         emptyMessage="No evidence secured for this case."
-        keyExtractor={(ev) => ev.id}
+        keyExtractor={(ev) => ev.id.toString()}
         isProcessing={isProcessing}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        renderItemContent={(ev) => (
+        renderItemContent={(ev: any) => (
           <>
-            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>EX-{ev.id.toString().padStart(3, '0')}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>
+              EX-{ev.id.toString().padStart(3, '0')}
+            </span>
             <strong>{ev.title}</strong>
+            {ev.sub_type && (
+              <span style={{ marginLeft: '1rem', fontSize: '0.75rem', padding: '0.1rem 0.5rem', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                {ev.sub_type.replace('_', ' ')}
+              </span>
+            )}
           </>
         )}
       />
@@ -3768,7 +3812,8 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\
 import { useState } from 'react';
 import { useAdminContext } from '@/context/AdminContext';
 import { useAdminMutations } from '@/hooks/useAdminMutations';
-import type { Question, Choice, Evidence, Level, Suspect, Victim } from '@/types';
+import type { Evidence } from '@/types/evidence';
+import type { Question, Choice, Level, Suspect, Victim } from '@/types';
 import { type DraftChoice } from '../Shared/ChoiceEditorCard';
 import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '../Shared/questionUtils';
 import AdminInterrogationForm from './AdminInterrogationForm';
@@ -5221,6 +5266,216 @@ export default function EntityList<T>({
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin\forms\Shared\EvidenceMetadataFields.tsx
+----------------------------------------
+interface EvidenceMetadataFieldsProps {
+  evidenceType: string;
+  subType: string;
+  setSubType: (val: string) => void;
+  metadata: Record<string, any>;
+  updateMeta: (key: string, value: any) => void;
+}
+
+export default function EvidenceMetadataFields({
+  evidenceType,
+  subType,
+  setSubType,
+  metadata,
+  updateMeta
+}: EvidenceMetadataFieldsProps) {
+
+  // Renders the specific sub-type dropdown based on the main category
+  const renderSubTypeSelector = () => {
+    if (evidenceType === 'forensic') {
+      return (
+        <select className="admin-input" required value={subType} onChange={(e) => setSubType(e.target.value)}>
+          <option value="" disabled>-- Select Forensic Classification --</option>
+          <option value="autopsy">Autopsy Report</option>
+          <option value="ballistics">Ballistics Analysis</option>
+          <option value="dna">DNA / Serology Profile</option>
+          <option value="digital_forensics">Digital Forensics</option>
+          <option value="trace_analysis">Trace / Material Analysis</option>
+        </select>
+      );
+    }
+    
+    if (evidenceType === 'document') {
+      return (
+        <select className="admin-input" required value={subType} onChange={(e) => setSubType(e.target.value)}>
+          <option value="" disabled>-- Select Document Classification --</option>
+          <option value="correspondence">Correspondence (Email/Letter)</option>
+          <option value="financial">Financial Record</option>
+          <option value="journal">Personal Diary / Journal</option>
+          <option value="contract">Official Contract / Deed</option>
+          <option value="memo">Corporate Memo / Note</option>
+        </select>
+      );
+    }
+    return null;
+  };
+
+  // Renders the precise form inputs required for the selected sub-type
+  const renderDynamicInputs = () => {
+    switch (subType) {
+      // --- FORENSIC SUB-TYPES ---
+      case 'autopsy':
+        return (
+          <>
+            <div className="admin-form-row">
+              <div className="form-group"><label>Chief Medical Examiner</label><input type="text" className="admin-input" value={metadata.examiner || ''} onChange={e => updateMeta('examiner', e.target.value)} required /></div>
+              <div className="form-group"><label>Est. Time of Death</label><input type="text" className="admin-input" value={metadata.time_of_death || ''} onChange={e => updateMeta('time_of_death', e.target.value)} required /></div>
+            </div>
+            <div className="form-group"><label>Primary Cause of Death</label><input type="text" className="admin-input" value={metadata.cause_of_death || ''} onChange={e => updateMeta('cause_of_death', e.target.value)} required /></div>
+            <div className="form-group"><label>Examiner Notes / Anomalies (Optional)</label><textarea className="admin-textarea" value={metadata.anomalies || ''} onChange={e => updateMeta('anomalies', e.target.value)} /></div>
+          </>
+        );
+
+      case 'ballistics':
+        return (
+          <>
+            <div className="admin-form-row">
+              <div className="form-group"><label>Weapon Classification</label><input type="text" className="admin-input" value={metadata.weapon_type || ''} onChange={e => updateMeta('weapon_type', e.target.value)} required /></div>
+              <div className="form-group"><label>Caliber</label><input type="text" className="admin-input" value={metadata.caliber || ''} onChange={e => updateMeta('caliber', e.target.value)} required /></div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0, 229, 255, 0.1)', padding: '1rem', borderRadius: '4px', border: '1px solid rgba(0, 229, 255, 0.3)' }}>
+              <input type="checkbox" checked={!!metadata.striation_match} onChange={e => updateMeta('striation_match', e.target.checked)} style={{ transform: 'scale(1.5)' }} />
+              <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}><strong>CONFIRM STRIATION MATCH</strong></label>
+            </div>
+          </>
+        );
+
+      case 'dna':
+        return (
+          <>
+            <div className="admin-form-row">
+              <div className="form-group"><label>Sample Type (e.g., Blood, Hair)</label><input type="text" className="admin-input" value={metadata.sample_type || ''} onChange={e => updateMeta('sample_type', e.target.value)} required /></div>
+              <div className="form-group"><label>Match Probability</label><input type="text" className="admin-input" value={metadata.match_probability || ''} onChange={e => updateMeta('match_probability', e.target.value)} required /></div>
+            </div>
+            <div className="form-group"><label>Identified Subject (Leave blank if inconclusive)</label><input type="text" className="admin-input" value={metadata.identified_person || ''} onChange={e => updateMeta('identified_person', e.target.value)} /></div>
+          </>
+        );
+
+      case 'digital_forensics':
+        return (
+          <>
+            <div className="admin-form-row">
+              <div className="form-group"><label>Device Classification</label><input type="text" className="admin-input" value={metadata.device_type || ''} onChange={e => updateMeta('device_type', e.target.value)} required /></div>
+              <div className="form-group"><label>Extraction Method</label><input type="text" className="admin-input" value={metadata.extraction_method || ''} onChange={e => updateMeta('extraction_method', e.target.value)} required /></div>
+            </div>
+            <div className="form-group"><label>Decrypted Data / Payload</label><textarea className="admin-textarea" value={metadata.recovered_data || ''} onChange={e => updateMeta('recovered_data', e.target.value)} required /></div>
+          </>
+        );
+
+      case 'trace_analysis':
+        return (
+          <>
+            <div className="admin-form-row">
+              <div className="form-group"><label>Material Composition</label><input type="text" className="admin-input" value={metadata.material_type || ''} onChange={e => updateMeta('material_type', e.target.value)} required /></div>
+              <div className="form-group"><label>Identified Origin Source</label><input type="text" className="admin-input" value={metadata.origin_source || ''} onChange={e => updateMeta('origin_source', e.target.value)} required /></div>
+            </div>
+          </>
+        );
+
+      // --- DOCUMENT SUB-TYPES ---
+      case 'correspondence':
+        return (
+          <>
+            <div className="admin-form-row">
+              <div className="form-group"><label>Sender (FROM)</label><input type="text" className="admin-input" value={metadata.sender || ''} onChange={e => updateMeta('sender', e.target.value)} required /></div>
+              <div className="form-group"><label>Recipient (TO)</label><input type="text" className="admin-input" value={metadata.recipient || ''} onChange={e => updateMeta('recipient', e.target.value)} required /></div>
+            </div>
+            <div className="form-group"><label>Subject Line</label><input type="text" className="admin-input" value={metadata.subject || ''} onChange={e => updateMeta('subject', e.target.value)} required /></div>
+            <div className="form-group"><label>Message Body</label><textarea className="admin-textarea" value={metadata.body || ''} onChange={e => updateMeta('body', e.target.value)} required /></div>
+          </>
+        );
+
+      case 'financial':
+        return (
+          <>
+            <div className="admin-form-row">
+              <div className="form-group"><label>Banking Institution</label><input type="text" className="admin-input" value={metadata.institution || ''} onChange={e => updateMeta('institution', e.target.value)} required /></div>
+              <div className="form-group"><label>Account Holder</label><input type="text" className="admin-input" value={metadata.account_holder || ''} onChange={e => updateMeta('account_holder', e.target.value)} required /></div>
+            </div>
+            <div className="admin-form-row">
+              <div className="form-group"><label>Transaction Type (e.g., Wire Transfer)</label><input type="text" className="admin-input" value={metadata.transaction_type || ''} onChange={e => updateMeta('transaction_type', e.target.value)} required /></div>
+              <div className="form-group"><label>Amount</label><input type="text" className="admin-input" value={metadata.amount || ''} onChange={e => updateMeta('amount', e.target.value)} required /></div>
+            </div>
+          </>
+        );
+
+      case 'journal':
+        return (
+          <>
+            <div className="admin-form-row">
+              <div className="form-group"><label>Author</label><input type="text" className="admin-input" value={metadata.author || ''} onChange={e => updateMeta('author', e.target.value)} required /></div>
+              <div className="form-group"><label>Entry Date</label><input type="text" className="admin-input" value={metadata.entry_date || ''} onChange={e => updateMeta('entry_date', e.target.value)} required /></div>
+            </div>
+            <div className="form-group"><label>Journal Content</label><textarea className="admin-textarea" value={metadata.content || ''} onChange={e => updateMeta('content', e.target.value)} required /></div>
+          </>
+        );
+
+      case 'contract':
+        return (
+          <>
+            <div className="form-group">
+              <label>Parties Involved (Comma Separated)</label>
+              <input 
+                type="text" className="admin-input" 
+                value={metadata.parties_involved ? metadata.parties_involved.join(', ') : ''} 
+                onChange={e => updateMeta('parties_involved', e.target.value.split(',').map(s => s.trim()))} 
+                placeholder="e.g., Vance Corp, Thorne LLC" required 
+              />
+            </div>
+            <div className="form-group"><label>Agreement Terms</label><textarea className="admin-textarea" value={metadata.agreement_terms || ''} onChange={e => updateMeta('agreement_terms', e.target.value)} required /></div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(163, 50, 50, 0.1)', padding: '1rem', borderRadius: '4px', border: '1px solid rgba(163, 50, 50, 0.3)' }}>
+              <input type="checkbox" checked={!!metadata.signatures_valid} onChange={e => updateMeta('signatures_valid', e.target.checked)} style={{ transform: 'scale(1.5)' }} />
+              <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)' }}><strong>SIGNATURES VALID (Uncheck to mark as Forged)</strong></label>
+            </div>
+          </>
+        );
+
+      case 'memo':
+        return (
+          <>
+            <div className="form-group"><label>Written By</label><input type="text" className="admin-input" value={metadata.written_by || ''} onChange={e => updateMeta('written_by', e.target.value)} required /></div>
+            <div className="form-group"><label>Memo Context</label><textarea className="admin-textarea" value={metadata.context || ''} onChange={e => updateMeta('context', e.target.value)} required /></div>
+          </>
+        );
+
+      default:
+        // Legacy or un-typed fallback
+        if (evidenceType === 'testimony') {
+          return (
+            <div className="form-group">
+              <label>Official Transcript</label>
+              <textarea className="admin-textarea" value={metadata.transcript || ''} onChange={e => updateMeta('transcript', e.target.value)} />
+            </div>
+          );
+        }
+        return null;
+    }
+  };
+
+  if (evidenceType === 'image' || evidenceType === 'audio') return null;
+
+  return (
+    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginTop: '1.5rem' }}>
+      <h4 style={{ margin: '0 0 1rem 0', fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', fontSize: '0.85rem', textTransform: 'uppercase' }}>
+        [ Structured Metadata Injection ]
+      </h4>
+      
+      {renderSubTypeSelector()}
+
+      {subType && (
+        <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {renderDynamicInputs()}
         </div>
       )}
     </div>
@@ -7209,10 +7464,24 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
   const isCompleted = status === 'completed';
   const visibleQuestionIds = new Set<number>();
   
-  if (level.questions.length > 0) {
-    visibleQuestionIds.add(level.questions[0].id);
-  }
+  // 1. Map out all scenes that are intentionally locked behind a coordinate click
+  const lockedBehindChoiceIds = new Set<number>();
+  level.questions.forEach(q => {
+    q.choices?.forEach(c => {
+      if (c.outcomes?.next_question_id) {
+        lockedBehindChoiceIds.add(Number(c.outcomes.next_question_id));
+      }
+    });
+  });
 
+  // 2. Any scene NOT explicitly locked behind a choice is an independent scene. Make it visible.
+  level.questions.forEach(q => {
+    if (!lockedBehindChoiceIds.has(q.id)) {
+      visibleQuestionIds.add(q.id);
+    }
+  });
+
+  // 3. Add dynamically unlocked scenes based on player interactions
   level.questions.forEach(q => {
     q.choices?.forEach(c => {
       const isSelectedLocally = foundPoints.has(c.id) || localVotes[q.id] === c.id;
@@ -7864,7 +8133,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   background: rgba(90, 138, 158, 0.1);
   border-right: 3px solid var(--accent-cyan);
   box-shadow: -4px 4px 0px rgba(0,0,0,0.3);
-  width: 100%;
+  max-width: 100%;
 }
 
 .speaker-label.investigator {
@@ -7876,6 +8145,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 .investigator-interaction-area {
   align-self: flex-end;
   max-width: 85%;
+  width: 100%;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
@@ -7933,7 +8203,6 @@ const Typewriter = ({ text, delay = 30, onComplete, skip = false, cacheKey = '' 
     const el = spanRef.current;
     if (!el) return;
 
-    // Safety check for empty strings
     if (!text) {
       if (savedOnComplete.current) savedOnComplete.current();
       return;
@@ -8019,7 +8288,6 @@ export default function InterrogationPhase({
     return initial;
   });
 
-  // --- PERFORMANCE OPTIMIZATION: Memoize the heavy tree traversal ---
   const { visibleQuestions, consensusMap } = useMemo(() => {
     const questions: Question[] = [];
     const map: Record<number, ReturnType<typeof getQuestionConsensus>> = {};
@@ -8058,23 +8326,17 @@ export default function InterrogationPhase({
   const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
   const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
 
-  // --- HYBRID TERMINAL NODE LOGIC ---
   const lastQuestion = visibleQuestions[visibleQuestions.length - 1];
-  
-  // Scenario A: The Suspect gets the last word (Zero choices)
   const hasNoChoices = !lastQuestion?.choices || lastQuestion.choices.length === 0;
   
-  // Scenario B: The Investigators get the last word (Choice points to null)
   const lastConsensus = lastQuestion ? consensusMap[lastQuestion.id] : null;
   const finalWinningChoice = lastConsensus?.winningChoiceId 
     ? lastQuestion.choices?.find(c => c.id === lastConsensus.winningChoiceId) 
     : null;
   const isPlayerTerminal = lastConsensus?.isResolved && finalWinningChoice && !finalWinningChoice?.outcomes?.next_question_id;
 
-  // The node is terminal if EITHER scenario is true
   const isTerminalNode = hasNoChoices || isPlayerTerminal;
   
-  // Dynamically check which typewriter animation to wait for
   const isReadyToSubmit = lastQuestion && (
     hasNoChoices 
       ? (suspectTypingComplete[lastQuestion.id] || status === 'completed') 
@@ -8113,59 +8375,64 @@ export default function InterrogationPhase({
               </p>
             </div>
 
-            {/* --- UI FIX: Only render investigator area if choices exist --- */}
             {isSuspectDone && q.choices && q.choices.length > 0 && (
-              <div className="investigator-interaction-area">
-                {status === 'active' && !isGloballyLocked ? (
-                  <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
-                    <span className="speaker-label" style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
-                      {consensus.isTie 
-                        ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
-                        : hasLocalVote 
-                          ? `VOTE CAST (${consensus.votesCast}/${totalPlayers}) - YOU MAY REASSIGN` 
-                          : `SELECT RESPONSE (${consensus.votesCast}/${totalPlayers})`
-                      }
-                    </span>
-                    <div className="vote-choices-grid">
-                      {q.choices?.map(c => {
-                        const isSelected = localVotes[q.id] === c.id;
-                        const isNarrativeLocked = checkIsLockedByNarrative(c);
-                        const pillClass = isNarrativeLocked
-                          ? 'choice-pill locked-choice'
-                          : `choice-pill interactable ${isSelected ? 'selected' : ''}`;
+              <>
+                {/* 1. Only show voting choices if the phase is active and waiting for a verdict */}
+                {status === 'active' && !isGloballyLocked && (
+                  <div className="investigator-interaction-area">
+                    <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
+                      <span className="speaker-label" style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
+                        {consensus.isTie 
+                          ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
+                          : hasLocalVote 
+                            ? `VOTE CAST (${consensus.votesCast}/${totalPlayers}) - YOU MAY REASSIGN` 
+                            : `SELECT RESPONSE (${consensus.votesCast}/${totalPlayers})`
+                        }
+                      </span>
+                      <div className="vote-choices-grid">
+                        {q.choices?.map(c => {
+                          const isSelected = localVotes[q.id] === c.id;
+                          const isNarrativeLocked = checkIsLockedByNarrative(c);
+                          const pillClass = isNarrativeLocked
+                            ? 'choice-pill locked-choice'
+                            : `choice-pill interactable ${isSelected ? 'selected' : ''}`;
 
-                        return (
-                          <span 
-                            key={c.id} 
-                            className={pillClass}
-                            onClick={(e) => {
-                              if (isNarrativeLocked) return;
-                              handleSelectChoice(e, q.id, c, status);
-                            }}
-                            style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}
-                          >
-                            {isNarrativeLocked ? '🔒 [ MISSING INTEL ]' : c.text}
-                          </span>
-                        );
-                      })}
+                          return (
+                            <span 
+                              key={c.id} 
+                              className={pillClass}
+                              onClick={(e) => {
+                                if (isNarrativeLocked) return;
+                                handleSelectChoice(e, q.id, c, status);
+                              }}
+                              style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}
+                            >
+                              {isNarrativeLocked ? '🔒 [ MISSING INTEL ]' : c.text}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  (isGloballyLocked || status === 'completed') && (
+                )}
+
+                {/* 2. Only show the investigator bubble if a specific choice was successfully locked in */}
+                {isGloballyLocked && winningChoice && (
+                  <div className="investigator-interaction-area">
                     <div className="chat-bubble agent-bubble">
                       <span className="speaker-label investigator">INVESTIGATORS</span>
                       <p>
                         <Typewriter 
-                          text={status === 'completed' ? (q.choices?.find(c => !c.outcomes?.gives_strike)?.text || '...') : (winningChoice?.text || '...')} 
+                          text={winningChoice.text} 
                           skip={skipTyping} 
                           cacheKey={`room_${room.id}_investigator_${q.id}`} 
                           onComplete={() => handleInvestigatorDone(q.id)}
                         />
                       </p>
                     </div>
-                  )
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </div>
         );
@@ -8909,190 +9176,110 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceModal.css
 ----------------------------------------
 .evidence-modal-overlay {
-  position: absolute; inset: 0; background: rgba(10, 10, 10, 0.8); backdrop-filter: blur(10px);
-  z-index: 100; display: flex; align-items: center; justify-content: center; animation: fadeIn 0.2s ease-out forwards;
+  position: fixed; 
+  inset: 0; 
+  background: rgba(10, 10, 10, 0.85); 
+  backdrop-filter: blur(10px);
+  z-index: 1000; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  animation: fadeIn 0.2s ease-out forwards;
 }
 
 .evidence-modal-content {
-  width: 90%; max-width: 600px; max-height: 85%;
-  background: var(--bg-panel); border: var(--border-thin);
-  border-radius: var(--radius-lg); padding: 2rem; display: flex; flex-direction: column;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8); overflow-y: auto;
-}
-
-.modal-header { 
-  display: flex; justify-content: space-between; align-items: flex-start; 
-  margin-bottom: 1rem; border-bottom: 1px dashed rgba(var(--border-light-rgb), 0.1); padding-bottom: 1rem; 
-}
-
-.modal-meta { display: flex; align-items: center; gap: 1rem; }
-.evidence-type-badge { 
-  font-family: var(--font-mono); font-size: 0.75rem; text-transform: uppercase; 
-  background: rgba(var(--border-light-rgb), 0.05); padding: 0.2rem 0.6rem; 
-  border-radius: var(--radius-sm); color: var(--accent-cyan); border: 1px solid var(--accent-cyan); 
-}
-
-.modal-close-btn { 
-  background: transparent; border: none; color: var(--text-secondary); 
-  font-size: 2rem; line-height: 1; cursor: pointer; padding: 0; transition: color 0.2s; 
-}
-
-.modal-close-btn:hover { color: var(--accent-crimson); }
-.modal-desc { margin: 0 0 1.5rem 0; color: var(--text-secondary); font-size: 1rem; }
-
-.evidence-text-content { 
-  background: rgba(0, 0, 0, 0.4); 
-  padding: 1.5rem; border-radius: var(--radius-md); 
-  font-size: 1.1rem; line-height: 1.7; 
-  color: var(--text-primary); border-left: 3px solid var(--text-secondary); 
-  white-space: pre-wrap; 
-}
-
-.evidence-text-content.type-document { border-left-color: var(--accent-amber); }
-.evidence-text-content.type-testimony { border-left-color: var(--accent-cyan); font-style: italic; }
-.evidence-text-content.type-forensic { border-left-color: var(--accent-crimson); font-family: var(--font-mono); font-size: 0.95rem; }
-
-.evidence-media-container { 
-  margin-top: 1rem; background: rgba(0, 0, 0, 0.5); 
-  border-radius: var(--radius-md); overflow: hidden; border: var(--border-thin); 
-}
-
-.evidence-full-image { width: 100%; height: auto; display: block; }
-
-.audio-container { padding: 2rem; display: flex; flex-direction: column; align-items: center; gap: 1.5rem; }
-.audio-visualizer-mock { height: 40px; width: 100%; background: repeating-linear-gradient(90deg, var(--accent-cyan), var(--accent-cyan) 2px, transparent 2px, transparent 6px); opacity: 0.3; }
-.evidence-audio-player { width: 100%; outline: none; }
-
-/* --- MARKDOWN FORMATTING SUPPORT --- */
-.evidence-text-content p {
-  margin-top: 0;
-  margin-bottom: 1rem;
-}
-.evidence-text-content p:last-child {
-  margin-bottom: 0;
-}
-
-/* 1. Fix Headings (h1, h2, h3, etc.) */
-.evidence-text-content h1,
-.evidence-text-content h2,
-.evidence-text-content h3,
-.evidence-text-content h4,
-.evidence-text-content h5,
-.evidence-text-content h6 {
-  color: var(--text-primary);
-  margin-top: 1.5rem;
-  margin-bottom: 1rem;
-  font-family: var(--font-primary);
-}
-
-/* 2. Fix the Default Strong Tag */
-.evidence-text-content strong {
-  color: var(--accent-cyan);
-  font-weight: 700;
-  letter-spacing: 0.05em;
-}
-
-/* 3. Fix the "Black Text" issue for specific evidence types */
-.evidence-text-content.type-document strong {
-  color: var(--accent-amber);
-  background: rgba(196, 139, 54, 0.1); 
-  padding: 0 4px;
-  border-radius: 2px;
-}
-
-.evidence-text-content.type-forensic strong {
-  color: var(--accent-crimson);
-  background: rgba(163, 50, 50, 0.1); 
-  padding: 0 4px;
-  border-radius: 2px;
-}
-
-.evidence-text-content.type-testimony strong {
-  color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.1); 
-  padding: 0 4px;
-  border-radius: 2px;
-}
-
-.evidence-text-content ul {
-  margin: 0.5rem 0 1.5rem 1.5rem;
-  padding: 0;
-  list-style-type: square;
-}
-.evidence-text-content li {
-  margin-bottom: 0.5rem;
-}
-
-.evidence-text-content blockquote {
-  border-left: 3px solid var(--accent-crimson);
-  margin: 1rem 0;
-  padding-left: 1rem;
-  font-style: italic;
-  background: rgba(163, 50, 50, 0.05);
-  padding-top: 0.5rem;
-  padding-bottom: 0.5rem;
-}
-
-.evidence-text-content code {
-  background: #111;
-  color: var(--accent-cyan); 
-  padding: 0 6px;
-  border-radius: 2px;
-  user-select: none; 
-}
-
-/* --- MARKDOWN TABLE STYLES --- */
-.evidence-text-content table {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1.5rem 0;
-  font-size: 0.95rem;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: var(--radius-sm);
+  width: 90%; 
+  max-width: 800px; /* Increased max-width for better document/table reading */
+  max-height: 85vh;
+  background: var(--bg-panel); 
+  border: var(--border-thin);
+  border-radius: var(--radius-lg); 
+  padding: 0; /* Padding removed here so the Viewers can stretch if needed */
+  display: flex; 
+  flex-direction: column;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8); 
   overflow: hidden;
 }
 
-.evidence-text-content th,
-.evidence-text-content td {
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.85rem 1rem;
-  text-align: start; 
+.modal-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: flex-start; 
+  padding: 1.5rem 2rem;
+  background: rgba(0, 0, 0, 0.3);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.evidence-text-content th {
-  background: rgba(0, 0, 0, 0.6);
-  color: var(--accent-cyan);
+.modal-meta { 
+  display: flex; 
+  align-items: center; 
+  gap: 1rem; 
+}
+
+.evidence-id {
   font-family: var(--font-mono);
   font-weight: 700;
-  letter-spacing: 0.05em;
+  color: var(--text-secondary);
 }
 
-.evidence-text-content tr:nth-child(even) td {
-  background: rgba(255, 255, 255, 0.02);
+.evidence-type-badge { 
+  font-family: var(--font-mono); 
+  font-size: 0.75rem; 
+  text-transform: uppercase; 
+  background: rgba(0, 229, 255, 0.05); 
+  padding: 0.25rem 0.75rem; 
+  border-radius: var(--radius-sm); 
+  color: var(--accent-cyan); 
+  border: 1px solid var(--accent-cyan); 
 }
 
-/* 4. Fix Document Table Header being black */
-.evidence-text-content.type-document th {
-  color: var(--accent-amber); 
-  background: rgba(196, 139, 54, 0.1); 
+.modal-close-btn { 
+  background: transparent; 
+  border: none; 
+  color: var(--text-secondary); 
+  font-size: 2rem; 
+  line-height: 1; 
+  cursor: pointer; 
+  padding: 0; 
+  transition: color 0.2s ease; 
 }
 
-.evidence-text-content.type-document td,
-.evidence-text-content.type-document th {
-  border-color: rgba(196, 139, 54, 0.2);
+.modal-close-btn:hover { 
+  color: var(--accent-crimson); 
 }
 
-.evidence-text-content.type-document tr:nth-child(even) td {
+.modal-body {
+  overflow-y: auto;
+  padding: 2rem;
+}
+
+/* Custom Tactical Scrollbar for the Modal Body */
+.modal-body::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-body::-webkit-scrollbar-track {
   background: rgba(0, 0, 0, 0.2);
+}
+.modal-body::-webkit-scrollbar-thumb {
+  background: rgba(90, 138, 158, 0.4);
+  border-radius: var(--radius-sm);
+}
+.modal-body::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-cyan);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.98); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceModal.tsx
 ----------------------------------------
-import ReactMarkdown from 'react-markdown'; 
-import remarkGfm from 'remark-gfm'; 
-import type { Evidence } from '@/types';
-import './EvidenceBoardTab.css';
+import type { Evidence, ForensicEvidence, DocumentEvidence, MediaEvidence } from '@/types/evidence';
+import ForensicViewer from './Viewers/ForensicViewer';
+import DocumentViewer from './Viewers/DocumentViewer';
+import MediaViewer from './Viewers/MediaViewer';
 import './EvidenceModal.css';
 
 interface EvidenceModalProps {
@@ -9103,6 +9290,29 @@ interface EvidenceModalProps {
 export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps) {
   if (!evidence) return null;
 
+  // Route the evidence to its highly specialized component
+  const renderEvidenceContent = () => {
+    switch (evidence.evidence_type) {
+      case 'forensic':
+        return <ForensicViewer evidence={evidence as ForensicEvidence} />;
+      
+      case 'document':
+        return <DocumentViewer evidence={evidence as DocumentEvidence} />;
+      
+      case 'image':
+      case 'audio':
+      case 'testimony':
+        return <MediaViewer evidence={evidence as MediaEvidence} />;
+        
+      default:
+        return (
+          <div style={{ color: 'var(--accent-crimson)', fontFamily: 'var(--font-mono)' }}>
+            Error: Unrecognized evidence classification.
+          </div>
+        );
+    }
+  };
+
   return (
     <div className="evidence-modal-overlay" onClick={onClose}>
       <div className="evidence-modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
@@ -9112,42 +9322,12 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
             <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
             <span className="evidence-type-badge">{evidence.evidence_type}</span>
           </div>
-          <button className="modal-close-btn" onClick={onClose}>×</button>
+          <button className="modal-close-btn" onClick={onClose} title="Close File">×</button>
         </header>
 
-        <h2 className="modal-title">{evidence.title}</h2>
-        <p className="modal-desc">{evidence.description}</p>
-
+        {/* Dynamic Inner Viewer */}
         <div className="modal-body">
-          {evidence.paragraph && (
-            <div className={`evidence-text-content type-${evidence.evidence_type}`}>
-              {/* remarkGfm enables tables, strikethrough, task lists, etc. */}
-              <ReactMarkdown remarkPlugins={[remarkGfm]} >
-                {evidence.paragraph}
-              </ReactMarkdown>
-            </div>
-          )}
-
-          {/* Media renderer for Images */}
-          {evidence.evidence_type === 'image' && (
-            <div className="evidence-media-container">
-              <img 
-                src={evidence.img_url || '/placeholder-crime-scene.jpg'} 
-                alt={evidence.title} 
-                className="evidence-full-image" 
-              />
-            </div>
-          )}
-
-          {/* Media renderer for Audio */}
-          {evidence.evidence_type === 'audio' && (
-            <div className="evidence-media-container audio-container">
-              <div className="audio-visualizer-mock"></div>
-              <audio controls src={evidence.audio_url} className="evidence-audio-player">
-                Your browser does not support the audio element.
-              </audio>
-            </div>
-          )}
+          {renderEvidenceContent()}
         </div>
 
       </div>
@@ -9649,6 +9829,601 @@ export default function TestimonyEvidence({ evidence }: { evidence: Evidence }) 
         <p className="evidence-desc">{evidence.description}</p>
       )}
       {/* <div className="testimony-lines"></div> */}
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\Viewers\DocumentViewer.css
+----------------------------------------
+.document-report-container {
+  background: #f4f1ea; /* Aged paper color */
+  color: #1a1a1a;
+  padding: 3rem 4rem;
+  border-radius: 2px;
+  box-shadow: 
+    inset 0 0 60px rgba(0, 0, 0, 0.1),
+    2px 4px 15px rgba(0, 0, 0, 0.5);
+  position: relative;
+  font-family: 'Courier New', Courier, monospace; /* Typewriter feel */
+}
+
+/* The Confidential Stamp */
+.stamp-confidential {
+  position: absolute;
+  top: 2rem;
+  right: 2rem;
+  color: rgba(163, 50, 50, 0.6);
+  border: 4px solid rgba(163, 50, 50, 0.6);
+  padding: 0.5rem 1rem;
+  font-family: var(--font-primary);
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  transform: rotate(15deg);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.doc-header-block {
+  border-bottom: 2px solid #1a1a1a;
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.doc-meta-row {
+  display: flex;
+  margin-bottom: 0.5rem;
+}
+
+.doc-meta-label {
+  width: 120px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.doc-body {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.doc-body ul {
+  list-style-type: square;
+  padding-left: 1.5rem;
+}
+
+.doc-body li {
+  margin-bottom: 0.5rem;
+}
+
+.financial-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1.5rem;
+}
+
+.financial-table th, .financial-table td {
+  border: 1px solid #999;
+  padding: 0.75rem;
+  text-align: left;
+}
+
+.financial-table th {
+  background: #e6e4dc;
+  font-weight: bold;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\Viewers\DocumentViewer.tsx
+----------------------------------------
+import type { DocumentEvidence } from '@/types/evidence';
+import './DocumentViewer.css'; // Assuming you named the CSS file this
+
+interface DocumentViewerProps {
+  evidence: DocumentEvidence;
+}
+
+export default function DocumentViewer({ evidence }: DocumentViewerProps) {
+  const { sub_type, metadata } = evidence;
+
+  const renderDocumentContent = () => {
+    switch (sub_type) {
+      case 'correspondence':
+        return (
+          <>
+            <div className="doc-header-block">
+              <div className="doc-meta-row"><span className="doc-meta-label">TO:</span> <span>{metadata.recipient}</span></div>
+              <div className="doc-meta-row"><span className="doc-meta-label">FROM:</span> <span>{metadata.sender}</span></div>
+              <div className="doc-meta-row"><span className="doc-meta-label">SUBJECT:</span> <span>{metadata.subject}</span></div>
+            </div>
+            <div className="doc-body">{metadata.body}</div>
+          </>
+        );
+
+      case 'financial':
+        return (
+          <>
+            <div className="doc-header-block">
+              <h2 style={{ margin: 0, textTransform: 'uppercase' }}>{metadata.institution}</h2>
+              <div className="doc-meta-row" style={{ marginTop: '1rem' }}>
+                <span className="doc-meta-label">ACCOUNT:</span> <span>{metadata.account_holder}</span>
+              </div>
+            </div>
+            <table className="financial-table">
+              <thead>
+                <tr>
+                  <th>Transaction Type</th>
+                  <th>Amount</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>{metadata.transaction_type}</td>
+                  <td style={{ fontWeight: 'bold' }}>{metadata.amount}</td>
+                  <td>CLEARED</td>
+                </tr>
+              </tbody>
+            </table>
+          </>
+        );
+
+      case 'journal':
+        return (
+          <>
+            <div className="doc-header-block" style={{ borderBottomStyle: 'dashed' }}>
+              <div className="doc-meta-row"><span className="doc-meta-label">AUTHOR:</span> <span>{metadata.author}</span></div>
+              <div className="doc-meta-row"><span className="doc-meta-label">DATE:</span> <span>{metadata.entry_date}</span></div>
+            </div>
+            <div className="doc-body" style={{ fontStyle: 'italic' }}>{metadata.content}</div>
+          </>
+        );
+
+      case 'contract':
+        return (
+          <>
+            <div className="doc-header-block">
+              <h2 style={{ margin: 0, textAlign: 'center', textDecoration: 'underline' }}>LEGAL AGREEMENT</h2>
+            </div>
+            <div className="doc-body">
+              <p><strong>PARTIES INVOLVED:</strong></p>
+              <ul>
+                {metadata.parties_involved.map((party, idx) => (
+                  <li key={idx}>{party}</li>
+                ))}
+              </ul>
+              <p><strong>TERMS OF AGREEMENT:</strong></p>
+              <p>{metadata.agreement_terms}</p>
+            </div>
+            <div style={{ marginTop: '3rem', borderTop: '1px solid #1a1a1a', paddingTop: '1rem', textAlign: 'right' }}>
+              <strong>SIGNATURES VERIFIED:</strong> {metadata.signatures_valid ? 'YES' : 'NO / FORGED'}
+            </div>
+          </>
+        );
+
+      case 'memo':
+        return (
+          <>
+            <div className="doc-header-block">
+              <div className="doc-meta-row"><span className="doc-meta-label">MEMO FROM:</span> <span>{metadata.written_by}</span></div>
+            </div>
+            <div className="doc-body">{metadata.context}</div>
+          </>
+        );
+
+      default:
+        return <div className="doc-body">Document contents illegible or corrupted.</div>;
+    }
+  };
+
+  return (
+    <div className="document-report-container">
+      <div className="stamp-confidential">CONFIDENTIAL</div>
+      {renderDocumentContent()}
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\Viewers\ForensicViewer.css
+----------------------------------------
+.forensic-report-container {
+  background: rgba(10, 11, 13, 0.95);
+  border: 1px solid rgba(163, 50, 50, 0.4);
+  border-left: 4px solid var(--accent-crimson);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  padding: 2.5rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 40px rgba(163, 50, 50, 0.05);
+}
+
+/* Tactical grid overlay */
+.forensic-report-container::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: 
+    linear-gradient(rgba(163, 50, 50, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(163, 50, 50, 0.05) 1px, transparent 1px);
+  background-size: 20px 20px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.forensic-header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 2px dashed rgba(163, 50, 50, 0.5);
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.forensic-title {
+  color: var(--accent-crimson);
+  margin: 0;
+  font-size: 1.5rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.forensic-barcode {
+  font-family: monospace; 
+  font-size: 2.5rem;
+  color: rgba(255, 255, 255, 0.3);
+  line-height: 0.8;
+  letter-spacing: -0.1em;
+}
+
+.forensic-data-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.data-block {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1rem;
+  border-radius: 2px;
+}
+
+.data-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+}
+
+.data-value {
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.data-value.highlight {
+  color: var(--accent-crimson);
+  font-weight: 700;
+}
+
+.forensic-notes {
+  margin-top: 0.5rem;
+  background: rgba(163, 50, 50, 0.05);
+  border-left: 2px solid var(--accent-crimson);
+  padding: 1.5rem;
+  position: relative;
+  z-index: 1;
+}
+
+.forensic-notes::before {
+  content: 'EXAMINER LOG //';
+  display: block;
+  color: var(--accent-crimson);
+  font-size: 0.8rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.1em;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\Viewers\ForensicViewer.tsx
+----------------------------------------
+import type { ForensicEvidence } from '@/types/evidence';
+import './ForensicViewer.css'; 
+
+interface ForensicViewerProps {
+  evidence: ForensicEvidence;
+}
+
+export default function ForensicViewer({ evidence }: ForensicViewerProps) {
+  const { sub_type, metadata } = evidence;
+
+  const renderForensicGrid = () => {
+    switch (sub_type) {
+      case 'autopsy':
+        return (
+          <>
+            <div className="data-block">
+              <span className="data-label">Chief Medical Examiner</span>
+              <span className="data-value">{metadata.examiner}</span>
+            </div>
+            <div className="data-block">
+              <span className="data-label">Estimated Time of Death</span>
+              <span className="data-value">{metadata.time_of_death}</span>
+            </div>
+            <div className="data-block" style={{ gridColumn: '1 / -1' }}>
+              <span className="data-label">Primary Cause of Death</span>
+              <span className="data-value highlight">{metadata.cause_of_death}</span>
+            </div>
+            {metadata.anomalies && (
+              <div className="forensic-notes" style={{ gridColumn: '1 / -1' }}>
+                {metadata.anomalies}
+              </div>
+            )}
+          </>
+        );
+
+      case 'ballistics':
+        return (
+          <>
+            <div className="data-block">
+              <span className="data-label">Weapon Classification</span>
+              <span className="data-value">{metadata.weapon_type}</span>
+            </div>
+            <div className="data-block">
+              <span className="data-label">Caliber</span>
+              <span className="data-value">{metadata.caliber}</span>
+            </div>
+            <div className="data-block" style={{ gridColumn: '1 / -1' }}>
+              <span className="data-label">Striation Match Status</span>
+              <span className={`data-value ${metadata.striation_match ? 'highlight' : ''}`}>
+                {metadata.striation_match ? 'POSITIVE MATCH CONFIRMED' : 'INCONCLUSIVE'}
+              </span>
+            </div>
+          </>
+        );
+
+      case 'dna':
+        return (
+          <>
+            <div className="data-block">
+              <span className="data-label">Sample Type</span>
+              <span className="data-value">{metadata.sample_type}</span>
+            </div>
+            <div className="data-block">
+              <span className="data-label">Match Probability</span>
+              <span className="data-value">{metadata.match_probability}</span>
+            </div>
+            <div className="data-block" style={{ gridColumn: '1 / -1' }}>
+              <span className="data-label">Identified Subject</span>
+              <span className={`data-value ${metadata.identified_person ? 'highlight' : ''}`}>
+                {metadata.identified_person || 'NO MATCH FOUND IN DATABASE'}
+              </span>
+            </div>
+          </>
+        );
+
+      case 'digital_forensics':
+        return (
+          <>
+            <div className="data-block">
+              <span className="data-label">Device Classification</span>
+              <span className="data-value">{metadata.device_type}</span>
+            </div>
+            <div className="data-block">
+              <span className="data-label">Extraction Method</span>
+              <span className="data-value">{metadata.extraction_method}</span>
+            </div>
+            <div className="forensic-notes" style={{ gridColumn: '1 / -1' }}>
+              <span className="data-label" style={{ color: 'var(--accent-crimson)' }}>[ RECOVERED DATA DECRYPTED ]</span>
+              <span className="data-value" style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>{metadata.recovered_data}</span>
+            </div>
+          </>
+        );
+
+      case 'trace_analysis':
+        return (
+          <>
+            <div className="data-block">
+              <span className="data-label">Material Composition</span>
+              <span className="data-value">{metadata.material_type}</span>
+            </div>
+            <div className="data-block" style={{ gridColumn: '1 / -1' }}>
+              <span className="data-label">Identified Origin Source</span>
+              <span className="data-value highlight">{metadata.origin_source}</span>
+            </div>
+          </>
+        );
+
+      default:
+        return <div className="data-block">Awaiting specific analysis details.</div>;
+    }
+  };
+
+  return (
+    <div className="forensic-report-container">
+      <header className="forensic-header">
+        <div>
+          <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>DEPARTMENT OF FORENSIC SCIENCES</span>
+          <h3 className="forensic-title">{sub_type.replace('_', ' ')} REPORT</h3>
+        </div>
+        <div className="forensic-barcode">*{evidence.id}*</div>
+      </header>
+      
+      <div className="forensic-data-grid">
+        {renderForensicGrid()}
+      </div>
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\Viewers\MediaViewer.css
+----------------------------------------
+.media-viewer-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* --- IMAGE STYLES --- */
+.media-image-container {
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: var(--border-thin);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.media-full-image {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.media-caption {
+  padding: 1rem 1.5rem;
+  margin: 0;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  text-align: center;
+  width: 100%;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(20, 21, 24, 0.9);
+}
+
+/* --- AUDIO STYLES --- */
+.media-audio-container {
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+  border: var(--border-thin);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.audio-visualizer-mock {
+  height: 60px;
+  width: 100%;
+  background: repeating-linear-gradient(
+    90deg, 
+    var(--accent-cyan), 
+    var(--accent-cyan) 3px, 
+    transparent 3px, 
+    transparent 8px
+  );
+  opacity: 0.4;
+  border-radius: 2px;
+}
+
+.media-audio-player {
+  width: 100%;
+  outline: none;
+}
+
+/* --- TESTIMONY (TRANSCRIPT) STYLES --- */
+.media-testimony-container {
+  background: rgba(20, 21, 24, 0.95);
+  border: 1px solid rgba(90, 138, 158, 0.4);
+  border-left: 4px solid var(--accent-cyan);
+  border-radius: 4px;
+  padding: 2rem;
+  box-shadow: inset 0 0 30px rgba(90, 138, 158, 0.05);
+}
+
+.testimony-header {
+  border-bottom: 1px dashed rgba(90, 138, 158, 0.5);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.testimony-label {
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  letter-spacing: 0.15em;
+}
+
+.testimony-body {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\Viewers\MediaViewer.tsx
+----------------------------------------
+import type { MediaEvidence } from '@/types/evidence';
+import './MediaViewer.css'; 
+
+interface MediaViewerProps {
+  evidence: MediaEvidence;
+}
+
+export default function MediaViewer({ evidence }: MediaViewerProps) {
+  const { evidence_type, description, img_url, audio_url, metadata } = evidence;
+
+  const renderContent = () => {
+    switch (evidence_type) {
+      case 'image':
+        return (
+          <div className="media-image-container">
+            <img 
+              src={img_url || '/placeholder-crime-scene.jpg'} 
+              alt={evidence.title} 
+              className="media-full-image" 
+            />
+            {description && <p className="media-caption">{description}</p>}
+          </div>
+        );
+
+      case 'audio':
+        return (
+          <div className="media-audio-container">
+            <div className="audio-visualizer-mock"></div>
+            <audio controls src={audio_url || ''} className="media-audio-player">
+              Your browser does not support the audio element.
+            </audio>
+            {description && <p className="media-caption">{description}</p>}
+          </div>
+        );
+
+      case 'testimony':
+        return (
+          <div className="media-testimony-container">
+            <div className="testimony-header">
+              <span className="testimony-label">OFFICIAL TRANSCRIPT</span>
+            </div>
+            <div className="testimony-body">
+              {/* Fallback to description if transcript metadata isn't set yet */}
+              {metadata?.transcript || description || 'Transcript unavailable.'}
+            </div>
+          </div>
+        );
+
+      default:
+        return <div className="media-caption">Media format unsupported.</div>;
+    }
+  };
+
+  return (
+    <div className="media-viewer-wrapper">
+      {renderContent()}
     </div>
   );
 }
@@ -10962,6 +11737,8 @@ export const getToken = () => localStorage.getItem('auth_token');
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\types\index.ts
 ----------------------------------------
+import type { Evidence } from './evidence/index';
+
 export interface User {
   id: number;
   username: string;
@@ -11070,21 +11847,6 @@ export interface FinalStats {
   innocents_accused: number;
 }
 
-export type EvidenceType = 'document' | 'testimony' | 'audio' | 'image' | 'forensic';
-
-export interface Evidence {
-  id: number;
-  case_id: number; 
-  title: string;
-  description?: string;
-  evidence_type: EvidenceType;
-  audio_url?: string;
-  img_url?: string;
-  paragraph?: string;
-  is_initial: boolean; 
-  is_vital_for_conviction: boolean;
-}
-
 export interface Choice {
   id: number;
   question_id: number;
@@ -11169,6 +11931,128 @@ export interface InvestigationRequest {
   created_at?: string;
   updated_at?: string;
 }
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\types\evidence\base.ts
+----------------------------------------
+export interface BaseEvidence {
+  id: number;
+  case_id: number;
+  title: string;
+  description?: string | null;
+  img_url?: string | null;
+  audio_url?: string | null;
+  is_initial: boolean;
+  is_vital_for_conviction: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\types\evidence\document.ts
+----------------------------------------
+import type { BaseEvidence } from './base';
+
+export interface JournalMetadata {
+  author: string;
+  entry_date: string;
+  content: string;
+}
+
+export interface FinancialMetadata {
+  institution: string;
+  account_holder: string;
+  transaction_type: string;
+  amount: string;
+}
+
+export interface CorrespondenceMetadata {
+  sender: string;
+  recipient: string;
+  subject: string;
+  body: string;
+}
+
+export interface ContractMetadata {
+  parties_involved: string[];
+  agreement_terms: string;
+  signatures_valid: boolean;
+}
+
+export interface MemoMetadata {
+  written_by: string;
+  context: string;
+}
+
+export type DocumentEvidence =
+  | (BaseEvidence & { evidence_type: 'document'; sub_type: 'journal'; metadata: JournalMetadata })
+  | (BaseEvidence & { evidence_type: 'document'; sub_type: 'financial'; metadata: FinancialMetadata })
+  | (BaseEvidence & { evidence_type: 'document'; sub_type: 'correspondence'; metadata: CorrespondenceMetadata })
+  | (BaseEvidence & { evidence_type: 'document'; sub_type: 'contract'; metadata: ContractMetadata })
+  | (BaseEvidence & { evidence_type: 'document'; sub_type: 'memo'; metadata: MemoMetadata });
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\types\evidence\forensic.ts
+----------------------------------------
+import type { BaseEvidence } from './base';
+
+export interface AutopsyMetadata {
+  examiner: string;
+  time_of_death: string;
+  cause_of_death: string;
+  anomalies: string;
+}
+
+export interface BallisticsMetadata {
+  weapon_type: string;
+  caliber: string;
+  striation_match: boolean;
+}
+
+export interface DnaMetadata {
+  sample_type: string;
+  match_probability: string;
+  identified_person: string | null;
+}
+
+export interface DigitalForensicsMetadata {
+  device_type: string;
+  extraction_method: string;
+  recovered_data: string;
+}
+
+export interface TraceMetadata {
+  material_type: string;
+  origin_source: string;
+}
+
+export type ForensicEvidence =
+  | (BaseEvidence & { evidence_type: 'forensic'; sub_type: 'autopsy'; metadata: AutopsyMetadata })
+  | (BaseEvidence & { evidence_type: 'forensic'; sub_type: 'ballistics'; metadata: BallisticsMetadata })
+  | (BaseEvidence & { evidence_type: 'forensic'; sub_type: 'dna'; metadata: DnaMetadata })
+  | (BaseEvidence & { evidence_type: 'forensic'; sub_type: 'digital_forensics'; metadata: DigitalForensicsMetadata })
+  | (BaseEvidence & { evidence_type: 'forensic'; sub_type: 'trace_analysis'; metadata: TraceMetadata });
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\types\evidence\index.ts
+----------------------------------------
+import type { BaseEvidence } from './base';
+import type { ForensicEvidence } from './forensic';
+import type { DocumentEvidence } from './document';
+
+export * from './base';
+export * from './forensic';
+export * from './document';
+
+// Legacy/Basic media types that don't utilize complex JSON metadata yet
+export type MediaEvidence = BaseEvidence & {
+  evidence_type: 'image' | 'audio' | 'testimony';
+  sub_type?: string | null;
+  metadata?: any | null; 
+};
+
+// The Master Type
+export type Evidence = ForensicEvidence | DocumentEvidence | MediaEvidence;
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\utils\Result.ts

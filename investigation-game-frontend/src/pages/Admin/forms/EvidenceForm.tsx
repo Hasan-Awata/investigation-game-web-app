@@ -2,15 +2,18 @@ import { useState, useRef } from 'react';
 import { useAdminContext } from '@/context/AdminContext';
 import { useAdminMutations } from '@/hooks/useAdminMutations';
 import EntityList from './Shared/EntityList';
-import type { Evidence, EvidenceType } from '@/types';
+import EvidenceMetadataFields from './Shared/EvidenceMetadataFields';
+import type { Evidence } from '@/types/evidence';
 
 export default function EvidenceForm() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [paragraph, setParagraph] = useState('');
-  const [evidenceType, setEvidenceType] = useState<EvidenceType>('document');
+  const [evidenceType, setEvidenceType] = useState<string>('document');
+  const [subType, setSubType] = useState('');
+  const [metadata, setMetadata] = useState<Record<string, any>>({});
+  
   const [isInitial, setIsInitial] = useState(true);
   const [isVitalForConviction, setIsVitalForConviction] = useState(false);
   const [storeLocally, setStoreLocally] = useState(false);
@@ -39,7 +42,8 @@ export default function EvidenceForm() {
 
   const clearForm = () => {
     setEditingId(null);
-    setTitle(''); setDescription(''); setParagraph('');
+    setTitle(''); setDescription(''); 
+    setSubType(''); setMetadata({});
     setIsInitial(true); setIsVitalForConviction(false); setStoreLocally(false);
     setImage(null); setAudio(null);
     clearFeedback();
@@ -47,16 +51,35 @@ export default function EvidenceForm() {
     if (audioInputRef.current) audioInputRef.current.value = '';
   };
 
+  // When changing the top-level type, wipe the previous sub_type and metadata payload to prevent corruption
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setEvidenceType(e.target.value);
+    setSubType('');
+    setMetadata({});
+  };
+
+  const updateMeta = (key: string, value: any) => {
+    setMetadata(prev => ({ ...prev, [key]: value }));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearFeedback();
 
     const formData = new FormData();
-    formData.append('case_id', caseId); formData.append('title', title);
-    formData.append('evidence_type', evidenceType); formData.append('description', description);
-    formData.append('paragraph', paragraph); formData.append('is_initial', isInitial ? '1' : '0');
+    formData.append('case_id', caseId); 
+    formData.append('title', title);
+    formData.append('evidence_type', evidenceType); 
+    formData.append('description', description);
+    formData.append('is_initial', isInitial ? '1' : '0');
     formData.append('is_vital_for_conviction', isVitalForConviction ? '1' : '0');
     formData.append('store_locally', storeLocally ? '1' : '0');
+    
+    // Append the new structured fields
+    if (subType) formData.append('sub_type', subType);
+    if (Object.keys(metadata).length > 0) {
+      formData.append('metadata', JSON.stringify(metadata));
+    }
     
     if (evidenceType === 'image' && image) formData.append('image', image);
     if (evidenceType === 'audio' && audio) formData.append('audio', audio);
@@ -68,13 +91,19 @@ export default function EvidenceForm() {
     }
   };
 
-  const handleEdit = (ev: Evidence) => {
+  const handleEdit = (ev: Evidence | any) => {
     setEditingId(ev.id);
-    setTitle(ev.title); setDescription(ev.description || ''); setParagraph(ev.paragraph || '');
-    setEvidenceType(ev.evidence_type); setIsInitial(!!ev.is_initial);
+    setTitle(ev.title); 
+    setDescription(ev.description || ''); 
+    setEvidenceType(ev.evidence_type); 
+    setSubType(ev.sub_type || '');
+    setMetadata(ev.metadata || {});
+    
+    setIsInitial(!!ev.is_initial);
     setIsVitalForConviction(!!ev.is_vital_for_conviction);
     setImage(null); setAudio(null);
     clearFeedback();
+    
     if (imageInputRef.current) imageInputRef.current.value = '';
     if (audioInputRef.current) audioInputRef.current.value = '';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -114,22 +143,30 @@ export default function EvidenceForm() {
           </div>
 
           <div className="form-group">
-            <label>Evidence Category</label>
-            <select className="admin-input" value={evidenceType} onChange={(e) => setEvidenceType(e.target.value as EvidenceType)}>
+            <label>Master Evidence Category</label>
+            <select className="admin-input" value={evidenceType} onChange={handleTypeChange}>
               <option value="document">Written Document</option>
               <option value="testimony">Witness Testimony</option>
+              <option value="forensic">Forensic Report</option>
               <option value="audio">Audio Recording</option>
               <option value="image">Photographic Evidence</option>
-              <option value="forensic">Forensic Report</option>
             </select>
           </div>
 
           <div className="form-group"><label>Evidence Title</label><input type="text" className="admin-input" required value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <div className="form-group"><label>Short Description</label><input type="text" className="admin-input" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
-          <div className="form-group"><label>Text Content (Markdown)</label><textarea className="admin-textarea" value={paragraph} onChange={(e) => setParagraph(e.target.value)} /></div>
+          <div className="form-group"><label>Short Description (Hover text / Caption)</label><input type="text" className="admin-input" value={description} onChange={(e) => setDescription(e.target.value)} /></div>
+
+          {/* DYNAMIC METADATA COMPONENT INJECTION */}
+          <EvidenceMetadataFields 
+            evidenceType={evidenceType} 
+            subType={subType} 
+            setSubType={setSubType} 
+            metadata={metadata} 
+            updateMeta={updateMeta} 
+          />
 
           {evidenceType === 'image' && (
-            <div className="form-group">
+            <div className="form-group" style={{ marginTop: '1.5rem' }}>
               <label>Evidence Image</label>
               <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}><strong>Optimal:</strong> 1:1 or 3:4 portrait. Ensure written text is legible. WEBP or JPG. Max 4MB.</p>
               <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
@@ -137,7 +174,7 @@ export default function EvidenceForm() {
           )}
           
           {evidenceType === 'audio' && (
-            <div className="form-group">
+            <div className="form-group" style={{ marginTop: '1.5rem' }}>
               <label>Audio Recording</label>
               <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}><strong>Optimal:</strong> MP3 or WAV format. Compressed for web streaming. Max 10MB.</p>
               <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
@@ -147,11 +184,11 @@ export default function EvidenceForm() {
           {(evidenceType === 'image' || evidenceType === 'audio') && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
               <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
-              <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}><strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.</label>
+              <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer', margin: 0 }}><strong>Store Locally on Server</strong></label>
             </div>
           )}
 
-          <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>
+          <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '2rem' }}>
             {isProcessing ? 'Processing Data...' : editingId ? 'Update Evidence' : 'Commit Evidence'}
           </button>
         </form>
@@ -161,14 +198,21 @@ export default function EvidenceForm() {
         title="Case Evidence"
         items={selectedCase.evidences || []}
         emptyMessage="No evidence secured for this case."
-        keyExtractor={(ev) => ev.id}
+        keyExtractor={(ev) => ev.id.toString()}
         isProcessing={isProcessing}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        renderItemContent={(ev) => (
+        renderItemContent={(ev: any) => (
           <>
-            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>EX-{ev.id.toString().padStart(3, '0')}</span>
+            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>
+              EX-{ev.id.toString().padStart(3, '0')}
+            </span>
             <strong>{ev.title}</strong>
+            {ev.sub_type && (
+              <span style={{ marginLeft: '1rem', fontSize: '0.75rem', padding: '0.1rem 0.5rem', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '4px', textTransform: 'uppercase', fontFamily: 'var(--font-mono)' }}>
+                {ev.sub_type.replace('_', ' ')}
+              </span>
+            )}
           </>
         )}
       />

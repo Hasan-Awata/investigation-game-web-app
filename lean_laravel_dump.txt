@@ -1745,10 +1745,9 @@ class AdminQuestionController extends Controller
         $validated = $request->validate([
             'level_id' => 'required|exists:levels,id',
             'text' => 'required|string',
-            'is_mandatory' => 'required|boolean', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
-            'choices' => 'required|array|min:2',
+            'choices' => 'nullable|array',
             'choices.*.text' => 'required|string|max:255',
             'choices.*.outcomes' => 'nullable|array',
             'choices.*.requirements' => 'nullable|array', 
@@ -1765,28 +1764,32 @@ class AdminQuestionController extends Controller
         $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, $subfolder, $storeLocally);
         $audioUrl = $this->storeMedia($request->file('audio'), $caseTitle, $subfolder, $storeLocally);
 
-        return DB::transaction(function () use ($validated, $imageUrl, $audioUrl) {
+        return DB::transaction(function () use ($validated, $request, $imageUrl, $audioUrl) {
             $question = Question::create([
                 'level_id' => $validated['level_id'],
                 'text' => $validated['text'],
-                'is_mandatory' => $validated['is_mandatory'],
                 'img_url' => $imageUrl,
                 'audio_url' => $audioUrl, 
             ]);
 
-            $choicesData = array_map(function ($choice) use ($question) {
-                return [
-                    'question_id' => $question->id,
-                    'text' => $choice['text'],
-                    // Encode the outcomes array into JSON for the DB
-                    'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
-                    'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }, $validated['choices']);
+            // Safely retrieve choices, falling back to an empty array if completely omitted
+            $choices = $request->input('choices', []);
 
-            $question->choices()->insert($choicesData);
+            // Only attempt to map and insert if choices actually exist
+            if (!empty($choices)) {
+                $choicesData = array_map(function ($choice) use ($question) {
+                    return [
+                        'question_id' => $question->id,
+                        'text' => $choice['text'],
+                        'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
+                        'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }, $choices);
+
+                $question->choices()->insert($choicesData);
+            }
 
             return response()->json([
                 'message' => 'Question and choices created successfully.',
@@ -1802,13 +1805,12 @@ class AdminQuestionController extends Controller
         $validated = $request->validate([
             'level_id' => 'required|exists:levels,id',
             'text' => 'required|string',
-            'is_mandatory' => 'required|boolean', 
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
-            'choices' => 'required|array|min:2',
+            'choices' => 'nullable|array',
             'choices.*.text' => 'required|string|max:255',
-            'choices.*.outcomes' => 'nullable|array', 
-            'choices.*.requirements' => 'nullable|array',
+            'choices.*.outcomes' => 'nullable|array',
+            'choices.*.requirements' => 'nullable|array', 
             'store_locally' => 'required|boolean',
         ]);
 
@@ -1818,7 +1820,6 @@ class AdminQuestionController extends Controller
         $updateData = [
             'level_id' => $validated['level_id'],
             'text' => $validated['text'],
-            'is_mandatory' => $validated['is_mandatory'],
         ];
 
         if ($request->hasFile('image')) {
@@ -1831,22 +1832,30 @@ class AdminQuestionController extends Controller
             $updateData['audio_url'] = $this->storeMedia($request->file('audio'), $caseTitle, 'Levels/Questions', $storeLocally);
         }
 
-        return DB::transaction(function () use ($question, $validated, $updateData) {
+        return DB::transaction(function () use ($question, $validated, $request, $updateData) {
             $question->update($updateData);
+            
+            // Delete old choices unconditionally
             $question->choices()->delete();
 
-            $choicesData = array_map(function ($choice) use ($question) {
-                return [
-                    'question_id' => $question->id,
-                    'text' => $choice['text'],
-                    'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
-                    'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null, 
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }, $validated['choices']);
+            // Safely retrieve choices, falling back to an empty array
+            $choices = $request->input('choices', []);
 
-            $question->choices()->insert($choicesData);
+            // Only attempt to map and insert if choices actually exist
+            if (!empty($choices)) {
+                $choicesData = array_map(function ($choice) use ($question) {
+                    return [
+                        'question_id' => $question->id,
+                        'text' => $choice['text'],
+                        'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
+                        'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null, 
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }, $choices);
+
+                $question->choices()->insert($choicesData);
+            }
 
             return response()->json(['message' => 'Question updated.', 'question' => $question->load('choices')], 200);
         });
@@ -2651,7 +2660,6 @@ class Question extends Model
         'img_url',
         'audio_url',
         'msg_when_wrong',
-        'is_mandatory', 
     ];
 
     protected function audioUrl(): Attribute
@@ -2970,31 +2978,21 @@ class AssessmentService
     {
         return DB::transaction(function () use ($room) {
             $level = $room->currentLevel;
-            $consensus = $this->votingService->calculateLevelConsensus($room, $level->id);
             
-            $mandatoryQuestions = $level->questions()->where('is_mandatory', true)->get();
+            // Loop through all votes currently cast in this level to check for penalty strikes
+            $votes = \App\Models\RoomVote::where('room_id', $room->id)
+                ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
+                ->get();
 
-            // 1. Check Mandatory Progression
-            foreach ($mandatoryQuestions as $question) {
-                if (!isset($consensus[$question->id])) {
-                    return Result::failure("Not all mandatory verdicts have a locked-in consensus yet.");
-                }
+            foreach ($votes as $vote) {
+                $choice = Choice::find($vote->choice_id);
+                $givesStrike = filter_var($choice->outcomes['gives_strike'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
-                $chosenId = $consensus[$question->id];
-                $choice = Choice::find($chosenId);
-
-                $maxStrikes = $room->gameCase->max_strikes; 
-                $rawStrikeFlag = $choice->outcomes['gives_strike'] ?? false;
-
-                // Safely cast stringified booleans ("true"/"false") into actual PHP booleans
-                $givesStrike = filter_var($rawStrikeFlag, FILTER_VALIDATE_BOOLEAN);
-
-                // IF THE CHOICE CARRIES A PENALTY
                 if ($givesStrike) {
                     $room->increment('strikes');
                     $room->refresh();
 
-                    if ($room->strikes >= $maxStrikes) {
+                    if ($room->strikes >= $room->gameCase->max_strikes) {
                         $totalGuilty = \App\Models\Suspect::where('case_id', $room->case_id)->where('is_guilty', true)->count();
                         $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
 
@@ -3011,13 +3009,12 @@ class AssessmentService
 
                     // Extract the Persona hint for the exact question they failed
                     $hint = $choice->outcomes['feedback'] ?? "Re-evaluate the evidence thoroughly.";
-
-                    // REWIND LOGIC: Wipe all votes for this phase so they must start over
+                    
+                    // Wipe votes so they must restart the phase
                     \App\Models\RoomVote::where('room_id', $room->id)
                         ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
                         ->delete();
 
-                    // Return standard failure, embedding the hint directly into the message
                     return \App\Support\Result::success([
                         'status' => 'success', 
                         'message' => $hint,  
@@ -6823,6 +6820,30 @@ return new class extends Migration
 
 
 
+FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_14_185138_drop_is_mandatory_from_questions_table.php
+----------------------------------------
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::table('questions', function (Blueprint $table) {
+            $table->dropColumn('is_mandatory');
+        });
+    }
+
+    public function down(): void {
+        Schema::table('questions', function (Blueprint $table) {
+            $table->boolean('is_mandatory')->default(true)->after('text');
+        });
+    }
+};
+
+
+
 FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\BloodOperaCaseSeeder.php
 ----------------------------------------
 <?php
@@ -7456,13 +7477,14 @@ use App\Models\GameRoom;
 use App\Models\RoomUser;
 use App\Models\User;
 
+// Prefix with 'api' to inherit CORS, and enforce 'auth:sanctum' for the Bearer token
+Broadcast::routes(['prefix' => 'api', 'middleware' => ['auth:sanctum']]);
+
 Broadcast::channel('room.{roomId}', function (User $user, int $roomId) {
-    // Check if the authenticated user has a record in the room_users table for this room
     $isParticipant = RoomUser::where('room_id', $roomId)
         ->where('user_id', $user->id)
         ->exists();
 
-    // If true, Reverb allows the WebSocket connection. If false, it returns a 403.
     return $isParticipant;
 });
 

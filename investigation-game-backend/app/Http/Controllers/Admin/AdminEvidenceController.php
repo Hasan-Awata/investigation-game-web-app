@@ -13,37 +13,43 @@ use Illuminate\Validation\Rules\Enum;
 
 class AdminEvidenceController extends Controller
 {
-    use HandlesMedia; // <-- Injected trait
+    use HandlesMedia; 
 
-    public function store(Request $request): JsonResponse
+public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'case_id' => 'required|exists:cases,id', 
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
-            'paragraph' => 'nullable|string',
+            'sub_type' => 'nullable|string',
+            'metadata' => 'nullable|string', // Validated as a string, decoded later
             'is_initial' => 'required|boolean', 
             'is_vital_for_conviction' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
-            'store_locally' => 'required|boolean', // <-- Validates storage toggle
+            'store_locally' => 'required|boolean',
         ]);
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-        
-        // Lightweight primary key lookup to get the case title for folder naming
         $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
 
         $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, 'Evidences', $storeLocally);
         $audioUrl = $this->storeMedia($request->file('audio'), $caseTitle, 'Evidences', $storeLocally);
+
+        // Safely decode the metadata JSON string from FormData
+        $metadataPayload = null;
+        if (!empty($validated['metadata'])) {
+            $metadataPayload = json_decode($validated['metadata'], true);
+        }
 
         $evidence = Evidence::create([
             'case_id' => $validated['case_id'],
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'evidence_type' => $validated['evidence_type'],
-            'paragraph' => $validated['paragraph'] ?? null,
+            'sub_type' => $validated['sub_type'] ?? null,
+            'metadata' => $metadataPayload,
             'is_initial' => $validated['is_initial'],
             'is_vital_for_conviction' => $validated['is_vital_for_conviction'],
             'img_url' => $imageUrl,
@@ -62,7 +68,8 @@ class AdminEvidenceController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
-            'paragraph' => 'nullable|string',
+            'sub_type' => 'nullable|string',
+            'metadata' => 'nullable|string',
             'is_initial' => 'required|boolean', 
             'is_vital_for_conviction' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
@@ -73,12 +80,18 @@ class AdminEvidenceController extends Controller
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
         $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
 
+        $metadataPayload = null;
+        if (!empty($validated['metadata'])) {
+            $metadataPayload = json_decode($validated['metadata'], true);
+        }
+
         $updateData = [
             'case_id' => $validated['case_id'],
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'evidence_type' => $validated['evidence_type'],
-            'paragraph' => $validated['paragraph'] ?? null,
+            'sub_type' => $validated['sub_type'] ?? null,
+            'metadata' => $metadataPayload,
             'is_initial' => $validated['is_initial'],
             'is_vital_for_conviction' => $validated['is_vital_for_conviction'],
         ];
