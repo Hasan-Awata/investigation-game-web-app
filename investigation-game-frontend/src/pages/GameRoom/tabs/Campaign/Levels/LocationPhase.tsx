@@ -140,10 +140,24 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
   const isCompleted = status === 'completed';
   const visibleQuestionIds = new Set<number>();
   
-  if (level.questions.length > 0) {
-    visibleQuestionIds.add(level.questions[0].id);
-  }
+  // 1. Map out all scenes that are intentionally locked behind a coordinate click
+  const lockedBehindChoiceIds = new Set<number>();
+  level.questions.forEach(q => {
+    q.choices?.forEach(c => {
+      if (c.outcomes?.next_question_id) {
+        lockedBehindChoiceIds.add(Number(c.outcomes.next_question_id));
+      }
+    });
+  });
 
+  // 2. Any scene NOT explicitly locked behind a choice is an independent scene. Make it visible.
+  level.questions.forEach(q => {
+    if (!lockedBehindChoiceIds.has(q.id)) {
+      visibleQuestionIds.add(q.id);
+    }
+  });
+
+  // 3. Add dynamically unlocked scenes based on player interactions
   level.questions.forEach(q => {
     q.choices?.forEach(c => {
       const isSelectedLocally = foundPoints.has(c.id) || localVotes[q.id] === c.id;

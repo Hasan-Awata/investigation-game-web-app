@@ -3909,8 +3909,15 @@ export default function AdminInterrogationBuilder() {
 
   const savedNodes: Question[] = selectedLevel.questions || [];
   
-  // Extract all the required global arrays for the UI form
-  const hasTerminalNode = savedNodes.some((n: Question) => !n.choices || n.choices.length === 0);
+  // Accepts zero-choice nodes OR player-terminal branches
+  const hasTerminalNode = savedNodes.some((n: Question) => {
+    // Scenario A: Suspect-ends scenario (Zero choices)
+    if (!n.choices || n.choices.length === 0) return true;
+    
+    // Scenario B: Investigator-ends scenario (At least one choice points to null/empty)
+    return n.choices.some((c: Choice | any) => !c.outcomes?.next_question_id);
+  });
+
   const availableEvidences = selectedCase.evidences || [];
   const availableSuspects = selectedCase.suspects || [];
   const availableVictims = selectedCase.victims || [];
@@ -3935,7 +3942,7 @@ export default function AdminInterrogationBuilder() {
 
       {!hasTerminalNode && savedNodes.length > 0 && (
         <div className="terminal-text error" style={{ background: 'rgba(163, 50, 50, 0.1)', padding: '1rem', border: '1px solid var(--accent-crimson)', borderRadius: '8px', margin: '0 1rem' }}>
-          ⚠️ CRITICAL WARNING: This interrogation tree lacks a terminal node (a node with zero responses). The team will be soft-locked during gameplay. Please append at least one node with empty choices to conclude the interaction.
+          ⚠️ CRITICAL WARNING: This interrogation tree lacks a terminal state. The team will be soft-locked during gameplay. Please ensure at least one node has zero choices OR a player response is set to [ END CONVERSATION / RETURN TO HUB ].
         </div>
       )}
       
@@ -4616,7 +4623,6 @@ export default function AdminWiretapBuilder() {
   const [editingId, setEditingId] = useState<number | null>(null);
 
   const [text, setText] = useState('');
-  const [isMandatory, setIsMandatory] = useState(true);
   const [storeLocally, setStoreLocally] = useState(false);
   
   const [image, setImage] = useState<File | null>(null);
@@ -4662,7 +4668,7 @@ export default function AdminWiretapBuilder() {
   }
 
   const clearForm = () => {
-    setEditingId(null); setText(''); setIsMandatory(true); setStoreLocally(false);
+    setEditingId(null); setText(''); setStoreLocally(false);
     setImage(null); setExistingImgUrl(null); setAudio(null); setExistingAudioUrl(null);
     setChoices([{ text: '', outcomes: {}, requirements: {} }, { text: '', outcomes: {}, requirements: {} }]);
     clearFeedback();
@@ -4678,7 +4684,7 @@ export default function AdminWiretapBuilder() {
     if (choices.some(c => !c.text.trim())) return setStatusMessage({ type: 'error', message: 'All choices must have valid text.' });
 
     const formData = buildNodeFormData({
-      level_id: levelId, text, is_mandatory: isMandatory, store_locally: storeLocally, image, audio, choices
+      level_id: levelId, text, store_locally: storeLocally, image, audio, choices
     });
 
     if (editingId) {
@@ -4695,7 +4701,6 @@ export default function AdminWiretapBuilder() {
     
     setEditingId(question.id);
     setText(question.text);
-    setIsMandatory(!!question.is_mandatory);
     
     setChoices(question.choices?.map((c: Choice) => ({
       id: c.id, text: c.text, outcomes: c.outcomes || {}, requirements: c.requirements || {}
@@ -4733,7 +4738,7 @@ export default function AdminWiretapBuilder() {
       
       <AdminWiretapForm
         image={image} audio={audio} 
-        editingId={editingId} text={text} setText={setText} isMandatory={isMandatory} setIsMandatory={setIsMandatory}
+        editingId={editingId} text={text} setText={setText}
         storeLocally={storeLocally} setStoreLocally={setStoreLocally} imageInputRef={imageInputRef} audioInputRef={audioInputRef}
         setImage={setImage} setAudio={setAudio} choices={choices} addChoice={addChoice} updateChoice={updateChoice}
         removeChoice={removeChoice} handleSubmit={handleSubmit} handleCancelEdit={clearForm}
@@ -4773,8 +4778,6 @@ interface AdminWiretapFormProps {
   editingId: number | null;
   text: string;
   setText: (text: string) => void;
-  isMandatory: boolean;
-  setIsMandatory: (val: boolean) => void;
   storeLocally: boolean;
   setStoreLocally: (val: boolean) => void;
   imageInputRef: RefObject<HTMLInputElement | null>;
@@ -4797,7 +4800,7 @@ interface AdminWiretapFormProps {
 }
 
 export default function AdminWiretapForm({
-  editingId, text, setText, isMandatory, setIsMandatory, storeLocally, setStoreLocally,
+  editingId, text, setText, storeLocally, setStoreLocally,
   imageInputRef, audioInputRef, setImage, setAudio, choices, addChoice, updateChoice,
   removeChoice, handleSubmit, handleCancelEdit, isProcessing, statusMessage, contextHeader,
   previewUrl, audioPreviewUrl
@@ -4819,13 +4822,6 @@ export default function AdminWiretapForm({
       {statusMessage && <div className={`status-message ${statusMessage.type}`}>{statusMessage.message}</div>}
 
       <form onSubmit={handleSubmit} className="admin-form">
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(196, 139, 54, 0.1)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem', border: '1px solid rgba(196, 139, 54, 0.3)' }}>
-          <input type="checkbox" id="mandatory-toggle" checked={isMandatory} onChange={(e) => setIsMandatory(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-amber)' }} />
-          <label htmlFor="mandatory-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', cursor: 'pointer' }}>
-            <strong>Mandatory Intercept:</strong> Agents must decrypt and decode this wiretap to clear the phase.
-          </label>
-        </div>
-
         <div className="form-group">
           <label>Intercept Transcript / Prompt Text</label>
           <textarea className="admin-textarea" required value={text} onChange={(e) => setText(e.target.value)} style={{ minHeight: '100px' }} placeholder="Transcribe the audio feed or outline the wiretap objectives..." />
@@ -6314,6 +6310,48 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   to { opacity: 0.95; transform: translateY(0); }
 }
 
+/* --- SHARED CHOICE PILL STYLES --- */
+.choices-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.choice-pill {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 0.85rem;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.choice-pill.interactable {
+  cursor: pointer;
+}
+
+.choice-pill.interactable:hover {
+  background: rgba(var(--border-light-rgb), 0.1);
+  border-color: rgba(var(--border-light-rgb), 0.4);
+  color: var(--text-primary);
+  box-shadow: inset 3px 0 0 0 var(--text-secondary); 
+}
+
+.choice-pill.selected {
+  background: rgba(var(--bg-dark-rgb), 1);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: inset 3px 0 0 0 var(--accent-cyan); 
+}
+
+.choice-pill.historical-correct {
+  background: rgba(0, 255, 128, 0.1);
+  border-color: #00FF80;
+  color: #00FF80;
+}
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\CampaignTab.css
 ----------------------------------------
@@ -6778,36 +6816,24 @@ export default function CampaignTab() {
                             handleSubmitTheory={handleSubmitTheory}
                           />
                         ) : level.presentation_type === 'location' ? (
-                          <LocationPhase level={level} status={status} />
+                          <LocationPhase 
+                            level={level} 
+                            status={status} 
+                            isHost={isHost}
+                            isSubmitting={isSubmitting}
+                            handleSubmitTheory={handleSubmitTheory}
+                          />
                         ) : level.presentation_type === 'wiretap' ? (
-                          <WiretapPhase level={level} status={status} totalPlayers={totalPlayers} getQuestionConsensus={getQuestionConsensus} />
+                          <WiretapPhase 
+                            level={level} 
+                            status={status} 
+                            totalPlayers={totalPlayers} 
+                            getQuestionConsensus={getQuestionConsensus} 
+                            isHost={isHost}
+                            isSubmitting={isSubmitting}
+                            handleSubmitTheory={handleSubmitTheory}
+                          />
                         ) : null}
-
-                        {status === 'active' && level.presentation_type !== 'interrogation' && (
-                          <div className="submit-theory-container">
-                            {isHost ? (
-                              <button 
-                                className="btn-primary submit-theory-btn"
-                                disabled={isSubmitting}
-                                onClick={handleSubmitTheory}
-                              >
-                                {isSubmitting 
-                                  ? 'Processing...' 
-                                  : level.presentation_type === 'location' 
-                                    ? 'Conclude Scene Sweep' 
-                                    : 'Submit Final Verdict'
-                                }
-                              </button>
-                            ) : (
-                              <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
-                                {level.presentation_type === 'location'
-                                  ? 'Sweep in progress. Awaiting Host to conclude the search...'
-                                  : 'Awaiting Host to submit final verdict...'
-                                }
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </>
                     )}
                   </div>
@@ -7051,9 +7077,12 @@ import './LocationPhase.css';
 interface LocationPhaseProps {
   level: Level;
   status: string;
+  isHost: boolean;
+  isSubmitting: boolean;
+  handleSubmitTheory: (e: React.MouseEvent) => void;
 }
 
-export default function LocationPhase({ level, status }: LocationPhaseProps) {
+export default function LocationPhase({ level, status, isHost, isSubmitting, handleSubmitTheory }: LocationPhaseProps) {
   const { room, accumulatedEvidences } = useRoomState();
   const { localVotes, handleSelectChoice, addToast } = useInvestigationPhase();
 
@@ -7109,6 +7138,71 @@ export default function LocationPhase({ level, status }: LocationPhaseProps) {
       return saved ? new Set(JSON.parse(saved)) : new Set();
     } catch { return new Set(); }
   });
+
+  // --- NEW: P2P State Synchronization ---
+  const stateRef = useRef({ deadEnds: clickedDeadEnds, found: foundPoints });
+  useEffect(() => {
+    stateRef.current = { deadEnds: clickedDeadEnds, found: foundPoints };
+  }, [clickedDeadEnds, foundPoints]);
+
+  useEffect(() => {
+    if (!window.Echo) return;
+    const channel = window.Echo.private(`room.${room.id}`);
+
+    // 1. Listen for real-time clicks from other agents
+    channel.listenForWhisper('location-interacted', (e: { type: string, choiceId: number }) => {
+      if (e.type === 'deadEnd') {
+        setClickedDeadEnds(prev => {
+          const next = new Set(prev).add(e.choiceId);
+          sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(next)));
+          return next;
+        });
+      } else if (e.type === 'foundPoint') {
+        setFoundPoints(prev => {
+          const next = new Set(prev).add(e.choiceId);
+          sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(next)));
+          return next;
+        });
+      }
+    });
+
+    // 2. Listen for late-joiners requesting the current board state
+    channel.listenForWhisper('request-location-sync', () => {
+      const { deadEnds, found } = stateRef.current;
+      if (deadEnds.size > 0 || found.size > 0) {
+        channel.whisper('location-sync-reply', {
+          deadEnds: Array.from(deadEnds),
+          foundPoints: Array.from(found)
+        });
+      }
+    });
+
+    // 3. Receive the sync data if we were the late-joiner
+    channel.listenForWhisper('location-sync-reply', (e: { deadEnds: number[], foundPoints: number[] }) => {
+      if (e.deadEnds?.length) {
+        setClickedDeadEnds(prev => {
+          const next = new Set([...prev, ...e.deadEnds]);
+          sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(next)));
+          return next;
+        });
+      }
+      if (e.foundPoints?.length) {
+        setFoundPoints(prev => {
+          const next = new Set([...prev, ...e.foundPoints]);
+          sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(next)));
+          return next;
+        });
+      }
+    });
+
+    // 4. Trigger the sync request 1 second after mount to ensure connections are stable
+    const syncTimer = setTimeout(() => {
+      channel.whisper('request-location-sync', {});
+    }, 1000);
+
+    return () => clearTimeout(syncTimer);
+  }, [room.id, deadEndsStorageKey, foundPointsStorageKey]);
+  // ----------------------------------------
 
   if (!level.questions) return null;
 
@@ -7180,6 +7274,9 @@ export default function LocationPhase({ level, status }: LocationPhaseProps) {
         return newSet;
       });
 
+      // Broadcast correct find
+      window.Echo?.private(`room.${room.id}`).whisper('location-interacted', { type: 'foundPoint', choiceId: choice.id });
+
       if (isFirstTimeDiscovery) {
         handleSelectChoice(e, qId, choice, status);
       }
@@ -7195,6 +7292,9 @@ export default function LocationPhase({ level, status }: LocationPhaseProps) {
           sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(newSet)));
           return newSet;
         });
+
+        // Broadcast dead end
+        window.Echo?.private(`room.${room.id}`).whisper('location-interacted', { type: 'deadEnd', choiceId: choice.id });
       }
 
     popupTimeoutRef.current = setTimeout(() => {
@@ -7286,6 +7386,10 @@ export default function LocationPhase({ level, status }: LocationPhaseProps) {
     document.body
   ) : null;
 
+  // Evaluate if any interaction has occurred globally or via our synced local state
+  const hasGlobalInteraction = level.questions?.some(q => room.votes?.some((v: any) => v.question_id === q.id));
+  const hasInteracted = foundPoints.size > 0 || clickedDeadEnds.size > 0 || hasGlobalInteraction;
+
   return (
     <div className="location-phase-wrapper" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
       {displayQuestions.map(q => (
@@ -7305,79 +7409,29 @@ export default function LocationPhase({ level, status }: LocationPhaseProps) {
         </div>
       ))}
 
+      {/* Conditional Leave Location Button */}
+      {status === 'active' && (
+        <div style={{ gridColumn: '1 / -1', marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
+          {isHost ? (
+            <button
+              className="btn-primary"
+              disabled={!hasInteracted || isSubmitting}
+              onClick={handleSubmitTheory}
+              style={{ padding: '1rem 3rem', width: 'auto' }}
+            >
+              {isSubmitting ? 'Processing...' : 'Leave Location'}
+            </button>
+          ) : (
+            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
+              Sweep in progress. Awaiting Host to conclude the search...
+            </div>
+          )}
+        </div>
+      )}
+
       {fullScreenViewer}
     </div>
   );
-}
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\StandardPhase.css
-----------------------------------------
-.questions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.question-item {
-  display: flex;
-  gap: 1rem;
-  animation: fadeIn 0.4s ease-out forwards;
-}
-
-.question-number {
-  font-family: var(--font-mono);
-  font-size: 1.2rem;
-  font-weight: 700;
-  color: rgba(255, 255, 255, 0.2);
-}
-
-.question-text {
-  margin: 0 0 0.75rem 0;
-  font-size: 1rem;
-  color: var(--text-primary);
-  line-height: 1.4;
-}
-
-.choices-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.choice-pill {
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.5rem 0.85rem;
-  border-radius: 4px;
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-}
-
-.choice-pill.interactable {
-  cursor: pointer;
-}
-
-.choice-pill.interactable:hover {
-  background: rgba(var(--border-light-rgb), 0.1);
-  border-color: rgba(var(--border-light-rgb), 0.4);
-  color: var(--text-primary);
-  box-shadow: inset 3px 0 0 0 var(--text-secondary); 
-}
-
-.choice-pill.selected {
-  background: rgba(var(--bg-dark-rgb), 1);
-  border-color: var(--accent-cyan);
-  color: var(--accent-cyan);
-  box-shadow: inset 3px 0 0 0 var(--accent-cyan); 
-}
-
-.choice-pill.historical-correct {
-  background: rgba(0, 255, 128, 0.1);
-  border-color: #00FF80;
-  color: #00FF80;
 }
 
 
@@ -7558,18 +7612,17 @@ interface WiretapPhaseProps {
   status: string;
   totalPlayers: number;
   getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
+  isHost: boolean;
+  isSubmitting: boolean;
+  handleSubmitTheory: (e: React.MouseEvent) => void;
 }
 
 export default function WiretapPhase({ 
-  level, status, totalPlayers, getQuestionConsensus
+  level, status, totalPlayers, getQuestionConsensus, isHost, isSubmitting, handleSubmitTheory
 }: WiretapPhaseProps) {
 
   const { room, accumulatedEvidences } = useRoomState();
   const { localVotes, handleSelectChoice, triggerWiretap, isTriggeringWiretap } = useInvestigationPhase();
-
-  const storedUser = localStorage.getItem('auth_user');
-  const currentUser = storedUser ? JSON.parse(storedUser) : null;
-  const isHost = currentUser?.id === room.host_user_id;
 
   const playedWiretaps = new Set(room.played_wiretaps?.map((q: any) => q.id) || []);
 
@@ -7609,7 +7662,6 @@ export default function WiretapPhase({
       const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
       
       if (winningChoice?.outcomes?.next_question_id) {
-        // FIXED: Explicitly cast to Number
         currentId = Number(winningChoice.outcomes.next_question_id);
       } else {
         const currentIndex = level.questions.findIndex(x => x.id === q.id);
@@ -7619,6 +7671,10 @@ export default function WiretapPhase({
       currentId = null; 
     }
   }
+
+  // --- NEW: Audio Completion Validation ---
+  const requiredAudios = level.questions?.filter(q => q.audio_url) || [];
+  const allAudiosPlayed = requiredAudios.length === 0 || requiredAudios.every(q => playedWiretaps.has(q.id));
 
   return (
     <div className="wiretap-phase-wrapper">
@@ -7729,6 +7785,26 @@ export default function WiretapPhase({
           );
         })}
       </div>
+
+      {/* --- NEW: Conditional Submission Button --- */}
+      {status === 'active' && (
+        <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(0, 229, 255, 0.2)', paddingTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
+          {isHost ? (
+            <button
+              className="btn-primary"
+              disabled={!allAudiosPlayed || isSubmitting}
+              onClick={handleSubmitTheory}
+              style={{ padding: '1rem 3rem', width: 'auto' }}
+            >
+              {isSubmitting ? 'Processing...' : 'Submit Intercept Analysis'}
+            </button>
+          ) : (
+            <div style={{ padding: '1rem', background: 'rgba(0, 229, 255, 0.05)', border: '1px dashed rgba(0, 229, 255, 0.2)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
+              Awaiting Host to submit intercept analysis...
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -7838,14 +7914,14 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\Campaign\Levels\Interrogation\InterrogationPhase.tsx
 ----------------------------------------
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Level, Choice, Question } from '@/types';
 import './InterrogationPhase.css';
 
 // --- TYPEWRITER COMPONENT ---
-const Typewriter = ({ text, delay = 15, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
+const Typewriter = ({ text, delay = 30, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
   const spanRef = useRef<HTMLSpanElement>(null);
   const savedOnComplete = useRef(onComplete);
   
@@ -7943,43 +8019,72 @@ export default function InterrogationPhase({
     return initial;
   });
 
-  if (!level.questions || level.questions.length === 0) return null;
-
-  const visibleQuestions: Question[] = [];
-  let currentId: number | null = level.questions[0].id; 
-  
-  while (currentId) {
-    const q = level.questions.find(x => x.id === currentId);
-    if (!q) break;
-    visibleQuestions.push(q);
+  // --- PERFORMANCE OPTIMIZATION: Memoize the heavy tree traversal ---
+  const { visibleQuestions, consensusMap } = useMemo(() => {
+    const questions: Question[] = [];
+    const map: Record<number, ReturnType<typeof getQuestionConsensus>> = {};
     
-    const consensus = getQuestionConsensus(q);
-    if (consensus.isResolved && consensus.winningChoiceId) {
-      const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
-      
-      if (winningChoice?.outcomes?.next_question_id) {
-        // FIXED: Explicitly cast to Number to prevent strict equality JSON failures
-        currentId = Number(winningChoice.outcomes.next_question_id);
-      } else {
-        const currentIndex = level.questions.findIndex(x => x.id === q.id);
-        currentId = level.questions[currentIndex + 1]?.id || null;
-      }
-    } else {
-      currentId = null; 
+    if (!level.questions || level.questions.length === 0) {
+      return { visibleQuestions: questions, consensusMap: map };
     }
-  }
+
+    let currentId: number | null = level.questions[0].id; 
+    
+    while (currentId) {
+      const q = level.questions.find(x => x.id === currentId);
+      if (!q) break;
+      questions.push(q);
+      
+      const consensus = getQuestionConsensus(q);
+      map[q.id] = consensus;
+      
+      if (consensus.isResolved && consensus.winningChoiceId) {
+        const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
+        
+        if (winningChoice?.outcomes?.next_question_id) {
+          currentId = Number(winningChoice.outcomes.next_question_id);
+        } else {
+          currentId = null; 
+        }
+      } else {
+        currentId = null; 
+      }
+    }
+    return { visibleQuestions: questions, consensusMap: map };
+  }, [level.questions, room.votes, getQuestionConsensus]);
+
+  if (visibleQuestions.length === 0) return null;
 
   const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
   const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
 
+  // --- HYBRID TERMINAL NODE LOGIC ---
   const lastQuestion = visibleQuestions[visibleQuestions.length - 1];
-  const isTerminalNode = lastQuestion && (!lastQuestion.choices || lastQuestion.choices.length === 0);
-  const isLastSuspectDone = lastQuestion && (suspectTypingComplete[lastQuestion.id] || status === 'completed');
+  
+  // Scenario A: The Suspect gets the last word (Zero choices)
+  const hasNoChoices = !lastQuestion?.choices || lastQuestion.choices.length === 0;
+  
+  // Scenario B: The Investigators get the last word (Choice points to null)
+  const lastConsensus = lastQuestion ? consensusMap[lastQuestion.id] : null;
+  const finalWinningChoice = lastConsensus?.winningChoiceId 
+    ? lastQuestion.choices?.find(c => c.id === lastConsensus.winningChoiceId) 
+    : null;
+  const isPlayerTerminal = lastConsensus?.isResolved && finalWinningChoice && !finalWinningChoice?.outcomes?.next_question_id;
+
+  // The node is terminal if EITHER scenario is true
+  const isTerminalNode = hasNoChoices || isPlayerTerminal;
+  
+  // Dynamically check which typewriter animation to wait for
+  const isReadyToSubmit = lastQuestion && (
+    hasNoChoices 
+      ? (suspectTypingComplete[lastQuestion.id] || status === 'completed') 
+      : (investigatorTypingComplete[lastQuestion.id] || status === 'completed')
+  );
 
   return (
     <div className="interrogation-log">
       {visibleQuestions.map((q, qIdx) => {
-        const consensus = getQuestionConsensus(q);
+        const consensus = consensusMap[q.id];
         const prevQ = qIdx > 0 ? visibleQuestions[qIdx - 1] : null;
         const isVisible = status === 'completed' || qIdx === 0 || (prevQ && investigatorTypingComplete[prevQ.id]);
         
@@ -8002,14 +8107,14 @@ export default function InterrogationPhase({
                 <Typewriter 
                   text={q.text} 
                   skip={skipTyping} 
-                  delay={15} 
                   cacheKey={`room_${room.id}_suspect_${q.id}`} 
                   onComplete={() => handleSuspectDone(q.id)} 
                 />
               </p>
             </div>
 
-            {isSuspectDone && (
+            {/* --- UI FIX: Only render investigator area if choices exist --- */}
+            {isSuspectDone && q.choices && q.choices.length > 0 && (
               <div className="investigator-interaction-area">
                 {status === 'active' && !isGloballyLocked ? (
                   <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
@@ -8053,7 +8158,6 @@ export default function InterrogationPhase({
                         <Typewriter 
                           text={status === 'completed' ? (q.choices?.find(c => !c.outcomes?.gives_strike)?.text || '...') : (winningChoice?.text || '...')} 
                           skip={skipTyping} 
-                          delay={40} 
                           cacheKey={`room_${room.id}_investigator_${q.id}`} 
                           onComplete={() => handleInvestigatorDone(q.id)}
                         />
@@ -8067,7 +8171,7 @@ export default function InterrogationPhase({
         );
       })}
       
-      {isTerminalNode && isLastSuspectDone && status === 'active' && (
+      {isTerminalNode && isReadyToSubmit && status === 'active' && (
         <div className="submit-theory-container" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '1.5rem' }}>
           {isHost ? (
             <button className="btn-primary submit-theory-btn" disabled={isSubmitting} onClick={handleSubmitTheory}>

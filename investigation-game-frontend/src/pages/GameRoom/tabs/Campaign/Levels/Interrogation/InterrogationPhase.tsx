@@ -17,7 +17,6 @@ const Typewriter = ({ text, delay = 30, onComplete, skip = false, cacheKey = '' 
     const el = spanRef.current;
     if (!el) return;
 
-    // Safety check for empty strings
     if (!text) {
       if (savedOnComplete.current) savedOnComplete.current();
       return;
@@ -103,7 +102,6 @@ export default function InterrogationPhase({
     return initial;
   });
 
-  // --- PERFORMANCE OPTIMIZATION: Memoize the heavy tree traversal ---
   const { visibleQuestions, consensusMap } = useMemo(() => {
     const questions: Question[] = [];
     const map: Record<number, ReturnType<typeof getQuestionConsensus>> = {};
@@ -142,23 +140,17 @@ export default function InterrogationPhase({
   const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
   const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
 
-  // --- HYBRID TERMINAL NODE LOGIC ---
   const lastQuestion = visibleQuestions[visibleQuestions.length - 1];
-  
-  // Scenario A: The Suspect gets the last word (Zero choices)
   const hasNoChoices = !lastQuestion?.choices || lastQuestion.choices.length === 0;
   
-  // Scenario B: The Investigators get the last word (Choice points to null)
   const lastConsensus = lastQuestion ? consensusMap[lastQuestion.id] : null;
   const finalWinningChoice = lastConsensus?.winningChoiceId 
     ? lastQuestion.choices?.find(c => c.id === lastConsensus.winningChoiceId) 
     : null;
   const isPlayerTerminal = lastConsensus?.isResolved && finalWinningChoice && !finalWinningChoice?.outcomes?.next_question_id;
 
-  // The node is terminal if EITHER scenario is true
   const isTerminalNode = hasNoChoices || isPlayerTerminal;
   
-  // Dynamically check which typewriter animation to wait for
   const isReadyToSubmit = lastQuestion && (
     hasNoChoices 
       ? (suspectTypingComplete[lastQuestion.id] || status === 'completed') 
@@ -197,59 +189,64 @@ export default function InterrogationPhase({
               </p>
             </div>
 
-            {/* --- UI FIX: Only render investigator area if choices exist --- */}
             {isSuspectDone && q.choices && q.choices.length > 0 && (
-              <div className="investigator-interaction-area">
-                {status === 'active' && !isGloballyLocked ? (
-                  <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
-                    <span className="speaker-label" style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
-                      {consensus.isTie 
-                        ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
-                        : hasLocalVote 
-                          ? `VOTE CAST (${consensus.votesCast}/${totalPlayers}) - YOU MAY REASSIGN` 
-                          : `SELECT RESPONSE (${consensus.votesCast}/${totalPlayers})`
-                      }
-                    </span>
-                    <div className="vote-choices-grid">
-                      {q.choices?.map(c => {
-                        const isSelected = localVotes[q.id] === c.id;
-                        const isNarrativeLocked = checkIsLockedByNarrative(c);
-                        const pillClass = isNarrativeLocked
-                          ? 'choice-pill locked-choice'
-                          : `choice-pill interactable ${isSelected ? 'selected' : ''}`;
+              <>
+                {/* 1. Only show voting choices if the phase is active and waiting for a verdict */}
+                {status === 'active' && !isGloballyLocked && (
+                  <div className="investigator-interaction-area">
+                    <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
+                      <span className="speaker-label" style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
+                        {consensus.isTie 
+                          ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
+                          : hasLocalVote 
+                            ? `VOTE CAST (${consensus.votesCast}/${totalPlayers}) - YOU MAY REASSIGN` 
+                            : `SELECT RESPONSE (${consensus.votesCast}/${totalPlayers})`
+                        }
+                      </span>
+                      <div className="vote-choices-grid">
+                        {q.choices?.map(c => {
+                          const isSelected = localVotes[q.id] === c.id;
+                          const isNarrativeLocked = checkIsLockedByNarrative(c);
+                          const pillClass = isNarrativeLocked
+                            ? 'choice-pill locked-choice'
+                            : `choice-pill interactable ${isSelected ? 'selected' : ''}`;
 
-                        return (
-                          <span 
-                            key={c.id} 
-                            className={pillClass}
-                            onClick={(e) => {
-                              if (isNarrativeLocked) return;
-                              handleSelectChoice(e, q.id, c, status);
-                            }}
-                            style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}
-                          >
-                            {isNarrativeLocked ? '🔒 [ MISSING INTEL ]' : c.text}
-                          </span>
-                        );
-                      })}
+                          return (
+                            <span 
+                              key={c.id} 
+                              className={pillClass}
+                              onClick={(e) => {
+                                if (isNarrativeLocked) return;
+                                handleSelectChoice(e, q.id, c, status);
+                              }}
+                              style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}
+                            >
+                              {isNarrativeLocked ? '🔒 [ MISSING INTEL ]' : c.text}
+                            </span>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
-                ) : (
-                  (isGloballyLocked || status === 'completed') && (
+                )}
+
+                {/* 2. Only show the investigator bubble if a specific choice was successfully locked in */}
+                {isGloballyLocked && winningChoice && (
+                  <div className="investigator-interaction-area">
                     <div className="chat-bubble agent-bubble">
                       <span className="speaker-label investigator">INVESTIGATORS</span>
                       <p>
                         <Typewriter 
-                          text={status === 'completed' ? (q.choices?.find(c => !c.outcomes?.gives_strike)?.text || '...') : (winningChoice?.text || '...')} 
+                          text={winningChoice.text} 
                           skip={skipTyping} 
                           cacheKey={`room_${room.id}_investigator_${q.id}`} 
                           onComplete={() => handleInvestigatorDone(q.id)}
                         />
                       </p>
                     </div>
-                  )
+                  </div>
                 )}
-              </div>
+              </>
             )}
           </div>
         );
