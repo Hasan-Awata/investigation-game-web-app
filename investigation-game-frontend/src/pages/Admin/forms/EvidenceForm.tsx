@@ -81,7 +81,9 @@ export default function EvidenceForm() {
       formData.append('metadata', JSON.stringify(metadata));
     }
     
-    if (evidenceType === 'image' && image) formData.append('image', image);
+  if ((evidenceType === 'image' || subType === 'background_check') && image) {
+    formData.append('image', image);
+  }
     if (evidenceType === 'audio' && audio) formData.append('audio', audio);
 
     if (editingId) {
@@ -165,10 +167,12 @@ export default function EvidenceForm() {
             updateMeta={updateMeta} 
           />
 
-          {evidenceType === 'image' && (
+          {(evidenceType === 'image' || subType === 'background_check') && (
             <div className="form-group" style={{ marginTop: '1.5rem' }}>
-              <label>Evidence Image</label>
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}><strong>Optimal:</strong> 1:1 or 3:4 portrait. Ensure written text is legible. WEBP or JPG. Max 4MB.</p>
+              <label>{subType === 'background_check' ? 'Subject Mugshot / ID Photo' : 'Evidence Image'}</label>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                <strong>Optimal:</strong> 1:1 or 3:4 portrait. WEBP or JPG. Max 4MB.
+              </p>
               <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
             </div>
           )}
@@ -181,10 +185,12 @@ export default function EvidenceForm() {
             </div>
           )}
 
-          {(evidenceType === 'image' || evidenceType === 'audio') && (
+          {(evidenceType === 'image' || evidenceType === 'audio' || subType === 'background_check') && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
               <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
-              <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer', margin: 0 }}><strong>Store Locally on Server</strong></label>
+              <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer', margin: 0 }}>
+                <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
+              </label>
             </div>
           )}
 

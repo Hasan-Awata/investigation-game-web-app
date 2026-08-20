@@ -6,7 +6,7 @@ interface MediaViewerProps {
 }
 
 export default function MediaViewer({ evidence }: MediaViewerProps) {
-  const { evidence_type, description, img_url, audio_url, metadata } = evidence;
+  const { evidence_type, description, img_url, audio_url, metadata, title } = evidence;
 
   const renderContent = () => {
     switch (evidence_type) {
@@ -15,10 +15,13 @@ export default function MediaViewer({ evidence }: MediaViewerProps) {
           <div className="media-image-container">
             <img 
               src={img_url || '/placeholder-crime-scene.jpg'} 
-              alt={evidence.title} 
+              alt={title} 
               className="media-full-image" 
             />
-            {description && <p className="media-caption">{description}</p>}
+            <div className="media-meta-plaque">
+              <h3 className="media-plaque-title">{title}</h3>
+              {description && <p className="media-plaque-desc">{description}</p>}
+            </div>
           </div>
         );
 
@@ -29,7 +32,10 @@ export default function MediaViewer({ evidence }: MediaViewerProps) {
             <audio controls src={audio_url || ''} className="media-audio-player">
               Your browser does not support the audio element.
             </audio>
-            {description && <p className="media-caption">{description}</p>}
+            <div className="media-meta-plaque">
+              <h3 className="media-plaque-title">{title}</h3>
+              {description && <p className="media-plaque-desc">{description}</p>}
+            </div>
           </div>
         );
 
@@ -38,10 +44,11 @@ export default function MediaViewer({ evidence }: MediaViewerProps) {
           <div className="media-testimony-container">
             <div className="testimony-header">
               <span className="testimony-label">OFFICIAL TRANSCRIPT</span>
+              <h3 className="media-plaque-title" style={{ marginTop: '0.5rem', marginBottom: 0 }}>{title}</h3>
+              {description && <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)' }}>{description}</p>}
             </div>
             <div className="testimony-body">
-              {/* Fallback to description if transcript metadata isn't set yet */}
-              {metadata?.transcript || description || 'Transcript unavailable.'}
+              {metadata?.transcript || 'Transcript unavailable.'}
             </div>
           </div>
         );

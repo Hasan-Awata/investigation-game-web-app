@@ -107,27 +107,62 @@ export default function DocumentViewer({ evidence }: DocumentViewerProps) {
       case 'background_check':
         return (
           <>
-            <div className="doc-header-block" style={{ borderBottom: '3px solid #1a1a1a' }}>
-              <h2 style={{ margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>BACKGROUND INVESTIGATION</h2>
-              <div style={{ marginTop: '1.5rem' }}>
-                <div className="doc-meta-row"><span className="doc-meta-label">SUBJECT:</span> <span>{metadata.subject_name}</span></div>
-                <div className="doc-meta-row"><span className="doc-meta-label">DOB:</span> <span>{metadata.dob}</span></div>
+            <div className="bg-check-header">
+              <div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>DEPARTMENT OF PUBLIC SAFETY - RECORDS DIVISION</div>
+                <h2 className="bg-check-title">BACKGROUND INVESTIGATION</h2>
+              </div>
+              <div className="bg-check-barcode">*{evidence.id}*</div>
+            </div>
+
+            <div className="bg-check-id-block">
+              {/* Uses the uploaded evidence image, or falls back to a silhouette */}
+              <img src={evidence.img_url || '/placeholder-mugshot.jpg'} alt="Mugshot" className="bg-check-mugshot" />
+              
+              <div className="bg-check-data">
+                <div className="bg-check-data-row">
+                  <span className="bg-check-label">SUBJECT NAME:</span>
+                  <span className="bg-check-value">{metadata.subject_name}</span>
+                </div>
+                <div className="bg-check-data-row">
+                  <span className="bg-check-label">DOB:</span>
+                  <span className="bg-check-value">{metadata.dob}</span>
+                </div>
+                <div className="bg-check-data-row">
+                  <span className="bg-check-label">SEX / AGE:</span>
+                  <span className="bg-check-value">{metadata.sex_age}</span>
+                </div>
+                <div className="bg-check-data-row">
+                  <span className="bg-check-label">ALIASES:</span>
+                  <span className="bg-check-value">"{metadata.aliases}"</span>
+                </div>
+                <div className="bg-check-data-row" style={{ borderBottom: 'none' }}>
+                  <span className="bg-check-label">LAST KNOWN ADDRESS:</span>
+                  <span className="bg-check-value" dangerouslySetInnerHTML={{ __html: metadata.last_known_address }} />
+                </div>
               </div>
             </div>
-            
-            <div className="doc-body">
-              <p style={{ fontWeight: 'bold', textDecoration: 'underline' }}>CRIMINAL RECORD & FLAGS</p>
-              <p style={{ fontFamily: 'var(--font-mono)', background: 'rgba(0,0,0,0.05)', padding: '1rem', borderLeft: '3px solid #1a1a1a' }}>
-                {metadata.criminal_record}
-              </p>
-              
-              {metadata.investigator_notes && (
-                <>
-                  <p style={{ fontWeight: 'bold', textDecoration: 'underline', marginTop: '2rem' }}>INVESTIGATOR NOTES</p>
-                  <p style={{ fontStyle: 'italic' }}>{metadata.investigator_notes}</p>
-                </>
-              )}
+
+            <div className="bg-check-section">
+              <div className="bg-check-section-title">Employment & Financial Profile</div>
+              <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: metadata.employment_financial }} />
             </div>
+
+            <div className="bg-check-section">
+              <div className="bg-check-section-title">Criminal History & Warrants</div>
+              <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: metadata.criminal_history }} />
+            </div>
+
+            <div className="bg-check-section">
+              <div className="bg-check-section-title">Known Associates</div>
+              <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: metadata.associates }} />
+            </div>
+
+            {metadata.investigator_notes && (
+              <div className="handwritten-note">
+                {metadata.investigator_notes}
+              </div>
+            )}
           </>
         );
 

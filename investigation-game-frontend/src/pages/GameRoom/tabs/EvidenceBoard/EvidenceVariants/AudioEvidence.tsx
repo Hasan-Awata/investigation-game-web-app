@@ -1,4 +1,4 @@
-import type { Evidence } from '../../../../types';
+import type { Evidence } from '@/types';
 
 export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
   return (
@@ -8,7 +8,7 @@ export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
         <div className="audio-spool"></div>
       </div>
       <h4 className="evidence-title">{evidence.title}</h4>
-      <span className="evidence-id">Voice Record</span>
+      <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
     </div>
   );
 }

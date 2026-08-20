@@ -7,10 +7,20 @@ export interface AutopsyMetadata {
   anomalies: string;
 }
 
+export interface BallisticsExhibit {
+  reference: string;
+  description: string;
+}
+
 export interface BallisticsMetadata {
-  weapon_type: string;
-  caliber: string;
-  striation_match: boolean;
+  case_number: string;
+  exhibits: BallisticsExhibit[];
+  firearm_specs: string;
+  microscopic_analysis: string;
+  trajectory_range: string;
+  conclusion: string;
+  examiner_name: string;
+  investigator_notes: string;
 }
 
 export interface DnaMetadata {

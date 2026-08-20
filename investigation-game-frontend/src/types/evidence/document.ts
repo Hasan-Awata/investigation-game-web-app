@@ -40,7 +40,12 @@ export interface MemoMetadata {
 export interface BackgroundCheckMetadata {
   subject_name: string;
   dob: string;
-  criminal_record: string;
+  sex_age: string;
+  aliases: string;
+  last_known_address: string;
+  employment_financial: string;
+  criminal_history: string;
+  associates: string;
   investigator_notes: string;
 }
 

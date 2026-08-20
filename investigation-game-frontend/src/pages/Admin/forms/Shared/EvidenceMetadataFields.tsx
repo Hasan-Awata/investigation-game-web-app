@@ -61,19 +61,76 @@ export default function EvidenceMetadataFields({
           </>
         );
 
-      case 'ballistics':
+      case 'ballistics': {
+        const exhibits = metadata.exhibits || [];
+
+        const addExhibit = () => {
+          updateMeta('exhibits', [...exhibits, { reference: '', description: '' }]);
+        };
+
+        const updateExhibit = (index: number, field: string, value: string) => {
+          const newEx = [...exhibits];
+          newEx[index] = { ...newEx[index], [field]: value };
+          updateMeta('exhibits', newEx);
+        };
+
+        const removeExhibit = (index: number) => {
+          const newEx = exhibits.filter((_: any, i: number) => i !== index);
+          updateMeta('exhibits', newEx);
+        };
+
         return (
           <>
-            <div className="admin-form-row">
-              <div className="form-group"><label>Weapon Classification</label><input type="text" className="admin-input" value={metadata.weapon_type || ''} onChange={e => updateMeta('weapon_type', e.target.value)} required /></div>
-              <div className="form-group"><label>Caliber</label><input type="text" className="admin-input" value={metadata.caliber || ''} onChange={e => updateMeta('caliber', e.target.value)} required /></div>
+            <div style={{ background: 'rgba(0, 0, 0, 0.4)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', border: '1px dashed var(--accent-cyan)' }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                <strong>[ FORMATTING GUIDE ]</strong> Use HTML tags to trigger immersive effects:
+              </p>
+              <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                <li><code>&lt;span className="redacted"&gt;Text&lt;/span&gt;</code> : Black redaction bar.</li>
+                <li><code>&lt;span className="highlighted"&gt;Text&lt;/span&gt;</code> : Yellow highlighter marker.</li>
+              </ul>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0, 229, 255, 0.1)', padding: '1rem', borderRadius: '4px', border: '1px solid rgba(0, 229, 255, 0.3)' }}>
-              <input type="checkbox" checked={!!metadata.striation_match} onChange={e => updateMeta('striation_match', e.target.checked)} style={{ transform: 'scale(1.5)' }} />
-              <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}><strong>CONFIRM STRIATION MATCH</strong></label>
+
+            <div className="admin-form-row">
+              <div className="form-group"><label>Lab Case Number</label><input type="text" className="admin-input" value={metadata.case_number || ''} onChange={e => updateMeta('case_number', e.target.value)} required placeholder="e.g., 2026-BL-8842" /></div>
+              <div className="form-group"><label>Examiner Name</label><input type="text" className="admin-input" value={metadata.examiner_name || ''} onChange={e => updateMeta('examiner_name', e.target.value)} required /></div>
+            </div>
+
+            <div style={{ marginTop: '1.5rem', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>EVIDENCE INTAKE LOG (EXHIBITS)</label>
+                <button type="button" className="btn-secondary" onClick={addExhibit} style={{ padding: '0.25rem 0.75rem', width: 'auto', fontSize: '0.75rem' }}>+ Add Exhibit</button>
+              </div>
+
+              {exhibits.map((ex: any, idx: number) => (
+                <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                  <input type="text" className="admin-input" placeholder="Ref (e.g. EXHIBIT A)" value={ex.reference || ''} onChange={e => updateExhibit(idx, 'reference', e.target.value)} style={{ width: '160px' }} required />
+                  <input type="text" className="admin-input" placeholder="Description (e.g. Recovered 9mm Slug)" value={ex.description || ''} onChange={e => updateExhibit(idx, 'description', e.target.value)} style={{ flex: 1 }} required />
+                  <button type="button" onClick={() => removeExhibit(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem' }} title="Remove Exhibit">×</button>
+                </div>
+              ))}
+              
+              {exhibits.length === 0 && (
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>
+                  No exhibits logged. Add a row above.
+                </div>
+              )}
+            </div>
+
+            <h5 style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>TECHNICAL FINDINGS</h5>
+            <div className="form-group"><label>Firearm Specification Data</label><textarea className="admin-textarea" value={metadata.firearm_specs || ''} onChange={e => updateMeta('firearm_specs', e.target.value)} style={{ minHeight: '60px' }} /></div>
+            <div className="form-group"><label>Microscopic & Toolmark Analysis</label><textarea className="admin-textarea" value={metadata.microscopic_analysis || ''} onChange={e => updateMeta('microscopic_analysis', e.target.value)} style={{ minHeight: '80px' }} /></div>
+            <div className="form-group"><label>Trajectory & Range Findings (If Applicable)</label><textarea className="admin-textarea" value={metadata.trajectory_range || ''} onChange={e => updateMeta('trajectory_range', e.target.value)} style={{ minHeight: '60px' }} /></div>
+            
+            <div className="form-group" style={{ marginTop: '1rem' }}><label>Official Conclusion / Match Determination</label><textarea className="admin-textarea" value={metadata.conclusion || ''} onChange={e => updateMeta('conclusion', e.target.value)} required style={{ minHeight: '60px', borderLeft: '3px solid var(--accent-crimson)' }} placeholder="e.g., MATCH CONFIRMED: Striation patterns on Exhibit A match..." /></div>
+            
+            <div className="form-group" style={{ marginTop: '1.5rem', borderLeft: '3px solid var(--accent-crimson)', paddingLeft: '1rem' }}>
+              <label style={{ color: 'var(--accent-crimson)' }}>Investigator Handwritten Scrawls</label>
+              <textarea className="admin-textarea" value={metadata.investigator_notes || ''} onChange={e => updateMeta('investigator_notes', e.target.value)} placeholder="Will render in a red cursive marker font..." style={{ minHeight: '80px' }} />
             </div>
           </>
         );
+      }
 
       case 'dna':
         return (
@@ -213,12 +270,34 @@ export default function EvidenceMetadataFields({
       case 'background_check':
         return (
           <>
+            <div style={{ background: 'rgba(0, 0, 0, 0.4)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', border: '1px dashed var(--accent-cyan)' }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                <strong>[ FORMATTING GUIDE ]</strong> You can use these HTML tags inside any of the text boxes below to trigger immersive investigative effects:
+              </p>
+              <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                <li><code>&lt;span className="redacted"&gt;Text&lt;/span&gt;</code> : Renders a black redaction bar over the text.</li>
+                <li><code>&lt;span className="highlighted"&gt;Text&lt;/span&gt;</code> : Applies a yellow highlighter marker effect.</li>
+              </ul>
+            </div>
+
             <div className="admin-form-row">
               <div className="form-group"><label>Subject Name</label><input type="text" className="admin-input" value={metadata.subject_name || ''} onChange={e => updateMeta('subject_name', e.target.value)} required /></div>
-              <div className="form-group"><label>Date of Birth / Age</label><input type="text" className="admin-input" value={metadata.dob || ''} onChange={e => updateMeta('dob', e.target.value)} required /></div>
+              <div className="form-group"><label>DOB (e.g., 10/24/1985)</label><input type="text" className="admin-input" value={metadata.dob || ''} onChange={e => updateMeta('dob', e.target.value)} required /></div>
+              <div className="form-group"><label>Sex/Age (e.g., M / 41)</label><input type="text" className="admin-input" value={metadata.sex_age || ''} onChange={e => updateMeta('sex_age', e.target.value)} required /></div>
             </div>
-            <div className="form-group"><label>Criminal Record / Warrants</label><textarea className="admin-textarea" value={metadata.criminal_record || ''} onChange={e => updateMeta('criminal_record', e.target.value)} required /></div>
-            <div className="form-group"><label>Investigator Notes</label><textarea className="admin-textarea" value={metadata.investigator_notes || ''} onChange={e => updateMeta('investigator_notes', e.target.value)} /></div>
+            <div className="admin-form-row">
+              <div className="form-group"><label>Aliases / Monikers</label><input type="text" className="admin-input" value={metadata.aliases || ''} onChange={e => updateMeta('aliases', e.target.value)} /></div>
+              <div className="form-group"><label>Last Known Address</label><input type="text" className="admin-input" value={metadata.last_known_address || ''} onChange={e => updateMeta('last_known_address', e.target.value)} /></div>
+            </div>
+            
+            <div className="form-group" style={{ marginTop: '1rem' }}><label>Employment & Financial Flags</label><textarea className="admin-textarea" value={metadata.employment_financial || ''} onChange={e => updateMeta('employment_financial', e.target.value)} style={{ minHeight: '80px' }} /></div>
+            <div className="form-group"><label>Criminal History (Docket Format)</label><textarea className="admin-textarea" value={metadata.criminal_history || ''} onChange={e => updateMeta('criminal_history', e.target.value)} style={{ minHeight: '100px' }} /></div>
+            <div className="form-group"><label>Known Associates</label><textarea className="admin-textarea" value={metadata.associates || ''} onChange={e => updateMeta('associates', e.target.value)} style={{ minHeight: '80px' }} /></div>
+            
+            <div className="form-group" style={{ marginTop: '1rem', borderLeft: '3px solid var(--accent-crimson)', paddingLeft: '1rem' }}>
+              <label style={{ color: 'var(--accent-crimson)' }}>Investigator Handwritten Scrawls</label>
+              <textarea className="admin-textarea" value={metadata.investigator_notes || ''} onChange={e => updateMeta('investigator_notes', e.target.value)} placeholder="Will render in a red cursive marker font across the bottom of the page..." style={{ minHeight: '80px' }} />
+            </div>
           </>
         );
 

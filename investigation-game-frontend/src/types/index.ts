@@ -1,4 +1,5 @@
-import type { Evidence } from './evidence/index';
+import type { Evidence } from './evidence';
+export * from './evidence';
 
 export interface User {
   id: number;

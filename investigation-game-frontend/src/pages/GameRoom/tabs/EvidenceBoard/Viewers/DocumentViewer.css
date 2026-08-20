@@ -76,3 +76,120 @@
   background: #e6e4dc;
   font-weight: bold;
 }
+
+/* =========================================
+   BACKGROUND CHECK AESTHETIC
+   ========================================= */
+.bg-check-header {
+  border-bottom: 3px solid #1a1a1a;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.bg-check-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin: 0 0 0.25rem 0;
+  letter-spacing: 0.1em;
+}
+
+.bg-check-barcode {
+  font-family: 'Libre Barcode 39', monospace;
+  font-size: 3rem;
+  line-height: 0.7;
+  opacity: 0.4;
+}
+
+.bg-check-id-block {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.bg-check-mugshot {
+  width: 150px;
+  height: 180px;
+  background-color: #d1cfc7;
+  border: 2px solid #1a1a1a;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+  object-fit: cover;
+  filter: grayscale(100%) contrast(120%);
+}
+
+.bg-check-data {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.bg-check-data-row {
+  display: flex;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.2);
+  padding-bottom: 0.35rem;
+}
+
+.bg-check-label {
+  font-weight: bold;
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.bg-check-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.bg-check-section {
+  margin-bottom: 2.5rem;
+  border-top: 2px solid #1a1a1a;
+  padding-top: 1rem;
+}
+
+.bg-check-section-title {
+  font-weight: 900;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+
+.bg-check-text {
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* --- THE INVESTIGATIVE LAYER --- */
+.handwritten-note {
+  font-family: 'Caveat', 'Segoe Script', cursive;
+  color: #a33232; /* Red ink */
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+  transform: rotate(-3deg);
+  display: inline-block;
+  margin-top: 2rem;
+  white-space: pre-wrap;
+}
+
+.redacted {
+  background-color: #1a1a1a;
+  color: #1a1a1a;
+  padding: 0 6px;
+  user-select: none;
+  border-radius: 2px;
+}
+
+.highlighted {
+  background-color: rgba(255, 235, 59, 0.5);
+  padding: 0 2px;
+  border-radius: 2px;
+}

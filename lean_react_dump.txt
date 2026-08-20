@@ -38,13 +38,19 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\index.html
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>investigation-game</title>
+
+    <!-- 1. Preconnect to Google's servers to speed up loading -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    
+    <!-- 2. Request ALL app fonts in a single optimized network call -->
+    <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=IBM+Plex+Sans+Arabic:wght@400;600;700&family=Libre+Barcode+39&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
-
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\package.json
@@ -354,8 +360,6 @@ export default App;
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\index.css
 ----------------------------------------
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap');
-
 :root {
   /* Keep the dark bases, but make them richer */
   --bg-dark: #0a0b0d; 
@@ -2717,7 +2721,9 @@ export default function EvidenceForm() {
       formData.append('metadata', JSON.stringify(metadata));
     }
     
-    if (evidenceType === 'image' && image) formData.append('image', image);
+  if ((evidenceType === 'image' || subType === 'background_check') && image) {
+    formData.append('image', image);
+  }
     if (evidenceType === 'audio' && audio) formData.append('audio', audio);
 
     if (editingId) {
@@ -2801,10 +2807,12 @@ export default function EvidenceForm() {
             updateMeta={updateMeta} 
           />
 
-          {evidenceType === 'image' && (
+          {(evidenceType === 'image' || subType === 'background_check') && (
             <div className="form-group" style={{ marginTop: '1.5rem' }}>
-              <label>Evidence Image</label>
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}><strong>Optimal:</strong> 1:1 or 3:4 portrait. Ensure written text is legible. WEBP or JPG. Max 4MB.</p>
+              <label>{subType === 'background_check' ? 'Subject Mugshot / ID Photo' : 'Evidence Image'}</label>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                <strong>Optimal:</strong> 1:1 or 3:4 portrait. WEBP or JPG. Max 4MB.
+              </p>
               <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
             </div>
           )}
@@ -2817,10 +2825,12 @@ export default function EvidenceForm() {
             </div>
           )}
 
-          {(evidenceType === 'image' || evidenceType === 'audio') && (
+          {(evidenceType === 'image' || evidenceType === 'audio' || subType === 'background_check') && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
               <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
-              <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer', margin: 0 }}><strong>Store Locally on Server</strong></label>
+              <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer', margin: 0 }}>
+                <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
+              </label>
             </div>
           )}
 
@@ -5315,6 +5325,7 @@ export default function EvidenceMetadataFields({
           <option value="journal">Personal Diary / Journal</option>
           <option value="contract">Official Contract / Deed</option>
           <option value="memo">Corporate Memo / Note</option>
+          <option value="background_check">Background Check / Dossier</option> 
         </select>
       );
     }
@@ -5337,19 +5348,76 @@ export default function EvidenceMetadataFields({
           </>
         );
 
-      case 'ballistics':
+      case 'ballistics': {
+        const exhibits = metadata.exhibits || [];
+
+        const addExhibit = () => {
+          updateMeta('exhibits', [...exhibits, { reference: '', description: '' }]);
+        };
+
+        const updateExhibit = (index: number, field: string, value: string) => {
+          const newEx = [...exhibits];
+          newEx[index] = { ...newEx[index], [field]: value };
+          updateMeta('exhibits', newEx);
+        };
+
+        const removeExhibit = (index: number) => {
+          const newEx = exhibits.filter((_: any, i: number) => i !== index);
+          updateMeta('exhibits', newEx);
+        };
+
         return (
           <>
-            <div className="admin-form-row">
-              <div className="form-group"><label>Weapon Classification</label><input type="text" className="admin-input" value={metadata.weapon_type || ''} onChange={e => updateMeta('weapon_type', e.target.value)} required /></div>
-              <div className="form-group"><label>Caliber</label><input type="text" className="admin-input" value={metadata.caliber || ''} onChange={e => updateMeta('caliber', e.target.value)} required /></div>
+            <div style={{ background: 'rgba(0, 0, 0, 0.4)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', border: '1px dashed var(--accent-cyan)' }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                <strong>[ FORMATTING GUIDE ]</strong> Use HTML tags to trigger immersive effects:
+              </p>
+              <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                <li><code>&lt;span className="redacted"&gt;Text&lt;/span&gt;</code> : Black redaction bar.</li>
+                <li><code>&lt;span className="highlighted"&gt;Text&lt;/span&gt;</code> : Yellow highlighter marker.</li>
+              </ul>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0, 229, 255, 0.1)', padding: '1rem', borderRadius: '4px', border: '1px solid rgba(0, 229, 255, 0.3)' }}>
-              <input type="checkbox" checked={!!metadata.striation_match} onChange={e => updateMeta('striation_match', e.target.checked)} style={{ transform: 'scale(1.5)' }} />
-              <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}><strong>CONFIRM STRIATION MATCH</strong></label>
+
+            <div className="admin-form-row">
+              <div className="form-group"><label>Lab Case Number</label><input type="text" className="admin-input" value={metadata.case_number || ''} onChange={e => updateMeta('case_number', e.target.value)} required placeholder="e.g., 2026-BL-8842" /></div>
+              <div className="form-group"><label>Examiner Name</label><input type="text" className="admin-input" value={metadata.examiner_name || ''} onChange={e => updateMeta('examiner_name', e.target.value)} required /></div>
+            </div>
+
+            <div style={{ marginTop: '1.5rem', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>EVIDENCE INTAKE LOG (EXHIBITS)</label>
+                <button type="button" className="btn-secondary" onClick={addExhibit} style={{ padding: '0.25rem 0.75rem', width: 'auto', fontSize: '0.75rem' }}>+ Add Exhibit</button>
+              </div>
+
+              {exhibits.map((ex: any, idx: number) => (
+                <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                  <input type="text" className="admin-input" placeholder="Ref (e.g. EXHIBIT A)" value={ex.reference || ''} onChange={e => updateExhibit(idx, 'reference', e.target.value)} style={{ width: '160px' }} required />
+                  <input type="text" className="admin-input" placeholder="Description (e.g. Recovered 9mm Slug)" value={ex.description || ''} onChange={e => updateExhibit(idx, 'description', e.target.value)} style={{ flex: 1 }} required />
+                  <button type="button" onClick={() => removeExhibit(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem' }} title="Remove Exhibit">×</button>
+                </div>
+              ))}
+              
+              {exhibits.length === 0 && (
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>
+                  No exhibits logged. Add a row above.
+                </div>
+              )}
+            </div>
+
+            <h5 style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>TECHNICAL FINDINGS</h5>
+            <div className="form-group"><label>Firearm Specification Data</label><textarea className="admin-textarea" value={metadata.firearm_specs || ''} onChange={e => updateMeta('firearm_specs', e.target.value)} style={{ minHeight: '60px' }} /></div>
+            <div className="form-group"><label>Microscopic & Toolmark Analysis</label><textarea className="admin-textarea" value={metadata.microscopic_analysis || ''} onChange={e => updateMeta('microscopic_analysis', e.target.value)} style={{ minHeight: '80px' }} /></div>
+            <div className="form-group"><label>Trajectory & Range Findings (If Applicable)</label><textarea className="admin-textarea" value={metadata.trajectory_range || ''} onChange={e => updateMeta('trajectory_range', e.target.value)} style={{ minHeight: '60px' }} /></div>
+            
+            <div className="form-group" style={{ marginTop: '1rem' }}><label>Official Conclusion / Match Determination</label><textarea className="admin-textarea" value={metadata.conclusion || ''} onChange={e => updateMeta('conclusion', e.target.value)} required style={{ minHeight: '60px', borderLeft: '3px solid var(--accent-crimson)' }} placeholder="e.g., MATCH CONFIRMED: Striation patterns on Exhibit A match..." /></div>
+            
+            <div className="form-group" style={{ marginTop: '1.5rem', borderLeft: '3px solid var(--accent-crimson)', paddingLeft: '1rem' }}>
+              <label style={{ color: 'var(--accent-crimson)' }}>Investigator Handwritten Scrawls</label>
+              <textarea className="admin-textarea" value={metadata.investigator_notes || ''} onChange={e => updateMeta('investigator_notes', e.target.value)} placeholder="Will render in a red cursive marker font..." style={{ minHeight: '80px' }} />
             </div>
           </>
         );
+      }
 
       case 'dna':
         return (
@@ -5396,19 +5464,56 @@ export default function EvidenceMetadataFields({
           </>
         );
 
-      case 'financial':
+      case 'financial': {
+        const transactions = metadata.transactions || [];
+
+        const addTransaction = () => {
+          updateMeta('transactions', [...transactions, { date: '', type: '', amount: '', status: 'CLEARED' }]);
+        };
+
+        const updateTransaction = (index: number, field: string, value: string) => {
+          const newTx = [...transactions];
+          newTx[index] = { ...newTx[index], [field]: value };
+          updateMeta('transactions', newTx);
+        };
+
+        const removeTransaction = (index: number) => {
+          const newTx = transactions.filter((_: any, i: number) => i !== index);
+          updateMeta('transactions', newTx);
+        };
+
         return (
           <>
             <div className="admin-form-row">
               <div className="form-group"><label>Banking Institution</label><input type="text" className="admin-input" value={metadata.institution || ''} onChange={e => updateMeta('institution', e.target.value)} required /></div>
               <div className="form-group"><label>Account Holder</label><input type="text" className="admin-input" value={metadata.account_holder || ''} onChange={e => updateMeta('account_holder', e.target.value)} required /></div>
             </div>
-            <div className="admin-form-row">
-              <div className="form-group"><label>Transaction Type (e.g., Wire Transfer)</label><input type="text" className="admin-input" value={metadata.transaction_type || ''} onChange={e => updateMeta('transaction_type', e.target.value)} required /></div>
-              <div className="form-group"><label>Amount</label><input type="text" className="admin-input" value={metadata.amount || ''} onChange={e => updateMeta('amount', e.target.value)} required /></div>
+            
+            <div style={{ marginTop: '1rem', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>TRANSACTION LEDGER</label>
+                <button type="button" className="btn-secondary" onClick={addTransaction} style={{ padding: '0.25rem 0.75rem', width: 'auto', fontSize: '0.75rem' }}>+ Add Row</button>
+              </div>
+
+              {transactions.map((tx: any, idx: number) => (
+                <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                  <input type="text" className="admin-input" placeholder="Date" value={tx.date || ''} onChange={e => updateTransaction(idx, 'date', e.target.value)} style={{ width: '100px' }} required />
+                  <input type="text" className="admin-input" placeholder="Type (e.g. Wire Transfer)" value={tx.type || ''} onChange={e => updateTransaction(idx, 'type', e.target.value)} style={{ flex: 1 }} required />
+                  <input type="text" className="admin-input" placeholder="Amount" value={tx.amount || ''} onChange={e => updateTransaction(idx, 'amount', e.target.value)} style={{ width: '120px' }} required />
+                  <input type="text" className="admin-input" placeholder="Status" value={tx.status || ''} onChange={e => updateTransaction(idx, 'status', e.target.value)} style={{ width: '100px' }} required />
+                  <button type="button" onClick={() => removeTransaction(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem' }} title="Remove Row">×</button>
+                </div>
+              ))}
+              
+              {transactions.length === 0 && (
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>
+                  No transactions recorded. Add a row above to build the ledger.
+                </div>
+              )}
             </div>
           </>
         );
+      }
 
       case 'journal':
         return (
@@ -5446,6 +5551,40 @@ export default function EvidenceMetadataFields({
           <>
             <div className="form-group"><label>Written By</label><input type="text" className="admin-input" value={metadata.written_by || ''} onChange={e => updateMeta('written_by', e.target.value)} required /></div>
             <div className="form-group"><label>Memo Context</label><textarea className="admin-textarea" value={metadata.context || ''} onChange={e => updateMeta('context', e.target.value)} required /></div>
+          </>
+        );
+        
+      case 'background_check':
+        return (
+          <>
+            <div style={{ background: 'rgba(0, 0, 0, 0.4)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', border: '1px dashed var(--accent-cyan)' }}>
+              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+                <strong>[ FORMATTING GUIDE ]</strong> You can use these HTML tags inside any of the text boxes below to trigger immersive investigative effects:
+              </p>
+              <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                <li><code>&lt;span className="redacted"&gt;Text&lt;/span&gt;</code> : Renders a black redaction bar over the text.</li>
+                <li><code>&lt;span className="highlighted"&gt;Text&lt;/span&gt;</code> : Applies a yellow highlighter marker effect.</li>
+              </ul>
+            </div>
+
+            <div className="admin-form-row">
+              <div className="form-group"><label>Subject Name</label><input type="text" className="admin-input" value={metadata.subject_name || ''} onChange={e => updateMeta('subject_name', e.target.value)} required /></div>
+              <div className="form-group"><label>DOB (e.g., 10/24/1985)</label><input type="text" className="admin-input" value={metadata.dob || ''} onChange={e => updateMeta('dob', e.target.value)} required /></div>
+              <div className="form-group"><label>Sex/Age (e.g., M / 41)</label><input type="text" className="admin-input" value={metadata.sex_age || ''} onChange={e => updateMeta('sex_age', e.target.value)} required /></div>
+            </div>
+            <div className="admin-form-row">
+              <div className="form-group"><label>Aliases / Monikers</label><input type="text" className="admin-input" value={metadata.aliases || ''} onChange={e => updateMeta('aliases', e.target.value)} /></div>
+              <div className="form-group"><label>Last Known Address</label><input type="text" className="admin-input" value={metadata.last_known_address || ''} onChange={e => updateMeta('last_known_address', e.target.value)} /></div>
+            </div>
+            
+            <div className="form-group" style={{ marginTop: '1rem' }}><label>Employment & Financial Flags</label><textarea className="admin-textarea" value={metadata.employment_financial || ''} onChange={e => updateMeta('employment_financial', e.target.value)} style={{ minHeight: '80px' }} /></div>
+            <div className="form-group"><label>Criminal History (Docket Format)</label><textarea className="admin-textarea" value={metadata.criminal_history || ''} onChange={e => updateMeta('criminal_history', e.target.value)} style={{ minHeight: '100px' }} /></div>
+            <div className="form-group"><label>Known Associates</label><textarea className="admin-textarea" value={metadata.associates || ''} onChange={e => updateMeta('associates', e.target.value)} style={{ minHeight: '80px' }} /></div>
+            
+            <div className="form-group" style={{ marginTop: '1rem', borderLeft: '3px solid var(--accent-crimson)', paddingLeft: '1rem' }}>
+              <label style={{ color: 'var(--accent-crimson)' }}>Investigator Handwritten Scrawls</label>
+              <textarea className="admin-textarea" value={metadata.investigator_notes || ''} onChange={e => updateMeta('investigator_notes', e.target.value)} placeholder="Will render in a red cursive marker font across the bottom of the page..." style={{ minHeight: '80px' }} />
+            </div>
           </>
         );
 
@@ -9745,7 +9884,7 @@ export default function ProceduralRequestTray({
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceVariants\AudioEvidence.tsx
 ----------------------------------------
-import type { Evidence } from '../../../../types';
+import type { Evidence } from '@/types';
 
 export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
   return (
@@ -9755,7 +9894,7 @@ export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
         <div className="audio-spool"></div>
       </div>
       <h4 className="evidence-title">{evidence.title}</h4>
-      <span className="evidence-id">Voice Record</span>
+      <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
     </div>
   );
 }
@@ -9797,7 +9936,7 @@ export default function ForensicEvidence({ evidence }: { evidence: Evidence }) {
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceVariants\ImageEvidence.tsx
 ----------------------------------------
-import type { Evidence } from '../../../../types';
+import type { Evidence } from '@/types';
 
 export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
   return (
@@ -9915,6 +10054,123 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   font-weight: bold;
 }
 
+/* =========================================
+   BACKGROUND CHECK AESTHETIC
+   ========================================= */
+.bg-check-header {
+  border-bottom: 3px solid #1a1a1a;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.bg-check-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin: 0 0 0.25rem 0;
+  letter-spacing: 0.1em;
+}
+
+.bg-check-barcode {
+  font-family: 'Libre Barcode 39', monospace;
+  font-size: 3rem;
+  line-height: 0.7;
+  opacity: 0.4;
+}
+
+.bg-check-id-block {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.bg-check-mugshot {
+  width: 150px;
+  height: 180px;
+  background-color: #d1cfc7;
+  border: 2px solid #1a1a1a;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+  object-fit: cover;
+  filter: grayscale(100%) contrast(120%);
+}
+
+.bg-check-data {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.bg-check-data-row {
+  display: flex;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.2);
+  padding-bottom: 0.35rem;
+}
+
+.bg-check-label {
+  font-weight: bold;
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.bg-check-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.bg-check-section {
+  margin-bottom: 2.5rem;
+  border-top: 2px solid #1a1a1a;
+  padding-top: 1rem;
+}
+
+.bg-check-section-title {
+  font-weight: 900;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+
+.bg-check-text {
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* --- THE INVESTIGATIVE LAYER --- */
+.handwritten-note {
+  font-family: 'Caveat', 'Segoe Script', cursive;
+  color: #a33232; /* Red ink */
+  font-size: 1.8rem;
+  font-weight: 700;
+  line-height: 1;
+  transform: rotate(-3deg);
+  display: inline-block;
+  margin-top: 2rem;
+  white-space: pre-wrap;
+}
+
+.redacted {
+  background-color: #1a1a1a;
+  color: #1a1a1a;
+  padding: 0 6px;
+  user-select: none;
+  border-radius: 2px;
+}
+
+.highlighted {
+  background-color: rgba(255, 235, 59, 0.5);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\Viewers\DocumentViewer.tsx
 ----------------------------------------
@@ -9954,17 +10210,28 @@ export default function DocumentViewer({ evidence }: DocumentViewerProps) {
             <table className="financial-table">
               <thead>
                 <tr>
-                  <th>Transaction Type</th>
+                  <th>Date</th>
+                  <th>Transaction Detail</th>
                   <th>Amount</th>
                   <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>{metadata.transaction_type}</td>
-                  <td style={{ fontWeight: 'bold' }}>{metadata.amount}</td>
-                  <td>CLEARED</td>
-                </tr>
+                {(metadata.transactions || []).map((tx: any, idx: number) => (
+                  <tr key={idx}>
+                    <td style={{ fontFamily: 'var(--font-mono)', fontSize: '0.9rem' }}>{tx.date}</td>
+                    <td>{tx.type}</td>
+                    <td style={{ fontWeight: 'bold', fontFamily: 'var(--font-mono)' }}>{tx.amount}</td>
+                    <td>{tx.status}</td>
+                  </tr>
+                ))}
+                {(!metadata.transactions || metadata.transactions.length === 0) && (
+                  <tr>
+                    <td colSpan={4} style={{ textAlign: 'center', fontStyle: 'italic', color: '#666' }}>
+                      No ledger data available on record.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </>
@@ -10013,7 +10280,69 @@ export default function DocumentViewer({ evidence }: DocumentViewerProps) {
           </>
         );
 
-      default:
+      case 'background_check':
+        return (
+          <>
+            <div className="bg-check-header">
+              <div>
+                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.25rem' }}>DEPARTMENT OF PUBLIC SAFETY - RECORDS DIVISION</div>
+                <h2 className="bg-check-title">BACKGROUND INVESTIGATION</h2>
+              </div>
+              <div className="bg-check-barcode">*{evidence.id}*</div>
+            </div>
+
+            <div className="bg-check-id-block">
+              {/* Uses the uploaded evidence image, or falls back to a silhouette */}
+              <img src={evidence.img_url || '/placeholder-mugshot.jpg'} alt="Mugshot" className="bg-check-mugshot" />
+              
+              <div className="bg-check-data">
+                <div className="bg-check-data-row">
+                  <span className="bg-check-label">SUBJECT NAME:</span>
+                  <span className="bg-check-value">{metadata.subject_name}</span>
+                </div>
+                <div className="bg-check-data-row">
+                  <span className="bg-check-label">DOB:</span>
+                  <span className="bg-check-value">{metadata.dob}</span>
+                </div>
+                <div className="bg-check-data-row">
+                  <span className="bg-check-label">SEX / AGE:</span>
+                  <span className="bg-check-value">{metadata.sex_age}</span>
+                </div>
+                <div className="bg-check-data-row">
+                  <span className="bg-check-label">ALIASES:</span>
+                  <span className="bg-check-value">"{metadata.aliases}"</span>
+                </div>
+                <div className="bg-check-data-row" style={{ borderBottom: 'none' }}>
+                  <span className="bg-check-label">LAST KNOWN ADDRESS:</span>
+                  <span className="bg-check-value" dangerouslySetInnerHTML={{ __html: metadata.last_known_address }} />
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-check-section">
+              <div className="bg-check-section-title">Employment & Financial Profile</div>
+              <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: metadata.employment_financial }} />
+            </div>
+
+            <div className="bg-check-section">
+              <div className="bg-check-section-title">Criminal History & Warrants</div>
+              <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: metadata.criminal_history }} />
+            </div>
+
+            <div className="bg-check-section">
+              <div className="bg-check-section-title">Known Associates</div>
+              <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: metadata.associates }} />
+            </div>
+
+            {metadata.investigator_notes && (
+              <div className="handwritten-note">
+                {metadata.investigator_notes}
+              </div>
+            )}
+          </>
+        );
+
+        default:
         return <div className="doc-body">Document contents illegible or corrupted.</div>;
     }
   };
@@ -10133,6 +10462,180 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   letter-spacing: 0.1em;
 }
 
+/* =========================================
+   BALLISTICS REPORT AESTHETIC (Physical Paper)
+   ========================================= */
+.ballistics-paper {
+  background: #fcfcfb; /* Bright, sterile white paper */
+  color: #1a1a1a;
+  padding: 3rem 4rem;
+  border-radius: 2px;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.05), 2px 4px 15px rgba(0, 0, 0, 0.3);
+  font-family: 'Courier New', Courier, monospace;
+  position: relative;
+}
+
+.ballistics-header {
+  border-bottom: 4px solid #1a1a1a;
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.ballistics-agency {
+  font-weight: 900;
+  font-size: 1.4rem;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.25rem;
+}
+
+.ballistics-lab-stamp {
+  font-weight: 900;
+  color: #a33232; /* Deep red ink */
+  letter-spacing: 0.15em;
+  border: 3px solid #a33232;
+  padding: 0.25rem 0.75rem;
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.ballistics-barcode {
+  font-family: 'Libre Barcode 39', monospace;
+  font-size: 3.5rem;
+  line-height: 0.6;
+  opacity: 0.7;
+}
+
+.ballistics-specimen-box {
+  border: 2px solid #1a1a1a;
+  background: #f4f4f4;
+  padding: 1.5rem;
+  margin-bottom: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ballistics-specimen-title {
+  font-weight: 900;
+  font-size: 0.9rem;
+  text-decoration: underline;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.05em;
+}
+
+.ballistics-specimen-row {
+  display: flex;
+  gap: 1rem;
+  border-bottom: 1px solid #ccc;
+  padding-bottom: 0.5rem;
+}
+
+.ballistics-specimen-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.ballistics-specimen-label {
+  font-weight: 900;
+  width: 110px;
+  flex-shrink: 0;
+}
+
+.ballistics-section-title {
+  font-weight: 900;
+  font-size: 1.2rem;
+  border-bottom: 2px solid #1a1a1a;
+  padding-bottom: 0.25rem;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+}
+
+.ballistics-text {
+  font-size: 1rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin-bottom: 2rem;
+}
+
+/* Microscope Visualizer (Updated for light background) */
+.microscope-comparison {
+  position: relative;
+  width: 100%;
+  max-width: 450px;
+  margin: 2rem auto;
+  border: 6px solid #1a1a1a;
+  border-radius: 50%;
+  overflow: hidden;
+  aspect-ratio: 1 / 1;
+  background: #000;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
+}
+
+.microscope-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: grayscale(100%) contrast(150%);
+}
+
+.microscope-crosshair {
+  position: absolute;
+  top: 0; bottom: 0; left: 50%;
+  width: 2px;
+  background: #00e5ff;
+  box-shadow: 0 0 10px #00e5ff;
+  z-index: 10;
+}
+
+.microscope-overlay-text {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  color: #fff;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  border: 1px solid #fff;
+  z-index: 10;
+  letter-spacing: 0.1em;
+}
+
+.ballistics-conclusion {
+  border: 3px solid #1a1a1a;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+  font-weight: 900;
+  font-size: 1.15rem;
+  text-transform: uppercase;
+}
+
+.ballistics-sign-off {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 3rem;
+}
+
+.ballistics-sign-content {
+  text-align: right;
+  border-top: 1px dashed #1a1a1a;
+  padding-top: 1rem;
+  min-width: 250px;
+}
+
+.signature-ink {
+  font-family: 'Caveat', cursive;
+  font-size: 2.5rem;
+  color: #1a4f8b; /* Blue ballpoint pen ink */
+  transform: rotate(-3deg);
+  display: inline-block;
+  margin-bottom: -10px;
+}
+
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\Viewers\ForensicViewer.tsx
 ----------------------------------------
@@ -10146,123 +10649,165 @@ interface ForensicViewerProps {
 export default function ForensicViewer({ evidence }: ForensicViewerProps) {
   const { sub_type, metadata } = evidence;
 
-  const renderForensicGrid = () => {
-    switch (sub_type) {
-      case 'autopsy':
-        return (
-          <>
-            <div className="data-block">
-              <span className="data-label">Chief Medical Examiner</span>
-              <span className="data-value">{metadata.examiner}</span>
+  switch (sub_type) {
+    case 'ballistics':
+      return (
+        <div className="ballistics-paper">
+          <div className="ballistics-header">
+            <div>
+              <div className="ballistics-agency">STATE FORENSIC LABORATORY</div>
+              <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>DIVISION OF BALLISTICS & TOOLMARKS</div>
+              <div style={{ fontSize: '0.9rem', marginTop: '0.25rem' }}>CASE #{metadata.case_number}</div>
+              <div className="ballistics-lab-stamp">OFFICIAL LABORATORY REPORT - EVIDENCE PROPERTY</div>
             </div>
-            <div className="data-block">
-              <span className="data-label">Estimated Time of Death</span>
-              <span className="data-value">{metadata.time_of_death}</span>
-            </div>
-            <div className="data-block" style={{ gridColumn: '1 / -1' }}>
-              <span className="data-label">Primary Cause of Death</span>
-              <span className="data-value highlight">{metadata.cause_of_death}</span>
-            </div>
-            {metadata.anomalies && (
-              <div className="forensic-notes" style={{ gridColumn: '1 / -1' }}>
-                {metadata.anomalies}
+            <div className="ballistics-barcode">*{metadata.case_number}*</div>
+          </div>
+
+          <div className="ballistics-specimen-box">
+            <div className="ballistics-specimen-title">EVIDENCE INTAKE LOG</div>
+            {(metadata.exhibits || []).map((ex: any, idx: number) => (
+              <div key={idx} className="ballistics-specimen-row">
+                <span className="ballistics-specimen-label">{ex.reference}:</span>
+                <span dangerouslySetInnerHTML={{ __html: ex.description }} />
               </div>
+            ))}
+            {(!metadata.exhibits || metadata.exhibits.length === 0) && (
+              <div style={{ fontStyle: 'italic' }}>No exhibits recorded on intake.</div>
             )}
-          </>
-        );
+          </div>
 
-      case 'ballistics':
-        return (
-          <>
-            <div className="data-block">
-              <span className="data-label">Weapon Classification</span>
-              <span className="data-value">{metadata.weapon_type}</span>
-            </div>
-            <div className="data-block">
-              <span className="data-label">Caliber</span>
-              <span className="data-value">{metadata.caliber}</span>
-            </div>
-            <div className="data-block" style={{ gridColumn: '1 / -1' }}>
-              <span className="data-label">Striation Match Status</span>
-              <span className={`data-value ${metadata.striation_match ? 'highlight' : ''}`}>
-                {metadata.striation_match ? 'POSITIVE MATCH CONFIRMED' : 'INCONCLUSIVE'}
-              </span>
-            </div>
-          </>
-        );
+          <div className="ballistics-section-title">1. Firearm Specification Data</div>
+          <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.firearm_specs }} />
 
-      case 'dna':
-        return (
-          <>
-            <div className="data-block">
-              <span className="data-label">Sample Type</span>
-              <span className="data-value">{metadata.sample_type}</span>
+          <div className="ballistics-section-title">2. Microscopic & Toolmark Analysis</div>
+          <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.microscopic_analysis }} />
+          
+          {evidence.img_url && (
+            <div className="microscope-comparison">
+              <img src={evidence.img_url} alt="Microscopic Striations" className="microscope-image" />
+              <div className="microscope-crosshair"></div>
+              <div className="microscope-overlay-text">STRIATION ALIGNMENT LENS</div>
             </div>
-            <div className="data-block">
-              <span className="data-label">Match Probability</span>
-              <span className="data-value">{metadata.match_probability}</span>
-            </div>
-            <div className="data-block" style={{ gridColumn: '1 / -1' }}>
-              <span className="data-label">Identified Subject</span>
-              <span className={`data-value ${metadata.identified_person ? 'highlight' : ''}`}>
-                {metadata.identified_person || 'NO MATCH FOUND IN DATABASE'}
-              </span>
-            </div>
-          </>
-        );
+          )}
 
-      case 'digital_forensics':
-        return (
-          <>
-            <div className="data-block">
-              <span className="data-label">Device Classification</span>
-              <span className="data-value">{metadata.device_type}</span>
-            </div>
-            <div className="data-block">
-              <span className="data-label">Extraction Method</span>
-              <span className="data-value">{metadata.extraction_method}</span>
-            </div>
-            <div className="forensic-notes" style={{ gridColumn: '1 / -1' }}>
-              <span className="data-label" style={{ color: 'var(--accent-crimson)' }}>[ RECOVERED DATA DECRYPTED ]</span>
-              <span className="data-value" style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>{metadata.recovered_data}</span>
-            </div>
-          </>
-        );
+          {metadata.trajectory_range && (
+            <>
+              <div className="ballistics-section-title">3. Trajectory & Range Findings</div>
+              <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.trajectory_range }} />
+            </>
+          )}
 
-      case 'trace_analysis':
-        return (
-          <>
-            <div className="data-block">
-              <span className="data-label">Material Composition</span>
-              <span className="data-value">{metadata.material_type}</span>
-            </div>
-            <div className="data-block" style={{ gridColumn: '1 / -1' }}>
-              <span className="data-label">Identified Origin Source</span>
-              <span className="data-value highlight">{metadata.origin_source}</span>
-            </div>
-          </>
-        );
+          <div className="ballistics-conclusion" dangerouslySetInnerHTML={{ __html: metadata.conclusion }} />
 
-      default:
-        return <div className="data-block">Awaiting specific analysis details.</div>;
-    }
-  };
+          <div className="ballistics-sign-off">
+            <div className="ballistics-sign-content">
+              <div className="signature-ink">{metadata.examiner_name}</div>
+              <div style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>SENIOR BALLISTICS EXPERT</div>
+              <div style={{ fontSize: '0.75rem', marginTop: '0.2rem' }}>VERIFIED LAB ID: {metadata.case_number}</div>
+            </div>
+          </div>
 
-  return (
-    <div className="forensic-report-container">
-      <header className="forensic-header">
-        <div>
-          <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>DEPARTMENT OF FORENSIC SCIENCES</span>
-          <h3 className="forensic-title">{sub_type.replace('_', ' ')} REPORT</h3>
+          {metadata.investigator_notes && (
+            <div className="handwritten-note">
+              {metadata.investigator_notes}
+            </div>
+          )}
         </div>
-        <div className="forensic-barcode">*{evidence.id}*</div>
-      </header>
-      
-      <div className="forensic-data-grid">
-        {renderForensicGrid()}
-      </div>
-    </div>
-  );
+      );
+
+    // =========================================================================
+    // DEFAULT DARK TERMINAL THEME (For Autopsy, DNA, Digital, Trace)
+    // =========================================================================
+    case 'autopsy':
+    case 'dna':
+    case 'digital_forensics':
+    case 'trace_analysis':
+    default:
+      return (
+        <div className="forensic-report-container">
+          <header className="forensic-header">
+            <div>
+              <span style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>DEPARTMENT OF FORENSIC SCIENCES</span>
+              <h3 className="forensic-title">{(sub_type || 'forensic').replace('_', ' ')} REPORT</h3>
+            </div>
+            <div className="forensic-barcode">*{evidence.id}*</div>
+          </header>
+          
+          <div className="forensic-data-grid">
+            {sub_type === 'autopsy' && (
+              <>
+                <div className="data-block">
+                  <span className="data-label">Chief Medical Examiner</span>
+                  <span className="data-value">{metadata.examiner}</span>
+                </div>
+                <div className="data-block">
+                  <span className="data-label">Estimated Time of Death</span>
+                  <span className="data-value">{metadata.time_of_death}</span>
+                </div>
+                <div className="data-block" style={{ gridColumn: '1 / -1' }}>
+                  <span className="data-label">Primary Cause of Death</span>
+                  <span className="data-value highlight">{metadata.cause_of_death}</span>
+                </div>
+                {metadata.anomalies && (
+                  <div className="forensic-notes" style={{ gridColumn: '1 / -1' }}>
+                    {metadata.anomalies}
+                  </div>
+                )}
+              </>
+            )}
+
+            {sub_type === 'dna' && (
+              <>
+                <div className="data-block">
+                  <span className="data-label">Sample Type</span>
+                  <span className="data-value">{metadata.sample_type}</span>
+                </div>
+                <div className="data-block">
+                  <span className="data-label">Match Probability</span>
+                  <span className="data-value">{metadata.match_probability}</span>
+                </div>
+                <div className="data-block" style={{ gridColumn: '1 / -1' }}>
+                  <span className="data-label">Identified Subject</span>
+                  <span className={`data-value ${metadata.identified_person ? 'highlight' : ''}`}>
+                    {metadata.identified_person || 'NO MATCH FOUND IN DATABASE'}
+                  </span>
+                </div>
+              </>
+            )}
+
+            {sub_type === 'digital_forensics' && (
+              <>
+                <div className="data-block">
+                  <span className="data-label">Device Classification</span>
+                  <span className="data-value">{metadata.device_type}</span>
+                </div>
+                <div className="data-block">
+                  <span className="data-label">Extraction Method</span>
+                  <span className="data-value">{metadata.extraction_method}</span>
+                </div>
+                <div className="forensic-notes" style={{ gridColumn: '1 / -1' }}>
+                  <span className="data-label" style={{ color: 'var(--accent-crimson)' }}>[ RECOVERED DATA DECRYPTED ]</span>
+                  <span className="data-value" style={{ whiteSpace: 'pre-wrap', fontSize: '0.95rem' }}>{metadata.recovered_data}</span>
+                </div>
+              </>
+            )}
+
+            {sub_type === 'trace_analysis' && (
+              <>
+                <div className="data-block">
+                  <span className="data-label">Material Composition</span>
+                  <span className="data-value">{metadata.material_type}</span>
+                </div>
+                <div className="data-block" style={{ gridColumn: '1 / -1' }}>
+                  <span className="data-label">Identified Origin Source</span>
+                  <span className="data-value highlight">{metadata.origin_source}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      );
+  }
 }
 
 
@@ -10291,16 +10836,115 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
   display: block;
 }
 
-.media-caption {
-  padding: 1rem 1.5rem;
-  margin: 0;
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 0.9rem;
-  text-align: center;
+.media-viewer-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* --- IMAGE STYLES --- */
+.media-image-container {
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: var(--border-thin);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.media-full-image {
   width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* --- AUDIO STYLES --- */
+.media-audio-container {
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-md);
+  border: var(--border-thin);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+}
+
+.audio-visualizer-mock {
+  height: 60px;
+  width: calc(100% - 4rem);
+  margin: 2rem 2rem 1rem 2rem;
+  background: repeating-linear-gradient(
+    90deg, 
+    var(--accent-cyan), 
+    var(--accent-cyan) 3px, 
+    transparent 3px, 
+    transparent 8px
+  );
+  opacity: 0.4;
+  border-radius: 2px;
+}
+
+.media-audio-player {
+  width: calc(100% - 4rem);
+  margin: 0 2rem 2rem 2rem;
+  outline: none;
+}
+
+/* --- THE PLAQUE (TITLE & DESC) --- */
+.media-meta-plaque {
+  padding: 1.5rem;
+  width: 100%;
+  text-align: center;
+  background: rgba(20, 21, 24, 0.95);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
-  background: rgba(20, 21, 24, 0.9);
+}
+
+.media-plaque-title {
+  margin: 0;
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  font-size: 1.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.media-plaque-desc {
+  margin: 0.5rem 0 0 0;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/* --- TESTIMONY (TRANSCRIPT) STYLES --- */
+.media-testimony-container {
+  background: rgba(20, 21, 24, 0.95);
+  border: 1px solid rgba(90, 138, 158, 0.4);
+  border-left: 4px solid var(--accent-cyan);
+  border-radius: 4px;
+  padding: 2rem;
+  box-shadow: inset 0 0 30px rgba(90, 138, 158, 0.05);
+}
+
+.testimony-header {
+  border-bottom: 1px dashed rgba(90, 138, 158, 0.5);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.testimony-label {
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  letter-spacing: 0.15em;
+}
+
+.testimony-body {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: var(--text-primary);
+  white-space: pre-wrap;
 }
 
 /* --- AUDIO STYLES --- */
@@ -10376,7 +11020,7 @@ interface MediaViewerProps {
 }
 
 export default function MediaViewer({ evidence }: MediaViewerProps) {
-  const { evidence_type, description, img_url, audio_url, metadata } = evidence;
+  const { evidence_type, description, img_url, audio_url, metadata, title } = evidence;
 
   const renderContent = () => {
     switch (evidence_type) {
@@ -10385,10 +11029,13 @@ export default function MediaViewer({ evidence }: MediaViewerProps) {
           <div className="media-image-container">
             <img 
               src={img_url || '/placeholder-crime-scene.jpg'} 
-              alt={evidence.title} 
+              alt={title} 
               className="media-full-image" 
             />
-            {description && <p className="media-caption">{description}</p>}
+            <div className="media-meta-plaque">
+              <h3 className="media-plaque-title">{title}</h3>
+              {description && <p className="media-plaque-desc">{description}</p>}
+            </div>
           </div>
         );
 
@@ -10399,7 +11046,10 @@ export default function MediaViewer({ evidence }: MediaViewerProps) {
             <audio controls src={audio_url || ''} className="media-audio-player">
               Your browser does not support the audio element.
             </audio>
-            {description && <p className="media-caption">{description}</p>}
+            <div className="media-meta-plaque">
+              <h3 className="media-plaque-title">{title}</h3>
+              {description && <p className="media-plaque-desc">{description}</p>}
+            </div>
           </div>
         );
 
@@ -10408,10 +11058,11 @@ export default function MediaViewer({ evidence }: MediaViewerProps) {
           <div className="media-testimony-container">
             <div className="testimony-header">
               <span className="testimony-label">OFFICIAL TRANSCRIPT</span>
+              <h3 className="media-plaque-title" style={{ marginTop: '0.5rem', marginBottom: 0 }}>{title}</h3>
+              {description && <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)' }}>{description}</p>}
             </div>
             <div className="testimony-body">
-              {/* Fallback to description if transcript metadata isn't set yet */}
-              {metadata?.transcript || description || 'Transcript unavailable.'}
+              {metadata?.transcript || 'Transcript unavailable.'}
             </div>
           </div>
         );
@@ -11737,7 +12388,8 @@ export const getToken = () => localStorage.getItem('auth_token');
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\types\index.ts
 ----------------------------------------
-import type { Evidence } from './evidence/index';
+import type { Evidence } from './evidence';
+export * from './evidence';
 
 export interface User {
   id: number;
@@ -11959,11 +12611,17 @@ export interface JournalMetadata {
   content: string;
 }
 
+export interface FinancialTransaction {
+  date: string;
+  type: string;
+  amount: string;
+  status: string;
+}
+
 export interface FinancialMetadata {
   institution: string;
   account_holder: string;
-  transaction_type: string;
-  amount: string;
+  transactions: FinancialTransaction[];
 }
 
 export interface CorrespondenceMetadata {
@@ -11984,12 +12642,25 @@ export interface MemoMetadata {
   context: string;
 }
 
+export interface BackgroundCheckMetadata {
+  subject_name: string;
+  dob: string;
+  sex_age: string;
+  aliases: string;
+  last_known_address: string;
+  employment_financial: string;
+  criminal_history: string;
+  associates: string;
+  investigator_notes: string;
+}
+
 export type DocumentEvidence =
   | (BaseEvidence & { evidence_type: 'document'; sub_type: 'journal'; metadata: JournalMetadata })
   | (BaseEvidence & { evidence_type: 'document'; sub_type: 'financial'; metadata: FinancialMetadata })
   | (BaseEvidence & { evidence_type: 'document'; sub_type: 'correspondence'; metadata: CorrespondenceMetadata })
   | (BaseEvidence & { evidence_type: 'document'; sub_type: 'contract'; metadata: ContractMetadata })
-  | (BaseEvidence & { evidence_type: 'document'; sub_type: 'memo'; metadata: MemoMetadata });
+  | (BaseEvidence & { evidence_type: 'document'; sub_type: 'memo'; metadata: MemoMetadata })
+  | (BaseEvidence & { evidence_type: 'document'; sub_type: 'background_check'; metadata: BackgroundCheckMetadata });
 
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\types\evidence\forensic.ts
@@ -12003,10 +12674,20 @@ export interface AutopsyMetadata {
   anomalies: string;
 }
 
+export interface BallisticsExhibit {
+  reference: string;
+  description: string;
+}
+
 export interface BallisticsMetadata {
-  weapon_type: string;
-  caliber: string;
-  striation_match: boolean;
+  case_number: string;
+  exhibits: BallisticsExhibit[];
+  firearm_specs: string;
+  microscopic_analysis: string;
+  trajectory_range: string;
+  conclusion: string;
+  examiner_name: string;
+  investigator_notes: string;
 }
 
 export interface DnaMetadata {
