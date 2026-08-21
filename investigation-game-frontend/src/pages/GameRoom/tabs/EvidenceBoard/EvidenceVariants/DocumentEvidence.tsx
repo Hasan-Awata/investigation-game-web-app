@@ -1,4 +1,4 @@
-import type { Evidence } from '../../../../types';
+import type { Evidence } from '@/types';
 
 export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
   return (

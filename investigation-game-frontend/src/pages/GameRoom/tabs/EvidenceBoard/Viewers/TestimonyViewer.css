@@ -1,0 +1,48 @@
+.testimony-report-container {
+  --text-primary: #1a1a1a;
+  background: #dcdacc;
+  color: var(--text-primary);
+  padding: 3rem 4rem;
+  border-radius: 2px;
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.1), 2px 4px 15px rgba(0, 0, 0, 0.5);
+  min-height: 400px;
+}
+
+.testimony-header-block {
+  border-bottom: 2px dashed var(--text-primary);
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.testimony-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin: 0 0 1rem 0;
+  letter-spacing: 0.1em;
+}
+
+.testimony-meta-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.testimony-meta-label {
+  width: 150px;
+  font-weight: bold;
+  font-family: var(--font-mono);
+}
+
+.testimony-meta-value,
+.testimony-subject-value {
+  font-weight: 600;
+}
+
+.testimony-body {
+  font-family: var(--font-primary);
+  font-size: 1.1rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  color: #1a1a1a;
+}

@@ -106,37 +106,71 @@
 
 /* --- PHYSICAL PROP: TYPED TRANSCRIPT --- */
 .testimony-variant {
-  background: #dcdacc;
+  display: block;
+  box-sizing: border-box;
+  background: #fdfbf7; 
+  border: 1px solid #d1ccc0;
   border-radius: 2px;
-  border: none;
-  padding: 2.5rem 1.5rem 1.5rem;
-  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.4);
-  color: #1a1a1a;
-  font-family: var(--font-mono);
+  padding: 3rem 1.5rem 1.5rem;
+  box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.4);
+  position: relative;
+  background-image: repeating-linear-gradient(transparent, transparent 23px, rgba(0, 0, 0, 0.05) 24px);
+  background-size: 100% 24px;
+  background-position: 0 2.5rem;
 }
 
-.testimony-variant .evidence-title,
+.testimony-variant .evidence-title {
+  font-weight: 800;
+  font-size: 1.1rem;
+  margin: 0 0 0.25rem 0;
+  color: #1a1a1a;
+  font-family: var(--font-primary);
+}
+
 .testimony-variant .evidence-id {
-  color: #1a1a1a;
+  font-weight: bold;
+  color: #555;
   font-family: var(--font-mono);
 }
 
-.testimony-variant::after {
-  content: '';
-  position: absolute; top: -12px; left: 25px;
-  width: 14px; height: 45px;
-  border: 2px solid #999;
+/* THE EXACT TARGET FOR THE CARD DESCRIPTION */
+.testimony-variant .evidence-desc {
+  font-size: 0.9rem;
+  margin-top: 1rem;
+  line-height: 1.5;
+  background: transparent;
+  color: #333;
+  font-family: var(--font-primary);
+}
+
+.testimony-stamp {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid rgba(163, 50, 50, 0.4);
+  padding: 2px 6px;
+  border-radius: 2px;
+  transform: rotate(2deg);
+  color: rgba(163, 50, 50, 0.8);
+  font-family: var(--font-mono);
+}
+
+.testimony-paperclip {
+  position: absolute; 
+  top: -12px; 
+  left: 25px;
+  width: 14px; 
+  height: 45px;
+  border: 2px solid #a0a0a0;
   border-radius: 12px;
   background: transparent;
   box-shadow: 2px 2px 3px rgba(0,0,0,0.3), inset 1px 1px 2px rgba(255,255,255,0.5);
-  transform: rotate(5deg);
+  transform: rotate(6deg);
   z-index: 5;
-}
-
-.quote-mark { 
-  position: absolute; top: 15px; left: 15px; 
-  font-size: 3rem; color: rgba(0, 0, 0, 0.1); 
-  font-family: 'Courier New', Courier, monospace; 
 }
 
 /* --- PHYSICAL PROP: CASSETTE TAPE --- */

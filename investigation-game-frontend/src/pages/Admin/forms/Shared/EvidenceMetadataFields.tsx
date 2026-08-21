@@ -325,7 +325,7 @@ export default function EvidenceMetadataFields({
       
       {renderSubTypeSelector()}
 
-      {subType && (
+      {(subType || evidenceType === 'testimony') && (
         <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {renderDynamicInputs()}
         </div>

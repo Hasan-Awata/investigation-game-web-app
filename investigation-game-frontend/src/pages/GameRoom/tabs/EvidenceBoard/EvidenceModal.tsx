@@ -1,6 +1,7 @@
 import type { Evidence, ForensicEvidence, DocumentEvidence, MediaEvidence } from '@/types/evidence';
 import ForensicViewer from './Viewers/ForensicViewer';
 import DocumentViewer from './Viewers/DocumentViewer';
+import TestimonyViewer from './Viewers/TestimonyViewer';
 import MediaViewer from './Viewers/MediaViewer';
 import './EvidenceModal.css';
 
@@ -12,7 +13,6 @@ interface EvidenceModalProps {
 export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps) {
   if (!evidence) return null;
 
-  // Route the evidence to its highly specialized component
   const renderEvidenceContent = () => {
     switch (evidence.evidence_type) {
       case 'forensic':
@@ -21,9 +21,12 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
       case 'document':
         return <DocumentViewer evidence={evidence as DocumentEvidence} />;
       
+      case 'testimony':
+        // FIXED: Separated testimony into its own dedicated viewer
+        return <TestimonyViewer evidence={evidence} />; 
+      
       case 'image':
       case 'audio':
-      case 'testimony':
         return <MediaViewer evidence={evidence as MediaEvidence} />;
         
       default:

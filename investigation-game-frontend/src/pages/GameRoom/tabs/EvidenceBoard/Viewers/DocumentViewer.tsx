@@ -18,7 +18,7 @@ export default function DocumentViewer({ evidence }: DocumentViewerProps) {
               <div className="doc-meta-row"><span className="doc-meta-label">FROM:</span> <span>{metadata.sender}</span></div>
               <div className="doc-meta-row"><span className="doc-meta-label">SUBJECT:</span> <span>{metadata.subject}</span></div>
             </div>
-            <div className="doc-body">{metadata.body}</div>
+            <div className="doc-body typewriter-text">{metadata.body}</div>
           </>
         );
 

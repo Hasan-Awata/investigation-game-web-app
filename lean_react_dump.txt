@@ -5612,7 +5612,7 @@ export default function EvidenceMetadataFields({
       
       {renderSubTypeSelector()}
 
-      {subType && (
+      {(subType || evidenceType === 'testimony') && (
         <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {renderDynamicInputs()}
         </div>
@@ -9146,37 +9146,48 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 
 /* --- PHYSICAL PROP: TYPED TRANSCRIPT --- */
 .testimony-variant {
-  background: #dcdacc;
+  --text-primary: #1a1a1a;
+  --text-secondary: #333333;
+
+  background: #fdfbf7; 
+  border: 1px solid #d1ccc0;
   border-radius: 2px;
-  border: none;
-  padding: 2.5rem 1.5rem 1.5rem;
-  box-shadow: 2px 3px 6px rgba(0, 0, 0, 0.4);
-  color: #1a1a1a;
-  font-family: var(--font-mono);
+  padding: 3rem 1.5rem 1.5rem;
+  box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.4);
+  position: relative;
+  background-image: repeating-linear-gradient(transparent, transparent 23px, rgba(0, 0, 0, 0.05) 24px);
+  background-size: 100% 24px;
+  background-position: 0 2.5rem;
 }
 
-.testimony-variant .evidence-title,
-.testimony-variant .evidence-id {
-  color: #1a1a1a;
+.testimony-stamp {
+  position: absolute;
+  top: 15px;
+  right: 15px;
   font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: rgba(163, 50, 50, 0.8);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: 1px solid rgba(163, 50, 50, 0.4);
+  padding: 2px 6px;
+  border-radius: 2px;
+  transform: rotate(2deg);
 }
 
-.testimony-variant::after {
-  content: '';
-  position: absolute; top: -12px; left: 25px;
-  width: 14px; height: 45px;
-  border: 2px solid #999;
+.testimony-paperclip {
+  position: absolute; 
+  top: -12px; 
+  left: 25px;
+  width: 14px; 
+  height: 45px;
+  border: 2px solid #a0a0a0;
   border-radius: 12px;
   background: transparent;
   box-shadow: 2px 2px 3px rgba(0,0,0,0.3), inset 1px 1px 2px rgba(255,255,255,0.5);
-  transform: rotate(5deg);
+  transform: rotate(6deg);
   z-index: 5;
-}
-
-.quote-mark { 
-  position: absolute; top: 15px; left: 15px; 
-  font-size: 3rem; color: rgba(0, 0, 0, 0.1); 
-  font-family: 'Courier New', Courier, monospace; 
 }
 
 /* --- PHYSICAL PROP: CASSETTE TAPE --- */
@@ -9418,6 +9429,7 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
 import type { Evidence, ForensicEvidence, DocumentEvidence, MediaEvidence } from '@/types/evidence';
 import ForensicViewer from './Viewers/ForensicViewer';
 import DocumentViewer from './Viewers/DocumentViewer';
+import TestimonyViewer from './Viewers/TestimonyViewer';
 import MediaViewer from './Viewers/MediaViewer';
 import './EvidenceModal.css';
 
@@ -9429,7 +9441,6 @@ interface EvidenceModalProps {
 export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps) {
   if (!evidence) return null;
 
-  // Route the evidence to its highly specialized component
   const renderEvidenceContent = () => {
     switch (evidence.evidence_type) {
       case 'forensic':
@@ -9438,9 +9449,12 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
       case 'document':
         return <DocumentViewer evidence={evidence as DocumentEvidence} />;
       
+      case 'testimony':
+        // FIXED: Separated testimony into its own dedicated viewer
+        return <TestimonyViewer evidence={evidence} />; 
+      
       case 'image':
       case 'audio':
-      case 'testimony':
         return <MediaViewer evidence={evidence as MediaEvidence} />;
         
       default:
@@ -9902,7 +9916,7 @@ export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceVariants\DocumentEvidence.tsx
 ----------------------------------------
-import type { Evidence } from '../../../../types';
+import type { Evidence } from '@/types';
 
 export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
   return (
@@ -9956,18 +9970,18 @@ export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
 
 FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\EvidenceVariants\TestimonyEvidence.tsx
 ----------------------------------------
-import type { Evidence } from '../../../../types';
+import type { Evidence } from '@/types';
 
 export default function TestimonyEvidence({ evidence }: { evidence: Evidence }) {
   return (
     <div className="evidence-variant testimony-variant">
-      <div className="quote-mark">“</div>
+      <div className="testimony-paperclip"></div>
+      <div className="testimony-stamp">TRANSCRIPT</div>
       <h4 className="evidence-title">{evidence.title}</h4>
       <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
       {evidence.description && (
         <p className="evidence-desc">{evidence.description}</p>
       )}
-      {/* <div className="testimony-lines"></div> */}
     </div>
   );
 }
@@ -9984,7 +9998,12 @@ FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRo
     inset 0 0 60px rgba(0, 0, 0, 0.1),
     2px 4px 15px rgba(0, 0, 0, 0.5);
   position: relative;
-  font-family: 'Courier New', Courier, monospace; /* Typewriter feel */
+  font-family: var(--font-primary); 
+}
+
+/* A targeted class for specific document bodies that need the typewriter effect */
+.typewriter-text {
+  font-family: 'Courier New', Courier, monospace;
 }
 
 /* The Confidential Stamp */
@@ -10194,7 +10213,7 @@ export default function DocumentViewer({ evidence }: DocumentViewerProps) {
               <div className="doc-meta-row"><span className="doc-meta-label">FROM:</span> <span>{metadata.sender}</span></div>
               <div className="doc-meta-row"><span className="doc-meta-label">SUBJECT:</span> <span>{metadata.subject}</span></div>
             </div>
-            <div className="doc-body">{metadata.body}</div>
+            <div className="doc-body typewriter-text">{metadata.body}</div>
           </>
         );
 
@@ -10658,7 +10677,7 @@ export default function ForensicViewer({ evidence }: ForensicViewerProps) {
               <div className="ballistics-agency">STATE FORENSIC LABORATORY</div>
               <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>DIVISION OF BALLISTICS & TOOLMARKS</div>
               <div style={{ fontSize: '0.9rem', marginTop: '0.25rem' }}>CASE #{metadata.case_number}</div>
-              <div className="ballistics-lab-stamp">OFFICIAL LABORATORY REPORT - EVIDENCE PROPERTY</div>
+              <div className="ballistics-lab-stamp">OFFICIAL LABORATORY REPORT</div>
             </div>
             <div className="ballistics-barcode">*{metadata.case_number}*</div>
           </div>
@@ -11075,6 +11094,93 @@ export default function MediaViewer({ evidence }: MediaViewerProps) {
   return (
     <div className="media-viewer-wrapper">
       {renderContent()}
+    </div>
+  );
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\Viewers\TestimonyViewer.css
+----------------------------------------
+.testimony-report-container {
+  --text-primary: #1a1a1a;
+  
+  background: #dcdacc;
+  color: var(--text-primary);
+  padding: 3rem 4rem;
+  border-radius: 2px;
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.1), 2px 4px 15px rgba(0, 0, 0, 0.5);
+  min-height: 400px;
+}
+
+.testimony-header-block {
+  border-bottom: 2px dashed var(--text-primary);
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.testimony-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin: 0 0 1rem 0;
+  letter-spacing: 0.1em;
+}
+
+.testimony-meta-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+.testimony-meta-label {
+  width: 150px;
+  font-weight: bold;
+  font-family: var(--font-mono);
+}
+
+.testimony-meta-value,
+.testimony-subject-value {
+  font-weight: 600;
+}
+
+.testimony-body {
+  font-family: var(--font-primary);
+  font-size: 1.1rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  color: #1a1a1a;
+}
+
+
+FILE: D:\Laravel\investigation-game\investigation-game-frontend\src\pages\GameRoom\tabs\EvidenceBoard\Viewers\TestimonyViewer.tsx
+----------------------------------------
+import type { Evidence } from '@/types/evidence';
+import './TestimonyViewer.css';
+
+interface TestimonyViewerProps {
+  evidence: Evidence;
+}
+
+export default function TestimonyViewer({ evidence }: TestimonyViewerProps) {
+  // Extract the transcript from the metadata object
+  const transcript = evidence.metadata?.transcript || 'No transcript data available on record.';
+
+  return (
+    <div className="testimony-report-container">
+      <div className="testimony-header-block">
+        <h2 className="testimony-title">OFFICIAL INTERVIEW TRANSCRIPT</h2>
+        <div className="testimony-meta-row">
+          <span className="testimony-meta-label">RECORDING ID:</span>
+          <span className="testimony-meta-value">EX-{evidence.id.toString().padStart(3, '0')}</span>
+        </div>
+        <div className="testimony-meta-row">
+          <span className="testimony-meta-label">SUBJECT:</span>
+          <span className="testimony-subject-value">{evidence.title}</span>
+        </div>
+      </div>
+      <div className="testimony-body">
+        {transcript}
+      </div>
     </div>
   );
 }
