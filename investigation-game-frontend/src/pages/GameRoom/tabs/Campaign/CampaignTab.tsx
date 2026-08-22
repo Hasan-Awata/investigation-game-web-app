@@ -3,8 +3,8 @@ import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Question } from '@/types';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
-import LocationPhase from './Levels/LocationPhase';
-import WiretapPhase from './Levels/WiretapPhase';
+import LocationPhase from './Levels/Location/LocationPhase';
+import WiretapPhase from './Levels/Wiretap/WiretapPhase';
 import '../SharedOverlay.css';
 import './CampaignTab.css';
 
