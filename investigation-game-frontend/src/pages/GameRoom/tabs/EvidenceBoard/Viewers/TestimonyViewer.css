@@ -1,48 +1,194 @@
-.testimony-report-container {
-  --text-primary: #1a1a1a;
-  background: #dcdacc;
-  color: var(--text-primary);
-  padding: 3rem 4rem;
+/* ==============================================================
+   TESTIMONY VIEWER (Police Interrogation Transcript)
+   ============================================================== */
+.testimony-modal-viewer {
+  background: #f4f1ea; /* Aged, slightly yellowed legal paper */
+  padding: 4rem 5rem;
   border-radius: 2px;
-  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.1), 2px 4px 15px rgba(0, 0, 0, 0.5);
-  min-height: 400px;
+  box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.05), 2px 4px 20px rgba(0, 0, 0, 0.2);
+  max-width: 900px;
+  margin: 0 auto;
+  color: #1a1a1a;
 }
 
-.testimony-header-block {
-  border-bottom: 2px dashed var(--text-primary);
-  padding-bottom: 1.5rem;
+.testimony-paper {
+  position: relative;
+  z-index: 2;
+}
+
+/* Header Area */
+.testimony-header {
+  border-bottom: 3px double #1a1a1a;
+  padding-bottom: 2rem;
   margin-bottom: 2rem;
+  text-align: center;
+}
+
+.testimony-agency {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.25rem;
+  font-weight: bold;
+  letter-spacing: 0.15em;
+  color: #333;
 }
 
 .testimony-title {
-  font-size: 1.5rem;
+  margin: 0.5rem 0 1.5rem 0;
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 2.2rem;
   font-weight: 900;
-  margin: 0 0 1rem 0;
-  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.testimony-meta-row {
+.testimony-meta-grid {
   display: flex;
+  justify-content: center;
+  gap: 3rem;
+}
+
+.meta-box {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  margin-bottom: 0.5rem;
-  font-size: 1rem;
 }
 
-.testimony-meta-label {
-  width: 150px;
+.meta-label {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.75rem;
   font-weight: bold;
-  font-family: var(--font-mono);
+  color: #666;
+  border-bottom: 1px solid #999;
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.25rem;
 }
 
-.testimony-meta-value,
-.testimony-subject-value {
-  font-weight: 600;
-}
-
-.testimony-body {
-  font-family: var(--font-primary);
+.meta-value {
+  font-family: 'Courier New', Courier, monospace;
   font-size: 1.1rem;
+  font-weight: bold;
+}
+
+/* Subject Block */
+.testimony-subject-block {
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.25rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  border: 2px solid #1a1a1a;
+  background: #fff;
+}
+
+.subject-label {
+  font-weight: bold;
+  margin-right: 1rem;
+}
+
+.testimony-context {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1.1rem;
+  font-style: italic;
+  margin-bottom: 2rem;
+  color: #444;
+  padding-left: 1rem;
+  border-left: 4px solid #ccc;
+}
+
+/* Transcript Area */
+.transcript-container {
+  position: relative;
+  margin-bottom: 3rem;
+  min-height: 300px;
+}
+
+.transcript-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 6rem;
+  font-weight: 900;
+  color: rgba(0, 0, 0, 0.03);
+  pointer-events: none;
+  z-index: 0;
+  letter-spacing: 0.2em;
+}
+
+.transcript-content {
+  position: relative;
+  z-index: 1;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1.15rem;
   line-height: 1.8;
-  white-space: pre-wrap;
   color: #1a1a1a;
+}
+
+/* Formatting for Q&A */
+.transcript-line {
+  margin-bottom: 0.5rem;
+}
+
+.speaker-tag {
+  font-weight: 900;
+  margin-right: 0.5rem;
+}
+
+.transcript-q .speaker-tag {
+  color: #1a4f8b; /* Faint blue ink for the detective */
+}
+
+.transcript-a .speaker-tag {
+  color: #a33232; /* Faint red ink for the suspect/witness */
+}
+
+.transcript-q {
+  margin-top: 1rem;
+  padding-left: 1rem;
+  border-left: 2px solid rgba(26, 79, 139, 0.3);
+}
+
+.transcript-a {
+  margin-bottom: 1rem;
+  padding-left: 1rem;
+  border-left: 2px solid rgba(163, 50, 50, 0.3);
+  background: rgba(163, 50, 50, 0.02);
+}
+
+/* Footer / Signature */
+.testimony-footer {
+  border-top: 2px solid #1a1a1a;
+  padding-top: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.certification-statement {
+  font-family: 'Times New Roman', Times, serif;
+  font-size: 1rem;
+  font-style: italic;
+  max-width: 400px;
+  color: #555;
+}
+
+.signature-area {
+  text-align: center;
+  min-width: 250px;
+}
+
+.steno-signature {
+  font-family: 'Caveat', cursive;
+  font-size: 2rem;
+  color: #1a4f8b;
+  transform: rotate(-3deg);
+  margin-bottom: -5px;
+}
+
+.signature-line {
+  border-top: 1px solid #1a1a1a;
+  padding-top: 0.25rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.85rem;
+  font-weight: bold;
 }

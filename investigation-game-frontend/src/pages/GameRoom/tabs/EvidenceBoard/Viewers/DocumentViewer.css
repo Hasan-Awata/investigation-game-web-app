@@ -1,90 +1,150 @@
-.document-report-container {
-  background: #f4f1ea; /* Aged paper color */
+
+/* ==============================================================
+   FINANCIAL PREVIEW 
+   ============================================================== */
+.financial-preview-wrapper {
+  background-color: #f5f2eb; 
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.15); 
   color: #1a1a1a;
-  padding: 3rem 4rem;
-  border-radius: 2px;
-  box-shadow: 
-    inset 0 0 60px rgba(0, 0, 0, 0.1),
-    2px 4px 15px rgba(0, 0, 0, 0.5);
+  padding: 4rem; 
+  font-family: var(--font-primary), sans-serif;
+  min-height: 50vh;
+  box-sizing: border-box;
   position: relative;
-  font-family: var(--font-primary); 
+  overflow: hidden; 
 }
 
-/* A targeted class for specific document bodies that need the typewriter effect */
-.typewriter-text {
-  font-family: 'Courier New', Courier, monospace;
+.financial-preview-wrapper .doc-header-block {
+  margin-bottom: 2rem;
 }
 
-/* The Confidential Stamp */
-.stamp-confidential {
+.financial-preview-wrapper .doc-header-block h2 {
+  font-size: 2rem;
+  color: #1a1a1a;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.financial-preview-wrapper .doc-meta-row {
+  font-size: 1.1rem;
+  color: #333;
+  margin-top: 1.5rem;
+}
+
+.financial-preview-wrapper .doc-meta-label {
+  margin-right: 0.25rem;
+}
+
+/* --- THE TABLE --- */
+.financial-preview-wrapper .financial-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+  margin-top: 2.5rem;
+  border: 1px solid #b5b0a1; 
+}
+
+.financial-preview-wrapper .financial-table th,
+.financial-preview-wrapper .financial-table td {
+  border: 1px solid #b5b0a1; 
+  padding: 1rem 1.25rem;
+  text-align: left;
+  color: #1a1a1a;
+}
+
+.financial-preview-wrapper .financial-table th {
+  background-color: #e8e4d5; 
+  font-weight: 700;
+}
+
+.financial-preview-wrapper .financial-table td {
+  background-color: transparent;
+}
+
+/* --- FINANCIAL VISUAL FLAIR --- */
+
+.financial-preview-wrapper .financial-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+/* Uses the barcode font from your index.html */
+.financial-preview-wrapper .financial-barcode {
+  font-family: 'Libre Barcode 39', cursive, monospace;
+  font-size: 3.5rem;
+  line-height: 0.8;
+  color: #1a1a1a;
+  opacity: 0.85;
+}
+
+/* The red angled rubber stamp */
+.financial-preview-wrapper .financial-stamp {
   position: absolute;
-  top: 2rem;
-  right: 2rem;
-  color: rgba(163, 50, 50, 0.6);
-  border: 4px solid rgba(163, 50, 50, 0.6);
-  padding: 0.5rem 1rem;
-  font-family: var(--font-primary);
-  font-size: 1.5rem;
+  top: 40px;
+  right: 60px;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  transform: rotate(15deg);
+  color: rgba(163, 50, 50, 0.7); /* Faded crimson */
+  border: 3px solid rgba(163, 50, 50, 0.7);
+  padding: 0.25rem 0.5rem;
+  transform: rotate(12deg);
+  letter-spacing: 0.1em;
   pointer-events: none;
   z-index: 10;
 }
 
-.doc-header-block {
-  border-bottom: 2px solid #1a1a1a;
-  padding-bottom: 1.5rem;
-  margin-bottom: 2rem;
+/* The giant faint text behind the table */
+.financial-preview-wrapper .financial-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  font-family: var(--font-primary);
+  font-size: 8rem;
+  font-weight: 900;
+  color: rgba(0, 0, 0, 0.03);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 0;
 }
 
-.doc-meta-row {
+/* Ensures the table stays above the watermark */
+.financial-preview-wrapper .financial-table {
+  position: relative;
+  z-index: 1; 
+}
+
+/* Official printed footer */
+.financial-preview-wrapper .financial-footer {
+  margin-top: 4rem;
+  padding-top: 1rem;
+  border-top: 2px solid #1a1a1a;
   display: flex;
-  margin-bottom: 0.5rem;
-}
-
-.doc-meta-label {
-  width: 120px;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #555;
   font-weight: bold;
-  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.doc-body {
-  font-size: 1.1rem;
-  line-height: 1.6;
-  white-space: pre-wrap;
+/* ==============================================================
+   BACKGROUND CHECK AESTHETIC (Official Dossier)
+   ============================================================== */
+.bg-check-preview {
+  background-color: #f4f1ea;
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.1);
+  color: #1a1a1a;
+  padding: 3rem 4rem;
+  min-height: 50vh;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-primary), sans-serif;
 }
 
-.doc-body ul {
-  list-style-type: square;
-  padding-left: 1.5rem;
-}
-
-.doc-body li {
-  margin-bottom: 0.5rem;
-}
-
-.financial-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 1.5rem;
-}
-
-.financial-table th, .financial-table td {
-  border: 1px solid #999;
-  padding: 0.75rem;
-  text-align: left;
-}
-
-.financial-table th {
-  background: #e6e4dc;
-  font-weight: bold;
-}
-
-/* =========================================
-   BACKGROUND CHECK AESTHETIC
-   ========================================= */
 .bg-check-header {
   border-bottom: 3px solid #1a1a1a;
   padding-bottom: 1rem;
@@ -99,13 +159,15 @@
   font-weight: 900;
   margin: 0 0 0.25rem 0;
   letter-spacing: 0.1em;
+  color: #1a1a1a;
 }
 
 .bg-check-barcode {
   font-family: 'Libre Barcode 39', monospace;
   font-size: 3rem;
   line-height: 0.7;
-  opacity: 0.4;
+  opacity: 0.8;
+  color: #1a1a1a;
 }
 
 .bg-check-id-block {
@@ -142,7 +204,10 @@
 }
 
 .bg-check-label {
+  font-family: var(--font-mono);
   font-weight: bold;
+  color: #444;
+  font-size: 0.85rem;
   width: 160px;
   flex-shrink: 0;
 }
@@ -150,6 +215,7 @@
 .bg-check-value {
   font-family: var(--font-mono);
   font-weight: 600;
+  color: #1a1a1a;
 }
 
 .bg-check-section {
@@ -159,10 +225,12 @@
 }
 
 .bg-check-section-title {
+  font-family: var(--font-mono);
   font-weight: 900;
   font-size: 1.1rem;
   margin-bottom: 1rem;
   text-transform: uppercase;
+  color: #333;
 }
 
 .bg-check-text {
@@ -170,21 +238,10 @@
   white-space: pre-wrap;
   font-size: 0.95rem;
   line-height: 1.6;
+  color: #1a1a1a;
 }
 
-/* --- THE INVESTIGATIVE LAYER --- */
-.handwritten-note {
-  font-family: 'Caveat', 'Segoe Script', cursive;
-  color: #a33232; /* Red ink */
-  font-size: 1.8rem;
-  font-weight: 700;
-  line-height: 1;
-  transform: rotate(-3deg);
-  display: inline-block;
-  margin-top: 2rem;
-  white-space: pre-wrap;
-}
-
+/* HTML formatting effects used inside background checks */
 .redacted {
   background-color: #1a1a1a;
   color: #1a1a1a;
@@ -197,4 +254,450 @@
   background-color: rgba(255, 235, 59, 0.5);
   padding: 0 2px;
   border-radius: 2px;
+}
+
+@media (max-width: 600px) {
+  .bg-check-id-block { flex-direction: column; align-items: center; }
+  .bg-check-preview { padding: 1.5rem; }
+}
+
+/* ==============================================================
+   MEMO PREVIEW (Full-Size Crumpled Notebook Page)
+   ============================================================== */
+.memo-preview {
+  /* --- THEME CONTROL PANEL --- */
+  --memo-paper: #fcfbfa;           
+  --memo-lines: #a6c8ff;           
+  --memo-margin: #e88b8b;          
+  --memo-ink: #1b263b;             
+  /* --------------------------- */
+
+  width: 100%;
+  box-sizing: border-box;  
+  min-height: 50vh;        
+  overflow-x: hidden;      
+  
+  background-color: var(--memo-paper);
+  background-image: 
+    linear-gradient(90deg, transparent 68px, var(--memo-margin) 68px, var(--memo-margin) 70px, transparent 70px),
+    repeating-linear-gradient(180deg, transparent, transparent 31px, var(--memo-lines) 31px, var(--memo-lines) 32px);
+  
+  border-radius: 4px 12px 6px 10px; 
+  position: relative;
+  padding: 4rem 3rem 3rem 6rem; 
+  display: flex;
+  flex-direction: column;
+}
+
+/* 1. SCALED SPIRAL NOTEBOOK HOLES */
+.memo-preview .notebook-holes {
+  position: absolute;
+  top: 0; bottom: 0; left: 15px;
+  width: 30px;
+  background-image: radial-gradient(circle at 15px 20px, rgba(0,0,0,0.8) 10px, rgba(0,0,0,0.15) 12px, transparent 13px);
+  background-size: 100% 50px;
+  background-position: 0 20px;
+  background-repeat: repeat-y;
+  z-index: 2;
+  border-right: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* 2. THE CRUMPLED PAPER TEXTURE */
+.memo-preview .crumpled-texture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 1;
+  background: 
+    linear-gradient(135deg, transparent 35%, rgba(0,0,0,0.06) 35%, rgba(255,255,255,0.4) 36%, transparent 37%),
+    linear-gradient(45deg, transparent 65%, rgba(0,0,0,0.04) 65%, rgba(255,255,255,0.3) 66%, transparent 68%),
+    linear-gradient(75deg, transparent 20%, rgba(0,0,0,0.05) 20%, rgba(255,255,255,0.2) 21%, transparent 22%),
+    linear-gradient(-20deg, transparent 50%, rgba(0,0,0,0.05) 50%, rgba(255,255,255,0.3) 52%, transparent 54%),
+    radial-gradient(circle at 30% 30%, rgba(0,0,0,0.03) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(255,255,255,0.2) 0%, transparent 40%);
+  box-shadow: inset 10px 10px 30px rgba(0,0,0,0.05), inset -10px -10px 30px rgba(0,0,0,0.05);
+}
+
+/* 3. HANDWRITTEN TEXT CONTENT */
+.memo-preview .memo-content {
+  position: relative;
+  z-index: 3;
+  flex: 1;
+}
+
+.memo-preview .memo-body-text {
+  color: var(--memo-ink);
+  font-family: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  font-size: 1.8rem; /* Large enough to read easily */
+  /* Syncs the text baseline perfectly with the 32px blue notebook ruling */
+  line-height: 32px; 
+  margin: 0;
+  transform: rotate(1deg); 
+  white-space: pre-wrap; /* Preserves paragraphs from the admin textarea */
+}
+
+/* ==============================================================
+   CORRESPONDENCE PREVIEW (Physical Letter / Printed Email)
+   ============================================================== */
+.correspondence-preview-wrapper {
+  background-color: #f4f1ea; /* Aged paper background matching your financial view */
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.1);
+  color: #1a1a1a;
+  padding: 3rem 4rem;
+  min-height: 50vh;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-primary), sans-serif;
+}
+
+.correspondence-paper-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.correspondence-stamp {
+  position: absolute;
+  top: 0;
+  right: 0;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: rgba(163, 50, 50, 0.8);
+  border: 2px solid rgba(163, 50, 50, 0.8);
+  padding: 0.2rem 0.5rem;
+  transform: rotate(4deg);
+  letter-spacing: 0.1em;
+  pointer-events: none;
+}
+
+.correspondence-header-block {
+  border-bottom: 2px solid #1a1a1a;
+  padding-bottom: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.correspondence-row {
+  display: flex;
+  gap: 1rem;
+  font-size: 1.05rem;
+}
+
+.correspondence-label {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: #555;
+  width: 90px;
+  flex-shrink: 0;
+}
+
+.correspondence-val {
+  color: #1a1a1a;
+  font-weight: 600;
+}
+
+.correspondence-subject-row {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed #b5b0a1;
+}
+
+.correspondence-body-text {
+  font-family: var(--font-primary);
+  color: #222;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+
+.correspondence-footer-stamp {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid #b5b0a1;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: #777;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ==============================================================
+   JOURNAL PREVIEW (Aged Leather-Bound Diary / Vintage Manuscript)
+   ============================================================== */
+.journal-diary-preview {
+  background-color: #f3efe6;
+  color: #2c251e;
+  padding: 3.5rem 4rem;
+  width: 100%;
+  max-width: 100%; /* Ensures it stays bounded within the modal */
+  min-height: 55vh;
+  box-sizing: border-box; /* Crucial for keeping padding inside the width */
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 60px rgba(80, 60, 40, 0.15), 0 10px 30px rgba(0,0,0,0.5);
+  border-radius: 2px 8px 8px 2px;
+  font-family: var(--font-primary), sans-serif;
+}
+
+.journal-diary-preview * {
+  box-sizing: border-box; /* Forces all inner elements to respect boundaries */
+}
+
+.journal-spine-shadow {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 35px;
+  background: linear-gradient(90deg, rgba(40,30,20,0.3) 0%, rgba(40,30,20,0.08) 60%, transparent 100%);
+  border-right: 1px solid rgba(80,60,40,0.15);
+  pointer-events: none;
+}
+
+.journal-header {
+  border-bottom: 2px solid #2c251e;
+  padding-bottom: 1.25rem;
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+.journal-tag {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #7a3e3e;
+  border: 1px dashed #7a3e3e;
+  padding: 0.2rem 0.6rem;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.journal-meta-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.journal-label {
+  font-weight: 700;
+  color: #615548;
+  margin-right: 0.5rem;
+}
+
+.journal-diary-body {
+  font-family: var(--font-primary);
+  color: #2c251e;
+  font-size: 1.15rem;
+  line-height: 2;
+  white-space: pre-wrap;
+  word-break: break-word; /* Forces long strings or words to wrap onto the next line */
+  overflow-wrap: break-word;
+  unicode-bidi: plaintext;
+  text-align: start;
+  position: relative;
+  z-index: 1;
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .journal-diary-preview { padding: 2.5rem 1.5rem; }
+  .journal-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
+}
+
+/* ==============================================================
+   CONTRACT PREVIEW (Legal Deed & Complex Ink Signatures)
+   ============================================================== */
+.contract-legal-preview {
+  background-color: #f7f4ec;
+  color: #111111;
+  padding: 4rem 4.5rem;
+  min-height: 60vh;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-primary), sans-serif;
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.08), 0 10px 30px rgba(0,0,0,0.4);
+  border: 1px solid #dcd6c6;
+}
+
+.contract-legal-preview * {
+  box-sizing: border-box;
+}
+
+.contract-watermark {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-25deg);
+  font-family: var(--font-mono);
+  font-size: 6rem;
+  font-weight: 900;
+  color: rgba(0, 0, 0, 0.025);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 0;
+  letter-spacing: 0.2em;
+}
+
+.contract-header {
+  text-align: center;
+  border-bottom: 2px solid #111111;
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.contract-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #111111;
+}
+
+.contract-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #555555;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.contract-section {
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.contract-label {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #333333;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+}
+
+.contract-parties-list {
+  margin: 0;
+  padding-left: 1.5rem;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #222222;
+}
+
+.contract-terms-text {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: #222222;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  text-align: justify;
+  background: rgba(0, 0, 0, 0.02);
+  padding: 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+  unicode-bidi: plaintext;
+}
+
+.contract-signature-block {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  margin-top: 3.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.15);
+  position: relative;
+  z-index: 1;
+}
+
+.signature-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+
+.signature-line-wrapper {
+  position: relative;
+  height: 80px; /* Increased height to give the signature room to breathe */
+  margin-top: 0.5rem;
+}
+
+.rendered-signature-img {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 75px; /* Maximize the height */
+  object-fit: contain;
+  pointer-events: none;
+  transform: rotate(-3deg) scale(2); /* Bump this up to 2.4 or 2.8 to make it massive */
+  transform-origin: bottom center;
+}
+.signature-line {
+  width: 100%;
+  height: 1px;
+  background-color: #111111;
+  position: absolute;
+  bottom: 0;
+}
+
+.signature-caption {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.contract-validation-stamp {
+  position: absolute;
+  bottom: 3rem;
+  right: 4rem;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 800;
+  padding: 0.5rem 1rem;
+  transform: rotate(-8deg);
+  letter-spacing: 0.15em;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 2px;
+}
+
+.contract-validation-stamp.valid {
+  color: #2a6f4db3;
+  border: 3px solid #2a6f4db3;
+}
+
+.contract-validation-stamp.forged {
+  color: rgba(163, 50, 50, 0.85);
+  border: 3px solid rgba(163, 50, 50, 0.85);
+}
+
+@media (max-width: 768px) {
+  .contract-legal-preview { padding: 2rem 1.5rem; }
+  .contract-signature-block { grid-template-columns: 1fr; gap: 1.5rem; }
+  .contract-validation-stamp { position: static; transform: none; margin-top: 2rem; text-align: center; }
 }
