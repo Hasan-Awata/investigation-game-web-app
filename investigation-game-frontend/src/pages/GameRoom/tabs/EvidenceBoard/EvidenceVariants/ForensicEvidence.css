@@ -1,0 +1,557 @@
+/* ==============================================================
+   BASE FORENSIC STRUCTURE
+   ============================================================== */
+.forensic-variant {
+  position: relative;
+  border-radius: 2px;
+  width: 240px;
+}
+
+.forensic-variant .evidence-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.forensic-variant .evidence-desc {
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ==============================================================
+   BASE FORENSIC STRUCTURE
+   ============================================================== */
+.forensic-variant {
+  position: relative;
+  border-radius: 2px;
+  width: 240px;
+}
+
+.forensic-variant .evidence-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.05rem;
+  font-weight: 800;
+}
+
+.forensic-variant .evidence-desc {
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ==============================================================
+   AUTOPSY REPORT (Medical Envelope)
+   ============================================================== */
+.autopsy-variant {
+  /* --- THEME CONTROL PANEL --- */
+  --med-file-bg: #d9e2e8;       /* Sterile clinical blue/grey */
+  --med-file-border: #b0c0cd;   /* Border for the file */
+  --med-ink: #2c3e50;           /* Cold dark blue/grey ink */
+  --med-cross: #c0392b;         /* Medical red */
+  /* --------------------------- */
+  
+  min-height: 190px;
+  width: 280px;
+  /* margin-top: 15px;  */
+  background: transparent;
+}
+
+/* THE MEDICAL ENVELOPE COVER */
+.medical-file-cover {
+  position: absolute;
+  inset: 0;
+  background: var(--med-file-bg);
+  border: 1px solid var(--med-file-border);
+  border-radius: 2px;
+  box-shadow: 2px 4px 10px rgba(0,0,0,0.3);
+  padding: 1.25rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+}
+
+.medical-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 2px solid var(--med-file-border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+  position: relative;
+  /* A very light, tight shadow dropping down from the horizontal center line */
+  box-shadow: 0 4px 4px -3px rgba(0,0,0,0.1);
+}
+
+.medical-header::before,
+.medical-header::after {
+  content: '';
+  position: absolute;
+  top: -1.25rem; 
+  bottom: -2px;  
+  width: 1.25rem; 
+}
+
+/* Left Diagonal Flap + Shadow */
+.medical-header::before {
+  left: -1.25rem;
+  /* 
+    The SVG now contains TWO lines: 
+    1. A thicker 4px line offset down and to the right (rgba 0,0,0,0.08)
+    2. The crisp 2px colored border line sitting on top
+  */
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' width='100%25' height='100%25'%3E%3Cline x1='0' y1='0' x2='100%25' y2='100%25' stroke='rgba(0,0,0,0.08)' stroke-width='4' transform='translate(2, 3)' vector-effect='non-scaling-stroke' /%3E%3Cline x1='0' y1='0' x2='100%25' y2='100%25' stroke='%23b0c0cd' stroke-width='2' vector-effect='non-scaling-stroke' /%3E%3C/svg%3E") no-repeat;
+  background-size: 100% 100%;
+}
+
+/* Right Diagonal Flap + Shadow */
+.medical-header::after {
+  right: -1.25rem;
+  /* 
+    The SVG now contains TWO lines: 
+    1. A thicker 4px line offset down and to the left (rgba 0,0,0,0.08)
+    2. The crisp 2px colored border line sitting on top
+  */
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' width='100%25' height='100%25'%3E%3Cline x1='100%25' y1='0' x2='0' y2='100%25' stroke='rgba(0,0,0,0.08)' stroke-width='4' transform='translate(-2, 3)' vector-effect='non-scaling-stroke' /%3E%3Cline x1='100%25' y1='0' x2='0' y2='100%25' stroke='%23b0c0cd' stroke-width='2' vector-effect='non-scaling-stroke' /%3E%3C/svg%3E") no-repeat;
+  background-size: 100% 100%;
+}
+
+.medical-cross {
+  color: var(--med-cross);
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+.coroner-stamp {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--med-ink);
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+.autopsy-variant .evidence-title {
+  color: var(--med-ink);
+  text-transform: uppercase;
+  font-family: var(--font-primary);
+}
+
+.autopsy-variant .evidence-desc {
+  color: #4a5c6e;
+  font-family: var(--font-mono);
+}
+
+/* --- THE TEMPORARY PLACEHOLDER DESIGN --- */
+.placeholder-forensic {
+  background: #d9d9d9;
+  border: 1px solid #999;
+  border-top: 12px solid var(--accent-crimson);
+  padding: 1.5rem;
+}
+.placeholder-forensic .forensic-header {
+  display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 2px dashed #999; padding-bottom: 0.5rem;
+}
+.placeholder-forensic .evidence-title,
+.placeholder-forensic .evidence-desc { 
+  color: #1a1a1a; 
+  font-family: var(--font-mono); 
+}
+
+/* ==============================================================
+   BALLISTICS REPORT (Kraft Evidence Envelope & Tamper Tape)
+   ============================================================== */
+.ballistics-variant {
+  /* --- THEME CONTROL PANEL --- */
+  --kraft-paper: #d4b58e;       /* Heavy brown kraft envelope paper */
+  --kraft-border: #bba07d;      /* Slightly darker edges */
+  --tape-red: #c0392b;          /* Danger red tape */
+  --lab-ink: #1a1a1a;           /* Stamped black ink */
+  /* --------------------------- */
+  
+  min-height: 190px;
+  margin-top: 15px;
+  background: var(--kraft-paper);
+  border-radius: 2px;
+  box-shadow: 2px 4px 10px rgba(0,0,0,0.3);
+  position: relative;
+  overflow: hidden; /* Contains the tape from spilling over */
+  padding: 1.5rem 1.5rem 2.5rem 1.5rem; /* Extra bottom padding for tape */
+  border: 1px solid var(--kraft-border);
+}
+
+/* Faint Crosshair Watermark */
+.ballistics-variant::after {
+  content: '⌖';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8rem;
+  color: rgba(0,0,0,0.06);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ballistics-report {
+  position: relative;
+  z-index: 2;
+}
+
+.ballistics-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 2px solid var(--lab-ink);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.crosshair-icon {
+  color: var(--lab-ink);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.lab-stamp {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--lab-ink);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.ballistics-variant .evidence-title {
+  color: var(--lab-ink);
+  text-transform: uppercase;
+  font-family: var(--font-primary);
+}
+
+.ballistics-variant .evidence-desc {
+  color: #3a3a3a;
+  font-family: var(--font-mono);
+}
+
+/* 
+  Red Tamper-Evident Tape
+  Slashed across the bottom at a slight angle with ripped edges 
+*/
+.evidence-tape {
+  position: absolute;
+  bottom: 15px;
+  left: -5px;
+  right: -5px;
+  height: 24px;
+  background: var(--tape-red);
+  color: white;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: bold;
+  letter-spacing: 0.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  transform: rotate(-2deg);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  /* Generates a jagged, hand-torn edge on the left and right */
+  clip-path: polygon(
+    0% 0%, 100% 0%, 
+    98% 10%, 100% 20%, 98% 30%, 100% 40%, 98% 50%, 100% 60%, 98% 70%, 100% 80%, 98% 90%, 100% 100%, 
+    0% 100%, 
+    2% 90%, 0% 80%, 2% 70%, 0% 60%, 2% 50%, 0% 40%, 2% 30%, 0% 20%, 2% 10%
+  );
+}
+
+/* ==============================================================
+   DNA PROFILE (Sterile Specimen Report & Biohazard Strip)
+   ============================================================== */
+.dna-variant {
+  /* --- THEME CONTROL PANEL --- */
+  --dna-paper: #f0f4f8;           /* Icy, sterile lab white/blue */
+  --dna-border: #cbd4db;          /* Clean grey border */
+  --biohazard-yellow: #f1c40f;    /* High-vis hazard yellow */
+  --biohazard-black: #111111;     /* Hazard black */
+  --dna-ink: #1a252f;             /* Dark scientific ink */
+  --dna-band: #34495e;            /* Slate color for genetic bands */
+  /* --------------------------- */
+  
+  min-height: 190px;
+  margin-top: 15px;
+  width: 280px;
+  background: var(--dna-paper);
+  border-radius: 4px;
+  box-shadow: 2px 4px 10px rgba(0,0,0,0.25);
+  position: relative;
+  overflow: hidden; /* Contains the biohazard strip */
+  border: 1px solid var(--dna-border);
+}
+
+/* Diagonal Yellow/Black Caution Strip */
+.biohazard-strip {
+  height: 14px;
+  width: 100%;
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--biohazard-yellow) 0,
+    var(--biohazard-yellow) 10px,
+    var(--biohazard-black) 10px,
+    var(--biohazard-black) 20px
+  );
+  border-bottom: 2px solid var(--biohazard-black);
+}
+
+.dna-report {
+  padding: 1.25rem;
+}
+
+.dna-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--dna-border);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.dna-icon {
+  font-size: 1.2rem;
+  filter: grayscale(100%) brightness(50%); /* Mutes the emoji to fit the dark ink */
+}
+
+/* Staggered DNA Electropherogram Bands */
+.dna-sequence-graphic {
+  height: 25px;
+  width: 100%;
+  margin-bottom: 1rem;
+  background-color: rgba(0,0,0,0.03);
+  border: 1px solid rgba(0,0,0,0.05);
+  border-radius: 2px;
+  /* Simulating genetic bands with precise gradient stops */
+  background-image: 
+    linear-gradient(90deg, 
+      transparent 10%, var(--dna-band) 10%, var(--dna-band) 12%, 
+      transparent 12%, transparent 25%, var(--dna-band) 25%, var(--dna-band) 30%, 
+      transparent 30%, transparent 45%, var(--dna-band) 45%, var(--dna-band) 48%, 
+      transparent 48%, transparent 60%, var(--dna-band) 60%, var(--dna-band) 62%, 
+      transparent 62%, transparent 80%, var(--dna-band) 80%, var(--dna-band) 85%, 
+      transparent 85%
+    );
+  opacity: 0.7;
+}
+
+.dna-variant .evidence-title {
+  color: var(--dna-ink);
+  font-family: var(--font-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dna-variant .evidence-desc {
+  color: #34495e;
+  font-family: var(--font-mono);
+}
+
+.dna-variant .lab-stamp {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: var(--dna-ink); 
+}
+
+/* ==============================================================
+   DIGITAL FORENSICS (Rugged Drive / Terminal Screen)
+   ============================================================== */
+.digital-variant {
+  /* --- THEME CONTROL PANEL --- */
+  --cyber-casing: #1e2429;        /* Outer hardware casing */
+  --cyber-screen: #0a0e11;        /* Deep black terminal background */
+  --cyber-accent: #00e5ff;        /* Neon cyan terminal text */
+  --cyber-text: #8aa4b5;          /* Muted blue/grey for body text */
+  /* --------------------------- */
+  
+  min-height: 190px;
+  margin-top: 15px;
+  background: var(--cyber-casing);
+  border-radius: 4px;
+  box-shadow: 2px 4px 10px rgba(0,0,0,0.5);
+  position: relative;
+  /* Creates the thick outer hardware bezel */
+  padding: 8px; 
+  border: 1px solid #2a353d;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Faux vent/LED slot on the hardware casing */
+.drive-casing-top {
+  height: 6px;
+  width: 40px;
+  background: #050709;
+  border-radius: 10px;
+  margin: 0 auto 8px auto;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.05);
+}
+
+.digital-screen {
+  flex: 1;
+  background: var(--cyber-screen);
+  border-radius: 2px;
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 15px rgba(0,229,255,0.05);
+  border: 1px solid #15222b;
+}
+
+/* Subtle horizontal CRT monitor scanlines */
+.scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.2),
+    rgba(0, 0, 0, 0.2) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 1;
+}
+
+.digital-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px dashed rgba(0, 229, 255, 0.3);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+  position: relative;
+  z-index: 2;
+}
+
+.terminal-prompt {
+  color: var(--cyber-accent);
+  font-family: var(--font-mono);
+  font-weight: bold;
+  animation: cursor-blink 1s step-end infinite;
+}
+
+@keyframes cursor-blink {
+  50% { opacity: 0; }
+}
+
+.digital-variant .lab-stamp {
+  color: var(--cyber-accent);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+}
+
+.digital-variant .forensic-text-content {
+  position: relative;
+  z-index: 2;
+}
+
+.digital-variant .evidence-title {
+  color: #ffffff;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 5px rgba(0, 229, 255, 0.4);
+}
+
+.digital-variant .evidence-desc {
+  color: var(--cyber-text);
+  font-family: var(--font-mono);
+}
+
+/* ==============================================================
+   TRACE ANALYSIS (Glossy Plastic Evidence Bag & Sticker)
+   ============================================================== */
+.trace-variant {
+  /* --- THEME CONTROL PANEL --- */
+  --bag-plastic: rgba(235, 240, 245, 0.75); /* Translucent frosted plastic */
+  --bag-glare: rgba(255, 255, 255, 0.6);    /* Harsh light glare */
+  --zipper-color: #2980b9;                  /* Classic blue zip-seal */
+  --label-bg: #fdfdfd;                      /* White sticker */
+  --trace-ink: #2c3e50;                     /* Dark ink */
+  /* --------------------------- */
+  
+  min-height: 190px;
+  margin-top: 15px;
+  background: var(--bag-plastic);
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.4);
+  /* The diagonal glossy glare simulating shiny plastic */
+  background-image: linear-gradient(105deg, transparent 35%, var(--bag-glare) 40%, var(--bag-glare) 45%, transparent 50%);
+  box-shadow: 2px 4px 10px rgba(0,0,0,0.2), inset 0 0 10px rgba(255,255,255,0.3);
+  position: relative;
+  /* Top padding leaves room for the clear plastic above the sticker */
+  padding: 2.5rem 1rem 1rem 1rem; 
+}
+
+/* The double blue lines of a Ziploc-style evidence bag seal */
+.zipper-seal {
+  position: absolute;
+  top: 12px; left: 0; right: 0;
+  height: 6px;
+  border-top: 2px solid var(--zipper-color);
+  border-bottom: 2px solid var(--zipper-color);
+  opacity: 0.6;
+}
+
+/* The white sticker applied to the plastic */
+.trace-bag-label {
+  background: var(--label-bg);
+  border-radius: 2px;
+  padding: 1.25rem;
+  border: 1px solid #dcdcdc;
+  box-shadow: 1px 2px 5px rgba(0,0,0,0.1);
+  position: relative;
+  z-index: 2;
+}
+
+.trace-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 2px dashed #bdc3c7;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.trace-icon {
+  font-size: 1.2rem;
+  filter: grayscale(100%) contrast(200%);
+}
+
+.trace-variant .lab-stamp {
+  color: var(--trace-ink);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.trace-variant .evidence-title {
+  color: var(--trace-ink);
+  font-family: var(--font-primary);
+  text-transform: uppercase;
+}
+
+.trace-variant .evidence-desc {
+  color: #4a5c6e;
+  font-family: var(--font-mono);
+}

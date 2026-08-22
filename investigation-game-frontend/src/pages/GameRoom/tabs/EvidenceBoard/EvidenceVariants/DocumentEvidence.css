@@ -1,0 +1,814 @@
+/* ==============================================================
+   BASE DOCUMENT STRUCTURE
+   ============================================================== */
+.document-variant {
+  position: relative;
+  border-radius: 2px;
+  width: 240px; /* Restored original width */
+}
+
+/* Base typography resets for standard paper placeholders */
+.document-variant .evidence-title { 
+  margin: 0 0 0.25rem 0; 
+  font-size: 1.05rem; 
+  font-weight: 800;
+  color: #1a1a1a; 
+}
+
+.document-variant .evidence-desc { 
+  font-size: 0.85rem; 
+  color: #333333; 
+  margin-top: 0.5rem; 
+  line-height: 1.4; 
+}
+
+/* ==============================================================
+   FINANCIAL RECORD (Stuffed Corporate Folder)
+   ============================================================== */
+.financial-variant {
+  /* --- THE THEME CONTROL PANEL --- */
+  /* Change these hex codes to recolor the entire folder instantly */
+  --folder-bg-back: #2a313a;       /* Deep corporate slate (Back Cover & Tab) */
+  --folder-bg-front: #343d46;      /* Slightly lighter face (Front Cover) */
+  --folder-border-shadow: #1a1f24; /* Dark edges */
+  --folder-border-edge: #5a6470;   /* Light top/left edges for 3D pop */
+  
+  --folder-text-title: #e0e0e0;    /* Title text color */
+  --folder-text-desc: #9ba3ab;     /* Description text color */
+  /* ------------------------------- */
+
+  width: 280px; 
+  height: 200px; 
+  background: transparent;
+  display: flex;
+  position: relative;
+  margin-top: 15px; 
+}
+
+/* 1. THE BACK COVER & TAB */
+.folder-back {
+  position: absolute;
+  bottom: 0; left: 0; right: 0; top: 15px;
+  background: var(--folder-bg-back); 
+  border-radius: 0 4px 4px 4px; 
+  border: 1px solid var(--folder-border-shadow);
+  box-shadow: 4px 4px 15px rgba(0,0,0,0.6);
+  z-index: 1;
+}
+
+.folder-back::before {
+  content: '';
+  position: absolute;
+  bottom: 100%; left: -1px;
+  width: 45%; height: 15px;
+  background: var(--folder-bg-back);
+  border-radius: 6px 6px 0 0;
+  border-top: 1px solid var(--folder-border-edge);
+  border-left: 1px solid var(--folder-border-edge);
+  border-right: 1px solid var(--folder-border-shadow);
+}
+
+/* 2. THE PAPERS INSIDE */
+.folder-papers {
+  position: absolute;
+  bottom: 5px; left: 10px; right: 10px; top: -5px;
+  z-index: 2;
+}
+
+.paper-sheet {
+  position: absolute;
+  bottom: 0;
+  background: #f4f1ea;
+  border: 1px solid #b5b1a5;
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.4);
+  border-radius: 2px;
+}
+
+.paper-1 {
+  width: 92%; height: 95%;
+  left: 2%;
+  transform: rotate(-4deg);
+  transform-origin: bottom left;
+  background-image: repeating-linear-gradient(180deg, transparent, transparent 6px, rgba(140, 180, 150, 0.2) 6px, rgba(140, 180, 150, 0.2) 12px);
+}
+
+.paper-2 {
+  width: 95%; height: 98%;
+  right: 2%;
+  transform: rotate(3deg);
+  transform-origin: bottom right;
+  overflow: hidden; 
+}
+
+/* 3. THE FRONT COVER */
+.folder-front {
+  position: absolute;
+  bottom: 0; left: 0; right: 0; top: 35px; 
+  background: var(--folder-bg-front);
+  border-radius: 4px;
+  border-top: 1px solid var(--folder-border-edge);
+  border-left: 1px solid var(--folder-border-edge);
+  border-right: 1px solid var(--folder-border-shadow);
+  border-bottom: 1px solid var(--folder-border-shadow);
+  z-index: 3;
+  box-shadow: 0 -4px 12px rgba(0,0,0,0.5); 
+  padding: 1.25rem;
+}
+
+/* 4. TEXT CONTENT ON FRONT */
+.folder-text-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.financial-variant .evidence-title {
+  color: var(--folder-text-title);
+  font-size: 1rem;
+  margin: 0;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.8);
+}
+
+.financial-variant .evidence-desc {
+  color: var(--folder-text-desc);
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  /* -webkit-line-clamp: 3; */
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* 5. MICRO-TABLE (Visible on paper-2) */
+.micro-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-primary), sans-serif;
+  font-size: 4px; 
+  color: #1a1a1a;
+  background: #f4f1ea; 
+  border-bottom: 0.5px solid #b5b1a5;
+}
+.micro-row {
+  display: flex;
+  border-bottom: 0.5px solid #b5b1a5;
+}
+.micro-header {
+  background: #e6e4dc; 
+  font-weight: bold;
+}
+.micro-col {
+  flex: 1;
+  padding: 2px;
+  border-right: 0.5px solid #b5b1a5;
+  white-space: nowrap;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+.micro-col:last-child {
+  border-right: none;
+}
+.micro-col.flex-2 {
+  flex: 2;
+}
+
+/* ==============================================================
+   CORRESPONDENCE (Opened Airmail Envelope)
+   ============================================================== */
+.correspondence-variant {
+  /* --- THE THEME CONTROL PANEL --- */
+  --env-paper: #e8e4d5;           /* Aged, off-white envelope paper */
+  --env-inside: #c5c0af;          /* Darker shadow inside the envelope */
+  --letter-paper: #fdfbf7;        /* Crisp letter paper */
+  --ink-color: #1a1a1a;           /* Typewriter ink */
+  --stamp-ink: rgba(20, 20, 20, 0.75); /* Post office cancellation ink */
+  /* ------------------------------- */
+
+  width: 240px;
+  height: 150px;
+  background: transparent;
+  display: flex;
+  position: relative;
+  margin-top: 25px; /* Room for the letter sticking out */
+}
+
+/* 1. THE INSIDE OF THE ENVELOPE */
+.envelope-inside {
+  position: absolute;
+  bottom: 0; left: 0; right: 0; top: 20px;
+  background: var(--env-inside);
+  border-radius: 2px;
+  box-shadow: 4px 6px 15px rgba(0,0,0,0.5);
+  z-index: 1;
+  border: 1px solid #b5b0a1;
+}
+
+/* 2. THE FOLDED LETTER */
+.letter-paper {
+  position: absolute;
+  bottom: 10px; left: 10px; right: 10px; top: -15px; /* Sticks out the top */
+  background: var(--letter-paper);
+  border: 1px solid #d1ccc0;
+  border-radius: 2px;
+  box-shadow: 2px 2px 8px rgba(0,0,0,0.3);
+  z-index: 2;
+  padding: 1rem 1.25rem;
+  
+  /* Slight rotation to look loosely pulled out */
+  transform: rotate(-3deg);
+  transform-origin: bottom left;
+  
+  /* A subtle horizontal crease to imply it was folded */
+  background-image: linear-gradient(to bottom, transparent 48%, rgba(0,0,0,0.05) 50%, transparent 52%);
+}
+
+.letter-text-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* Typewriter aesthetic for the letter text */
+.correspondence-variant .evidence-title {
+  color: var(--ink-color);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.9rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin: 0;
+  border-bottom: 1px dashed #ccc;
+  padding-bottom: 0.25rem;
+}
+
+.correspondence-variant .evidence-desc {
+  color: var(--ink-color);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  margin: 0;
+  
+  /* Fallback and Standard Line Clamp */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4; 
+  -webkit-box-orient: vertical;
+  
+  overflow: hidden;
+  opacity: 0.9;
+}
+
+/* 3. THE ENVELOPE FRONT & AIRMAIL BORDER */
+/* Wrapper needed to apply drop-shadow to a clip-path element */
+.envelope-front-wrapper {
+  position: absolute;
+  bottom: 0; left: 0; right: 0; top: 20px;
+  z-index: 3;
+  filter: drop-shadow(0 -4px 6px rgba(0,0,0,0.4)); 
+  pointer-events: none; /* Lets clicks pass through to the card wrapper */
+}
+
+.envelope-flaps {
+  width: 100%;
+  height: 100%;
+  background: var(--env-paper);
+  border-radius: 2px;
+  /* Cuts out the classic envelope "V" shape at the top */
+  clip-path: polygon(0 0, 50% 45%, 100% 0, 100% 100%, 0 100%);
+  position: relative;
+}
+
+/* The red & blue diagonal airmail border */
+/* The red & blue diagonal airmail border */
+.airmail-border {
+  position: absolute;
+  inset: 0;
+  border: 4px solid transparent;
+  background: repeating-linear-gradient(
+    -45deg,
+    #c44b4b 0, #c44b4b 10px,
+    transparent 10px, transparent 20px,
+    #4b6bc4 20px, #4b6bc4 30px,
+    transparent 30px, transparent 40px
+  );
+  
+  /* WebKit Fallback */
+  -webkit-mask: 
+     linear-gradient(#fff 0 0) padding-box, 
+     linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  
+  /* Standard Syntax */
+  mask: 
+     linear-gradient(#fff 0 0) padding-box, 
+     linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
+
+/* 4. THE POSTAGE STAMP & CANCELLATION MARK */
+.postage-stamp {
+  position: absolute;
+  top: 35px; right: 15px; /* Sits on the front envelope flap */
+  width: 32px; height: 40px;
+  background: #fcfcfc;
+  z-index: 4;
+  transform: rotate(6deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Fake perforated edges using a dashed border */
+  border: 2px dashed #b5b1a5;
+  box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
+}
+
+.stamp-art {
+  width: 70%;
+  height: 75%;
+  background: #5a8a9e; /* A muted cyan postal art color */
+  border-radius: 1px;
+  opacity: 0.8;
+}
+
+/* The circular post office ink stamp cancelling the postage */
+.cancellation-mark {
+  position: absolute;
+  top: 50%; left: -20px;
+  width: 60px; height: 20px;
+  border-top: 2px solid var(--stamp-ink);
+  border-bottom: 2px solid var(--stamp-ink);
+  border-radius: 50%;
+  transform: translateY(-50%) rotate(-15deg);
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* The wavy lines of the cancellation mark */
+.cancellation-mark::after {
+  content: '';
+  position: absolute;
+  top: 4px; bottom: 4px; left: -10px; right: 10px;
+  border-top: 1px solid var(--stamp-ink);
+  border-bottom: 1px solid var(--stamp-ink);
+}
+
+/* ==============================================================
+   JOURNAL (Leather Detective Notebook)
+   ============================================================== */
+.journal-variant {
+  /* --- THE THEME CONTROL PANEL --- */
+  --journal-leather: #30241b;      /* Deep, rich espresso leather */
+  --journal-spine: #1e150f;        /* Darker, stiffer spine */
+  --journal-pages: #e8e4d5;        /* Aged paper edge */
+  --journal-elastic: #111111;      /* Black elastic band */
+  --journal-ribbon: #8c1c1c;       /* Crimson silk bookmark */
+  /* ------------------------------- */
+
+  width: 200px;
+  height: 230px; /* Portrait orientation */
+  margin: 15px 20px 25px 20px;
+  background: transparent;
+  display: flex;
+  position: relative;
+  margin-top: 10px;
+}
+
+/* 1. THE STACKED PAGES EDGE (Right side) */
+.journal-pages-edge {
+  position: absolute;
+  top: 4px; bottom: 4px; right: 0; left: 20px;
+  background: var(--journal-pages);
+  border-radius: 0 6px 6px 0;
+  box-shadow: 4px 4px 12px rgba(0,0,0,0.6);
+  /* Tiny horizontal lines simulating individual pages */
+  background-image: repeating-linear-gradient(to bottom, transparent, transparent 2px, rgba(0,0,0,0.06) 3px);
+  z-index: 1;
+}
+
+/* 2. THE LEATHER COVER */
+.journal-cover {
+  position: absolute;
+  top: 0; bottom: 0; left: 0; right: 6px; /* Leaves 6px for pages to peek out */
+  background: var(--journal-leather);
+  border-radius: 2px 4px 4px 2px;
+  box-shadow: inset -4px 0 10px rgba(0,0,0,0.5), 2px 2px 5px rgba(0,0,0,0.5);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 2.5rem 2rem 2rem;
+  /* Very subtle radial gradient for lighting depth on the leather */
+  background-image: radial-gradient(circle at 40% 50%, rgba(255,255,255,0.03) 0%, transparent 100%);
+}
+
+/* 3. THE DARK BINDING SPINE */
+.journal-spine {
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 20px;
+  background: var(--journal-spine);
+  border-radius: 2px 0 0 2px;
+  box-shadow: inset -3px 0 6px rgba(0,0,0,0.8), inset 2px 0 2px rgba(255,255,255,0.05);
+  border-right: 1px solid rgba(0,0,0,0.9);
+}
+
+/* 4. THE ELASTIC CLOSURE BAND */
+.journal-elastic-band {
+  position: absolute;
+  top: 0; bottom: 0; right: 12px;
+  width: 8px;
+  background: var(--journal-elastic);
+  box-shadow: -1px 0 4px rgba(0,0,0,0.6), 1px 0 2px rgba(255,255,255,0.05);
+}
+
+/* 5. THE SILK RIBBON BOOKMARK */
+.journal-bookmark {
+  position: absolute;
+  bottom: -25px; left: 35px;
+  width: 14px; height: 40px;
+  background: var(--journal-ribbon);
+  z-index: 1; /* Below the cover, hanging over the board */
+  box-shadow: 2px 2px 6px rgba(0,0,0,0.5);
+  /* The classic swallowtail ribbon cut */
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 80%, 0 100%);
+}
+
+/* 6. EMBOSSED/STAMPED TYPOGRAPHY */
+.journal-variant .journal-text-content {
+  text-align: center;
+  z-index: 5;
+  width: 100%;
+}
+
+.journal-variant .evidence-title {
+  color: rgba(255, 255, 255, 0.4);
+  font-family: serif; 
+  text-transform: uppercase;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  /* Creates an "indented" embossed look in the leather */
+  text-shadow: -1px -1px 1px rgba(0,0,0,0.8), 1px 1px 1px rgba(255,255,255,0.1);
+  margin: 0 0 0.5rem 0;
+}
+
+.journal-variant .evidence-desc {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.8rem;
+  font-style: italic;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-shadow: -1px -1px 1px rgba(0,0,0,0.8);
+}
+
+/* ==============================================================
+   CONTRACT (Classic Manila Legal Folder)
+   ============================================================== */
+.contract-variant {
+  /* --- THE THEME CONTROL PANEL --- */
+  --manila-bg: #f4e3aa;       /* Back flap color (slightly lighter) */
+  --manila-front: #eed894;    /* Front flap color */
+  --manila-ink: #1a1a1a;      /* Dark ink for text */
+  /* ------------------------------- */
+
+  width: 260px;
+  height: 180px; 
+  background: transparent;
+  display: flex;
+  position: relative;
+  margin-top: 20px; /* Leaves room for the tab at the top */
+}
+
+/* 1. THE BACK COVER */
+.manila-back {
+  position: absolute;
+  bottom: 0; left: 0; right: 0; top: 15px;
+  background: var(--manila-bg);
+  border-radius: 4px;
+  box-shadow: 2px 4px 10px rgba(0,0,0,0.3);
+  z-index: 1;
+}
+
+/* 2. THE TAB (Right-aligned) */
+.manila-tab {
+  position: absolute;
+  bottom: 100%; right: 15px;
+  width: 110px; height: 18px;
+  background: var(--manila-bg);
+  border-radius: 4px 4px 0 0;
+}
+
+/* 3. THE WHITE STICKER LABEL */
+.manila-label {
+  position: absolute;
+  bottom: 3px; left: 8px; right: 8px;
+  height: 16px;
+  background: #fdfdfd;
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: rotate(-1deg); /* Slight crookedness for realism */
+}
+
+.label-text {
+  font-family: 'Caveat', 'Segoe Script', cursive, var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--manila-ink);
+  text-transform: uppercase;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+/* 4. THE FRONT COVER */
+.manila-front {
+  position: absolute;
+  bottom: 0; left: 0; right: 0; top: 18px; /* Slightly lower than back flap to show the crease */
+  background: var(--manila-front);
+  border-radius: 4px;
+  z-index: 2;
+  box-shadow: 0 -2px 6px rgba(0,0,0,0.15); /* Crease shadow separating front from back */
+  padding: 1.5rem;
+}
+
+/* 5. FOLDER TEXT CONTENT */
+.manila-text-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.contract-variant .evidence-title {
+  color: var(--manila-ink);
+  font-size: 1.05rem;
+  margin: 0;
+  font-family: var(--font-primary);
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.contract-variant .evidence-desc {
+  color: #4a4a4a;
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ==============================================================
+   MEMO (Crumpled Notebook Page)
+   ============================================================== */
+.memo-variant {
+  /* --- THE THEME CONTROL PANEL --- */
+  --memo-paper: #fcfbfa;           /* Dusty white paper */
+  --memo-lines: #a6c8ff;           /* Faded blue horizontal lines */
+  --memo-margin: #e88b8b;          /* Red vertical margin */
+  --memo-ink: #1b263b;             /* Dark blue/black pen ink */
+  /* ------------------------------- */
+
+  width: 130px;
+  min-height: 150px;
+  background-color: var(--memo-paper);
+  /* The red margin and blue notebook lines */
+  background-image: 
+    linear-gradient(90deg, transparent 38px, var(--memo-margin) 38px, var(--memo-margin) 39px, transparent 39px),
+    repeating-linear-gradient(180deg, transparent, transparent 23px, var(--memo-lines) 23px, var(--memo-lines) 24px);
+  
+  /* Slightly irregular border radius to look handled */
+  border-radius: 2px 6px 3px 5px; 
+  box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.4);
+  position: relative;
+  padding: 2.5rem 1.5rem 1.5rem 3.5rem;
+  border: 1px solid #e0dfdc;
+}
+
+/* 1. SPIRAL NOTEBOOK HOLES */
+.notebook-holes {
+  position: absolute;
+  top: 0; bottom: 0; left: 6px;
+  width: 16px;
+  /* Punches holes out to reveal the dark board behind it */
+  background-image: radial-gradient(circle at 8px 12px, var(--bg-dark) 5px, rgba(0,0,0,0.15) 6px, transparent 7px);
+  background-size: 100% 30px; /* Spacing between the holes */
+  background-position: 0 15px;
+  background-repeat: repeat-y;
+  z-index: 2;
+  border-right: 1px solid rgba(0, 0, 0, 0.05); /* Slight crease near the rings */
+}
+
+/* 2. THE CRUMPLED PAPER TEXTURE */
+.crumpled-texture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* Allows text selection beneath it */
+  border-radius: inherit;
+  z-index: 1;
+  
+  /* Intersecting gradients to simulate harsh creases and smoothed-out folds */
+  background: 
+    linear-gradient(135deg, transparent 35%, rgba(0,0,0,0.06) 35%, rgba(255,255,255,0.4) 36%, transparent 37%),
+    linear-gradient(45deg, transparent 65%, rgba(0,0,0,0.04) 65%, rgba(255,255,255,0.3) 66%, transparent 68%),
+    linear-gradient(75deg, transparent 20%, rgba(0,0,0,0.05) 20%, rgba(255,255,255,0.2) 21%, transparent 22%),
+    linear-gradient(-20deg, transparent 50%, rgba(0,0,0,0.05) 50%, rgba(255,255,255,0.3) 52%, transparent 54%),
+    radial-gradient(circle at 30% 30%, rgba(0,0,0,0.03) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(255,255,255,0.2) 0%, transparent 40%);
+    
+  /* Internal shadowing for wrinkly depth */
+  box-shadow: 
+    inset 10px 10px 20px rgba(0,0,0,0.04), 
+    inset -10px -10px 20px rgba(0,0,0,0.04);
+}
+
+/* 3. HANDWRITTEN TEXT CONTENT */
+.memo-content {
+  position: relative;
+  z-index: 3;
+}
+
+.memo-variant .evidence-title {
+  color: var(--memo-ink);
+  font-family: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  transform: rotate(-1deg); /* Imperfect writing angle */
+}
+
+.memo-variant .evidence-desc {
+  color: var(--memo-ink);
+  font-family: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  font-size: 1.1rem;
+  /* Syncs the line height perfectly with the blue notebook ruling */
+  line-height: 24px; 
+  margin: 0;
+  transform: rotate(1deg); /* Imperfect writing angle */
+  
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ==============================================================
+   BACKGROUND CHECK (Restricted Rap Sheet / Dossier)
+   ============================================================== */
+.dossier-variant {
+  /* --- THE THEME CONTROL PANEL --- */
+  --dossier-paper: #fdfdfd;        /* Stark, bleached white paper */
+  --dossier-ink: #111111;          /* Harsh black typewriter ink */
+  --dossier-alert: #a33232;        /* Crimson for classification stamps */
+  /* ------------------------------- */
+
+  width: 260px;
+  min-height: 140px;
+  background-color: var(--dossier-paper);
+  border: 1px solid #cfcfcf;
+  border-radius: 2px;
+  box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.3);
+  position: relative;
+  padding: 2.5rem 1.5rem 1.5rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  margin-top: 15px; /* Room for the paperclip */
+}
+
+/* 1. THE METAL PAPERCLIP */
+.dossier-paperclip {
+  position: absolute;
+  top: -12px; left: 30px;
+  width: 14px; height: 45px;
+  border: 2px solid #a0a0a0;
+  border-radius: 12px;
+  background: transparent;
+  /* Complex shadows make the wire look round and metallic */
+  box-shadow: 2px 2px 3px rgba(0,0,0,0.3), inset 1px 1px 2px rgba(255,255,255,0.8);
+  transform: rotate(6deg);
+  z-index: 5;
+}
+
+/* 2. THE OFFICIAL HEADER & BARCODE */
+.dossier-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid var(--dossier-ink);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.dossier-classification {
+  color: var(--dossier-alert);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+}
+
+.dossier-barcode {
+  width: 50px;
+  height: 12px;
+  /* Pure CSS Barcode via irregular gradient stops */
+  background: repeating-linear-gradient(
+    to right,
+    var(--dossier-ink),
+    var(--dossier-ink) 2px,
+    transparent 2px,
+    transparent 4px,
+    var(--dossier-ink) 4px,
+    var(--dossier-ink) 5px,
+    transparent 5px,
+    transparent 7px
+  );
+  opacity: 0.8;
+}
+
+/* 3. DOSSIER BODY (Mugshot + Text) */
+.dossier-body {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+
+/* The empty ID/Mugshot photo box */
+.dossier-mugshot {
+  width: 60px;
+  height: 75px;
+  background: #e5e5e5;
+  border: 1px solid #999;
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+  box-shadow: inset 0 0 8px rgba(0,0,0,0.1);
+}
+
+/* A generic head-and-shoulders silhouette */
+.mugshot-silhouette {
+  position: absolute;
+  bottom: 0; left: 50%;
+  transform: translateX(-50%);
+  width: 30px; height: 35px;
+  background: #cccccc;
+  border-radius: 15px 15px 0 0;
+}
+.mugshot-silhouette::before {
+  content: '';
+  position: absolute;
+  bottom: 100%; left: 50%;
+  transform: translateX(-50%);
+  width: 20px; height: 24px;
+  background: #cccccc;
+  border-radius: 50%;
+  margin-bottom: 2px;
+}
+
+/* 4. TEXT CONTENT */
+.dossier-text-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.dossier-variant .evidence-title {
+  color: var(--dossier-ink);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 1rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.dossier-variant .evidence-desc {
+  color: var(--dossier-ink);
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 0.8rem;
+  line-height: 1.4;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  opacity: 0.9;
+}
+
+/* The actual uploaded mugshot photo */
+.actual-mugshot-photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Ensures the photo fills the box without stretching */
+  /* This filter forces the color photo to look like a photocopied black-and-white rap sheet */
+  filter: grayscale(100%) contrast(120%) brightness(95%); 
+}

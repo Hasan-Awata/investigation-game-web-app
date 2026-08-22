@@ -1,7 +1,8 @@
+/* EvidenceCard.css - ONLY base wrapper mechanics */
 .evidence-card-wrapper { 
   position: relative; 
   cursor: pointer; 
-  transition: transform 0.2s ease, z-index 0s; 
+  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), z-index 0s; 
   z-index: 1; 
 }
 
@@ -17,17 +18,7 @@
 .item-3 { transform: rotate(4deg); margin-top: 1rem; }
 .item-4 { transform: rotate(-2deg); margin-top: -1rem; }
 
-.evidence-variant {
-  width: 240px;
-  padding: 1.5rem;
-  border-radius: var(--radius-md);
-  background: rgba(var(--bg-panel-rgb), 0.8);
-  border: var(--border-thin);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.4);
-  backdrop-filter: blur(8px);
-  position: relative;
-}
-
+/* Base shared typography classes */
 .evidence-title { 
   margin: 0 0 0.5rem 0; 
   font-size: 1.1rem; 
@@ -48,208 +39,14 @@
   line-height: 1.4; 
 }
 
-/* --- UNIVERSAL PROPS --- */
+/* Universal digital pins for the board */
 .digital-pin { 
   position: absolute; top: 12px; left: 50%; transform: translateX(-50%); 
   width: 10px; height: 10px; border-radius: 50%; 
   border: 1px solid rgba(255,255,255,0.3);
   box-shadow: 1px 2px 3px rgba(0,0,0,0.8), inset -2px -2px 4px rgba(0,0,0,0.5); 
+  z-index: 20;
 }
-
 .digital-pin.amber { color: var(--accent-amber); background: var(--accent-amber); }
 .digital-pin.cyan { color: var(--accent-cyan); background: var(--accent-cyan); }
 .digital-pin.crimson { color: var(--accent-crimson); background: var(--accent-crimson); }
-
-.digital-tape {
-  position: absolute; top: -12px; left: 50%; 
-  transform: translateX(-50%) rotate(-3deg); 
-  width: 70px; height: 25px;
-  background: rgba(220, 215, 200, 0.8);
-  border: none;
-  box-shadow: 1px 2px 3px rgba(0,0,0,0.3);
-  clip-path: polygon(2% 5%, 98% 0%, 100% 95%, 0% 100%);
-}
-
-/* --- PHYSICAL PROP: MANILA FOLDER --- */
-.document-variant {
-  background: var(--accent-amber);
-  color: #1a1a1a; 
-  border-top-left-radius: 0;
-  border: 1px solid rgba(0, 0, 0, 0.4);
-  box-shadow: inset -4px 0 10px rgba(0, 0, 0, 0.1), 4px 4px 8px rgba(0, 0, 0, 0.4);
-}
-
-.document-variant .evidence-title,
-.document-variant .evidence-desc,
-.document-variant .evidence-id {
-  color: #1a1a1a;
-}
-
-.folder-tab {
-  position: absolute; top: -14px; left: -1px; 
-  width: 45%; height: 14px; 
-  background: var(--accent-amber);
-  border: 1px solid rgba(0, 0, 0, 0.4);
-  border-bottom: none; 
-  border-radius: 4px 4px 0 0;
-  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.1);
-}
-
-.document-variant::after {
-  content: '';
-  position: absolute; top: 0; left: 8px; bottom: 0;
-  width: 2px;
-  background: rgba(0, 0, 0, 0.05);
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
-  pointer-events: none;
-}
-
-/* --- PHYSICAL PROP: TYPED TRANSCRIPT --- */
-.testimony-variant {
-  display: block;
-  box-sizing: border-box;
-  background: #fdfbf7; 
-  border: 1px solid #d1ccc0;
-  border-radius: 2px;
-  padding: 3rem 1.5rem 1.5rem;
-  box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.4);
-  position: relative;
-  background-image: repeating-linear-gradient(transparent, transparent 23px, rgba(0, 0, 0, 0.05) 24px);
-  background-size: 100% 24px;
-  background-position: 0 2.5rem;
-}
-
-.testimony-variant .evidence-title {
-  font-weight: 800;
-  font-size: 1.1rem;
-  margin: 0 0 0.25rem 0;
-  color: #1a1a1a;
-  font-family: var(--font-primary);
-}
-
-.testimony-variant .evidence-id {
-  font-weight: bold;
-  color: #555;
-  font-family: var(--font-mono);
-}
-
-/* THE EXACT TARGET FOR THE CARD DESCRIPTION */
-.testimony-variant .evidence-desc {
-  font-size: 0.9rem;
-  margin-top: 1rem;
-  line-height: 1.5;
-  background: transparent;
-  color: #333;
-  font-family: var(--font-primary);
-}
-
-.testimony-stamp {
-  position: absolute;
-  top: 15px;
-  right: 15px;
-  font-size: 0.75rem;
-  font-weight: bold;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  border: 1px solid rgba(163, 50, 50, 0.4);
-  padding: 2px 6px;
-  border-radius: 2px;
-  transform: rotate(2deg);
-  color: rgba(163, 50, 50, 0.8);
-  font-family: var(--font-mono);
-}
-
-.testimony-paperclip {
-  position: absolute; 
-  top: -12px; 
-  left: 25px;
-  width: 14px; 
-  height: 45px;
-  border: 2px solid #a0a0a0;
-  border-radius: 12px;
-  background: transparent;
-  box-shadow: 2px 2px 3px rgba(0,0,0,0.3), inset 1px 1px 2px rgba(255,255,255,0.5);
-  transform: rotate(6deg);
-  z-index: 5;
-}
-
-/* --- PHYSICAL PROP: CASSETTE TAPE --- */
-.audio-variant { 
-  background: #222;
-  border: 1px solid #111; 
-  border-radius: 8px;
-  box-shadow: inset 2px 2px 0px rgba(255,255,255,0.05), inset -2px -2px 5px rgba(0,0,0,0.8), 4px 4px 8px rgba(0,0,0,0.5);
-}
-
-.audio-tape-ui { 
-  display: flex; justify-content: center; gap: 2rem; 
-  background: #0a0a0a;
-  padding: 0.75rem 2rem; border-radius: 4px; 
-  margin: 1.5rem 0; border: 1px solid #000;
-  position: relative;
-  box-shadow: inset 0 0 10px rgba(0,0,0,0.8);
-}
-
-.audio-tape-ui::before {
-  content: ''; position: absolute; top: 50%; left: 20%; right: 20%;
-  height: 2px; background: #111; transform: translateY(-50%);
-}
-
-.audio-spool { 
-  width: 28px; height: 28px; border-radius: var(--radius-full); 
-  background: #e0e0e0; border: 3px solid #111;
-  position: relative; z-index: 2;
-  background-image: radial-gradient(circle, #111 20%, transparent 20%), 
-                    conic-gradient(#444 0 25%, #e0e0e0 25% 50%, #444 50% 75%, #e0e0e0 75% 100%);
-}
-
-/* --- PHYSICAL PROP: PHOTOGRAPH --- */
-.image-variant { background: #E0E0E0; padding: 10px 10px 40px 10px; width: 220px; }
-.image-frame { width: 100%; aspect-ratio: 1 / 1; background-color: var(--bg-dark); background-size: cover; background-position: center; box-shadow: inset 0 0 20px rgba(0,0,0,0.8); }
-.image-caption .evidence-title { color: #121212; font-family: var(--font-mono); font-size: 0.85rem; margin-top: 15px; text-align: center; }
-
-/* --- PHYSICAL PROP: FORENSIC EVIDENCE TAG --- */
-.forensic-variant {
-  background: #d9d9d9;
-  border: 1px solid #999;
-  border-top: 12px solid var(--accent-crimson);
-  border-radius: 2px;
-  box-shadow: 2px 4px 8px rgba(0, 0, 0, 0.5);
-  position: relative;
-  padding: 2rem 1.5rem 1.5rem;
-}
-
-.forensic-variant .evidence-title,
-.forensic-variant .evidence-id,
-.forensic-variant .evidence-desc {
-  color: #121212;
-  font-family: var(--font-mono);
-}
-
-.forensic-header { 
-  display: flex; align-items: center; gap: 0.5rem; 
-  margin-bottom: 1rem; border-bottom: 2px dashed #999; padding-bottom: 0.5rem;
-}
-
-.forensic-icon { color: var(--accent-crimson); font-size: 1.2rem; }
-
-.forensic-variant::before {
-  content: ''; position: absolute; top: -6px; left: 50%; transform: translateX(-50%);
-  width: 12px; height: 12px;
-  background: var(--bg-dark); border: 3px solid #b3b3b3; border-radius: 50%;
-  box-shadow: inset 1px 1px 4px rgba(0,0,0,0.8); z-index: 5;
-}
-
-@media (max-width: 768px) {
-  .evidence-card-wrapper {
-    width: 100%;
-    transform: none !important;
-    margin: 0 !important;
-  }
-
-  .evidence-variant {
-    width: 100%;
-    max-width: 100%;
-    padding: 1.25rem;
-  }
-}
