@@ -2,13 +2,15 @@
    TESTIMONY VIEWER (Police Interrogation Transcript)
    ============================================================== */
 .testimony-modal-viewer {
-  background: #f4f1ea; /* Aged, slightly yellowed legal paper */
-  padding: 4rem 5rem;
+  background: #f4f1ea; 
+  padding: 2.5rem 3rem; /* Reduced so it fits nicely inside the modal */
   border-radius: 2px;
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.05), 2px 4px 20px rgba(0, 0, 0, 0.2);
-  max-width: 900px;
+  width: 100%;
+  box-sizing: border-box; /* CRITICAL: Prevents padding from breaking width */
   margin: 0 auto;
   color: #1a1a1a;
+  overflow: hidden; /* CRITICAL: Traps the watermark inside the paper */
 }
 
 .testimony-paper {
@@ -113,6 +115,7 @@
   pointer-events: none;
   z-index: 0;
   letter-spacing: 0.2em;
+  white-space: nowrap; 
 }
 
 .transcript-content {
@@ -156,39 +159,54 @@
 }
 
 /* Footer / Signature */
+/* Footer / Signature */
 .testimony-footer {
   border-top: 2px solid #1a1a1a;
   padding-top: 2rem;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
+  gap: 2rem;
+  flex-wrap: wrap; 
 }
 
 .certification-statement {
   font-family: 'Times New Roman', Times, serif;
-  font-size: 1rem;
+  font-size: 1.1rem;
   font-style: italic;
   max-width: 400px;
   color: #555;
+  margin-bottom: 0.5rem; /* Adds breathing room if it stacks on small screens */
 }
 
 .signature-area {
   text-align: center;
-  min-width: 250px;
+  width: 280px; /* CRITICAL: Locks the signature line from stretching across the page */
+  margin-left: auto; /* CRITICAL: Forces it to stay pinned to the right */
 }
 
 .steno-signature {
-  font-family: 'Caveat', cursive;
-  font-size: 2rem;
-  color: #1a4f8b;
-  transform: rotate(-3deg);
-  margin-bottom: -5px;
+  position: relative;
+  height: 60px; /* Gives the image a fixed vertical space */
+  margin-bottom: 2px; /* Pulls it down slightly to touch the line */
+  z-index: 5;
+}
+
+.steno-signature-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: rotate(-3deg) scale(1.3); /* Adjust scale if your PNGs have too much transparent padding */
+  transform-origin: bottom center;
+  pointer-events: none;
 }
 
 .signature-line {
   border-top: 1px solid #1a1a1a;
-  padding-top: 0.25rem;
+  padding-top: 0.5rem;
   font-family: 'Courier New', Courier, monospace;
   font-size: 0.85rem;
   font-weight: bold;
+  position: relative;
+  z-index: 1;
 }

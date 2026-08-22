@@ -640,27 +640,31 @@
 
 .signature-line-wrapper {
   position: relative;
-  height: 80px; /* Increased height to give the signature room to breathe */
+  height: 80px; 
   margin-top: 0.5rem;
 }
 
 .rendered-signature-img {
   position: absolute;
+  bottom: 2px; /* Pulls the ink up slightly so it sits right on top of the line */
+  left: 0;
+  width: 100%;
+  height: 75px;
+  object-fit: contain;
+  pointer-events: none;
+  transform: rotate(-3deg) scale(1.3);
+  transform-origin: bottom center;
+  z-index: 2; /* Forces the ink in front of the line */
+}
+
+.contract-signature-line {
+  position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
-  height: 75px; /* Maximize the height */
-  object-fit: contain;
-  pointer-events: none;
-  transform: rotate(-3deg) scale(2); /* Bump this up to 2.4 or 2.8 to make it massive */
-  transform-origin: bottom center;
-}
-.signature-line {
-  width: 100%;
   height: 1px;
-  background-color: #111111;
-  position: absolute;
-  bottom: 0;
+  background-color: #1a1a1a;
+  z-index: 1;
 }
 
 .signature-caption {

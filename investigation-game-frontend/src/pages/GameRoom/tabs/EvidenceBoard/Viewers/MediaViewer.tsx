@@ -29,7 +29,7 @@ export default function MediaViewer({ evidence }: MediaViewerProps) {
         return (
           <div className="media-audio-container">
             <div className="audio-visualizer-mock"></div>
-            <audio controls src={audio_url || ''} className="media-audio-player">
+            <audio controls src={audio_url || undefined} className="media-audio-player">
               Your browser does not support the audio element.
             </audio>
             <div className="media-meta-plaque">

@@ -125,25 +125,27 @@ export default function DocumentViewer({ evidence }: DocumentViewerProps) {
         const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
         
         // Real autographic handwritten signature PNG assets hosted on the Laravel backend 
-        const signaturePool = [
-          `${backendUrl}/assets/signatures/signature.png`,
-          `${backendUrl}/assets/signatures/signature-1.png`,
-          `${backendUrl}/assets/signatures/signature-2.png`,
-          `${backendUrl}/assets/signatures/signature-3.png`,
-          `${backendUrl}/assets/signatures/signature-4.png`,
-          `${backendUrl}/assets/signatures/signature-5.png`,
-          `${backendUrl}/assets/signatures/signature-6.png`,
-          `${backendUrl}/assets/signatures/signature-7.png`,
-          `${backendUrl}/assets/signatures/signature-8.png`,
-          `${backendUrl}/assets/signatures/signature-9.png`,
-          `${backendUrl}/assets/signatures/signature-10.png`,
-          `${backendUrl}/assets/signatures/signature-11.png`,
-          `${backendUrl}/assets/signatures/signature-12.png`,
-          `${backendUrl}/assets/signatures/signature-13.png`,
-          `${backendUrl}/assets/signatures/signature-14.png`,
-          `${backendUrl}/assets/signatures/signature-15.png`,
-          `${backendUrl}/assets/signatures/signature-16.png`,
-        ];
+          const signaturePool = [
+            `${backendUrl}/assets/signatures/signature.svg`,
+            `${backendUrl}/assets/signatures/signature-1.svg`,
+            `${backendUrl}/assets/signatures/signature-2.svg`,
+            `${backendUrl}/assets/signatures/signature-3.svg`,
+            `${backendUrl}/assets/signatures/signature-4.svg`,
+            `${backendUrl}/assets/signatures/signature-5.svg`,
+            `${backendUrl}/assets/signatures/signature-6.svg`,
+            `${backendUrl}/assets/signatures/signature-7.svg`,
+            `${backendUrl}/assets/signatures/signature-8.svg`,
+            `${backendUrl}/assets/signatures/signature-9.svg`,
+            `${backendUrl}/assets/signatures/signature-10.svg`,
+            `${backendUrl}/assets/signatures/signature-11.svg`,
+            `${backendUrl}/assets/signatures/signature-12.svg`,
+            `${backendUrl}/assets/signatures/signature-13.svg`,
+            `${backendUrl}/assets/signatures/signature-14.svg`,
+            `${backendUrl}/assets/signatures/signature-15.svg`,
+            `${backendUrl}/assets/signatures/signature-16.svg`,
+            `${backendUrl}/assets/signatures/signature-17.svg`,
+            `${backendUrl}/assets/signatures/signature-18.svg`,
+          ];
 
         // Deterministically select two DIFFERENT signatures with absolute safety check
         const idx1 = evidence.id % signaturePool.length;
@@ -184,14 +186,14 @@ export default function DocumentViewer({ evidence }: DocumentViewerProps) {
               <div className="signature-col">
                 <div className="signature-line-wrapper">
                   <img src={sig1} alt="Authorized Signature" className="rendered-signature-img" />
-                  <div className="signature-line"></div>
+                  <div className="contract-signature-line"></div>
                 </div>
                 <span className="signature-caption">Authorized Representative</span>
               </div>
               <div className="signature-col">
                 <div className="signature-line-wrapper">
                   <img src={sig2} alt="Witness Signature" className="rendered-signature-img" />
-                  <div className="signature-line"></div>
+                  <div className="contract-signature-line"></div>
                 </div>
                 <span className="signature-caption">Second Party / Witness</span>
               </div>

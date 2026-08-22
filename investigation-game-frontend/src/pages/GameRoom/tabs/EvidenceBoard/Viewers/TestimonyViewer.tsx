@@ -9,7 +9,34 @@ export default function TestimonyViewer({ evidence }: TestimonyViewerProps) {
   const { metadata } = evidence;
   const transcript = metadata?.transcript || "No official transcript was filed for this testimony.";
 
-  // Helper function to dynamically style Q&A formats (if the admin typed Q: or A:)
+  // 1. Define the backend URL and signature pool
+  const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  const signaturePool = [
+    `${backendUrl}/assets/signatures/signature.svg`,
+    `${backendUrl}/assets/signatures/signature-1.svg`,
+    `${backendUrl}/assets/signatures/signature-2.svg`,
+    `${backendUrl}/assets/signatures/signature-3.svg`,
+    `${backendUrl}/assets/signatures/signature-4.svg`,
+    `${backendUrl}/assets/signatures/signature-5.svg`,
+    `${backendUrl}/assets/signatures/signature-6.svg`,
+    `${backendUrl}/assets/signatures/signature-7.svg`,
+    `${backendUrl}/assets/signatures/signature-8.svg`,
+    `${backendUrl}/assets/signatures/signature-9.svg`,
+    `${backendUrl}/assets/signatures/signature-10.svg`,
+    `${backendUrl}/assets/signatures/signature-11.svg`,
+    `${backendUrl}/assets/signatures/signature-12.svg`,
+    `${backendUrl}/assets/signatures/signature-13.svg`,
+    `${backendUrl}/assets/signatures/signature-14.svg`,
+    `${backendUrl}/assets/signatures/signature-15.svg`,
+    `${backendUrl}/assets/signatures/signature-16.svg`,
+    `${backendUrl}/assets/signatures/signature-17.svg`,
+    `${backendUrl}/assets/signatures/signature-18.svg`,
+  ];
+
+  // 2. Deterministically select a signature based on evidence ID
+  const selectedSignature = signaturePool[evidence.id % signaturePool.length];
+
+  // Helper function to dynamically style Q&A formats
   const formatTranscript = (text: string) => {
     return text.split('\n').map((line, idx) => {
       const trimmedLine = line.trim();
@@ -18,7 +45,7 @@ export default function TestimonyViewer({ evidence }: TestimonyViewerProps) {
       } else if (trimmedLine.startsWith('A:')) {
         return <div key={idx} className="transcript-a"><span className="speaker-tag">WITNESS:</span> {trimmedLine.substring(2)}</div>;
       } else if (trimmedLine === '') {
-        return <br key={idx} />; // Preserve empty lines for pacing
+        return <br key={idx} />; 
       }
       return <div key={idx} className="transcript-line">{line}</div>;
     });
@@ -69,7 +96,10 @@ export default function TestimonyViewer({ evidence }: TestimonyViewerProps) {
             I hereby certify that the foregoing is a true and accurate transcript of the recorded interview.
           </div>
           <div className="signature-area">
-            <div className="steno-signature">Transcribed by System</div>
+            {/* 3. Render the image instead of text */}
+            <div className="steno-signature">
+              <img src={selectedSignature} alt="Stenographer Signature" className="steno-signature-img" />
+            </div>
             <div className="signature-line">COURT STENOGRAPHER</div>
           </div>
         </div>
