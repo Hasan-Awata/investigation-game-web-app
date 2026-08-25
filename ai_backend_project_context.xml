@@ -1,9 +1,184 @@
-LARAVEL PROJECT ARCHITECTURE SNAPSHOT
-=====================================
+<system_directives>
+  <rule>Read this entire document carefully. Do NOT assume code is missing. Never use placeholders like `...` or `// rest of the code` in your responses. Write complete, fully functional blocks.</rule>
+  <rule>Strictly adhere to Clean Architecture, SOLID principles, Dependency Injection, and the Repository/Service layer patterns. Maintain strict Separation of Concerns: keep HTTP handling/validation in Controllers/FormRequests, business logic in Services, and data persistence in Repositories/Models.</rule>
+  <rule>When proposing backend modifications, respect Eloquent relationship definitions, database schema constraints (migrations), Form Request validation rules, and API response structures present in this codebase.</rule>
+  <rule>Rely ONLY on explicit models, services, events, broadcasting channels, and helpers provided in this context. Do not hallucinate uninstalled packages or non-existent methods.</rule>
+  <rule>For real-time WebSocket events or broadcasting listeners, ensure payload keys match expected client-side data contracts.</rule>
+</system_directives>
 
+<project_context>
+  <root_directory>investigation-game-backend</root_directory>
+  <directory_structure>
+├── Dockerfile
+├── Gather_Project_Laravel.py
+├── README.md
+├── app
+│   ├── Enums
+│   │   ├── CaseUserStatus.php
+│   │   ├── EvidenceType.php
+│   │   ├── InvestigationRequestType.php
+│   │   ├── LevelPresentationType.php
+│   │   └── RoomStatus.php
+│   ├── Events
+│   │   ├── EvidenceDiscovered.php
+│   │   ├── LevelTransitioned.php
+│   │   ├── SuspectDiscovered.php
+│   │   ├── VictimDiscovered.php
+│   │   ├── VoteLockedIn.php
+│   │   └── WiretapTriggered.php
+│   ├── Http
+│   │   ├── Controllers
+│   │   │   ├── Admin
+│   │   │   │   ├── AdminCaseController.php
+│   │   │   │   ├── AdminEvidenceController.php
+│   │   │   │   ├── AdminInvestigationRequestController.php
+│   │   │   │   ├── AdminLevelController.php
+│   │   │   │   ├── AdminPhaseController.php
+│   │   │   │   ├── AdminQuestionController.php
+│   │   │   │   ├── AdminSuspectController.php
+│   │   │   │   ├── AdminVictimController.php
+│   │   │   │   └── Traits
+│   │   │   │       └── HandlesMedia.php
+│   │   │   ├── AssessmentController.php
+│   │   │   ├── AuthController.php
+│   │   │   ├── CaseController.php
+│   │   │   ├── Controller.php
+│   │   │   ├── GameRoomController.php
+│   │   │   ├── InvestigationRequestController.php
+│   │   │   ├── SuspectVerdictController.php
+│   │   │   ├── VoteController.php
+│   │   │   └── WiretapController.php
+│   │   └── Middleware
+│   │       └── IsAdmin.php
+│   ├── Models
+│   │   ├── Choice.php
+│   │   ├── Evidence.php
+│   │   ├── GameCase.php
+│   │   ├── GameRoom.php
+│   │   ├── InvestigationRequest.php
+│   │   ├── Level.php
+│   │   ├── Phase.php
+│   │   ├── Question.php
+│   │   ├── RoomUser.php
+│   │   ├── RoomVote.php
+│   │   ├── Suspect.php
+│   │   ├── User.php
+│   │   └── Victim.php
+│   ├── Providers
+│   │   └── AppServiceProvider.php
+│   ├── Services
+│   │   ├── AssessmentService.php
+│   │   ├── GameRoomService.php
+│   │   ├── InvestigationRequestService.php
+│   │   └── VotingService.php
+│   └── Support
+│       └── Result.php
+├── artisan
+├── bootstrap
+│   ├── app.php
+│   └── providers.php
+├── ca.pem
+├── composer.json
+├── composer.lock
+├── config
+│   ├── app.php
+│   ├── auth.php
+│   ├── broadcasting.php
+│   ├── cache.php
+│   ├── database.php
+│   ├── filesystems.php
+│   ├── logging.php
+│   ├── mail.php
+│   ├── queue.php
+│   ├── reverb.php
+│   ├── sanctum.php
+│   ├── services.php
+│   └── session.php
+├── database
+│   ├── database.sqlite
+│   ├── factories
+│   │   └── UserFactory.php
+│   ├── migrations
+│   │   ├── 0001_01_01_000000_create_users_table.php
+│   │   ├── 0001_01_01_000001_create_cache_table.php
+│   │   ├── 0001_01_01_000002_create_jobs_table.php
+│   │   ├── 2026_07_25_181009_alter_users_table_add_game_columns.php
+│   │   ├── 2026_07_25_181049_create_cases_table.php
+│   │   ├── 2026_07_25_181149_create_levels_table.php
+│   │   ├── 2026_07_25_181226_create_evidences_table.php
+│   │   ├── 2026_07_25_181251_create_questions_table.php
+│   │   ├── 2026_07_25_181321_create_choices_table.php
+│   │   ├── 2026_07_25_181350_create_game_rooms_table.php
+│   │   ├── 2026_07_25_181418_create_room_users_table.php
+│   │   ├── 2026_07_25_181447_create_room_votes_table.php
+│   │   ├── 2026_07_25_181511_create_case_user_table.php
+│   │   ├── 2026_07_25_200121_create_personal_access_tokens_table.php
+│   │   ├── 2026_07_26_173319_add_img_url_to_levels_table.php
+│   │   ├── 2026_07_27_185851_add_is_admin_to_users_table.php
+│   │   ├── 2026_07_28_173628_add_img_url_to_cases_table.php
+│   │   ├── 2026_07_28_214229_add_narrative_flags_to_questions_and_choices.php
+│   │   ├── 2026_07_28_214305_create_room_evidences_table.php
+│   │   ├── 2026_07_29_225940_add_strikes_to_game_rooms_table.php
+│   │   ├── 2026_07_30_165508_add_max_strikes_to_cases_table.php
+│   │   ├── 2026_08_02_065959_refactor_evidences_and_strikes.php
+│   │   ├── 2026_08_02_072914_create_room_completed_levels_table.php
+│   │   ├── 2026_08_02_092208_add_narrative_level_unlocks.php
+│   │   ├── 2026_08_02_210452_create_suspects_table.php
+│   │   ├── 2026_08_02_210523_create_room_suspects_table.php
+│   │   ├── 2026_08_02_210551_add_unlocks_suspect_id_to_choices_table.php
+│   │   ├── 2026_08_02_223417_add_is_guilty_to_suspects_table.php
+│   │   ├── 2026_08_03_072753_add_metadata_to_cases_table.php
+│   │   ├── 2026_08_03_181318_create_victims_table.php
+│   │   ├── 2026_08_03_181331_create_room_victims_table.php
+│   │   ├── 2026_08_03_181343_add_unlocks_victim_id_to_choices_table.php
+│   │   ├── 2026_08_04_225624_add_is_vital_to_evidences_table.php
+│   │   ├── 2026_08_05_110159_add_final_stats_to_game_rooms_table.php
+│   │   ├── 2026_08_06_063400_create_investigation_requests_table.php
+│   │   ├── 2026_08_06_132055_add_presentation_type_to_levels_table.php
+│   │   ├── 2026_08_07_123107_create_phases_table_and_update_levels.php
+│   │   ├── 2026_08_08_122919_add_audio_url_to_questions_table.php
+│   │   ├── 2026_08_08_122959_create_room_played_wiretaps_table.php
+│   │   ├── 2026_08_08_193441_refactor_investigation_requests_and_levels.php
+│   │   ├── 2026_08_09_151001_add_is_published_to_cases_table.php
+│   │   ├── 2026_08_09_172745_add_feedback_message_to_choices_table.php
+│   │   ├── 2026_08_09_180614_update_levels_required_request_id.php
+│   │   ├── 2026_08_10_085857_refactor_choices_to_json_outcomes.php
+│   │   ├── 2026_08_10_200331_remove_is_correct_from_choices_table.php
+│   │   ├── 2026_08_10_205829_drop_msg_when_wrong_from_questions_table.php
+│   │   ├── 2026_08_11_154156_add_requirements_to_choices_table.php
+│   │   ├── 2026_08_14_185138_drop_is_mandatory_from_questions_table.php
+│   │   └── 2026_08_19_112215_refactor_evidences_for_json_metadata.php
+│   ├── schema
+│   └── seeders
+│       └── DatabaseSeeder.php
+├── package-lock.json
+├── package.json
+├── phpunit.xml
+├── resources
+│   ├── css
+│   │   └── app.css
+│   ├── js
+│   │   ├── app.js
+│   │   ├── bootstrap.js
+│   │   └── echo.js
+│   └── views
+│       └── welcome.blade.php
+├── routes
+│   ├── api.php
+│   ├── channels.php
+│   ├── console.php
+│   └── web.php
+└── tests
+    ├── Feature
+    │   └── ExampleTest.php
+    ├── TestCase.php
+    └── Unit
+        └── ExampleTest.php
+  </directory_structure>
+</project_context>
 
-FILE: D:\Laravel\investigation-game\investigation-game-backend\.env.example
-----------------------------------------
+<source_code>
+<file path=".env.example">
 APP_NAME=Laravel
 APP_ENV=local
 APP_KEY=
@@ -69,11 +244,71 @@ AWS_BUCKET=
 AWS_USE_PATH_STYLE_ENDPOINT=false
 
 VITE_APP_NAME="${APP_NAME}"
+</file>
 
+<file path="README.md">
+<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
 
+<p align="center">
+<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
+<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
+</p>
 
-FILE: D:\Laravel\investigation-game\investigation-game-backend\composer.json
-----------------------------------------
+## About Laravel
+
+Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+
+- [Simple, fast routing engine](https://laravel.com/docs/routing).
+- [Powerful dependency injection container](https://laravel.com/docs/container).
+- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
+- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
+- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
+- [Robust background job processing](https://laravel.com/docs/queues).
+- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+
+Laravel is accessible, powerful, and provides tools required for large, robust applications.
+
+## Learning Laravel
+
+Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+
+If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+
+## Laravel Sponsors
+
+We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+
+### Premium Partners
+
+- **[Vehikl](https://vehikl.com)**
+- **[Tighten Co.](https://tighten.co)**
+- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
+- **[64 Robots](https://64robots.com)**
+- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
+- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
+- **[Redberry](https://redberry.international/laravel-development)**
+- **[Active Logic](https://activelogic.com)**
+
+## Contributing
+
+Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+
+## Code of Conduct
+
+In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+
+## Security Vulnerabilities
+
+If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+
+## License
+
+The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+</file>
+
+<file path="composer.json">
 {
     "$schema": "https://getcomposer.org/schema.json",
     "name": "laravel/laravel",
@@ -165,75 +400,31 @@ FILE: D:\Laravel\investigation-game\investigation-game-backend\composer.json
     "minimum-stability": "stable",
     "prefer-stable": true
 }
+</file>
 
+<file path="package.json">
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite"
+    },
+    "devDependencies": {
+        "@tailwindcss/vite": "^4.0.0",
+        "axios": "^1.11.0",
+        "concurrently": "^9.0.1",
+        "laravel-echo": "^2.4.0",
+        "laravel-vite-plugin": "^2.0.0",
+        "pusher-js": "^8.6.0",
+        "tailwindcss": "^4.0.0",
+        "vite": "^7.0.7"
+    }
+}
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\README.md
-----------------------------------------
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
-
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
-
-## About Laravel
-
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
-
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
-
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-## Laravel Sponsors
-
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
-
-### Premium Partners
-
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Enums\CaseUserStatus.php
-----------------------------------------
+<file path="app/Enums/CaseUserStatus.php">
 <?php
 
 namespace App\Enums;
@@ -260,10 +451,9 @@ enum CaseUserStatus: string
         };
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Enums\EvidenceType.php
-----------------------------------------
+<file path="app/Enums/EvidenceType.php">
 <?php
 
 namespace App\Enums;
@@ -291,10 +481,9 @@ enum EvidenceType: string
         };
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Enums\InvestigationRequestType.php
-----------------------------------------
+<file path="app/Enums/InvestigationRequestType.php">
 <?php
 
 namespace App\Enums;
@@ -322,10 +511,9 @@ enum InvestigationRequestType: string
         };
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Enums\LevelPresentationType.php
-----------------------------------------
+<file path="app/Enums/LevelPresentationType.php">
 <?php
 
 namespace App\Enums;
@@ -334,13 +522,12 @@ enum LevelPresentationType: string
 {
     case Standard = 'standard';
     case Interrogation = 'interrogation';
-    case Location = 'location'; 
-    case Wiretap = 'wiretap'; 
+    case Location = 'location';
+    case Wiretap = 'wiretap';
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Enums\RoomStatus.php
-----------------------------------------
+<file path="app/Enums/RoomStatus.php">
 <?php
 
 namespace App\Enums;
@@ -351,10 +538,9 @@ enum RoomStatus: string
     case Solved = 'solved';
     case Failed = 'failed';
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Events\EvidenceDiscovered.php
-----------------------------------------
+<file path="app/Events/EvidenceDiscovered.php">
 <?php
 
 namespace App\Events;
@@ -390,10 +576,9 @@ class EvidenceDiscovered implements ShouldBroadcastNow
         ];
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Events\LevelTransitioned.php
-----------------------------------------
+<file path="app/Events/LevelTransitioned.php">
 <?php
 
 namespace App\Events;
@@ -436,17 +621,16 @@ class LevelTransitioned implements ShouldBroadcastNow
         ]);
 
         return [
-            'room_id' => $this->room->id, 
-            'status' => $this->room->status->value, 
-            'message' => $this->message, 
-            'stats' => $this->stats, 
+            'room_id' => $this->room->id,
+            'status' => $this->room->status->value,
+            'message' => $this->message,
+            'stats' => $this->stats,
         ];
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Events\SuspectDiscovered.php
-----------------------------------------
+<file path="app/Events/SuspectDiscovered.php">
 <?php
 
 namespace App\Events;
@@ -482,10 +666,9 @@ class SuspectDiscovered implements ShouldBroadcastNow
         ];
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Events\VictimDiscovered.php
-----------------------------------------
+<file path="app/Events/VictimDiscovered.php">
 <?php
 
 namespace App\Events;
@@ -519,10 +702,9 @@ class VictimDiscovered implements ShouldBroadcastNow
         ];
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Events\VoteLockedIn.php
-----------------------------------------
+<file path="app/Events/VoteLockedIn.php">
 <?php
 
 namespace App\Events;
@@ -570,10 +752,9 @@ class VoteLockedIn implements ShouldBroadcastNow
         ];
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Events\WiretapTriggered.php
-----------------------------------------
+<file path="app/Events/WiretapTriggered.php">
 <?php
 
 namespace App\Events;
@@ -611,10 +792,9 @@ class WiretapTriggered implements ShouldBroadcastNow
         ];
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\AssessmentController.php
-----------------------------------------
+<file path="app/Http/Controllers/AssessmentController.php">
 <?php
 
 namespace App\Http\Controllers;
@@ -642,16 +822,15 @@ class AssessmentController extends Controller
         }
 
         return response()->json([
-            'status' => $result->value['status'],    
-            'message' => $result->value['message'], 
-            'room' => $room->load('currentLevel'),  
+            'status' => $result->value['status'],
+            'message' => $result->value['message'],
+            'room' => $room->load('currentLevel'),
         ], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\AuthController.php
-----------------------------------------
+<file path="app/Http/Controllers/AuthController.php">
 <?php
 
 namespace App\Http\Controllers;
@@ -737,10 +916,9 @@ class AuthController extends Controller
         ], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\CaseController.php
-----------------------------------------
+<file path="app/Http/Controllers/CaseController.php">
 <?php
 
 namespace App\Http\Controllers;
@@ -759,7 +937,7 @@ class CaseController extends Controller
             'id', 'title', 'story', 'min_player_XP', 'XP_on_solve', 'img_url', 'max_strikes',
             'rating_stars', 'age_rating', 'estimated_playtime', 'difficulty', 'tags', 'author_name'
         )
-            ->where('is_published', true) 
+            ->where('is_published', true)
             ->with([
                 'users' => function ($query) use ($userId) {
                     $query->where('users.id', $userId)->select('users.id', 'case_user.status');
@@ -780,12 +958,12 @@ class CaseController extends Controller
             ->map(function ($case) {
                 // Map the narrative completion status
                 $case->user_status = $case->users->first()?->pivot->status;
-                
+
                 // Map the active session invite code if one exists
                 $case->active_room_invite_code = $case->rooms->first()?->invite_code;
-                
-                unset($case->users); 
-                unset($case->rooms); 
+
+                unset($case->users);
+                unset($case->rooms);
                 return $case;
             });
 
@@ -795,10 +973,9 @@ class CaseController extends Controller
         ], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Controller.php
-----------------------------------------
+<file path="app/Http/Controllers/Controller.php">
 <?php
 
 namespace App\Http\Controllers;
@@ -822,7 +999,7 @@ abstract class Controller
         if ($storeLocally) {
             $destinationPath = public_path("assets/cases/{$caseSlug}/{$subfolder}");
             $filename = time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
-            
+
             // Move file directly into public/assets/cases/{caseSlug}/{subfolder}
             $file->move($destinationPath, $filename);
 
@@ -852,17 +1029,16 @@ abstract class Controller
         return $upload['secure_url'];
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\GameRoomController.php
-----------------------------------------
+<file path="app/Http/Controllers/GameRoomController.php">
 <?php
 
 namespace App\Http\Controllers;
 
 use App\Models\GameCase;
-use App\Models\Level; 
-use App\Enums\LevelPresentationType; 
+use App\Models\Level;
+use App\Enums\LevelPresentationType;
 use App\Services\GameRoomService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -887,7 +1063,7 @@ class GameRoomController extends Controller
         $host = $request->user();
 
         $result = $this->roomService->createRoom($gameCase, $host);
-        
+
         if ($result->isFailure()) {
             return response()->json([
                 'error' => 'Room Creation Failed',
@@ -913,7 +1089,7 @@ class GameRoomController extends Controller
         $player = $request->user();
 
         $result = $this->roomService->joinRoom($validated['invite_code'], $player);
-        
+
         if ($result->isFailure()) {
             return response()->json([
                 'error' => 'Join Failed',
@@ -939,7 +1115,7 @@ class GameRoomController extends Controller
         if ($room->current_level_id !== null) {
             return response()->json(['error' => 'Conflict', 'message' => 'An investigation phase is already active.'], 409);
         }
-        
+
         if ($room->completedLevels()->where('level_id', $level->id)->exists()) {
             return response()->json(['error' => 'Conflict', 'message' => 'This phase is already solved.'], 409);
         }
@@ -955,7 +1131,7 @@ class GameRoomController extends Controller
                 // Eager load to get the exact label for the error message
                 $level->load('requiredRequest');
                 $label = $level->requiredRequest ? $level->requiredRequest->request_type->label() : 'specific procedural request';
-                
+
                 return response()->json([
                     'error' => 'Missing Prerequisite',
                     'message' => "We can't proceed without a " . $label . "."
@@ -976,18 +1152,18 @@ class GameRoomController extends Controller
     {
         $room->load([
             'host',
-            'gameCase.phases.levels.questions.choices', 
-            'gameCase.evidences', 
-            'gameCase.suspects', 
-            'users.user', 
-            'currentLevel.questions.choices', 
+            'gameCase.phases.levels.questions.choices',
+            'gameCase.evidences',
+            'gameCase.suspects',
+            'users.user',
+            'currentLevel.questions.choices',
             'unlockedEvidences',
-            'unlockedLevels', 
-            'unlockedSuspects',  
+            'unlockedLevels',
+            'unlockedSuspects',
             'completedLevels',
-            'gameCase.victims',    
+            'gameCase.victims',
             'unlockedVictims',
-            'playedWiretaps',      
+            'playedWiretaps',
             'votes'
         ]);
 
@@ -996,10 +1172,9 @@ class GameRoomController extends Controller
         return response()->json(['room' => $room], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\InvestigationRequestController.php
-----------------------------------------
+<file path="app/Http/Controllers/InvestigationRequestController.php">
 <?php
 
 namespace App\Http\Controllers;
@@ -1038,14 +1213,13 @@ class InvestigationRequestController extends Controller
             'status' => 'success',
             'message' => $result->value['message'],
             'unlocked_evidence' => $result->value['unlocked_evidence'],
-            'unlocked_levels' => $result->value['unlocked_levels'] 
+            'unlocked_levels' => $result->value['unlocked_levels']
         ], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\SuspectVerdictController.php
-----------------------------------------
+<file path="app/Http/Controllers/SuspectVerdictController.php">
 <?php
 
 namespace App\Http\Controllers;
@@ -1087,10 +1261,9 @@ class SuspectVerdictController extends Controller
         return response()->json($result->value, 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\VoteController.php
-----------------------------------------
+<file path="app/Http/Controllers/VoteController.php">
 <?php
 
 namespace App\Http\Controllers;
@@ -1129,18 +1302,16 @@ class VoteController extends Controller
         return response()->json([
             'message' => 'Vote locked in successfully.',
             'data' => $result->value['vote'],
-            'unlocked_evidence' => $result->value['unlocked']['evidence'], 
-            'unlocked_levels' => $result->value['unlocked']['levels'],     
-            'unlocked_suspects' => $result->value['unlocked']['suspects'], 
-            'unlocked_victims' => $result->value['unlocked']['victims']    
+            'unlocked_evidence' => $result->value['unlocked']['evidence'],
+            'unlocked_levels' => $result->value['unlocked']['levels'],
+            'unlocked_suspects' => $result->value['unlocked']['suspects'],
+            'unlocked_victims' => $result->value['unlocked']['victims']
         ], 200);
     }
 }
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\WiretapController.php
-----------------------------------------
+<file path="app/Http/Controllers/WiretapController.php">
 <?php
 
 namespace App\Http\Controllers;
@@ -1182,10 +1353,9 @@ class WiretapController extends Controller
         ], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminCaseController.php
-----------------------------------------
+<file path="app/Http/Controllers/Admin/AdminCaseController.php">
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -1210,12 +1380,12 @@ class AdminCaseController extends Controller
             'story' => 'required|string',
             'min_player_XP' => 'required|integer|min:0',
             'XP_on_solve' => 'required|integer|min:0',
-            'max_strikes' => 'required|integer|min:1', 
+            'max_strikes' => 'required|integer|min:1',
             'rating_stars' => 'required|numeric|min:0|max:5',
             'age_rating' => 'required|string|max:50',
             'estimated_playtime' => 'required|string|max:100',
             'difficulty' => 'required|string|max:50',
-            'tags' => 'nullable|string', 
+            'tags' => 'nullable|string',
             'author_name' => 'required|string|max:100',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'is_published' => 'required|boolean',
@@ -1225,14 +1395,14 @@ class AdminCaseController extends Controller
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
         $imageUrl = $this->storeMedia(
-            $request->file('image'), 
-            $validated['title'], 
-            'Cover', 
+            $request->file('image'),
+            $validated['title'],
+            'Cover',
             $storeLocally
         );
 
-        $tagsArray = $request->filled('tags') 
-            ? array_map('trim', explode(',', $validated['tags'])) 
+        $tagsArray = $request->filled('tags')
+            ? array_map('trim', explode(',', $validated['tags']))
             : [];
 
         $case = GameCase::create([
@@ -1240,7 +1410,7 @@ class AdminCaseController extends Controller
             'story' => $validated['story'],
             'min_player_XP' => $validated['min_player_XP'],
             'XP_on_solve' => $validated['XP_on_solve'],
-            'max_strikes' => $validated['max_strikes'], 
+            'max_strikes' => $validated['max_strikes'],
             'rating_stars' => $validated['rating_stars'],
             'age_rating' => $validated['age_rating'],
             'estimated_playtime' => $validated['estimated_playtime'],
@@ -1264,7 +1434,7 @@ class AdminCaseController extends Controller
             'evidences',
             'suspects',
             'victims',
-            'investigationRequests.requiredEvidences' 
+            'investigationRequests.requiredEvidences'
         ])
         ->orderBy('created_at', 'desc')
         ->get();
@@ -1281,7 +1451,7 @@ class AdminCaseController extends Controller
             'story' => 'required|string',
             'min_player_XP' => 'required|integer|min:0',
             'XP_on_solve' => 'required|integer|min:0',
-            'max_strikes' => 'required|integer|min:1', 
+            'max_strikes' => 'required|integer|min:1',
             'rating_stars' => 'required|numeric|min:0|max:5',
             'age_rating' => 'required|string|max:50',
             'estimated_playtime' => 'required|string|max:100',
@@ -1296,12 +1466,12 @@ class AdminCaseController extends Controller
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
         if ($request->hasFile('image')) {
-            $this->deleteMedia($case->getRawOriginal('img_url')); 
-            
+            $this->deleteMedia($case->getRawOriginal('img_url'));
+
             $case->img_url = $this->storeMedia(
-                $request->file('image'), 
-                $validated['title'], 
-                'Cover', 
+                $request->file('image'),
+                $validated['title'],
+                'Cover',
                 $storeLocally
             );
         }
@@ -1311,7 +1481,7 @@ class AdminCaseController extends Controller
             'story' => $validated['story'],
             'min_player_XP' => $validated['min_player_XP'],
             'XP_on_solve' => $validated['XP_on_solve'],
-            'max_strikes' => $validated['max_strikes'], 
+            'max_strikes' => $validated['max_strikes'],
             'rating_stars' => $validated['rating_stars'],
             'age_rating' => $validated['age_rating'],
             'estimated_playtime' => $validated['estimated_playtime'],
@@ -1352,10 +1522,9 @@ class AdminCaseController extends Controller
         return response()->json(['message' => 'Case and all associated media completely wiped.'], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminEvidenceController.php
-----------------------------------------
+<file path="app/Http/Controllers/Admin/AdminEvidenceController.php">
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -1371,18 +1540,18 @@ use Illuminate\Validation\Rules\Enum;
 
 class AdminEvidenceController extends Controller
 {
-    use HandlesMedia; 
+    use HandlesMedia;
 
 public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'case_id' => 'required|exists:cases,id', 
+            'case_id' => 'required|exists:cases,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
             'sub_type' => 'nullable|string',
             'metadata' => 'nullable|string', // Validated as a string, decoded later
-            'is_initial' => 'required|boolean', 
+            'is_initial' => 'required|boolean',
             'is_vital_for_conviction' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
@@ -1420,15 +1589,15 @@ public function store(Request $request): JsonResponse
     public function update(Request $request, $id): JsonResponse
     {
         $evidence = Evidence::findOrFail($id);
-        
+
         $validated = $request->validate([
-            'case_id' => 'required|exists:cases,id', 
+            'case_id' => 'required|exists:cases,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
             'sub_type' => 'nullable|string',
             'metadata' => 'nullable|string',
-            'is_initial' => 'required|boolean', 
+            'is_initial' => 'required|boolean',
             'is_vital_for_conviction' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
@@ -1474,20 +1643,19 @@ public function store(Request $request): JsonResponse
     public function destroy($id): JsonResponse
     {
         $evidence = Evidence::findOrFail($id);
-        
+
         // Wipe associated media safely using the trait helper
         $this->deleteMedia($evidence->getRawOriginal('img_url'));
         $this->deleteMedia($evidence->getRawOriginal('audio_url'));
-        
+
         $evidence->delete();
-        
+
         return response()->json(['message' => 'Evidence deleted.'], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminInvestigationRequestController.php
-----------------------------------------
+<file path="app/Http/Controllers/Admin/AdminInvestigationRequestController.php">
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -1565,17 +1733,16 @@ class AdminInvestigationRequestController extends Controller
     public function destroy($id): JsonResponse
     {
         $investigationRequest = InvestigationRequest::findOrFail($id);
-        
+
         // Pivot records in `investigation_request_items` delete automatically due to cascadeOnDelete constraints
         $investigationRequest->delete();
 
         return response()->json(['message' => 'Investigation request deleted.'], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminLevelController.php
-----------------------------------------
+<file path="app/Http/Controllers/Admin/AdminLevelController.php">
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -1584,8 +1751,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Admin\Traits\HandlesMedia;
 use App\Models\Level;
 use App\Models\Phase;
-use App\Enums\LevelPresentationType; 
-use Illuminate\Validation\Rules\Enum; 
+use App\Enums\LevelPresentationType;
+use Illuminate\Validation\Rules\Enum;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -1596,12 +1763,12 @@ class AdminLevelController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'phase_id' => 'required|exists:phases,id', 
+            'phase_id' => 'required|exists:phases,id',
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
-            'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
-            'required_request_id' => 'nullable|exists:investigation_requests,id',          
+            'presentation_type' => ['required', new Enum(LevelPresentationType::class)],
+            'required_request_id' => 'nullable|exists:investigation_requests,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'store_locally' => 'required|boolean',
         ]);
@@ -1614,12 +1781,12 @@ class AdminLevelController extends Controller
         $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, 'Levels', $storeLocally);
 
         $level = Level::create([
-            'phase_id' => $validated['phase_id'], 
+            'phase_id' => $validated['phase_id'],
             'title' => $validated['title'],
             'details' => $validated['details'],
             'order_index' => $validated['order_index'],
             'is_initial' => filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN),
-            'presentation_type' => $validated['presentation_type'], 
+            'presentation_type' => $validated['presentation_type'],
             'required_request_id' => $validated['required_request_id'] ?? null,
             'img_url' => $imageUrl,
         ]);
@@ -1633,13 +1800,13 @@ class AdminLevelController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         $level = Level::findOrFail($id);
-        
+
         $validated = $request->validate([
-            'phase_id' => 'required|exists:phases,id', 
+            'phase_id' => 'required|exists:phases,id',
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
-            'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
+            'presentation_type' => ['required', new Enum(LevelPresentationType::class)],
             'required_request_id' => 'nullable|exists:investigation_requests,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'store_locally' => 'required|boolean',
@@ -1672,19 +1839,18 @@ class AdminLevelController extends Controller
     public function destroy($id): JsonResponse
     {
         $level = Level::findOrFail($id);
-        
+
         // Wipe associated media safely via trait
         $this->deleteMedia($level->getRawOriginal('img_url'));
-        
+
         $level->delete();
 
         return response()->json(['message' => 'Level deleted.'], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminPhaseController.php
-----------------------------------------
+<file path="app/Http/Controllers/Admin/AdminPhaseController.php">
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -1733,10 +1899,9 @@ class AdminPhaseController extends Controller
         return response()->json(['message' => 'Phase deleted.'], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminQuestionController.php
-----------------------------------------
+<file path="app/Http/Controllers/Admin/AdminQuestionController.php">
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -1759,11 +1924,11 @@ class AdminQuestionController extends Controller
             'level_id' => 'required|exists:levels,id',
             'text' => 'required|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
-            'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
+            'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
             'choices' => 'nullable|array',
             'choices.*.text' => 'required|string|max:255',
             'choices.*.outcomes' => 'nullable|array',
-            'choices.*.requirements' => 'nullable|array', 
+            'choices.*.requirements' => 'nullable|array',
             'store_locally' => 'required|boolean',
         ]);
 
@@ -1782,7 +1947,7 @@ class AdminQuestionController extends Controller
                 'level_id' => $validated['level_id'],
                 'text' => $validated['text'],
                 'img_url' => $imageUrl,
-                'audio_url' => $audioUrl, 
+                'audio_url' => $audioUrl,
             ]);
 
             // Safely retrieve choices, falling back to an empty array if completely omitted
@@ -1819,11 +1984,11 @@ class AdminQuestionController extends Controller
             'level_id' => 'required|exists:levels,id',
             'text' => 'required|string',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
-            'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240', 
+            'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
             'choices' => 'nullable|array',
             'choices.*.text' => 'required|string|max:255',
             'choices.*.outcomes' => 'nullable|array',
-            'choices.*.requirements' => 'nullable|array', 
+            'choices.*.requirements' => 'nullable|array',
             'store_locally' => 'required|boolean',
         ]);
 
@@ -1836,18 +2001,18 @@ class AdminQuestionController extends Controller
         ];
 
         if ($request->hasFile('image')) {
-            $this->deleteMedia($question->getRawOriginal('img_url')); 
+            $this->deleteMedia($question->getRawOriginal('img_url'));
             $updateData['img_url'] = $this->storeMedia($request->file('image'), $caseTitle, 'Levels/Questions', $storeLocally);
         }
 
         if ($request->hasFile('audio')) {
-            $this->deleteMedia($question->getRawOriginal('audio_url')); 
+            $this->deleteMedia($question->getRawOriginal('audio_url'));
             $updateData['audio_url'] = $this->storeMedia($request->file('audio'), $caseTitle, 'Levels/Questions', $storeLocally);
         }
 
         return DB::transaction(function () use ($question, $validated, $request, $updateData) {
             $question->update($updateData);
-            
+
             // Delete old choices unconditionally
             $question->choices()->delete();
 
@@ -1861,7 +2026,7 @@ class AdminQuestionController extends Controller
                         'question_id' => $question->id,
                         'text' => $choice['text'],
                         'outcomes' => isset($choice['outcomes']) ? json_encode($choice['outcomes']) : null,
-                        'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null, 
+                        'requirements' => isset($choice['requirements']) ? json_encode($choice['requirements']) : null,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ];
@@ -1877,19 +2042,18 @@ class AdminQuestionController extends Controller
     public function destroy($id): JsonResponse
     {
         $question = Question::findOrFail($id);
-        
+
         $this->deleteMedia($question->getRawOriginal('img_url'));
         $this->deleteMedia($question->getRawOriginal('audio_url'));
-        
+
         $question->delete();
 
         return response()->json(['message' => 'Question deleted.'], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminSuspectController.php
-----------------------------------------
+<file path="app/Http/Controllers/Admin/AdminSuspectController.php">
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -1912,7 +2076,7 @@ class AdminSuspectController extends Controller
             'name' => 'required|string|max:255',
             'background' => 'nullable|string',
             'is_initial' => 'required|boolean',
-            'is_guilty' => 'required|boolean', 
+            'is_guilty' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'store_locally' => 'required|boolean',
         ]);
@@ -1927,7 +2091,7 @@ class AdminSuspectController extends Controller
             'name' => $validated['name'],
             'background' => $validated['background'] ?? null,
             'is_initial' => $validated['is_initial'],
-            'is_guilty' => $validated['is_guilty'], 
+            'is_guilty' => $validated['is_guilty'],
             'img_url' => $imageUrl,
         ]);
 
@@ -1937,13 +2101,13 @@ class AdminSuspectController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         $suspect = Suspect::findOrFail($id);
-        
+
         $validated = $request->validate([
             'case_id' => 'required|exists:cases,id',
             'name' => 'required|string|max:255',
             'background' => 'nullable|string',
             'is_initial' => 'required|boolean',
-            'is_guilty' => 'required|boolean', 
+            'is_guilty' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'store_locally' => 'required|boolean',
         ]);
@@ -1966,7 +2130,7 @@ class AdminSuspectController extends Controller
         }
 
         $suspect->update($updateData);
-        
+
         return response()->json(['message' => 'Suspect profile updated.', 'suspect' => $suspect], 200);
     }
 
@@ -1978,10 +2142,9 @@ class AdminSuspectController extends Controller
         return response()->json(['message' => 'Suspect deleted.'], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\AdminVictimController.php
-----------------------------------------
+<file path="app/Http/Controllers/Admin/AdminVictimController.php">
 <?php
 
 namespace App\Http\Controllers\Admin;
@@ -2027,7 +2190,7 @@ class AdminVictimController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         $victim = Victim::findOrFail($id);
-        
+
         $validated = $request->validate([
             'case_id' => 'required|exists:cases,id',
             'name' => 'required|string|max:255',
@@ -2054,7 +2217,7 @@ class AdminVictimController extends Controller
         }
 
         $victim->update($updateData);
-        
+
         return response()->json(['message' => 'Victim profile updated.', 'victim' => $victim], 200);
     }
 
@@ -2066,10 +2229,9 @@ class AdminVictimController extends Controller
         return response()->json(['message' => 'Victim deleted.'], 200);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Controllers\Admin\Traits\HandlesMedia.php
-----------------------------------------
+<file path="app/Http/Controllers/Admin/Traits/HandlesMedia.php">
 <?php
 
 namespace App\Http\Controllers\Admin\Traits;
@@ -2090,7 +2252,7 @@ trait HandlesMedia
         if ($storeLocally) {
             $destinationPath = public_path("assets/cases/{$caseSlug}/{$subfolder}");
             $filename = time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
-            
+
             $file->move($destinationPath, $filename);
 
             return "/assets/cases/{$caseSlug}/{$subfolder}/{$filename}";
@@ -2154,10 +2316,9 @@ trait HandlesMedia
         }
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Http\Middleware\IsAdmin.php
-----------------------------------------
+<file path="app/Http/Middleware/IsAdmin.php">
 <?php
 
 namespace App\Http\Middleware;
@@ -2177,10 +2338,9 @@ class IsAdmin
         return $next($request);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\Choice.php
-----------------------------------------
+<file path="app/Models/Choice.php">
 <?php
 
 namespace App\Models;
@@ -2194,14 +2354,14 @@ class Choice extends Model
         'question_id',
         'text',
         'outcomes',
-        'requirements' 
+        'requirements'
     ];
 
     protected function casts(): array
     {
         return [
-            'outcomes' => 'array', 
-            'requirements' => 'array', 
+            'outcomes' => 'array',
+            'requirements' => 'array',
         ];
     }
 
@@ -2210,10 +2370,9 @@ class Choice extends Model
         return $this->belongsTo(Question::class);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\Evidence.php
-----------------------------------------
+<file path="app/Models/Evidence.php">
 <?php
 
 namespace App\Models;
@@ -2228,25 +2387,25 @@ class Evidence extends Model
     protected $table = 'evidences';
 
     protected $fillable = [
-        'case_id', 
+        'case_id',
         'title',
         'description',
         'evidence_type',
-        'sub_type',    
-        'metadata',    
+        'sub_type',
+        'metadata',
         'audio_url',
         'img_url',
         'is_initial',
-        'is_vital_for_conviction', 
+        'is_vital_for_conviction',
     ];
 
     protected function casts(): array
     {
         return [
             'evidence_type' => EvidenceType::class,
-            'metadata' => 'array', 
+            'metadata' => 'array',
             'is_initial' => 'boolean',
-            'is_vital_for_conviction' => 'boolean', 
+            'is_vital_for_conviction' => 'boolean',
         ];
     }
 
@@ -2281,10 +2440,9 @@ class Evidence extends Model
         return $this->belongsTo(GameCase::class, 'case_id');
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\GameCase.php
-----------------------------------------
+<file path="app/Models/GameCase.php">
 <?php
 
 namespace App\Models;
@@ -2292,7 +2450,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Casts\Attribute; 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class GameCase extends Model
@@ -2313,7 +2471,7 @@ class GameCase extends Model
         'story',
         'min_player_XP',
         'XP_on_solve',
-        'max_strikes', 
+        'max_strikes',
         'img_url',
         'rating_stars',
         'age_rating',
@@ -2321,17 +2479,17 @@ class GameCase extends Model
         'difficulty',
         'tags',
         'author_name',
-        'is_published', 
+        'is_published',
     ];
 
     protected function casts(): array
     {
         return [
             'tags' => 'array',
-            'is_published' => 'boolean', 
+            'is_published' => 'boolean',
         ];
     }
-    
+
     /**
      * A case is divided into sequential levels.
      */
@@ -2377,9 +2535,9 @@ class GameCase extends Model
     {
         return $this->hasMany(Suspect::class, 'case_id');
     }
-    
+
     public function victims(): HasMany
-    { 
+    {
         return $this->hasMany(Victim::class, 'case_id');
     }
 
@@ -2398,10 +2556,9 @@ class GameCase extends Model
         );
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\GameRoom.php
-----------------------------------------
+<file path="app/Models/GameRoom.php">
 <?php
 
 namespace App\Models;
@@ -2419,15 +2576,15 @@ class GameRoom extends Model
         'invite_code',
         'current_level_id',
         'status',
-        'strikes', 
-        'final_stats', 
+        'strikes',
+        'final_stats',
     ];
 
     protected function casts(): array
     {
         return [
             'status' => RoomStatus::class,
-            'final_stats' => 'array', 
+            'final_stats' => 'array',
         ];
     }
 
@@ -2461,7 +2618,7 @@ class GameRoom extends Model
         return $this->belongsToMany(Evidence::class, 'room_evidences', 'room_id', 'evidence_id')
                     ->withTimestamps();
     }
-    
+
     public function unlockedLevels()
     {
         return $this->belongsToMany(Level::class, 'room_unlocked_levels', 'room_id', 'level_id')
@@ -2487,21 +2644,20 @@ class GameRoom extends Model
     }
 
     public function unlockedVictims()
-    { 
+    {
         return $this->belongsToMany(Victim::class, 'room_victims', 'room_id', 'victim_id')
-                    ->withTimestamps(); 
+                    ->withTimestamps();
     }
 
     public function playedWiretaps()
     {
         return $this->belongsToMany(Question::class, 'room_played_wiretaps', 'room_id', 'question_id')
                     ->withTimestamps();
-    }    
+    }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\InvestigationRequest.php
-----------------------------------------
+<file path="app/Models/InvestigationRequest.php">
 <?php
 
 namespace App\Models;
@@ -2529,9 +2685,9 @@ class InvestigationRequest extends Model
     public function requiredEvidences(): BelongsToMany
     {
         return $this->belongsToMany(
-            Evidence::class, 
-            'investigation_request_items', 
-            'request_id', 
+            Evidence::class,
+            'investigation_request_items',
+            'request_id',
             'evidence_id',
         );
     }
@@ -2546,10 +2702,9 @@ class InvestigationRequest extends Model
         return $this->belongsTo(Level::class, 'unlocks_level_id');
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\Level.php
-----------------------------------------
+<file path="app/Models/Level.php">
 <?php
 
 namespace App\Models;
@@ -2557,9 +2712,9 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Casts\Attribute; 
-use App\Enums\LevelPresentationType; 
-use App\Enums\InvestigationRequestType; 
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Enums\LevelPresentationType;
+use App\Enums\InvestigationRequestType;
 
 class Level extends Model
 {
@@ -2569,24 +2724,24 @@ class Level extends Model
      * @var list<string>
      */
     protected $fillable = [
-        'phase_id', 
+        'phase_id',
         'title',
         'details',
-        'img_url', 
+        'img_url',
         'order_index',
         'is_initial',
-        'presentation_type', 
-        'required_request_id',     
+        'presentation_type',
+        'required_request_id',
     ];
 
     protected function casts(): array
     {
         return [
             'is_initial' => 'boolean',
-            'presentation_type' => LevelPresentationType::class, 
+            'presentation_type' => LevelPresentationType::class,
         ];
     }
-    
+
     protected function imgUrl(): Attribute
     {
         return Attribute::make(
@@ -2623,10 +2778,9 @@ class Level extends Model
         return $this->belongsTo(InvestigationRequest::class, 'required_request_id');
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\Phase.php
-----------------------------------------
+<file path="app/Models/Phase.php">
 <?php
 
 namespace App\Models;
@@ -2654,10 +2808,9 @@ class Phase extends Model
         return $this->hasMany(Level::class, 'phase_id');
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\Question.php
-----------------------------------------
+<file path="app/Models/Question.php">
 <?php
 
 namespace App\Models;
@@ -2713,11 +2866,9 @@ class Question extends Model
         return $this->hasMany(Choice::class);
     }
 }
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\RoomUser.php
-----------------------------------------
+<file path="app/Models/RoomUser.php">
 <?php
 
 namespace App\Models;
@@ -2748,10 +2899,9 @@ class RoomUser extends Model
         return $this->belongsTo(User::class);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\RoomVote.php
-----------------------------------------
+<file path="app/Models/RoomVote.php">
 <?php
 
 namespace App\Models;
@@ -2788,17 +2938,16 @@ class RoomVote extends Model
         return $this->belongsTo(Choice::class);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\Suspect.php
-----------------------------------------
+<file path="app/Models/Suspect.php">
 <?php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Casts\Attribute; 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Suspect extends Model
 {
@@ -2808,14 +2957,14 @@ class Suspect extends Model
         'background',
         'img_url',
         'is_initial',
-        'is_guilty', 
+        'is_guilty',
     ];
 
     protected function casts(): array
     {
         return [
             'is_initial' => 'boolean',
-            'is_guilty' => 'boolean', 
+            'is_guilty' => 'boolean',
         ];
     }
 
@@ -2837,10 +2986,9 @@ class Suspect extends Model
         return $this->belongsTo(GameCase::class, 'case_id');
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\User.php
-----------------------------------------
+<file path="app/Models/User.php">
 <?php
 
 namespace App\Models;
@@ -2850,7 +2998,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens; 
+use Laravel\Sanctum\HasApiTokens;
 
 class User extends Authenticatable
 {
@@ -2893,18 +3041,16 @@ class User extends Authenticatable
         ];
     }
 }
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Models\Victim.php
-----------------------------------------
+<file path="app/Models/Victim.php">
 <?php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Casts\Attribute; 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Victim extends Model
 {
@@ -2935,10 +3081,9 @@ class Victim extends Model
         return $this->belongsTo(GameCase::class, 'case_id');
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Providers\AppServiceProvider.php
-----------------------------------------
+<file path="app/Providers/AppServiceProvider.php">
 <?php
 
 namespace App\Providers;
@@ -2963,11 +3108,9 @@ class AppServiceProvider extends ServiceProvider
         //
     }
 }
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Services\AssessmentService.php
-----------------------------------------
+<file path="app/Services/AssessmentService.php">
 <?php
 
 namespace App\Services;
@@ -2993,7 +3136,7 @@ class AssessmentService
     {
         return DB::transaction(function () use ($room) {
             $level = $room->currentLevel;
-            
+
             // Loop through all votes currently cast in this level to check for penalty strikes
             $votes = \App\Models\RoomVote::where('room_id', $room->id)
                 ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
@@ -3016,7 +3159,7 @@ class AssessmentService
                         \App\Events\LevelTransitioned::dispatch($room, 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.', $stats);
 
                         return Result::success([
-                            'status' => 'failed_final', 
+                            'status' => 'failed_final',
                             'message' => 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.',
                             'stats' => $stats
                         ]);
@@ -3024,22 +3167,22 @@ class AssessmentService
 
                     // Extract the Persona hint for the exact question they failed
                     $hint = $choice->outcomes['feedback'] ?? "Re-evaluate the evidence thoroughly.";
-                    
+
                     // Wipe votes so they must restart the phase
                     \App\Models\RoomVote::where('room_id', $room->id)
                         ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
                         ->delete();
 
                     return \App\Support\Result::success([
-                        'status' => 'success', 
-                        'message' => $hint,  
+                        'status' => 'success',
+                        'message' => $hint,
                     ]);
                 }
             }
 
             // 2. Mark Phase Complete & Check Suspension Condition
             $room->completedLevels()->syncWithoutDetaching([$level->id]);
-            
+
             $completedCount = $room->completedLevels()->count();
             $totalLevels = $room->gameCase->levels()->count();
 
@@ -3055,9 +3198,9 @@ class AssessmentService
             }
 
             LevelTransitioned::dispatch($room, $responseMessage);
-            
+
             return Result::success([
-                'status' => 'success', 
+                'status' => 'success',
                 'message' => $responseMessage
             ]);
         });
@@ -3079,7 +3222,7 @@ class AssessmentService
             // --- 2. THE PROOF CHECK (THE GATEKEEPER) ---
             $vitalEvidenceIds = \App\Models\Evidence::where('case_id', $case->id)
                 ->where('is_vital_for_conviction', true)->pluck('id')->toArray();
-            
+
             $unlockedEvidenceIds = $room->unlockedEvidences()->pluck('evidences.id')->toArray();
             $initialEvidenceIds = \App\Models\Evidence::where('case_id', $case->id)->where('is_initial', true)->pluck('id')->toArray();
             $allPossessedEvidence = array_unique(array_merge($unlockedEvidenceIds, $initialEvidenceIds));
@@ -3091,7 +3234,7 @@ class AssessmentService
                 $stats = $this->generateFinalStats($room, 0, 0, $totalGuiltyCount, 0);
                 $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
                 $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedNoProof->value, 0);
-                
+
                 $message = 'INSTANT FAILURE: The DA threw out the case due to lack of definitive proof. You failed to uncover vital evidence.';
                 \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
 
@@ -3127,7 +3270,7 @@ class AssessmentService
                     $stats = $this->generateFinalStats($room, $case->XP_on_solve, 0, 0, 0);
                     $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
                     $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
-                    
+
                     $message = 'PERFECT WIN: You successfully proved that no foul play was involved. Case closed.';
                     \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
 
@@ -3147,7 +3290,7 @@ class AssessmentService
                         $stats = $this->generateFinalStats($room, 0, 0, 0, count($innocentsSubmitted));
                         $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
                         $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedStrikes->value, 0);
-                        
+
                         $message = 'DEPARTMENT THRESHOLD EXCEEDED. You accused innocent people of a fabricated crime. The DA has pulled your mandate.' . $innocentMessage;
                         \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
 
@@ -3159,9 +3302,9 @@ class AssessmentService
                     }
 
                     $message = "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: You are chasing a ghost. Are you certain a murder was even committed?" . $innocentMessage;
-                    
+
                     \App\Events\LevelTransitioned::dispatch($room, $message, null);
-                    
+
                     return \App\Support\Result::success([
                         'status' => 'failed',
                         'message' => $message
@@ -3174,7 +3317,7 @@ class AssessmentService
                 $stats = $this->generateFinalStats($room, $case->XP_on_solve, count($correctGuesses), $totalGuiltyCount, 0);
                 $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
                 $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
-                
+
                 $message = 'PERFECT WIN: You successfully identified all perpetrators with irrefutable proof. Case closed.';
                 \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
 
@@ -3184,12 +3327,12 @@ class AssessmentService
                     'room' => $room,
                     'stats' => $stats
                 ]);
-            } 
-            
+            }
+
             // SCENARIO B: Partial Win (Got all guilty, but included innocents)
             if (count($missedGuilty) === 0 && count($innocentsSubmitted) > 0) {
                 $innocentsAccusedCount = count($innocentsSubmitted);
-                
+
                 // 1. Get the total number of innocent suspects existing in this specific case
                 $totalInnocentsInCase = \App\Models\Suspect::where('case_id', $case->id)
                     ->where('is_guilty', false)
@@ -3197,18 +3340,18 @@ class AssessmentService
 
                 // 2. Calculate the deduction percentage per innocent (preventing division by zero)
                 $deductionPerInnocent = $totalInnocentsInCase > 0 ? (int) ceil(100 / $totalInnocentsInCase) : 100;
-                
+
                 // 3. Apply the deduction based on how many innocents they actually accused
                 $totalDeduction = min(100, $deductionPerInnocent * $innocentsAccusedCount);
                 $multiplier = max(0, 100 - $totalDeduction) / 100;
-                
+
                 $xpPayload = (int) floor($case->XP_on_solve * $multiplier);
 
                 $stats = $this->generateFinalStats($room, $xpPayload, count($correctGuesses), $totalGuiltyCount, $innocentsAccusedCount);
-                
+
                 $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
                 $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPartial->value, $xpPayload);
-                
+
                 $message = 'PARTIAL WIN: You successfully caught all perpetrators, but collateral damage was done.' . $innocentMessage;
                 \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
 
@@ -3232,7 +3375,7 @@ class AssessmentService
                 $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
                 $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
                 $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedIncomplete->value, 0);
-                
+
                 $message = 'INSTANT FAILURE: The true masterminds were never even on your radar. The remaining guilty people have escaped.' . $innocentMessage;
                 \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
 
@@ -3251,7 +3394,7 @@ class AssessmentService
                     $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
                     $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
                     $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedStrikes->value, 0);
-                    
+
                     $message = 'DEPARTMENT THRESHOLD EXCEEDED. You failed to indict the correct suspects. The DA has pulled your mandate.' . $innocentMessage;
                     \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
 
@@ -3263,10 +3406,10 @@ class AssessmentService
                 }
 
                 $message = "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: There are still guilty people on your board that you haven't accused." . $innocentMessage;
-                
+
                 // We pass null for stats here because the room is still active
                 \App\Events\LevelTransitioned::dispatch($room, $message, null);
-                
+
                 return \App\Support\Result::success([
                     'status' => 'failed',
                     'message' => $message
@@ -3330,7 +3473,7 @@ class AssessmentService
                 // Always protect a Perfect Win.
                 if ($previousStatus === \App\Enums\CaseUserStatus::SolvedPerfect->value) {
                     $protectFromDowngrade = true;
-                } 
+                }
                 // Protect a Partial Win ONLY if the new result is a Failure.
                 // (This allows them to successfully upgrade a Partial Win into a Perfect Win).
                 elseif ($previousStatus === \App\Enums\CaseUserStatus::SolvedPartial->value && $isNewFail) {
@@ -3350,7 +3493,7 @@ class AssessmentService
                     \Illuminate\Support\Facades\DB::table('case_user')
                         ->where('id', $existingRecord->id)
                         ->update([
-                            'status' => $finalStatus, 
+                            'status' => $finalStatus,
                             'completed_at' => now(),
                             'updated_at' => now()
                         ]);
@@ -3358,9 +3501,9 @@ class AssessmentService
             } else {
                 // Create a brand new record for first-time players
                 \Illuminate\Support\Facades\DB::table('case_user')->insert([
-                    'user_id' => $userId, 
+                    'user_id' => $userId,
                     'case_id' => $case->id,
-                    'status' => $finalStatus, 
+                    'status' => $finalStatus,
                     'completed_at' => now(),
                     'created_at' => now(),
                     'updated_at' => now()
@@ -3372,10 +3515,10 @@ class AssessmentService
     private function generateFinalStats(GameRoom $room, int $xpGained, int $caught, int $total, int $innocents): array
     {
         $case = $room->gameCase;
-        
+
         // Use Carbon's native DateInterval to guarantee clean integers
         $diff = $room->created_at->diff(now());
-        
+
         // Cascade downwards, appending the next smallest unit if it is greater than zero
         if ($diff->y > 0) {
             $timeTaken = "{$diff->y} years" . ($diff->m > 0 ? " {$diff->m} months" : "");
@@ -3403,10 +3546,9 @@ class AssessmentService
         ];
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Services\GameRoomService.php
-----------------------------------------
+<file path="app/Services/GameRoomService.php">
 <?php
 
 namespace App\Services;
@@ -3418,7 +3560,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Enums\RoomStatus;
-use App\Enums\LevelPresentationType; 
+use App\Enums\LevelPresentationType;
 use App\Support\Result;
 
 class GameRoomService
@@ -3433,7 +3575,7 @@ class GameRoomService
                 'case_id' => $gameCase->id,
                 'host_user_id' => $host->id,
                 'invite_code' => $this->generateUniqueInviteCode(),
-                'current_level_id' => null, 
+                'current_level_id' => null,
                 'status' => RoomStatus::Active,
             ]);
 
@@ -3515,17 +3657,16 @@ class GameRoomService
         foreach ($questions as $index => $question) {
             // Modulo arithmetic ensures an even, deterministic split
             $assignedParticipant = $participants[$index % $playerCount];
-            
+
             // Dynamically append the assigned user ID to the model
             // This won't save to the DB, it just attaches to the JSON payload
             $question->setAttribute('assigned_user_id', $assignedParticipant->user_id);
         }
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Services\InvestigationRequestService.php
-----------------------------------------
+<file path="app/Services/InvestigationRequestService.php">
 <?php
 
 namespace App\Services;
@@ -3601,10 +3742,9 @@ class InvestigationRequestService
         return Result::failure("The DA rejected your request. The provided evidence does not establish sufficient grounds.");
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Services\VotingService.php
-----------------------------------------
+<file path="app/Services/VotingService.php">
 <?php
 
 namespace App\Services;
@@ -3735,10 +3875,9 @@ class VotingService
         return $consensus;
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\app\Support\Result.php
-----------------------------------------
+<file path="app/Support/Result.php">
 <?php
 
 namespace App\Support;
@@ -3775,10 +3914,42 @@ readonly class Result
         return !$this->isSuccess;
     }
 }
+</file>
 
+<file path="bootstrap/app.php">
+<?php
 
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\app.php
-----------------------------------------
+use Illuminate\Foundation\Application;
+use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Foundation\Configuration\Middleware;
+
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(
+        web: __DIR__.'/../routes/web.php',
+        api: __DIR__.'/../routes/api.php',
+        commands: __DIR__.'/../routes/console.php',
+        channels: __DIR__.'/../routes/channels.php',
+        health: '/up',
+    )
+    ->withMiddleware(function (Middleware $middleware): void {
+        //
+    })
+    ->withExceptions(function (Exceptions $exceptions): void {
+        //
+    })->create();
+</file>
+
+<file path="bootstrap/providers.php">
+<?php
+
+use App\Providers\AppServiceProvider;
+
+return [
+    AppServiceProvider::class,
+];
+</file>
+
+<file path="config/app.php">
 <?php
 
 return [
@@ -3905,11 +4076,9 @@ return [
     ],
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\auth.php
-----------------------------------------
+<file path="config/auth.php">
 <?php
 
 use App\Models\User;
@@ -4027,11 +4196,9 @@ return [
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\broadcasting.php
-----------------------------------------
+<file path="config/broadcasting.php">
 <?php
 
 return [
@@ -4107,11 +4274,9 @@ return [
     ],
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\cache.php
-----------------------------------------
+<file path="config/cache.php">
 <?php
 
 use Illuminate\Support\Str;
@@ -4229,11 +4394,9 @@ return [
     'prefix' => env('CACHE_PREFIX', Str::slug((string) env('APP_NAME', 'laravel')).'-cache-'),
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\database.php
-----------------------------------------
+<file path="config/database.php">
 <?php
 
 use Illuminate\Support\Str;
@@ -4418,11 +4581,9 @@ return [
     ],
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\filesystems.php
-----------------------------------------
+<file path="config/filesystems.php">
 <?php
 
 return [
@@ -4503,11 +4664,9 @@ return [
     ],
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\logging.php
-----------------------------------------
+<file path="config/logging.php">
 <?php
 
 use Monolog\Handler\NullHandler;
@@ -4640,11 +4799,9 @@ return [
     ],
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\mail.php
-----------------------------------------
+<file path="config/mail.php">
 <?php
 
 return [
@@ -4763,11 +4920,9 @@ return [
     ],
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\queue.php
-----------------------------------------
+<file path="config/queue.php">
 <?php
 
 return [
@@ -4897,11 +5052,9 @@ return [
     ],
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\reverb.php
-----------------------------------------
+<file path="config/reverb.php">
 <?php
 
 return [
@@ -5004,11 +5157,9 @@ return [
     ],
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\sanctum.php
-----------------------------------------
+<file path="config/sanctum.php">
 <?php
 
 use Illuminate\Cookie\Middleware\EncryptCookies;
@@ -5096,11 +5247,9 @@ return [
     ],
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\services.php
-----------------------------------------
+<file path="config/services.php">
 <?php
 
 return [
@@ -5139,11 +5288,9 @@ return [
     ],
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\config\session.php
-----------------------------------------
+<file path="config/session.php">
 <?php
 
 use Illuminate\Support\Str;
@@ -5361,11 +5508,9 @@ return [
     'partitioned' => env('SESSION_PARTITIONED_COOKIE', false),
 
 ];
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\factories\UserFactory.php
-----------------------------------------
+<file path="database/factories/UserFactory.php">
 <?php
 
 namespace Database\Factories;
@@ -5411,11 +5556,9 @@ class UserFactory extends Factory
         ]);
     }
 }
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\0001_01_01_000000_create_users_table.php
-----------------------------------------
+<file path="database/migrations/0001_01_01_000000_create_users_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5465,11 +5608,9 @@ return new class extends Migration
         Schema::dropIfExists('sessions');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\0001_01_01_000001_create_cache_table.php
-----------------------------------------
+<file path="database/migrations/0001_01_01_000001_create_cache_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5505,11 +5646,9 @@ return new class extends Migration
         Schema::dropIfExists('cache_locks');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\0001_01_01_000002_create_jobs_table.php
-----------------------------------------
+<file path="database/migrations/0001_01_01_000002_create_jobs_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5567,11 +5706,9 @@ return new class extends Migration
         Schema::dropIfExists('failed_jobs');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_25_181009_alter_users_table_add_game_columns.php
-----------------------------------------
+<file path="database/migrations/2026_07_25_181009_alter_users_table_add_game_columns.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5592,11 +5729,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_25_181049_create_cases_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_25_181049_create_cases_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5611,7 +5746,7 @@ return new class extends Migration {
             $table->text('story');
             $table->integer('min_player_XP')->default(0);
             $table->integer('XP_on_solve');
-            $table->timestamps(); 
+            $table->timestamps();
         });
     }
 
@@ -5619,11 +5754,9 @@ return new class extends Migration {
         Schema::dropIfExists('cases');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_25_181149_create_levels_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_25_181149_create_levels_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5646,11 +5779,9 @@ return new class extends Migration {
         Schema::dropIfExists('levels');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_25_181226_create_evidences_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_25_181226_create_evidences_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5676,11 +5807,9 @@ return new class extends Migration {
         Schema::dropIfExists('evidences');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_25_181251_create_questions_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_25_181251_create_questions_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5703,11 +5832,9 @@ return new class extends Migration {
         Schema::dropIfExists('questions');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_25_181321_create_choices_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_25_181321_create_choices_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5729,11 +5856,9 @@ return new class extends Migration {
         Schema::dropIfExists('choices');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_25_181350_create_game_rooms_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_25_181350_create_game_rooms_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5757,11 +5882,9 @@ return new class extends Migration {
         Schema::dropIfExists('game_rooms');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_25_181418_create_room_users_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_25_181418_create_room_users_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5784,11 +5907,9 @@ return new class extends Migration {
         Schema::dropIfExists('room_users');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_25_181447_create_room_votes_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_25_181447_create_room_votes_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5811,11 +5932,9 @@ return new class extends Migration {
         Schema::dropIfExists('room_votes');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_25_181511_create_case_user_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_25_181511_create_case_user_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5838,11 +5957,9 @@ return new class extends Migration {
         Schema::dropIfExists('case_user');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_25_200121_create_personal_access_tokens_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_25_200121_create_personal_access_tokens_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5876,11 +5993,9 @@ return new class extends Migration
         Schema::dropIfExists('personal_access_tokens');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_26_173319_add_img_url_to_levels_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_26_173319_add_img_url_to_levels_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5900,10 +6015,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_27_185851_add_is_admin_to_users_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_27_185851_add_is_admin_to_users_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5923,10 +6037,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_28_173628_add_img_url_to_cases_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_28_173628_add_img_url_to_cases_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5954,11 +6067,9 @@ return new class extends Migration
         });
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_28_214229_add_narrative_flags_to_questions_and_choices.php
-----------------------------------------
+<file path="database/migrations/2026_07_28_214229_add_narrative_flags_to_questions_and_choices.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -5992,11 +6103,9 @@ return new class extends Migration
         });
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_28_214305_create_room_evidences_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_28_214305_create_room_evidences_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6025,11 +6134,9 @@ return new class extends Migration
         Schema::dropIfExists('room_evidences');
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_29_225940_add_strikes_to_game_rooms_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_29_225940_add_strikes_to_game_rooms_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6049,10 +6156,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_07_30_165508_add_max_strikes_to_cases_table.php
-----------------------------------------
+<file path="database/migrations/2026_07_30_165508_add_max_strikes_to_cases_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6072,10 +6178,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_065959_refactor_evidences_and_strikes.php
-----------------------------------------
+<file path="database/migrations/2026_08_02_065959_refactor_evidences_and_strikes.php">
 // FILE: database/migrations/2026_08_02_100000_refactor_evidences_and_strikes.php
 <?php
 
@@ -6095,7 +6200,7 @@ return new class extends Migration {
             // Drop the old level relation
             $table->dropForeign(['level_id']);
             $table->dropColumn('level_id');
-            
+
             // Link directly to the case and add the initial flag
             $table->foreignId('case_id')->after('id')->constrained('cases')->cascadeOnDelete();
             $table->boolean('is_initial')->default(false)->after('paragraph');
@@ -6108,16 +6213,15 @@ return new class extends Migration {
             $table->dropColumn(['case_id', 'is_initial']);
             $table->foreignId('level_id')->after('id')->constrained('levels')->cascadeOnDelete();
         });
-        
+
         Schema::table('cases', function (Blueprint $table) {
             $table->integer('max_strikes')->default(5)->change();
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_072914_create_room_completed_levels_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_02_072914_create_room_completed_levels_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6138,10 +6242,9 @@ return new class extends Migration {
         Schema::dropIfExists('room_completed_levels');
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_092208_add_narrative_level_unlocks.php
-----------------------------------------
+<file path="database/migrations/2026_08_02_092208_add_narrative_level_unlocks.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6180,10 +6283,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_210452_create_suspects_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_02_210452_create_suspects_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6207,11 +6309,10 @@ return new class extends Migration {
         Schema::dropIfExists('suspects');
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_210523_create_room_suspects_table.php
-----------------------------------------
-<?php 
+<file path="database/migrations/2026_08_02_210523_create_room_suspects_table.php">
+<?php
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
@@ -6231,10 +6332,9 @@ return new class extends Migration {
         Schema::dropIfExists('room_suspects');
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_210551_add_unlocks_suspect_id_to_choices_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_02_210551_add_unlocks_suspect_id_to_choices_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6255,11 +6355,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_02_223417_add_is_guilty_to_suspects_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_02_223417_add_is_guilty_to_suspects_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6279,10 +6377,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_03_072753_add_metadata_to_cases_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_03_072753_add_metadata_to_cases_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6307,10 +6404,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_03_181318_create_victims_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_03_181318_create_victims_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6334,10 +6430,9 @@ return new class extends Migration {
         Schema::dropIfExists('victims');
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_03_181331_create_room_victims_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_03_181331_create_room_victims_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6358,10 +6453,9 @@ return new class extends Migration {
         Schema::dropIfExists('room_victims');
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_03_181343_add_unlocks_victim_id_to_choices_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_03_181343_add_unlocks_victim_id_to_choices_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6382,10 +6476,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_04_225624_add_is_vital_to_evidences_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_04_225624_add_is_vital_to_evidences_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6405,10 +6498,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_05_110159_add_final_stats_to_game_rooms_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_05_110159_add_final_stats_to_game_rooms_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6428,10 +6520,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_06_063400_create_investigation_requests_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_06_063400_create_investigation_requests_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6445,7 +6536,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('case_id')->constrained('cases')->cascadeOnDelete();
             $table->string('request_type'); // Maps to InvestigationRequestType enum
-            
+
             // The resulting evidence they get if the DA/Judge approves the request
             $table->foreignId('unlocks_evidence_id')->constrained('evidences')->cascadeOnDelete();
             $table->timestamps();
@@ -6456,7 +6547,7 @@ return new class extends Migration {
             $table->id();
             $table->foreignId('request_id')->constrained('investigation_requests')->cascadeOnDelete();
             $table->foreignId('evidence_id')->constrained('evidences')->cascadeOnDelete();
-            
+
             // A request cannot require the exact same piece of evidence twice
             $table->unique(['request_id', 'evidence_id']);
         });
@@ -6467,10 +6558,9 @@ return new class extends Migration {
         Schema::dropIfExists('investigation_requests');
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_06_132055_add_presentation_type_to_levels_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_06_132055_add_presentation_type_to_levels_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6490,10 +6580,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_07_123107_create_phases_table_and_update_levels.php
-----------------------------------------
+<file path="database/migrations/2026_08_07_123107_create_phases_table_and_update_levels.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6516,7 +6605,7 @@ return new class extends Migration {
         Schema::table('levels', function (Blueprint $table) {
             $table->dropForeign(['case_id']); // Drops the MySQL foreign key constraint
             $table->dropColumn('case_id');    // Drops the column
-            
+
             $table->foreignId('phase_id')->after('id')->constrained('phases')->cascadeOnDelete();
         });
     }
@@ -6525,16 +6614,15 @@ return new class extends Migration {
         Schema::table('levels', function (Blueprint $table) {
             $table->dropForeign(['phase_id']);
             $table->dropColumn('phase_id');
-            
+
             $table->foreignId('case_id')->after('id')->constrained('cases')->cascadeOnDelete();
         });
         Schema::dropIfExists('phases');
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_08_122919_add_audio_url_to_questions_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_08_122919_add_audio_url_to_questions_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6554,10 +6642,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_08_122959_create_room_played_wiretaps_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_08_122959_create_room_played_wiretaps_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6571,7 +6658,7 @@ return new class extends Migration {
             $table->foreignId('room_id')->constrained('game_rooms')->cascadeOnDelete();
             $table->foreignId('question_id')->constrained('questions')->cascadeOnDelete();
             $table->timestamps();
-            
+
             // A room can only play a specific wiretap question ONCE
             $table->unique(['room_id', 'question_id']);
         });
@@ -6581,10 +6668,9 @@ return new class extends Migration {
         Schema::dropIfExists('room_played_wiretaps');
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_08_193441_refactor_investigation_requests_and_levels.php
-----------------------------------------
+<file path="database/migrations/2026_08_08_193441_refactor_investigation_requests_and_levels.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6605,7 +6691,7 @@ return new class extends Migration {
             $table->foreignId('room_id')->constrained('game_rooms')->cascadeOnDelete();
             $table->foreignId('request_id')->constrained('investigation_requests')->cascadeOnDelete();
             $table->timestamps();
-            
+
             $table->unique(['room_id', 'request_id']);
         });
 
@@ -6617,7 +6703,7 @@ return new class extends Migration {
 
     public function down(): void {
         Schema::dropIfExists('room_investigation_requests');
-        
+
         Schema::table('investigation_requests', function (Blueprint $table) {
             $table->dropForeign(['unlocks_level_id']);
             $table->dropColumn('unlocks_level_id');
@@ -6628,10 +6714,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_09_151001_add_is_published_to_cases_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_09_151001_add_is_published_to_cases_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6652,10 +6737,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_09_172745_add_feedback_message_to_choices_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_09_172745_add_feedback_message_to_choices_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6684,10 +6768,9 @@ return new class extends Migration
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_09_180614_update_levels_required_request_id.php
-----------------------------------------
+<file path="database/migrations/2026_08_09_180614_update_levels_required_request_id.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6717,10 +6800,9 @@ return new class extends Migration
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_10_085857_refactor_choices_to_json_outcomes.php
-----------------------------------------
+<file path="database/migrations/2026_08_10_085857_refactor_choices_to_json_outcomes.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6753,7 +6835,7 @@ return new class extends Migration {
     public function down(): void {
         Schema::table('choices', function (Blueprint $table) {
             $table->dropColumn('outcomes');
-            
+
             $table->string('feedback_message')->nullable();
             $table->foreignId('unlocks_evidence_id')->nullable()->constrained('evidences')->nullOnDelete();
             $table->foreignId('unlocks_level_id')->nullable()->constrained('levels')->nullOnDelete();
@@ -6762,10 +6844,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_10_200331_remove_is_correct_from_choices_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_10_200331_remove_is_correct_from_choices_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6785,10 +6866,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_10_205829_drop_msg_when_wrong_from_questions_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_10_205829_drop_msg_when_wrong_from_questions_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6808,10 +6888,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_11_154156_add_requirements_to_choices_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_11_154156_add_requirements_to_choices_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6832,11 +6911,9 @@ return new class extends Migration
         });
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_14_185138_drop_is_mandatory_from_questions_table.php
-----------------------------------------
+<file path="database/migrations/2026_08_14_185138_drop_is_mandatory_from_questions_table.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6856,11 +6933,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\migrations\2026_08_19_112215_refactor_evidences_for_json_metadata.php
-----------------------------------------
+<file path="database/migrations/2026_08_19_112215_refactor_evidences_for_json_metadata.php">
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -6872,7 +6947,7 @@ return new class extends Migration {
         Schema::table('evidences', function (Blueprint $table) {
             $table->string('sub_type')->nullable()->after('evidence_type');
             $table->json('metadata')->nullable()->after('sub_type');
-            
+
             // Drop the old monolithic text block
             $table->dropColumn('paragraph');
         });
@@ -6885,10 +6960,9 @@ return new class extends Migration {
         });
     }
 };
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\database\seeders\DatabaseSeeder.php
-----------------------------------------
+<file path="database/seeders/DatabaseSeeder.php">
 <?php
 
 namespace Database\Seeders;
@@ -6908,7 +6982,7 @@ class DatabaseSeeder extends Seeder
             'email' => 'admin@example.com',
             'password' => Hash::make('password'),
             'XP' => 0,
-            'is_admin' => true, 
+            'is_admin' => true,
         ]);
 
         // 2. Create a couple of standard test users
@@ -6933,14 +7007,13 @@ class DatabaseSeeder extends Seeder
         // 3. Run the Game Case seeder
         $this->call([
             GameCaseSeeder::class,
-            BloodOperaCaseSeeder::class, 
+            BloodOperaCaseSeeder::class,
         ]);
     }
 }
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\routes\api.php
-----------------------------------------
+<file path="routes/api.php">
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -6949,7 +7022,7 @@ use App\Http\Controllers\CaseController;
 use App\Http\Controllers\GameRoomController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\AssessmentController;
-use App\Http\Controllers\InvestigationRequestController; 
+use App\Http\Controllers\InvestigationRequestController;
 use App\Http\Controllers\SuspectVerdictController;
 use App\Http\Controllers\WiretapController;
 use App\Http\Controllers\Admin\AdminCaseController;
@@ -6959,8 +7032,8 @@ use App\Http\Controllers\Admin\AdminEvidenceController;
 use App\Http\Controllers\Admin\AdminQuestionController;
 use App\Http\Controllers\Admin\AdminSuspectController;
 use App\Http\Controllers\Admin\AdminVictimController;
-use App\Http\Controllers\Admin\AdminInvestigationRequestController; 
-use App\Http\Middleware\IsAdmin; 
+use App\Http\Controllers\Admin\AdminInvestigationRequestController;
+use App\Http\Middleware\IsAdmin;
 
 Route::get('/login', function () {
     return response()->json(['error' => 'Unauthenticated', 'message' => 'Session expired. Please log in again.'], 401);
@@ -6972,40 +7045,40 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // Protected Gameplay Routes
 Route::middleware('auth:sanctum')->group(function () {
-    
+
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Case Discovery
     Route::get('/cases', [CaseController::class, 'index']);
-    
+
     // Room Management
     Route::post('/rooms', [GameRoomController::class, 'store']);
     Route::post('/rooms/join', [GameRoomController::class, 'join']);
     Route::get('/rooms/{room}', [GameRoomController::class, 'show']);
-    
+
     // Core Gameplay Loop
     Route::post('/rooms/{room}/questions/{question}/vote', [VoteController::class, 'store']);
     Route::post('/rooms/{room}/submit', [AssessmentController::class, 'store']);
     Route::post('/rooms/{room}/levels/{level}/start', [GameRoomController::class, 'startLevel']);
     Route::post('/rooms/{room}/suspects/submit', [SuspectVerdictController::class, 'store']);
     Route::post('/rooms/{room}/investigate', [InvestigationRequestController::class, 'store']);
-    Route::post('/rooms/{room}/questions/{question}/wiretap/play', [WiretapController::class, 'play']);    
+    Route::post('/rooms/{room}/questions/{question}/wiretap/play', [WiretapController::class, 'play']);
 
     // Admin Dashboard Routes
     Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
         // GET (Fetch)
-        Route::get('/cases', [AdminCaseController::class, 'index']); 
-        
+        Route::get('/cases', [AdminCaseController::class, 'index']);
+
         // POST (Create)
         Route::post('/cases', [AdminCaseController::class, 'store']);
-        Route::post('/phases', [AdminPhaseController::class, 'store']);  
+        Route::post('/phases', [AdminPhaseController::class, 'store']);
         Route::post('/levels', [AdminLevelController::class, 'store']);
         Route::post('/evidences', [AdminEvidenceController::class, 'store']);
         Route::post('/questions', [AdminQuestionController::class, 'store']);
         Route::post('/suspects', [AdminSuspectController::class, 'store']);
         Route::post('/victims', [AdminVictimController::class, 'store']);
-        Route::post('/investigation-requests', [AdminInvestigationRequestController::class, 'store']);        
-        
+        Route::post('/investigation-requests', [AdminInvestigationRequestController::class, 'store']);
+
         // PUT (Update)
         Route::put('/cases/{case}', [AdminCaseController::class, 'update']);
         Route::put('/phases/{phase}', [AdminPhaseController::class, 'update']);
@@ -7015,7 +7088,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/suspects/{suspect}', [AdminSuspectController::class, 'update']);
         Route::put('/victims/{victim}', [AdminVictimController::class, 'update']);
         Route::put('/investigation-requests/{request}', [AdminInvestigationRequestController::class, 'update']);
-        
+
         // DELETE (Destroy)
         Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']);
         Route::delete('/phases/{phase}', [AdminPhaseController::class, 'destroy']);
@@ -7027,10 +7100,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/investigation-requests/{request}', [AdminInvestigationRequestController::class, 'destroy']);
     });
 });
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\routes\channels.php
-----------------------------------------
+<file path="routes/channels.php">
 <?php
 
 use Illuminate\Support\Facades\Broadcast;
@@ -7048,10 +7120,9 @@ Broadcast::channel('room.{roomId}', function (User $user, int $roomId) {
 
     return $isParticipant;
 });
+</file>
 
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\routes\console.php
-----------------------------------------
+<file path="routes/console.php">
 <?php
 
 use Illuminate\Foundation\Inspiring;
@@ -7060,11 +7131,9 @@ use Illuminate\Support\Facades\Artisan;
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
+</file>
 
-
-
-FILE: D:\Laravel\investigation-game\investigation-game-backend\routes\web.php
-----------------------------------------
+<file path="routes/web.php">
 <?php
 
 use Illuminate\Support\Facades\Route;
@@ -7072,5 +7141,19 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+</file>
 
+<file path="tests/TestCase.php">
+<?php
 
+namespace Tests;
+
+use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+
+abstract class TestCase extends BaseTestCase
+{
+    //
+}
+</file>
+
+</source_code>

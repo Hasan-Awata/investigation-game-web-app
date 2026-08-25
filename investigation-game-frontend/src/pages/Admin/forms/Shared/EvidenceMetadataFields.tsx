@@ -178,92 +178,288 @@ export default function EvidenceMetadataFields({
         );
 
       case 'financial': {
-        const transactions = metadata.transactions || [];
+        const pages = metadata.pages || [];
 
-        const addTransaction = () => {
-          updateMeta('transactions', [...transactions, { date: '', type: '', amount: '', status: 'CLEARED' }]);
+        const addPage = () => {
+          updateMeta('pages', [...pages, { page_number: pages.length + 1, statement_period: '', transactions: [] }]);
         };
 
-        const updateTransaction = (index: number, field: string, value: string) => {
-          const newTx = [...transactions];
-          newTx[index] = { ...newTx[index], [field]: value };
-          updateMeta('transactions', newTx);
+        const updatePage = (pageIdx: number, field: string, value: string) => {
+          const newPages = [...pages];
+          newPages[pageIdx] = { ...newPages[pageIdx], [field]: value };
+          updateMeta('pages', newPages);
         };
 
-        const removeTransaction = (index: number) => {
-          const newTx = transactions.filter((_: any, i: number) => i !== index);
-          updateMeta('transactions', newTx);
+        const removePage = (pageIdx: number) => {
+          const newPages = pages.filter((_: any, i: number) => i !== pageIdx)
+                                .map((p: any, i: number) => ({ ...p, page_number: i + 1 }));
+          updateMeta('pages', newPages);
+        };
+
+        const addTransaction = (pageIdx: number) => {
+          const newPages = [...pages];
+          const txs = newPages[pageIdx].transactions || [];
+          newPages[pageIdx].transactions = [...txs, { date: '', description: '', amount: 0 }];
+          updateMeta('pages', newPages);
+        };
+
+        const updateTransaction = (pageIdx: number, txIdx: number, field: string, value: string | number) => {
+          const newPages = [...pages];
+          newPages[pageIdx].transactions[txIdx] = { ...newPages[pageIdx].transactions[txIdx], [field]: value };
+          updateMeta('pages', newPages);
+        };
+
+        const removeTransaction = (pageIdx: number, txIdx: number) => {
+          const newPages = [...pages];
+          newPages[pageIdx].transactions = newPages[pageIdx].transactions.filter((_: any, i: number) => i !== txIdx);
+          updateMeta('pages', newPages);
         };
 
         return (
           <>
             <div className="admin-form-row">
-              <div className="form-group"><label>Banking Institution</label><input type="text" className="admin-input" value={metadata.institution || ''} onChange={e => updateMeta('institution', e.target.value)} required /></div>
-              <div className="form-group"><label>Account Holder</label><input type="text" className="admin-input" value={metadata.account_holder || ''} onChange={e => updateMeta('account_holder', e.target.value)} required /></div>
+              <div className="form-group">
+                <label>Banking Institution</label>
+                <input type="text" className="admin-input" value={metadata.institution_name || ''} onChange={e => updateMeta('institution_name', e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label>Account Holder</label>
+                <input type="text" className="admin-input" value={metadata.account_holder || ''} onChange={e => updateMeta('account_holder', e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label>Account Number</label>
+                <input type="text" className="admin-input" value={metadata.account_number || ''} onChange={e => updateMeta('account_number', e.target.value)} required />
+              </div>
             </div>
             
-            <div style={{ marginTop: '1rem', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+            <div style={{ marginTop: '1.5rem', borderTop: '2px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>TRANSACTION LEDGER</label>
-                <button type="button" className="btn-secondary" onClick={addTransaction} style={{ padding: '0.25rem 0.75rem', width: 'auto', fontSize: '0.75rem' }}>+ Add Row</button>
+                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>STATEMENT PAGES</label>
+                <button type="button" className="btn-secondary" onClick={addPage} style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>+ Add Statement Page</button>
               </div>
 
-              {transactions.map((tx: any, idx: number) => (
-                <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                  <input type="text" className="admin-input" placeholder="Date" value={tx.date || ''} onChange={e => updateTransaction(idx, 'date', e.target.value)} style={{ width: '100px' }} required />
-                  <input type="text" className="admin-input" placeholder="Type (e.g. Wire Transfer)" value={tx.type || ''} onChange={e => updateTransaction(idx, 'type', e.target.value)} style={{ flex: 1 }} required />
-                  <input type="text" className="admin-input" placeholder="Amount" value={tx.amount || ''} onChange={e => updateTransaction(idx, 'amount', e.target.value)} style={{ width: '120px' }} required />
-                  <input type="text" className="admin-input" placeholder="Status" value={tx.status || ''} onChange={e => updateTransaction(idx, 'status', e.target.value)} style={{ width: '100px' }} required />
-                  <button type="button" onClick={() => removeTransaction(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem' }} title="Remove Row">×</button>
+              {pages.map((page: any, pageIdx: number) => (
+                <div key={pageIdx} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', borderLeft: '3px solid var(--accent-amber)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div className="form-group" style={{ flex: 1, marginRight: '1rem', marginBottom: 0 }}>
+                      <label>Statement Period</label>
+                      <input type="text" className="admin-input" placeholder="e.g., Q3 2023" value={page.statement_period || ''} onChange={e => updatePage(pageIdx, 'statement_period', e.target.value)} required />
+                    </div>
+                    <button type="button" onClick={() => removePage(pageIdx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>REMOVE PAGE {page.page_number}</button>
+                  </div>
+
+                  <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '4px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <span style={{ fontSize: '0.8rem', color: '#aaa', fontFamily: 'var(--font-mono)' }}>TRANSACTIONS</span>
+                      <button type="button" onClick={() => addTransaction(pageIdx)} style={{ background: 'transparent', border: '1px solid #aaa', color: '#aaa', padding: '2px 8px', borderRadius: '2px', cursor: 'pointer', fontSize: '0.7rem' }}>+ Add Row</button>
+                    </div>
+
+                    {(page.transactions || []).map((tx: any, txIdx: number) => (
+                      <div key={txIdx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                        <input type="text" className="admin-input" placeholder="Date" value={tx.date || ''} onChange={e => updateTransaction(pageIdx, txIdx, 'date', e.target.value)} style={{ width: '100px' }} required />
+                        <input type="text" className="admin-input" placeholder="Description (e.g. Wire Transfer)" value={tx.description || ''} onChange={e => updateTransaction(pageIdx, txIdx, 'description', e.target.value)} style={{ flex: 1 }} required />
+                        <input type="number" step="0.01" className="admin-input" placeholder="Amount" value={tx.amount || ''} onChange={e => updateTransaction(pageIdx, txIdx, 'amount', parseFloat(e.target.value))} style={{ width: '120px' }} required />
+                        <button type="button" onClick={() => removeTransaction(pageIdx, txIdx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem' }} title="Remove Row">×</button>
+                      </div>
+                    ))}
+
+                    {(!page.transactions || page.transactions.length === 0) && (
+                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', marginTop: '0.5rem' }}>
+                        No transactions recorded on this page.
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
-              
-              {transactions.length === 0 && (
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>
-                  No transactions recorded. Add a row above to build the ledger.
-                </div>
-              )}
             </div>
           </>
         );
       }
 
-      case 'journal':
+      case 'journal': {
+        const pages = metadata.pages || [];
+
+        const addPage = () => {
+          updateMeta('pages', [...pages, { page_number: pages.length + 1, date_entry: '', content: '', is_torn: false }]);
+        };
+
+        const updatePage = (idx: number, field: string, value: any) => {
+          const newPages = [...pages];
+          newPages[idx] = { ...newPages[idx], [field]: value };
+          updateMeta('pages', newPages);
+        };
+
+        const removePage = (idx: number) => {
+          const newPages = pages.filter((_: any, i: number) => i !== idx)
+                                .map((p: any, i: number) => ({ ...p, page_number: i + 1 }));
+          updateMeta('pages', newPages);
+        };
+
         return (
           <>
             <div className="admin-form-row">
-              <div className="form-group"><label>Author</label><input type="text" className="admin-input" value={metadata.author || ''} onChange={e => updateMeta('author', e.target.value)} required /></div>
-              <div className="form-group"><label>Entry Date</label><input type="text" className="admin-input" value={metadata.entry_date || ''} onChange={e => updateMeta('entry_date', e.target.value)} required /></div>
+              <div className="form-group">
+                <label>Owner / Author</label>
+                <input type="text" className="admin-input" value={metadata.owner || ''} onChange={e => updateMeta('owner', e.target.value)} required />
+              </div>
+              <div className="form-group">
+                <label>Cover Title (Optional)</label>
+                <input type="text" className="admin-input" value={metadata.cover_title || ''} onChange={e => updateMeta('cover_title', e.target.value)} placeholder="e.g., Personal Diary" />
+              </div>
             </div>
-            <div className="form-group"><label>Journal Content</label><textarea className="admin-textarea" value={metadata.content || ''} onChange={e => updateMeta('content', e.target.value)} required /></div>
+
+            <div style={{ marginTop: '1.5rem', borderTop: '2px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>JOURNAL PAGES</label>
+                <button type="button" className="btn-secondary" onClick={addPage} style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>+ Add Page</button>
+              </div>
+
+              {pages.map((page: any, idx: number) => (
+                <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', position: 'relative' }}>
+                  <span style={{ position: 'absolute', top: '10px', right: '10px', color: '#888', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>PAGE {page.page_number}</span>
+                  <button type="button" onClick={() => removePage(idx)} style={{ position: 'absolute', top: '8px', right: '60px', background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem' }}>×</button>
+
+                  <div className="form-group">
+                    <label>Date Entry (Optional)</label>
+                    <input type="text" className="admin-input" placeholder="e.g., October 14th, 11:00 PM" value={page.date_entry || ''} onChange={e => updatePage(idx, 'date_entry', e.target.value)} disabled={page.is_torn} />
+                  </div>
+                  
+                  <div className="form-group">
+                    <label>Journal Content</label>
+                    <textarea className="admin-textarea" value={page.content || ''} onChange={e => updatePage(idx, 'content', e.target.value)} disabled={page.is_torn} required={!page.is_torn} />
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input type="checkbox" checked={!!page.is_torn} onChange={e => updatePage(idx, 'is_torn', e.target.checked)} />
+                    <label style={{ color: 'var(--accent-crimson)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>MARK AS TORN OUT (Hides content)</label>
+                  </div>
+                </div>
+              ))}
+            </div>
           </>
         );
+      }
 
-      case 'contract':
+      case 'contract': {
+        const pages = metadata.pages || [];
+
+        const addPage = () => {
+          updateMeta('pages', [...pages, { page_number: pages.length + 1, terms_text: '', key_clause: '' }]);
+        };
+
+        const updatePage = (idx: number, field: string, value: string) => {
+          const newPages = [...pages];
+          newPages[idx] = { ...newPages[idx], [field]: value };
+          updateMeta('pages', newPages);
+        };
+
+        const removePage = (idx: number) => {
+          // Re-calculate page_number so they stay sequential
+          const newPages = pages.filter((_: any, i: number) => i !== idx)
+                                .map((p: any, i: number) => ({ ...p, page_number: i + 1 }));
+          updateMeta('pages', newPages);
+        };
+
         return (
           <>
-            <div className="form-group">
-              <label>Parties Involved (Comma Separated)</label>
-              <input 
-                type="text" className="admin-input" 
-                value={metadata.parties_involved ? metadata.parties_involved.join(', ') : ''} 
-                onChange={e => updateMeta('parties_involved', e.target.value.split(',').map(s => s.trim()))} 
-                placeholder="e.g., Vance Corp, Thorne LLC" required 
-              />
+            <div className="admin-form-row">
+              <div className="form-group">
+                <label>Parties Involved (Comma Separated)</label>
+                <input 
+                  type="text" className="admin-input" 
+                  value={metadata.parties_involved ? metadata.parties_involved.join(', ') : ''} 
+                  onChange={e => updateMeta('parties_involved', e.target.value.split(',').map(s => s.trim()))} 
+                  placeholder="e.g., Vance Corp, Thorne LLC" required 
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Execution Date (Optional)</label>
+                <input 
+                  type="text" className="admin-input" 
+                  value={metadata.execution_date || ''} 
+                  onChange={e => updateMeta('execution_date', e.target.value)} 
+                  placeholder="e.g., 14-OCT-2023" 
+                />
+              </div>
             </div>
-            <div className="form-group"><label>Agreement Terms</label><textarea className="admin-textarea" value={metadata.agreement_terms || ''} onChange={e => updateMeta('agreement_terms', e.target.value)} required /></div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(163, 50, 50, 0.1)', padding: '1rem', borderRadius: '4px', border: '1px solid rgba(163, 50, 50, 0.3)' }}>
-              <input type="checkbox" checked={!!metadata.signatures_valid} onChange={e => updateMeta('signatures_valid', e.target.checked)} style={{ transform: 'scale(1.5)' }} />
-              <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)' }}><strong>SIGNATURES VALID (Uncheck to mark as Forged)</strong></label>
+
+            <div style={{ marginTop: '1.5rem', borderTop: '2px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>CONTRACT PAGES</label>
+                <button type="button" className="btn-secondary" onClick={addPage} style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>+ Add Page</button>
+              </div>
+
+              {pages.map((page: any, idx: number) => (
+                <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', position: 'relative' }}>
+                  <span style={{ position: 'absolute', top: '10px', right: '10px', color: '#888', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>PAGE {page.page_number}</span>
+                  <button type="button" onClick={() => removePage(idx)} style={{ position: 'absolute', top: '8px', right: '60px', background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem' }}>×</button>
+
+                  <div className="form-group">
+                    <label>Terms and Conditions</label>
+                    <textarea className="admin-textarea" value={page.terms_text || ''} onChange={e => updatePage(idx, 'terms_text', e.target.value)} style={{ minHeight: '100px' }} required />
+                  </div>
+                  
+                  <div className="form-group" style={{ marginBottom: 0 }}>
+                    <label>Critical Clause (Gameplay Clue - Optional)</label>
+                    <input type="text" className="admin-input" placeholder="Highlight a specific suspicious term" value={page.key_clause || ''} onChange={e => updatePage(idx, 'key_clause', e.target.value)} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(163, 50, 50, 0.1)', padding: '1rem', borderRadius: '4px', border: '1px solid rgba(163, 50, 50, 0.3)', marginTop: '1rem' }}>
+              <input 
+                type="checkbox" 
+                checked={!!metadata.signatures_valid} 
+                onChange={e => updateMeta('signatures_valid', e.target.checked)} 
+                style={{ transform: 'scale(1.5)' }} 
+              />
+              <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)' }}>
+                <strong>SIGNATURES VALID (Uncheck to mark as Forged)</strong>
+              </label>
             </div>
           </>
         );
+      }
 
       case 'memo':
         return (
           <>
-            <div className="form-group"><label>Written By</label><input type="text" className="admin-input" value={metadata.written_by || ''} onChange={e => updateMeta('written_by', e.target.value)} required /></div>
-            <div className="form-group"><label>Memo Context</label><textarea className="admin-textarea" value={metadata.context || ''} onChange={e => updateMeta('context', e.target.value)} required /></div>
+            <div className="admin-form-row">
+              <div className="form-group">
+                <label>Written By</label>
+                <input 
+                  type="text" 
+                  className="admin-input" 
+                  value={metadata.written_by || ''} 
+                  onChange={e => updateMeta('written_by', e.target.value)} 
+                  required 
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>Presentation Style</label>
+                <select 
+                  className="admin-input" 
+                  value={metadata.style || 'notebook'} 
+                  onChange={e => updateMeta('style', e.target.value)}
+                >
+                  <option value="notebook">Notebook Page</option>
+                  <option value="sticky">Sticky Note</option>
+                </select>
+              </div>
+            </div>
+            
+            <div className="form-group">
+              <label>Memo Context</label>
+              <textarea 
+                className="admin-textarea" 
+                value={metadata.context || ''} 
+                onChange={e => updateMeta('context', e.target.value)} 
+                required 
+              />
+            </div>
           </>
         );
         

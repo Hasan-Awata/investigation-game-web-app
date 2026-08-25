@@ -1,84 +1,8 @@
 .modal-backdrop {
   position: fixed;
-  top: 0;
-  left: 0;
+  inset: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(var(--bg-dark-rgb), 0.7);
-  backdrop-filter: blur(6px); 
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  position: relative;
-  width: 90%;
-  max-width: 600px;
-  border-radius: var(--radius-xl);
-  padding: 2.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.close-btn {
-  position: absolute;
-  top: 1.5rem;
-  right: 1.5rem;
-  background: transparent;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 1.25rem;
-  cursor: pointer;
-  transition: color 0.2s ease;
-}
-
-.close-btn:hover {
-  color: var(--accent-cyan);
-}
-
-.modal-title {
-  margin: 0 0 1rem 0;
-  font-size: 2rem;
-  color: var(--text-primary);
-}
-
-.modal-badges {
-  display: flex;
-  gap: 0.75rem;
-}
-
-.modal-story-container {
-  max-height: 40vh;
-  overflow-y: auto;
-  padding-right: 1rem;
-  font-family: var(--font-mono);
-  color: var(--text-secondary);
-  line-height: 1.6;
-}
-
-.modal-story-container::-webkit-scrollbar {
-  width: 6px;
-}
-.modal-story-container::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-}
-.modal-story-container::-webkit-scrollbar-thumb {
-  background: var(--accent-cyan);
-  border-radius: var(--radius-sm);
-}
-
-.modal-actions {
-  display: flex;
-  gap: 1rem;
-  margin-top: 1rem;
-}
-
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
   background: rgba(var(--bg-dark-rgb), 0.85);
   backdrop-filter: blur(6px); 
   display: flex;
@@ -110,12 +34,12 @@
   transition: color 0.2s ease;
 }
 
-.close-btn:hover { color: var(--accent-cyan); }
+.close-btn:hover { 
+  color: var(--accent-cyan); 
+}
 
 .modal-header {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  /* padding-bottom: 1rem; */
-  /* padding-top: 1.5rem; */
   margin-top: 2rem;
 }
 
@@ -137,10 +61,11 @@
   display: grid;
   grid-template-columns: 1fr 280px;
   gap: 2rem;
-  max-height: 50vh;
+  /* Removed max-height: 50vh; to prevent sidebar overflow */
 }
 
 .modal-story-container {
+  max-height: 50vh; /* Moved the height constraint here */
   overflow-y: auto;
   padding-right: 1rem;
   font-family: var(--font-mono);
@@ -148,9 +73,16 @@
   line-height: 1.6;
 }
 
-.modal-story-container::-webkit-scrollbar { width: 6px; }
-.modal-story-container::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); }
-.modal-story-container::-webkit-scrollbar-thumb { background: var(--accent-cyan); border-radius: var(--radius-sm); }
+.modal-story-container::-webkit-scrollbar { 
+  width: 6px; 
+}
+.modal-story-container::-webkit-scrollbar-track { 
+  background: rgba(0, 0, 0, 0.2); 
+}
+.modal-story-container::-webkit-scrollbar-thumb { 
+  background: var(--accent-cyan); 
+  border-radius: var(--radius-sm); 
+}
 
 .dossier-tags {
   display: flex;
@@ -213,6 +145,11 @@
   font-size: 0.85rem;
 }
 
+.modal-badges {
+  display: flex;
+  gap: 0.75rem;
+}
+
 .modal-actions {
   display: flex;
   gap: 1rem;
@@ -222,11 +159,9 @@
 @media (max-width: 768px) {
   .modal-dossier-layout {
     grid-template-columns: 1fr;
-    max-height: 65vh;
-    overflow-y: auto;
   }
   
   .modal-story-container {
-    overflow-y: visible;
+    max-height: 65vh;
   }
 }

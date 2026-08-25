@@ -1,22 +1,35 @@
 import type { BaseEvidence } from './base';
 
-export interface JournalMetadata {
-  author: string;
-  entry_date: string;
+export interface JournalPage {
+  page_number: number;
+  date_entry?: string;        
   content: string;
+  is_torn?: boolean;          
+}
+
+export interface JournalMetadata {
+  owner: string;
+  cover_title?: string;       
+  pages: JournalPage[];
 }
 
 export interface FinancialTransaction {
   date: string;
-  type: string;
-  amount: string;
-  status: string;
+  description: string;        // e.g., "Wire Transfer - Shell Corp"
+  amount: number;             // Negative for withdrawals, positive for deposits
+}
+
+export interface FinancialPage {
+  page_number: number;
+  statement_period: string;   
+  transactions: FinancialTransaction[];
 }
 
 export interface FinancialMetadata {
-  institution: string;
   account_holder: string;
-  transactions: FinancialTransaction[];
+  institution_name: string;   
+  account_number: string;
+  pages: FinancialPage[];
 }
 
 export interface CorrespondenceMetadata {
@@ -26,15 +39,22 @@ export interface CorrespondenceMetadata {
   body: string;
 }
 
+export interface ContractPage {
+  page_number: number;
+  terms_text: string;         
+}
+
 export interface ContractMetadata {
   parties_involved: string[];
-  agreement_terms: string;
   signatures_valid: boolean;
+  execution_date?: string;
+  pages: ContractPage[];      
 }
 
 export interface MemoMetadata {
   written_by: string;
   context: string;
+  style?: 'sticky' | 'notebook'; 
 }
 
 export interface BackgroundCheckMetadata {

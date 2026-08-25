@@ -1,71 +1,141 @@
 import os
+import re
 
-def gather_project_code(root_dir, output_file):
-    # Ignoring heavy folders and asset directories
+def generate_tree(dir_path, ignore_dirs, prefix=""):
+    """Generates an ASCII directory tree for the LLM table of contents."""
+    tree_str = ""
+    try:
+        entries = sorted(os.listdir(dir_path))
+    except PermissionError:
+        return ""
+    
+    entries = [e for e in entries if e not in ignore_dirs and not e.startswith('.')]
+    entries_count = len(entries)
+    
+    for index, entry in enumerate(entries):
+        path = os.path.join(dir_path, entry)
+        connector = "└── " if index == entries_count - 1 else "├── "
+        tree_str += f"{prefix}{connector}{entry}\n"
+        
+        if os.path.isdir(path):
+            extension = "    " if index == entries_count - 1 else "│   "
+            tree_str += generate_tree(path, ignore_dirs, prefix + extension)
+            
+    return tree_str
+
+def clean_code(content, is_css=False):
+    """Reduces empty lines and redundant whitespace to save tokens."""
+    content = re.sub(r'\n\s*\n\s*\n+', '\n\n', content)
+    content = "\n".join(line.rstrip() for line in content.splitlines())
+    return content.strip()
+
+def gather_project_code(root_dir, output_file, include_styles=False):
     ignore_dirs = {
         '.git', '.vscode', '.idea', 'node_modules', 'public', 
-        'dist', 'build', 'Assesssts', 'Assets', 'assets', 'images', 'fonts', 'coverage'
+        'dist', 'build', 'assets', 'images', 'fonts', 'coverage', '.husky'
     }
     
-    # CSS and SCSS are back in the mix
-    allowed_extensions = {'.ts', '.tsx', '.js', '.jsx', '.css', '.scss'}
+    allowed_extensions = {'.ts', '.tsx', '.js', '.jsx', '.json'}
+    if include_styles:
+        allowed_extensions.update({'.css', '.scss'})
     
-    allowed_files = {
-        'package.json', 'tsconfig.json', 'tsconfig.app.json', 
-        'tsconfig.node.json', 'vite.config.ts', 'eslint.config.js', 
-        'index.html', 'README.md', '.env.example'
+    allowed_config_files = {
+        'package.json', 'tsconfig.json', 'vite.config.ts', 'index.html'
     }
+    
+    ignored_patterns = {'.test.', '.spec.', '.stories.', '.d.ts.map'}
     
     successful_files = 0
+    total_chars = 0
+    skipped_log = []
+    
     print(f"Scanning React project at: {root_dir}...\n")
 
     with open(output_file, 'w', encoding='utf-8') as outfile:
-        output_file_name = os.path.basename(output_file)
         
-        outfile.write("REACT PROJECT ARCHITECTURE SNAPSHOT\n")
-        outfile.write("=====================================\n\n")
+        outfile.write("<system_directives>\n")
+        outfile.write("  <rule>Read this entire document carefully. Do NOT assume code is missing. Never use placeholders like `...` or `// rest of the code` in your responses. Write complete, fully functional blocks.</rule>\n")
+        outfile.write("  <rule>Strictly adhere to Clean Architecture, SOLID principles, and Dependency Injection patterns. Maintain strict Separation of Concerns.</rule>\n")
+        outfile.write("  <rule>Do NOT write inline CSS or Tailwind utility classes in .tsx files unless explicitly asked. The directory tree shows existing stylesheet files; if you need to modify UI visuals, ask the user to provide the relevant CSS/SCSS file.</rule>\n")
+        outfile.write("  <rule>Rely ONLY on the explicit state variables, custom hooks, and props provided in this context. Do not hallucinate external libraries, utility functions, or imports not present in the code.</rule>\n")
+        outfile.write("  <rule>When troubleshooting WebSocket connections or complex component state, verify the data flow through the entire component tree before suggesting a fix.</rule>\n")
+        outfile.write("</system_directives>\n\n")
 
+        outfile.write("<project_context>\n")
+        outfile.write(f"  <root_directory>{os.path.basename(os.path.abspath(root_dir))}</root_directory>\n")
+        outfile.write("  <directory_structure>\n")
+        outfile.write(generate_tree(root_dir, ignore_dirs))
+        outfile.write("  </directory_structure>\n")
+        outfile.write("</project_context>\n\n")
+
+        outfile.write("<source_code>\n")
+        
         for dirpath, dirnames, filenames in os.walk(root_dir):
-            dirnames[:] = [d for d in dirnames if d not in ignore_dirs]
+            dirnames[:] = [d for d in dirnames if d not in ignore_dirs and not d.startswith('.')]
 
-            for filename in filenames:
-                if filename in (output_file_name, 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'):
+            for filename in sorted(filenames):
+                filepath = os.path.join(dirpath, filename)
+                relative_path = os.path.relpath(filepath, root_dir).replace("\\", "/")
+
+                if filename in {'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'}:
+                    skipped_log.append(f"[LOCKFILE] {relative_path}")
+                    continue
+                
+                if any(pattern in filename for pattern in ignored_patterns):
+                    skipped_log.append(f"[IGNORED PATTERN] {relative_path}")
+                    continue
+
+                is_allowed_ext = any(filename.endswith(ext) for ext in allowed_extensions)
+                is_allowed_file = filename in allowed_config_files
+
+                if not (is_allowed_ext or is_allowed_file):
+                    skipped_log.append(f"[UNALLOWED EXT/FILE] {relative_path}")
                     continue
                     
-                is_allowed_ext = any(filename.endswith(ext) for ext in allowed_extensions)
-                is_allowed_file = filename in allowed_files
-
-                if is_allowed_ext or is_allowed_file:
-                    filepath = os.path.join(dirpath, filename)
-                    
-                    # SAFETY CHECK: Skip files larger than 100KB to block massive compiled CSS
-                    if os.path.getsize(filepath) > 100 * 1024:
-                        print(f"[SKIPPED] {filepath} (Exceeds 100KB size limit)")
-                        continue
-                    
-                    try:
-                        with open(filepath, 'r', encoding='utf-8') as infile:
-                            content = infile.read()
-                            
-                        outfile.write(f"\nFILE: {filepath}\n")
-                        outfile.write("-" * 40 + "\n")
-                        outfile.write(content)
-                        outfile.write("\n\n")
+                if os.path.getsize(filepath) > 80 * 1024:
+                    skipped_log.append(f"[EXCEEDS 80KB] {relative_path}")
+                    continue
+                
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as infile:
+                        content = infile.read()
                         
-                        print(f"[SUCCESS] Dumped: {filepath}")
-                        successful_files += 1
-                        
-                    except Exception as e:
-                        print(f"[ERROR] Could not read {filepath}: {e}")
+                    is_css = filename.endswith(('.css', '.scss'))
+                    cleaned_content = clean_code(content, is_css=is_css)
+                    
+                    outfile.write(f'<file path="{relative_path}">\n')
+                    outfile.write(cleaned_content)
+                    outfile.write("\n</file>\n\n")
+                    
+                    successful_files += 1
+                    total_chars += len(cleaned_content)
+                    print(f"[PACKED] {relative_path}")
+                    
+                except Exception as e:
+                    print(f"[ERROR] Could not read {relative_path}: {e}")
 
-    print("\n" + "="*50)
-    print("DUMP COMPLETE!")
-    print(f"Total files successfully dumped: {successful_files}")
-    print(f"Output saved to: {output_file}")
-    print("="*50)
+        outfile.write("</source_code>\n")
+
+    # Output skipped files directly to the terminal
+    print("\n" + "-" * 50)
+    print("SKIPPED FILES LOG")
+    print("-" * 50)
+    if skipped_log:
+        for log in skipped_log:
+            print(log)
+    else:
+        print("No files were skipped.")
+
+    estimated_tokens = total_chars // 4
+    print("\n" + "=" * 50)
+    print("AI CONTEXT DUMP COMPLETE!")
+    print(f"Files Packed: {successful_files}")
+    print(f"Estimated Tokens: ~{estimated_tokens:,}")
+    print(f"Main Output: {output_file}")
+    print("=" * 50)
 
 if __name__ == "__main__":
     project_root = r"D:\Laravel\investigation-game\investigation-game-frontend" 
-    output_filename = "lean_react_dump.txt"
+    output_filename = "ai_project_context.xml"
     
-    gather_project_code(project_root, output_filename)
+    gather_project_code(project_root, output_filename, include_styles=False)

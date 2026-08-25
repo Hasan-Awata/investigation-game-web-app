@@ -30,12 +30,35 @@ window.Echo = new Echo(
         forceTLS: true,
         // 3. Explicitly point to the Laravel auth endpoint and attach the token
         authEndpoint: `${backendUrl}/api/broadcasting/auth`,
-        auth: {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-            Accept: 'application/json',
-          },
-        },
+        authorizer: (channel, options) => {
+          return {
+            authorize: (socketId, callback) => {
+              fetch(options.authEndpoint, {
+                method: 'POST',
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${getToken()}`
+                },
+                body: JSON.stringify({
+                  socket_id: socketId,
+                  channel_name: channel.name
+                })
+              })
+              .then(response => {
+                if (!response.ok) {
+                  if (response.status === 401) {
+                    window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+                  }
+                  throw new Error(`Broadcast Auth Failed with status ${response.status}`);
+                }
+                return response.json();
+              })
+              .then(data => callback(null, data)) 
+              .catch(error => callback(error as Error, null)); 
+            }
+          };
+        }
       }
     : {
         broadcaster: 'reverb',
@@ -47,12 +70,35 @@ window.Echo = new Echo(
         enabledTransports: ['ws', 'wss'],
         // 3. Explicitly point to the Laravel auth endpoint and attach the token
         authEndpoint: `${backendUrl}/api/broadcasting/auth`,
-        auth: {
-          headers: {
-            Authorization: `Bearer ${getToken()}`,
-            Accept: 'application/json',
-          },
-        },
+        authorizer: (channel, options) => {
+          return {
+            authorize: (socketId, callback) => {
+              fetch(options.authEndpoint, {
+                method: 'POST',
+                headers: {
+                  'Accept': 'application/json',
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${getToken()}`
+                },
+                body: JSON.stringify({
+                  socket_id: socketId,
+                  channel_name: channel.name
+                })
+              })
+              .then(response => {
+                if (!response.ok) {
+                  if (response.status === 401) {
+                    window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+                  }
+                  throw new Error(`Broadcast Auth Failed with status ${response.status}`);
+                }
+                return response.json();
+              })
+              .then(data => callback(null, data)) 
+              .catch(error => callback(error as Error, null)); 
+            }
+          };
+        }
       }
 );
 

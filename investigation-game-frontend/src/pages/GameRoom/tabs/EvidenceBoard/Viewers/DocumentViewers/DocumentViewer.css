@@ -1,5 +1,49 @@
 
 /* ==============================================================
+   SHARED PAGINATION
+   ============================================================== */
+.document-pagination {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.15); 
+}
+
+/* Adjusts the gap for the tight financial footer */
+.financial-footer .document-pagination {
+  gap: 1rem;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.document-pagination button {
+  background: transparent;
+  border: none;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+}
+
+.document-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.document-pagination span {
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 0.85rem;
+  opacity: 0.7;
+  letter-spacing: 0.05em;
+}
+
+/* ==============================================================
    FINANCIAL PREVIEW 
    ============================================================== */
 .financial-preview-wrapper {
@@ -128,6 +172,36 @@
   color: #555;
   font-weight: bold;
   letter-spacing: 0.05em;
+}
+
+.financial-preview-wrapper .doc-meta-row {
+  flex-wrap: wrap; /* Prevents overflow if accounts have long names */
+}
+
+.financial-table th.amount-header,
+.financial-table td.amount-col {
+  text-align: right;
+}
+
+.financial-table td.date-col {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+.financial-table td.amount-col {
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+.financial-table td.amount-col.negative {
+  color: #c62828;
+}
+
+.financial-table td.empty-ledger-msg {
+  text-align: center;
+  font-style: italic;
+  color: #666;
+  padding: 2.5rem;
 }
 
 /* ==============================================================
@@ -337,6 +411,61 @@
   white-space: pre-wrap; /* Preserves paragraphs from the admin textarea */
 }
 
+.memo-sticky-preview {
+  /* Sticky Note Theme Colors */
+  --sticky-paper: #fef27e;
+  --sticky-shadow: rgba(0, 0, 0, 0.15);
+  
+  width: 350px;
+  min-height: 350px;
+  margin: 3rem auto; /* Centers the sticky note in the viewer */
+  background-color: var(--sticky-paper);
+  position: relative;
+  padding: 3rem 2rem 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  
+  /* Creates a slight fold/curl effect at the bottom right corner */
+  border-radius: 2px 2px 30px 2px;
+  box-shadow: 
+    3px 5px 15px rgba(0,0,0,0.1),
+    8px 15px 25px rgba(0,0,0,0.05);
+    
+  /* Jaunty rotation to make it feel casually placed */
+  transform: rotate(-3deg);
+}
+
+/* Semi-transparent "scotch tape" holding it up */
+.memo-sticky-preview .sticky-tape {
+  position: absolute;
+  top: -15px;
+  left: 50%;
+  transform: translateX(-50%) rotate(2deg);
+  width: 120px;
+  height: 35px;
+  background-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  backdrop-filter: blur(2px);
+  border-radius: 2px;
+  z-index: 10;
+}
+
+/* Re-using your memo-content structure */
+.memo-sticky-preview .memo-content {
+  position: relative;
+  z-index: 3;
+  flex: 1;
+}
+
+.memo-sticky-preview .memo-body-text {
+  color: #1b263b; /* Using your original memo-ink color */
+  font-family: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  font-size: 1.8rem; 
+  line-height: 1.4; /* No lines to sync with, so standard line-height */
+  margin: 0;
+  white-space: pre-wrap; 
+}
+
 /* ==============================================================
    CORRESPONDENCE PREVIEW (Physical Letter / Printed Email)
    ============================================================== */
@@ -514,6 +643,21 @@
   width: 100%;
 }
 
+.journal-torn-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 250px;
+  border: 2px dashed #8b0000;
+  background-color: rgba(139, 0, 0, 0.03);
+  color: #8b0000;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
 @media (max-width: 600px) {
   .journal-diary-preview { padding: 2.5rem 1.5rem; }
   .journal-header { flex-direction: column; align-items: flex-start; gap: 1rem; }
@@ -570,6 +714,7 @@
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: #111111;
+  text-align: center;
 }
 
 .contract-subtitle {
@@ -698,6 +843,29 @@
 .contract-validation-stamp.forged {
   color: rgba(163, 50, 50, 0.85);
   border: 3px solid rgba(163, 50, 50, 0.85);
+}
+
+.contract-key-clause {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: rgba(251, 192, 45, 0.15);
+  border-left: 3px solid #fbc02d;
+}
+
+.contract-clause-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #b78103; 
+}
+
+.contract-execution-date {
+  margin-bottom: 0.5rem;
+  font-style: italic;
+  font-weight: 600;
+}
+
+.contract-signoff-wrapper {
+  margin-top: auto; /* Pushes signatures to the bottom on short pages */
 }
 
 @media (max-width: 768px) {
