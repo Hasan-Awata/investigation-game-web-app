@@ -1,16 +1,19 @@
+import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types';
 import './AudioEvidence.css';
 
 export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
+  const { t } = useTranslation();
+
   return (
     <div className="audio-variant cassette-tape">
       {/* Printed directly on the dark plastic casing */}
       <div className="cassette-top-area">
         <div className="label-header">
           <span className="audio-icon">⏺</span>
-          <span className="tape-indicator">A-SIDE</span>
+          <span className="tape-indicator">{t('pages.gameRoom.evidence.variants.audio.aSide')}</span>
         </div>
-        
+
         {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
       </div>
 
@@ -23,7 +26,7 @@ export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
       {/* The bottom mechanical casing */}
       <div className="cassette-bottom">
         <div className="screw left-screw"></div>
-        
+
         {/* The piece of white tape slapped on the bottom */}
         <div className="title-tape">
           <h4 className="evidence-title">{evidence.title}</h4>

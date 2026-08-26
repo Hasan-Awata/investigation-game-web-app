@@ -1,109 +1,115 @@
-import type { Evidence } from '@/types/evidence';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TestimonyEvidence } from '@/types/evidence'; 
 import './TestimonyViewer.css';
 
 interface TestimonyViewerProps {
-  evidence: Evidence;
+  evidence: TestimonyEvidence;
 }
 
-export default function TestimonyViewer({ evidence }: TestimonyViewerProps) {
-  const { metadata } = evidence;
-  const transcript = metadata?.transcript || "No official transcript was filed for this testimony.";
+const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
+  
+  // NO MORE DUCT TAPE! TypeScript knows exactly what these properties are.
+  const {
+    agency = t('pages.gameRoom.evidence.viewers.testimony.policeDept'),
+    title = t('pages.gameRoom.evidence.viewers.testimony.officialTranscript'),
+    date = new Date().toLocaleDateString(),
+    case_number = `EX-${evidence.id.toString().padStart(3, '0')}`,
+    subject_name = 'REDACTED',
+    interviewer = 'REDACTED',
+    context,
+    transcript = []
+  } = evidence.metadata || {};
 
-  // 1. Define the backend URL and signature pool
+  // Deterministically fetch a signature image based on the evidence ID
   const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-  const signaturePool = [
-    `${backendUrl}/assets/signatures/signature.svg`,
-    `${backendUrl}/assets/signatures/signature-1.svg`,
-    `${backendUrl}/assets/signatures/signature-2.svg`,
-    `${backendUrl}/assets/signatures/signature-3.svg`,
-    `${backendUrl}/assets/signatures/signature-4.svg`,
-    `${backendUrl}/assets/signatures/signature-5.svg`,
-    `${backendUrl}/assets/signatures/signature-6.svg`,
-    `${backendUrl}/assets/signatures/signature-7.svg`,
-    `${backendUrl}/assets/signatures/signature-8.svg`,
-    `${backendUrl}/assets/signatures/signature-9.svg`,
-    `${backendUrl}/assets/signatures/signature-10.svg`,
-    `${backendUrl}/assets/signatures/signature-11.svg`,
-    `${backendUrl}/assets/signatures/signature-12.svg`,
-    `${backendUrl}/assets/signatures/signature-13.svg`,
-    `${backendUrl}/assets/signatures/signature-14.svg`,
-    `${backendUrl}/assets/signatures/signature-15.svg`,
-    `${backendUrl}/assets/signatures/signature-16.svg`,
-    `${backendUrl}/assets/signatures/signature-17.svg`,
-    `${backendUrl}/assets/signatures/signature-18.svg`,
-  ];
-
-  // 2. Deterministically select a signature based on evidence ID
-  const selectedSignature = signaturePool[evidence.id % signaturePool.length];
-
-  // Helper function to dynamically style Q&A formats
-  const formatTranscript = (text: string) => {
-    return text.split('\n').map((line, idx) => {
-      const trimmedLine = line.trim();
-      if (trimmedLine.startsWith('Q:')) {
-        return <div key={idx} className="transcript-q"><span className="speaker-tag">DETECTIVE:</span> {trimmedLine.substring(2)}</div>;
-      } else if (trimmedLine.startsWith('A:')) {
-        return <div key={idx} className="transcript-a"><span className="speaker-tag">WITNESS:</span> {trimmedLine.substring(2)}</div>;
-      } else if (trimmedLine === '') {
-        return <br key={idx} />; 
-      }
-      return <div key={idx} className="transcript-line">{line}</div>;
-    });
+  const getSignature = (seed: number) => {
+    const idx = (seed % 18) + 1; // Assuming you have 18 signatures available
+    const fileName = idx === 1 ? 'signature.svg' : `signature-${idx}.svg`;
+    return `${backendUrl}/assets/signatures/${fileName}`;
   };
 
   return (
     <div className="testimony-modal-viewer">
       <div className="testimony-paper">
+        
         <div className="testimony-header">
-          <div className="testimony-agency">CITY POLICE DEPARTMENT</div>
-          <h2 className="testimony-title">RECORD OF INTERVIEW // SWORN STATEMENT</h2>
+          <div className="testimony-agency">{agency}</div>
+          <h2 className="testimony-title">{title}</h2>
+          
           <div className="testimony-meta-grid">
             <div className="meta-box">
-              <span className="meta-label">EXHIBIT NO.</span>
-              <span className="meta-value">EX-{evidence.id.toString().padStart(3, '0')}</span>
+              <span className="meta-label">{t('pages.gameRoom.evidence.viewers.testimony.date')}</span>
+              <span className="meta-value">{date}</span>
             </div>
             <div className="meta-box">
-              <span className="meta-label">DATE RECORDED</span>
-              <span className="meta-value">{new Date().toLocaleDateString()}</span>
-            </div>
-            <div className="meta-box">
-              <span className="meta-label">STATUS</span>
-              <span className="meta-value">TRANSCRIBED</span>
+              <span className="meta-label">{t('pages.gameRoom.evidence.viewers.testimony.caseNo')}</span>
+              <span className="meta-value">{case_number}</span>
             </div>
           </div>
         </div>
 
         <div className="testimony-subject-block">
-          <span className="subject-label">SUBJECT / INTERVIEWEE:</span>
-          <span className="subject-value">{evidence.title}</span>
+          <div>
+            <span className="subject-label">{t('pages.gameRoom.evidence.viewers.testimony.subject')}</span> 
+            {subject_name}
+          </div>
+          <div style={{ marginTop: '0.5rem' }}>
+            <span className="subject-label">{t('pages.gameRoom.evidence.viewers.testimony.interviewer')}</span> 
+            {interviewer}
+          </div>
         </div>
 
-        {evidence.description && (
+        {context && (
           <div className="testimony-context">
-            <strong>CONTEXT: </strong> {evidence.description}
+            {context}
           </div>
         )}
 
         <div className="transcript-container">
-          <div className="transcript-watermark">CONFIDENTIAL</div>
+          <div className="transcript-watermark">
+            {t('pages.gameRoom.evidence.viewers.testimony.watermark')}
+          </div>
+          
           <div className="transcript-content">
-            {formatTranscript(transcript)}
+            {/* If transcript is an array of Q/A objects */}
+            {Array.isArray(transcript) ? (
+              transcript.map((line: any, idx: number) => (
+                <div key={idx} className={`transcript-line ${line.type === 'q' ? 'transcript-q' : 'transcript-a'}`}>
+                  <span className="speaker-tag">{line.speaker}:</span>
+                  {line.text}
+                </div>
+              ))
+            ) : (
+              /* Fallback if transcript is just pre-formatted HTML text */
+              <div dangerouslySetInnerHTML={{ __html: transcript }} />
+            )}
           </div>
         </div>
 
         <div className="testimony-footer">
           <div className="certification-statement">
-            I hereby certify that the foregoing is a true and accurate transcript of the recorded interview.
+            {t('pages.gameRoom.evidence.viewers.testimony.certStatement')}
           </div>
+          
           <div className="signature-area">
-            {/* 3. Render the image instead of text */}
             <div className="steno-signature">
-              <img src={selectedSignature} alt="Stenographer Signature" className="steno-signature-img" />
+              <img 
+                src={getSignature(evidence.id)} 
+                alt="Stenographer Signature" 
+                className="steno-signature-img" 
+              />
             </div>
-            <div className="signature-line">COURT STENOGRAPHER</div>
+            <div className="signature-line">
+              {t('pages.gameRoom.evidence.viewers.testimony.stenoSignature')}
+            </div>
           </div>
         </div>
+
       </div>
     </div>
   );
-}
+};
+
+export default TestimonyViewer;

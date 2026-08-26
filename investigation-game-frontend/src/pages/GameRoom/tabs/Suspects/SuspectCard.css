@@ -62,7 +62,8 @@
 .intel-toggle-btn {
   position: absolute;
   top: 0.5rem;
-  left: 0.5rem;
+  /* Swapped left to the logical property */
+  inset-inline-start: 0.5rem;
   z-index: 10;
   background: rgba(10, 11, 13, 0.85);
   border: 1px solid rgba(255, 255, 255, 0.15);

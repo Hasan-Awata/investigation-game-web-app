@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Level, Choice, Question } from '@/types';
@@ -13,10 +14,10 @@ interface WiretapPhaseProps {
   handleSubmitTheory: (e: React.MouseEvent) => void;
 }
 
-export default function WiretapPhase({ 
+export default function WiretapPhase({
   level, status, totalPlayers, getQuestionConsensus, isHost, isSubmitting, handleSubmitTheory
 }: WiretapPhaseProps) {
-
+  const { t } = useTranslation();
   const { room, accumulatedEvidences } = useRoomState();
   const { localVotes, handleSelectChoice, triggerWiretap, isTriggeringWiretap } = useInvestigationPhase();
 
@@ -27,14 +28,14 @@ export default function WiretapPhase({
     const reqs = choice.requirements;
 
     if (reqs.required_evidence?.length > 0) {
-      const hasAllEvidence = reqs.required_evidence.every((id: number) => 
+      const hasAllEvidence = reqs.required_evidence.every((id: number) =>
         accumulatedEvidences.some(e => e.id === id)
       );
       if (!hasAllEvidence) return true;
     }
 
     if (reqs.required_choices?.length > 0) {
-      const hasAllChoices = reqs.required_choices.every((id: number) => 
+      const hasAllChoices = reqs.required_choices.every((id: number) =>
         room.votes?.some(v => v.choice_id === id)
       );
       if (!hasAllChoices) return true;
@@ -46,17 +47,17 @@ export default function WiretapPhase({
   if (!level.questions || level.questions.length === 0) return null;
 
   const visibleQuestions: Question[] = [];
-  let currentId: number | null = level.questions[0].id; 
+  let currentId: number | null = level.questions[0].id;
 
   while (currentId) {
     const q = level.questions.find(x => x.id === currentId);
     if (!q) break;
     visibleQuestions.push(q);
-    
+
     const consensus = getQuestionConsensus(q);
     if (consensus.isResolved && consensus.winningChoiceId) {
       const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
-      
+
       if (winningChoice?.outcomes?.next_question_id) {
         currentId = Number(winningChoice.outcomes.next_question_id);
       } else {
@@ -64,41 +65,40 @@ export default function WiretapPhase({
         currentId = level.questions[currentIndex + 1]?.id || null;
       }
     } else {
-      currentId = null; 
+      currentId = null;
     }
   }
 
-  // --- NEW: Audio Completion Validation ---
   const requiredAudios = level.questions?.filter(q => q.audio_url) || [];
   const allAudiosPlayed = requiredAudios.length === 0 || requiredAudios.every(q => playedWiretaps.has(q.id));
 
   return (
     <div className="wiretap-phase-wrapper">
       <h4 className="drawer-title" style={{ color: 'var(--accent-cyan)', margin: '0 0 1rem 0', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-        [ Active Intercept ]
+        {t('pages.gameRoom.campaign.levels.wiretap.activeIntercept')}
       </h4>
-      
+
       <div className="questions-list">
         {visibleQuestions.map((q, qIdx) => {
-          
+
           const consensus = getQuestionConsensus(q);
           const prevConsensus = qIdx > 0 ? getQuestionConsensus(visibleQuestions[qIdx - 1]) : null;
-          
+
           const isVisible = status === 'completed' || qIdx === 0 || (prevConsensus && prevConsensus.isResolved);
           if (!isVisible) return null;
 
-          const isLocked = consensus.isResolved; 
+          const isLocked = consensus.isResolved;
           const hasLocalVote = !!localVotes[q.id];
           const hasBeenPlayed = playedWiretaps.has(q.id);
           const isAudioIntercept = !!q.audio_url;
-          
+
           const interceptNumber = String(qIdx + 1).padStart(2, '0');
 
           return (
             <div key={q.id} className="question-item wiretap-item">
-              
+
               <div className="wiretap-sidebar">
-                <span className="question-number">INT-{interceptNumber}</span>
+                <span className="question-number">{t('pages.gameRoom.campaign.levels.wiretap.interceptPrefix')}{interceptNumber}</span>
                 {isAudioIntercept && !hasBeenPlayed && (
                   <span className="tactical-pulse">🎙️</span>
                 )}
@@ -112,30 +112,33 @@ export default function WiretapPhase({
                   {q.text}
                   {status === 'active' && !isLocked && (
                     <span style={{ display: 'block', fontSize: '0.75rem', color: consensus.isTie ? 'var(--accent-crimson)' : 'var(--text-secondary)', marginTop: '0.75rem', fontFamily: 'var(--font-mono)' }}>
-                      {consensus.isTie 
-                          ? '> ⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE' 
-                          : hasLocalVote 
-                            ? `> STATUS: Vote recorded [${consensus.votesCast}/${totalPlayers}]` 
-                            : `> STATUS: Awaiting Agent consensus [${consensus.votesCast}/${totalPlayers}]`
+                      {consensus.isTie
+                          ? t('pages.gameRoom.campaign.levels.wiretap.tieDetected')
+                          : hasLocalVote
+                            ? t('pages.gameRoom.campaign.levels.wiretap.voteRecorded', { votes: consensus.votesCast, total: totalPlayers })
+                            : t('pages.gameRoom.campaign.levels.wiretap.awaitingConsensus', { votes: consensus.votesCast, total: totalPlayers })
                         }
                     </span>
                   )}
                 </p>
 
                 {isAudioIntercept && (
-                  <div className={`wiretap-container ${hasBeenPlayed ? 'played' : ''}`}>
+                  <div 
+                    className={`wiretap-container ${hasBeenPlayed ? 'played' : ''}`}
+                    data-label={hasBeenPlayed ? t('pages.gameRoom.campaign.levels.wiretap.feedSeveredLabel') : t('pages.gameRoom.campaign.levels.wiretap.audioFeedLabel')}
+                  >
                     {hasBeenPlayed ? (
                       <div className="wiretap-burned">
-                        <span style={{ fontSize: '1.2rem', marginRight: '0.5rem' }}>🔒</span> 
-                        CONNECTION SEVERED. RELY ON FIELD NOTES.
+                        <span style={{ fontSize: '1.2rem', marginInlineEnd: '0.5rem' }}>🔒</span>
+                        {t('pages.gameRoom.campaign.levels.wiretap.connectionSevered')}
                       </div>
                     ) : (
-                      <button 
+                      <button
                         className="btn-primary play-wiretap-btn"
                         disabled={!isHost || isTriggeringWiretap}
                         onClick={(e) => { e.stopPropagation(); triggerWiretap(q.id, q.audio_url!); }}
                       >
-                        {isHost ? '▶ INITIATE AUDIO FEED (ONCE)' : 'AWAITING HOST TO INITIATE'}
+                        {isHost ? t('pages.gameRoom.campaign.levels.wiretap.initiateAudio') : t('pages.gameRoom.campaign.levels.wiretap.awaitingHostAudio')}
                       </button>
                     )}
                   </div>
@@ -146,7 +149,7 @@ export default function WiretapPhase({
                     const isSelected = localVotes[q.id] === c.id;
                     const isHistoricalCorrect = status === 'completed' && !c.outcomes?.gives_strike;
                     const isNarrativeLocked = checkIsLockedByNarrative(c);
-                    
+
                     let pillClass = 'choice-pill';
                     if (isNarrativeLocked) {
                       pillClass = 'choice-pill locked-choice';
@@ -159,17 +162,17 @@ export default function WiretapPhase({
                     const preventGuessing = (isAudioIntercept && !hasBeenPlayed) || isNarrativeLocked;
 
                     return (
-                      <span 
-                        key={c.id} 
+                      <span
+                        key={c.id}
                         className={pillClass}
                         onClick={(e) => {
                           if (status === 'active' && !isLocked && !preventGuessing) handleSelectChoice(e, q.id, c, status);
                         }}
                       >
-                        {isNarrativeLocked 
-                          ? '🔒 [ PATH LOCKED: PREREQUISITES NOT MET ]' 
-                          : (isAudioIntercept && !hasBeenPlayed) 
-                            ? '[ CLASSIFIED ]' 
+                        {isNarrativeLocked
+                          ? t('pages.gameRoom.campaign.levels.wiretap.pathLocked')
+                          : (isAudioIntercept && !hasBeenPlayed)
+                            ? t('pages.gameRoom.campaign.levels.wiretap.classified')
                             : c.text
                         }
                       </span>
@@ -182,7 +185,6 @@ export default function WiretapPhase({
         })}
       </div>
 
-      {/* --- NEW: Conditional Submission Button --- */}
       {status === 'active' && (
         <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(0, 229, 255, 0.2)', paddingTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
           {isHost ? (
@@ -192,11 +194,11 @@ export default function WiretapPhase({
               onClick={handleSubmitTheory}
               style={{ padding: '1rem 3rem', width: 'auto' }}
             >
-              {isSubmitting ? 'Processing...' : 'Submit Intercept Analysis'}
+              {isSubmitting ? t('pages.gameRoom.campaign.levels.wiretap.processing') : t('pages.gameRoom.campaign.levels.wiretap.submitAnalysis')}
             </button>
           ) : (
             <div style={{ padding: '1rem', background: 'rgba(0, 229, 255, 0.05)', border: '1px dashed rgba(0, 229, 255, 0.2)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
-              Awaiting Host to submit intercept analysis...
+              {t('pages.gameRoom.campaign.levels.wiretap.awaitingHostSubmit')}
             </div>
           )}
         </div>

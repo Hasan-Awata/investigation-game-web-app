@@ -1,0 +1,262 @@
+/* ==============================================================
+   SHARED PAGINATION
+   ============================================================== */
+.document-pagination {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.15); 
+}
+
+.document-pagination button {
+  background: transparent;
+  border: none;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: inherit;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+}
+
+.document-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+}
+
+.document-pagination span {
+  font-family: var(--font-mono);
+  font-weight: bold;
+  font-size: 0.85rem;
+  opacity: 0.7;
+  letter-spacing: 0.05em;
+}
+
+/* ==============================================================
+   CONTRACT PREVIEW (Legal Deed & Complex Ink Signatures)
+   ============================================================== */
+.contract-legal-preview {
+  background-color: #f7f4ec;
+  color: #111111;
+  padding: 4rem 4.5rem;
+  min-height: 60vh;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-primary), sans-serif;
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.08), 0 10px 30px rgba(0,0,0,0.4);
+  border: 1px solid #dcd6c6;
+}
+
+.contract-legal-preview * {
+  box-sizing: border-box;
+}
+
+.contract-watermark {
+  position: absolute;
+  top: 50%;
+  /* Swapped to logical property */
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%) rotate(-25deg);
+  font-family: var(--font-mono);
+  font-size: 6rem;
+  font-weight: 900;
+  color: rgba(0, 0, 0, 0.025);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 0;
+  letter-spacing: 0.2em;
+}
+
+/* Fix rotation mirroring for RTL */
+[dir="rtl"] .contract-watermark {
+  transform: translate(50%, -50%) rotate(25deg);
+}
+
+.contract-header {
+  text-align: center;
+  border-bottom: 2px solid #111111;
+  padding-bottom: 1.5rem;
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.contract-title {
+  margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #111111;
+  text-align: center;
+}
+
+.contract-subtitle {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #555555;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.contract-section {
+  margin-bottom: 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+.contract-label {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #333333;
+  letter-spacing: 0.05em;
+  display: block;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+}
+
+.contract-parties-list {
+  margin: 0;
+  /* Swapped to logical property */
+  padding-inline-start: 1.5rem;
+  font-size: 1.05rem;
+  line-height: 1.6;
+  color: #222222;
+}
+
+.contract-terms-text {
+  font-size: 1.05rem;
+  line-height: 1.8;
+  color: #222222;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: break-word;
+  /* Ensure text respects layout direction */
+  text-align: justify;
+  background: rgba(0, 0, 0, 0.02);
+  padding: 1.5rem;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 2px;
+  unicode-bidi: plaintext;
+}
+
+.contract-signature-block {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  margin-top: 3.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba(0, 0, 0, 0.15);
+  position: relative;
+  z-index: 1;
+}
+
+.signature-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.signature-line-wrapper {
+  position: relative;
+  height: 80px; 
+  margin-top: 0.5rem;
+}
+
+.rendered-signature-img {
+  position: absolute;
+  bottom: 2px;
+  /* Swapped to logical property */
+  inset-inline-start: 0;
+  width: 100%;
+  height: 75px;
+  object-fit: contain;
+  pointer-events: none;
+  transform: rotate(-3deg) scale(1.3);
+  transform-origin: bottom center;
+  z-index: 2; 
+}
+
+.contract-signature-line {
+  position: absolute;
+  bottom: 0;
+  /* Swapped to logical property */
+  inset-inline-start: 0;
+  width: 100%;
+  height: 1px;
+  background-color: #1a1a1a;
+  z-index: 1;
+}
+
+.signature-caption {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #666666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.contract-validation-stamp {
+  position: absolute;
+  bottom: 3rem;
+  /* Swapped to logical property */
+  inset-inline-end: 4rem;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 800;
+  padding: 0.5rem 1rem;
+  transform: rotate(-8deg);
+  letter-spacing: 0.15em;
+  pointer-events: none;
+  z-index: 2;
+  border-radius: 2px;
+}
+
+/* Fix rotation mirroring for RTL */
+[dir="rtl"] .contract-validation-stamp {
+  transform: rotate(8deg);
+}
+
+.contract-validation-stamp.valid {
+  color: #2a6f4db3;
+  border: 3px solid #2a6f4db3;
+}
+
+.contract-validation-stamp.forged {
+  color: rgba(163, 50, 50, 0.85);
+  border: 3px solid rgba(163, 50, 50, 0.85);
+}
+
+.contract-key-clause {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background-color: rgba(251, 192, 45, 0.15);
+  /* Swapped to logical property */
+  border-inline-start: 3px solid #fbc02d;
+}
+
+.contract-clause-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  color: #b78103; 
+}
+
+.contract-execution-date {
+  margin-bottom: 0.5rem;
+  font-style: italic;
+  font-weight: 600;
+}
+
+.contract-signoff-wrapper {
+  margin-top: auto; 
+}
+
+@media (max-width: 768px) {
+  .contract-legal-preview { padding: 2rem 1.5rem; }
+  .contract-signature-block { grid-template-columns: 1fr; gap: 1.5rem; }
+  .contract-validation-stamp { position: static; transform: none; margin-top: 2rem; text-align: center; }
+}

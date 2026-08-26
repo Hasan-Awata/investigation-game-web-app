@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Level, Choice } from '@/types';
@@ -14,26 +15,27 @@ interface LocationPhaseProps {
 }
 
 export default function LocationPhase({ level, status, isHost, isSubmitting, handleSubmitTheory }: LocationPhaseProps) {
+  const { t } = useTranslation();
   const { room, accumulatedEvidences } = useRoomState();
   const { localVotes, handleSelectChoice, addToast } = useInvestigationPhase();
 
   const storedUser = localStorage.getItem('auth_user');
   const currentUser = storedUser ? JSON.parse(storedUser) : null;
   const currentUserId = currentUser?.id;
-  
+
   const checkIsLockedByNarrative = (choice: Choice) => {
     if (!choice.requirements) return false;
     const reqs = choice.requirements;
 
     if (reqs.required_evidence?.length > 0) {
-      const hasAllEvidence = reqs.required_evidence.every((id: number) => 
+      const hasAllEvidence = reqs.required_evidence.every((id: number) =>
         accumulatedEvidences.some(e => e.id === id)
       );
       if (!hasAllEvidence) return true;
     }
 
     if (reqs.required_choices?.length > 0) {
-      const hasAllChoices = reqs.required_choices.every((id: number) => 
+      const hasAllChoices = reqs.required_choices.every((id: number) =>
         room.votes?.some(v => v.choice_id === id)
       );
       if (!hasAllChoices) return true;
@@ -44,18 +46,18 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 
   const [inspectingQuestionId, setInspectingQuestionId] = useState<number | null>(null);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
-  
+
   const popupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
+
   useEffect(() => {
     return () => {
       if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
     };
   }, []);
-  
+
   const deadEndsStorageKey = `room_${room.id}_level_${level.id}_dead_ends`;
   const foundPointsStorageKey = `room_${room.id}_level_${level.id}_found_points`;
-  
+
   const [clickedDeadEnds, setClickedDeadEnds] = useState<Set<number>>(() => {
     try {
       const saved = sessionStorage.getItem(deadEndsStorageKey);
@@ -70,7 +72,7 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     } catch { return new Set(); }
   });
 
-  // --- NEW: P2P State Synchronization ---
+  // --- P2P State Synchronization ---
   const stateRef = useRef({ deadEnds: clickedDeadEnds, found: foundPoints });
   useEffect(() => {
     stateRef.current = { deadEnds: clickedDeadEnds, found: foundPoints };
@@ -80,7 +82,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     if (!window.Echo) return;
     const channel = window.Echo.private(`room.${room.id}`);
 
-    // 1. Listen for real-time clicks from other agents
     channel.listenForWhisper('location-interacted', (e: { type: string, choiceId: number }) => {
       if (e.type === 'deadEnd') {
         setClickedDeadEnds(prev => {
@@ -97,7 +98,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
       }
     });
 
-    // 2. Listen for late-joiners requesting the current board state
     channel.listenForWhisper('request-location-sync', () => {
       const { deadEnds, found } = stateRef.current;
       if (deadEnds.size > 0 || found.size > 0) {
@@ -108,7 +108,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
       }
     });
 
-    // 3. Receive the sync data if we were the late-joiner
     channel.listenForWhisper('location-sync-reply', (e: { deadEnds: number[], foundPoints: number[] }) => {
       if (e.deadEnds?.length) {
         setClickedDeadEnds(prev => {
@@ -126,21 +125,18 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
       }
     });
 
-    // 4. Trigger the sync request 1 second after mount to ensure connections are stable
     const syncTimer = setTimeout(() => {
       channel.whisper('request-location-sync', {});
     }, 1000);
 
     return () => clearTimeout(syncTimer);
   }, [room.id, deadEndsStorageKey, foundPointsStorageKey]);
-  // ----------------------------------------
 
   if (!level.questions) return null;
 
   const isCompleted = status === 'completed';
   const visibleQuestionIds = new Set<number>();
-  
-  // 1. Map out all scenes that are intentionally locked behind a coordinate click
+
   const lockedBehindChoiceIds = new Set<number>();
   level.questions.forEach(q => {
     q.choices?.forEach(c => {
@@ -150,14 +146,12 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     });
   });
 
-  // 2. Any scene NOT explicitly locked behind a choice is an independent scene. Make it visible.
   level.questions.forEach(q => {
     if (!lockedBehindChoiceIds.has(q.id)) {
       visibleQuestionIds.add(q.id);
     }
   });
 
-  // 3. Add dynamically unlocked scenes based on player interactions
   level.questions.forEach(q => {
     q.choices?.forEach(c => {
       const isSelectedLocally = foundPoints.has(c.id) || localVotes[q.id] === c.id;
@@ -171,12 +165,12 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     });
   });
 
-  const displayQuestions = isCompleted 
-    ? level.questions 
-    : level.questions.filter(q => 
+  const displayQuestions = isCompleted
+    ? level.questions
+    : level.questions.filter(q =>
         visibleQuestionIds.has(q.id) &&
-        (q.assigned_user_id === currentUserId || 
-         q.assigned_user_id === undefined || 
+        (q.assigned_user_id === currentUserId ||
+         q.assigned_user_id === undefined ||
          q.assigned_user_id === null)
       );
 
@@ -187,11 +181,11 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
 
     const hasUnlocks = choice.outcomes && (
-      (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) || 
-      (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) || 
+      (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) ||
+      (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) ||
       (choice.outcomes.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) ||
       (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0) ||
-      (choice.outcomes.next_question_id) 
+      (choice.outcomes.next_question_id)
     );
 
     const isCorrectFind = !!hasUnlocks;
@@ -199,17 +193,17 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 
     if (isCorrectFind) {
       setPopup({
-        title: "LEAD DISCOVERED",
-        message: choice.outcomes?.feedback || "I found something useful here. Logging it to the board.",
+        title: t('pages.gameRoom.campaign.levels.location.leadDiscovered'),
+        message: choice.outcomes?.feedback || t('pages.gameRoom.campaign.levels.location.foundUseful'),
         isSuccess: true
       });
-      
+
       if (isFirstTimeDiscovery && choice.outcomes?.next_question_id) {
         addToast({
-          type: 'level', 
-          title: 'NEW SCENE UNLOCKED',
-          message: 'A new vantage point or room has been discovered.',
-          icon: 'https://api.iconify.design/ph:map-pin-line-duotone.svg?color=%235a8a9e' 
+          type: 'level',
+          title: t('pages.gameRoom.campaign.levels.location.newSceneUnlocked'),
+          message: t('pages.gameRoom.campaign.levels.location.newVantagePoint'),
+          icon: 'https://api.iconify.design/ph:map-pin-line-duotone.svg?color=%235a8a9e'
         });
       }
 
@@ -219,7 +213,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
         return newSet;
       });
 
-      // Broadcast correct find
       window.Echo?.private(`room.${room.id}`).whisper('location-interacted', { type: 'foundPoint', choiceId: choice.id });
 
       if (isFirstTimeDiscovery) {
@@ -227,18 +220,17 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
       }
     } else {
         setPopup({
-          title: "DEAD END",
-          message: choice.outcomes?.feedback || "Nothing was found here. I should keep looking.",
+          title: t('pages.gameRoom.campaign.levels.location.deadEnd'),
+          message: choice.outcomes?.feedback || t('pages.gameRoom.campaign.levels.location.nothingFound'),
           isSuccess: false
         });
-        
+
         setClickedDeadEnds(prev => {
           const newSet = new Set(prev).add(choice.id);
           sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(newSet)));
           return newSet;
         });
 
-        // Broadcast dead end
         window.Echo?.private(`room.${room.id}`).whisper('location-interacted', { type: 'deadEnd', choiceId: choice.id });
       }
 
@@ -256,10 +248,10 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
           <h2 className="section-title" style={{ margin: 0, border: 'none', padding: 0 }}>
             {activeQuestion.text || level.title}
           </h2>
-          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Active Scene Sweep</span>
+          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{t('pages.gameRoom.campaign.levels.location.activeSceneSweep')}</span>
         </div>
         <button className="btn-secondary" style={{ flex: 'none', padding: '0.5rem 1.5rem' }} onClick={() => setInspectingQuestionId(null)}>
-          Close Viewer
+          {t('pages.gameRoom.campaign.levels.location.closeViewer')}
         </button>
       </div>
 
@@ -274,15 +266,15 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
         )}
 
         <div className="location-image-wrapper">
-          <img src={activeQuestion.img_url || '/placeholder-crime-scene.jpg'} alt="Crime Scene" className="location-image-full" />
+          <img src={activeQuestion.img_url || '/placeholder-crime-scene.jpg'} alt={t('pages.gameRoom.campaign.levels.location.crimeSceneAlt')} className="location-image-full" />
 
           {activeQuestion.choices?.map(choice => {
             const parts = choice.text.split('|');
             if (parts.length < 2) return null;
-            
+
             const coords = parts[0].trim();
             const title = parts[1].trim();
-            
+
             const coordParts = coords.split(',');
             if (coordParts.length < 2) return null;
 
@@ -290,8 +282,8 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
             const y = coordParts[1].trim();
 
             const hasUnlocks = choice.outcomes && (
-              (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) || 
-              (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) || 
+              (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) ||
+              (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) ||
               (choice.outcomes.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) ||
               (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0) ||
               (choice.outcomes.next_question_id)
@@ -303,9 +295,9 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 
             let zoneClass = 'loc-hover-zone';
             if (isSelected) {
-              zoneClass += ' selected'; 
+              zoneClass += ' selected';
             } else if (isCompleted || isDeadEndClicked || isNarrativeLocked) {
-              zoneClass += ' investigated'; 
+              zoneClass += ' investigated';
             }
 
             return (
@@ -320,7 +312,7 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
               >
                 <div className="loc-crosshair"></div>
                 <div className="loc-tooltip">
-                  {isNarrativeLocked ? '🔒 [ REQUIRES ADDITIONAL INTEL ]' : title}
+                  {isNarrativeLocked ? t('pages.gameRoom.campaign.levels.location.requiresIntel') : title}
                 </div>
               </div>
             );
@@ -331,7 +323,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     document.body
   ) : null;
 
-  // Evaluate if any interaction has occurred globally or via our synced local state
   const hasGlobalInteraction = level.questions?.some(q => room.votes?.some((v: any) => v.question_id === q.id));
   const hasInteracted = foundPoints.size > 0 || clickedDeadEnds.size > 0 || hasGlobalInteraction;
 
@@ -341,20 +332,19 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
         <div key={q.id} className="location-thumbnail-container">
           <div className="location-thumbnail" style={{ backgroundImage: `url(${q.img_url || '/placeholder-crime-scene.jpg'})` }}>
             <div className="thumbnail-overlay">
-              <button 
-                className="btn-primary" 
+              <button
+                className="btn-primary"
                 onClick={() => setInspectingQuestionId(q.id)}
                 style={{ flex: 'none', width: 'auto', padding: '0.75rem 2rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}
               >
-                <span style={{ marginRight: '0.5rem'}}>👁️</span> Inspect Location
+                <span style={{ marginInlineEnd: '0.5rem'}}>👁️</span> {t('pages.gameRoom.campaign.levels.location.inspectLocation')}
               </button>
             </div>
           </div>
-          <p className="location-hint">{q.text || 'Enter the full-screen viewer to sweep the scene.'}</p>
+          <p className="location-hint">{q.text || t('pages.gameRoom.campaign.levels.location.enterViewerHint')}</p>
         </div>
       ))}
 
-      {/* Conditional Leave Location Button */}
       {status === 'active' && (
         <div style={{ gridColumn: '1 / -1', marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
           {isHost ? (
@@ -364,11 +354,11 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
               onClick={handleSubmitTheory}
               style={{ padding: '1rem 3rem', width: 'auto' }}
             >
-              {isSubmitting ? 'Processing...' : 'Leave Location'}
+              {isSubmitting ? t('pages.gameRoom.campaign.levels.location.processing') : t('pages.gameRoom.campaign.levels.location.leaveLocation')}
             </button>
           ) : (
             <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
-              Sweep in progress. Awaiting Host to conclude the search...
+              {t('pages.gameRoom.campaign.levels.location.awaitingHost')}
             </div>
           )}
         </div>

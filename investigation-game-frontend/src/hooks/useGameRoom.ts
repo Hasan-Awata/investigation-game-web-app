@@ -1,30 +1,30 @@
-// FILE: src/hooks/useGameRoom.ts
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { joinRoom, fetchRoomState } from '@/services/api';
 import type { Evidence, Suspect, Victim } from '@/types';
 
 export function useGameRoom(inviteCode: string | undefined) {
-  
-  const { 
-    data: room, 
-    isLoading, 
-    error, 
-    refetch 
+  const { t } = useTranslation();
+
+  const {
+    data: room,
+    isLoading,
+    error,
+    refetch
   } = useQuery({
     queryKey: ['gameRoom', inviteCode],
     queryFn: async () => {
-      if (!inviteCode) throw new Error('No invite code provided.');
-      
+      if (!inviteCode) throw new Error(t('pages.gameRoom.noInviteCode'));
+
       const storageKey = `active_room_id_for_${inviteCode}`;
       let roomId = sessionStorage.getItem(storageKey);
 
       if (!roomId) {
         const joinResult = await joinRoom(inviteCode);
         if (!joinResult.isSuccess) throw new Error(joinResult.errorMessage);
-        
+
         roomId = joinResult.value.id.toString();
-        // REMOVED: sessionStorage.setItem(storageKey, roomId); -> Side-effect removed from queryFn
       }
 
       const stateResult = await fetchRoomState(parseInt(roomId, 10));
@@ -32,7 +32,7 @@ export function useGameRoom(inviteCode: string | undefined) {
 
       return stateResult.value;
     },
-    enabled: !!inviteCode, 
+    enabled: !!inviteCode,
   });
 
   // Handle the side-effect purely based on successful data resolution
@@ -60,13 +60,13 @@ export function useGameRoom(inviteCode: string | undefined) {
     (victim: Victim) => victim.is_initial || unlockedVictimIds.has(victim.id)
   );
 
-  return { 
-    room, 
-    isLoading, 
-    error: error instanceof Error ? error.message : null, 
-    accumulatedEvidences, 
-    accumulatedSuspects, 
+  return {
+    room,
+    isLoading,
+    error: error instanceof Error ? error.message : null,
+    accumulatedEvidences,
+    accumulatedSuspects,
     accumulatedVictims,
-    refreshRoomData: async () => { await refetch(); } 
+    refreshRoomData: async () => { await refetch(); }
   };
 }

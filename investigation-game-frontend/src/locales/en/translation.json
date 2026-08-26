@@ -1,0 +1,15 @@
+{
+  "system": {
+    "loading": "Establishing Secure Connection...",
+    "error": "System Error:"
+  },
+  "admin": {
+    "dashboardTitle": "System Oversight // Admin Root",
+    "unauthorized": "Unauthorized access"
+  },
+  "gameRoom": {
+    "sessionCode": "Session Code",
+    "activeAgents": "Active Agents",
+    "strikes": "STRIKES"
+  }
+}

@@ -1,0 +1,149 @@
+/* ==============================================================
+   DIGITAL FORENSICS (Cyber Crimes Decryption Terminal)
+   ============================================================== */
+.digital-terminal {
+  background: #0a0b0e;
+  color: #00e5ff;
+  font-family: 'Courier New', Courier, monospace;
+  padding: 0;
+  border-radius: 6px;
+  border: 1px solid #1a252f;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), inset 0 0 30px rgba(0, 229, 255, 0.05);
+  max-width: 850px;
+  margin: 0 auto;
+  overflow: hidden;
+  position: relative;
+  text-align: start; /* Allow the layout to naturally follow RTL/LTR rules */
+}
+
+/* CRT Scanline effect overlay */
+.digital-terminal::after {
+  content: " ";
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+              linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  z-index: 10;
+  background-size: 100% 3px, 3px 100%;
+  pointer-events: none;
+}
+
+.terminal-header {
+  background: #12161a;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid #1a252f;
+}
+
+.terminal-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.terminal-dot.red { background: #ff5f56; }
+.terminal-dot.yellow { background: #ffbd2e; }
+.terminal-dot.green { background: #27c93f; }
+
+.terminal-title {
+  color: #5a7684;
+  font-size: 0.8rem;
+  /* Swapped to logical property */
+  margin-inline-start: 1rem;
+  letter-spacing: 0.1em;
+  font-weight: bold;
+}
+
+.terminal-body {
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.terminal-line {
+  font-size: 1rem;
+  line-height: 1.4;
+  z-index: 2; /* Sit above scanlines */
+}
+
+.terminal-line.command {
+  color: #e0e6ed;
+  margin-top: 0.5rem;
+  text-align: left; /* Explicitly lock LTR commands to the left side */
+}
+
+.prompt {
+  color: #ffbd2e; /* Amber prompt */
+  font-weight: bold;
+  /* Swapped to logical property */
+  margin-inline-end: 0.75rem;
+}
+
+.terminal-line.system {
+  color: #88a4b3;
+}
+
+.highlight-cyan {
+  color: #00e5ff;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(0, 229, 255, 0.4);
+}
+
+.progress-line {
+  margin-bottom: 1.5rem;
+}
+
+.terminal-data-box {
+  border: 1px solid #00e5ff;
+  background: rgba(0, 229, 255, 0.03);
+  margin: 1rem 0;
+  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.1);
+  position: relative;
+  z-index: 2;
+}
+
+.data-box-header, .data-box-footer {
+  background: #00e5ff;
+  color: #0a0b0e;
+  padding: 0.35rem 1rem;
+  font-weight: 900;
+  font-size: 0.85rem;
+  display: flex;
+  justify-content: space-between;
+}
+
+.data-payload {
+  padding: 2rem;
+  color: #e0e6ed;
+  white-space: pre-wrap;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  max-height: 350px;
+  overflow-y: auto;
+  text-shadow: 0 0 2px rgba(224, 230, 237, 0.3);
+}
+
+/* Custom Terminal Scrollbar */
+.data-payload::-webkit-scrollbar {
+  width: 8px;
+}
+.data-payload::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.5);
+  /* Swapped to logical property */
+  border-inline-start: 1px solid rgba(0, 229, 255, 0.2);
+}
+.data-payload::-webkit-scrollbar-thumb {
+  background: #00e5ff;
+}
+
+.blink-cursor {
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}

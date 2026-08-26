@@ -1,66 +1,62 @@
-import type { MediaEvidence } from '@/types/evidence';
-import './MediaViewer.css'; 
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import type { Evidence } from '@/types/evidence';
+import './MediaViewer.css';
+
+// Extract strict Media type (only Image and Audio)
+type MediaEvidence = Extract<Evidence, { evidence_type: 'image' | 'audio' }>;
 
 interface MediaViewerProps {
   evidence: MediaEvidence;
 }
 
-export default function MediaViewer({ evidence }: MediaViewerProps) {
-  const { evidence_type, description, img_url, audio_url, metadata, title } = evidence;
+const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
+  
+  // We assume the asset path is stored in img_url for both images and audio, 
+  // or inside metadata.url if your backend splits them up.
+  const mediaUrl = evidence.img_url || (evidence.metadata as any)?.url;
 
-  const renderContent = () => {
-    switch (evidence_type) {
-      case 'image':
-        return (
-          <div className="media-image-container">
-            <img 
-              src={img_url || '/placeholder-crime-scene.jpg'} 
-              alt={title} 
-              className="media-full-image" 
-            />
-            <div className="media-meta-plaque">
-              <h3 className="media-plaque-title">{title}</h3>
-              {description && <p className="media-plaque-desc">{description}</p>}
-            </div>
-          </div>
-        );
-
-      case 'audio':
-        return (
-          <div className="media-audio-container">
-            <div className="audio-visualizer-mock"></div>
-            <audio controls src={audio_url || undefined} className="media-audio-player">
-              Your browser does not support the audio element.
-            </audio>
-            <div className="media-meta-plaque">
-              <h3 className="media-plaque-title">{title}</h3>
-              {description && <p className="media-plaque-desc">{description}</p>}
-            </div>
-          </div>
-        );
-
-      case 'testimony':
-        return (
-          <div className="media-testimony-container">
-            <div className="testimony-header">
-              <span className="testimony-label">OFFICIAL TRANSCRIPT</span>
-              <h3 className="media-plaque-title" style={{ marginTop: '0.5rem', marginBottom: 0 }}>{title}</h3>
-              {description && <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)' }}>{description}</p>}
-            </div>
-            <div className="testimony-body">
-              {metadata?.transcript || 'Transcript unavailable.'}
-            </div>
-          </div>
-        );
-
-      default:
-        return <div className="media-caption">Media format unsupported.</div>;
-    }
-  };
+  if (!mediaUrl) {
+    return (
+      <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+        {t('pages.gameRoom.evidence.viewers.media.noMediaFound')}
+      </div>
+    );
+  }
 
   return (
     <div className="media-viewer-wrapper">
-      {renderContent()}
+      
+      {/* CONDITIONAL RENDER: IMAGE OR AUDIO */}
+      {evidence.evidence_type === 'image' ? (
+        <div className="media-image-container">
+          <img 
+            src={mediaUrl} 
+            alt={evidence.title || t('pages.gameRoom.evidence.viewers.media.imageAltFallback')} 
+            className="media-full-image" 
+          />
+        </div>
+      ) : (
+        <div className="media-audio-container">
+          <div className="audio-visualizer-mock"></div>
+          <audio controls className="media-audio-player">
+            <source src={mediaUrl} type="audio/mpeg" />
+            {t('pages.gameRoom.evidence.viewers.media.audioNotSupported')}
+          </audio>
+        </div>
+      )}
+
+      {/* SHARED PLAQUE FOR TITLE & DESCRIPTION */}
+      <div className="media-meta-plaque">
+        <h3 className="media-plaque-title">{evidence.title}</h3>
+        {evidence.description && (
+          <p className="media-plaque-desc">{evidence.description}</p>
+        )}
+      </div>
+
     </div>
   );
-}
+};
+
+export default MediaViewer;

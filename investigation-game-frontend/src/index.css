@@ -82,13 +82,13 @@ input, textarea {
 .btn-primary, .btn-secondary {
   flex: 1;
   padding: 1rem;
-  border-radius: var(--radius-sm); /* Relies on the sharper corners from Step 1 */
-  font-weight: 700; /* Bolder for a more tactile feel */
+  border-radius: var(--radius-sm); 
+  font-weight: 700; 
   font-family: var(--font-primary);
   text-transform: uppercase;
-  letter-spacing: 0.1em; /* Wider tracking for that official classification look */
+  letter-spacing: 0.1em; 
   cursor: pointer;
-  transition: all 0.1s ease-in-out; /* Faster, snappier transition */
+  transition: all 0.1s ease-in-out; 
   border: 1px solid transparent;
 }
 
@@ -99,11 +99,15 @@ input, textarea {
 }
 
 .btn-primary:hover {
-  /* Harsh inversion instead of a neon glow */
   background: var(--bg-dark);
   color: var(--accent-cyan);
-  /* Tactical left-border highlight */
+  /* Tactical left-border highlight (LTR) */
   box-shadow: inset 4px 0 0 0 var(--accent-cyan); 
+}
+
+/* RTL OVERRIDE: Flip inset shadow to the right side */
+[dir="rtl"] .btn-primary:hover {
+  box-shadow: inset -4px 0 0 0 var(--accent-cyan); 
 }
 
 .btn-primary:disabled {
@@ -124,7 +128,13 @@ input, textarea {
   background: rgba(var(--border-light-rgb), 0.1);
   color: var(--text-primary);
   border-color: rgba(var(--border-light-rgb), 0.4);
+  /* Tactical left-border highlight (LTR) */
   box-shadow: inset 4px 0 0 0 var(--text-secondary);
+}
+
+/* RTL OVERRIDE: Flip inset shadow to the right side */
+[dir="rtl"] .btn-secondary:hover {
+  box-shadow: inset -4px 0 0 0 var(--text-secondary);
 }
 
 /* --- CENTRALIZED BADGES --- */
@@ -146,15 +156,18 @@ input, textarea {
 /* --- CENTRALIZED GLASS PANELS --- */
 .glass-panel {
   background: var(--bg-panel);
-  /* Replace the heavy blur with a subtle noise/grain texture if possible, or keep it solid */
   backdrop-filter: blur(4px); 
   border: 1px solid rgba(var(--border-light-rgb), 0.15);
-  /* A sharper, harsher drop shadow instead of a wide, soft one */
+  /* A sharper, harsher drop shadow (Pushes down and right in LTR) */
   box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.4); 
 }
 
+/* RTL OVERRIDE: Mirror the harsh shadow to push down and left */
+[dir="rtl"] .glass-panel {
+  box-shadow: -4px 4px 0px rgba(0, 0, 0, 0.4); 
+}
+
 /* --- TYPOGRAPHY UPGRADES --- */
-/* Enforce the dossier aesthetic on all major headings globally */
 h1, h2, h3, h4, h5, h6 {
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -167,15 +180,17 @@ h1, h2, h3, h4, h5, h6 {
 .case-title {
   font-family: var(--font-mono);
   letter-spacing: 0.1em;
-  border-left: 3px solid var(--accent-cyan);
-  padding-left: 0.75rem;
+  /* Swapped to logical properties to perfectly mirror in Arabic */
+  border-inline-start: 3px solid var(--accent-cyan);
+  padding-inline-start: 0.75rem;
 }
 
 /* --- UNREAD ITEMS NOTIFICATION --- */
 .unread-indicator {
   position: absolute;
   top: -8px;
-  right: -8px;
+  /* Swapped to logical property */
+  inset-inline-end: -8px;
   width: 16px;
   height: 16px;
   background-color: rgba(112, 239, 112, 0.8);
@@ -207,13 +222,13 @@ h1, h2, h3, h4, h5, h6 {
 /* Firefox Support */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(90, 138, 158, 0.5) transparent; /* Uses your muted cyan */
+  scrollbar-color: rgba(90, 138, 158, 0.5) transparent; 
 }
 
 /* WebKit Support (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {
   width: 6px;
-  height: 6px; /* Handles horizontal scrollbars like the phase sub-nav */
+  height: 6px; 
 }
 
 ::-webkit-scrollbar-track {
@@ -227,5 +242,5 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-cyan); /* Fully illuminates when the user interacts with it */
+  background: var(--accent-cyan); 
 }

@@ -1,0 +1,162 @@
+/* ==============================================================
+   MEMO PREVIEW (Full-Size Crumpled Notebook Page)
+   ============================================================== */
+.memo-preview {
+  /* --- THEME CONTROL PANEL --- */
+  --memo-paper: #fcfbfa;           
+  --memo-lines: #a6c8ff;           
+  --memo-margin: #e88b8b;          
+  --memo-ink: #1b263b;             
+  /* --------------------------- */
+
+  width: 100%;
+  box-sizing: border-box;  
+  min-height: 50vh;        
+  overflow-x: hidden;      
+  
+  background-color: var(--memo-paper);
+  background-image: 
+    linear-gradient(90deg, transparent 68px, var(--memo-margin) 68px, var(--memo-margin) 70px, transparent 70px),
+    repeating-linear-gradient(180deg, transparent, transparent 31px, var(--memo-lines) 31px, var(--memo-lines) 32px);
+  
+  border-radius: 4px 12px 6px 10px; 
+  position: relative;
+  /* Swapped to logical property to ensure text doesn't overlap holes */
+  padding: 4rem 3rem 3rem 3rem; 
+  padding-inline-start: 6rem;
+  display: flex;
+  flex-direction: column;
+}
+
+/* RTL OVERRIDES FOR MEMO PAPER MARGIN & RADIUS */
+[dir="rtl"] .memo-preview {
+  border-radius: 12px 4px 10px 6px;
+  background-image: 
+    linear-gradient(-90deg, transparent 68px, var(--memo-margin) 68px, var(--memo-margin) 70px, transparent 70px),
+    repeating-linear-gradient(180deg, transparent, transparent 31px, var(--memo-lines) 31px, var(--memo-lines) 32px);
+}
+
+/* 1. SCALED SPIRAL NOTEBOOK HOLES */
+.memo-preview .notebook-holes {
+  position: absolute;
+  top: 0; bottom: 0; 
+  /* Swapped to logical property */
+  inset-inline-start: 15px;
+  width: 30px;
+  background-image: radial-gradient(circle at 15px 20px, rgba(0,0,0,0.8) 10px, rgba(0,0,0,0.15) 12px, transparent 13px);
+  background-size: 100% 50px;
+  background-position: 0 20px;
+  background-repeat: repeat-y;
+  z-index: 2;
+  /* Swapped to logical property */
+  border-inline-end: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* 2. THE CRUMPLED PAPER TEXTURE */
+.memo-preview .crumpled-texture {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  z-index: 1;
+  background: 
+    linear-gradient(135deg, transparent 35%, rgba(0,0,0,0.06) 35%, rgba(255,255,255,0.4) 36%, transparent 37%),
+    linear-gradient(45deg, transparent 65%, rgba(0,0,0,0.04) 65%, rgba(255,255,255,0.3) 66%, transparent 68%),
+    linear-gradient(75deg, transparent 20%, rgba(0,0,0,0.05) 20%, rgba(255,255,255,0.2) 21%, transparent 22%),
+    linear-gradient(-20deg, transparent 50%, rgba(0,0,0,0.05) 50%, rgba(255,255,255,0.3) 52%, transparent 54%),
+    radial-gradient(circle at 30% 30%, rgba(0,0,0,0.03) 0%, transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(255,255,255,0.2) 0%, transparent 40%);
+  box-shadow: inset 10px 10px 30px rgba(0,0,0,0.05), inset -10px -10px 30px rgba(0,0,0,0.05);
+}
+
+/* 3. HANDWRITTEN TEXT CONTENT */
+.memo-preview .memo-content {
+  position: relative;
+  z-index: 3;
+  flex: 1;
+}
+
+.memo-preview .memo-body-text {
+  color: var(--memo-ink);
+  font-family: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  font-size: 1.8rem; 
+  line-height: 32px; 
+  margin: 0;
+  transform: rotate(1deg); 
+  white-space: pre-wrap; 
+}
+
+/* RTL Override to mirror the handwriting slant */
+[dir="rtl"] .memo-preview .memo-body-text {
+  transform: rotate(-1deg);
+}
+
+.memo-sticky-preview {
+  /* Sticky Note Theme Colors */
+  --sticky-paper: #fef27e;
+  --sticky-shadow: rgba(0, 0, 0, 0.15);
+  
+  width: 350px;
+  min-height: 350px;
+  margin: 3rem auto; 
+  background-color: var(--sticky-paper);
+  position: relative;
+  padding: 3rem 2rem 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  
+  /* Creates a slight fold/curl effect at the bottom right corner */
+  border-radius: 2px 2px 30px 2px;
+  box-shadow: 
+    3px 5px 15px rgba(0,0,0,0.1),
+    8px 15px 25px rgba(0,0,0,0.05);
+    
+  /* Jaunty rotation to make it feel casually placed */
+  transform: rotate(-3deg);
+}
+
+/* RTL OVERRIDES FOR STICKY NOTE */
+[dir="rtl"] .memo-sticky-preview {
+  /* Move curl to bottom left */
+  border-radius: 2px 2px 2px 30px;
+  transform: rotate(3deg);
+  box-shadow: 
+    -3px 5px 15px rgba(0,0,0,0.1),
+    -8px 15px 25px rgba(0,0,0,0.05);
+}
+
+/* Semi-transparent "scotch tape" holding it up */
+.memo-sticky-preview .sticky-tape {
+  position: absolute;
+  top: -15px;
+  /* Centered, RTL safe */
+  left: 50%;
+  transform: translateX(-50%) rotate(2deg);
+  width: 120px;
+  height: 35px;
+  background-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  backdrop-filter: blur(2px);
+  border-radius: 2px;
+  z-index: 10;
+}
+
+[dir="rtl"] .memo-sticky-preview .sticky-tape {
+  transform: translateX(50%) rotate(-2deg);
+}
+
+/* Re-using your memo-content structure */
+.memo-sticky-preview .memo-content {
+  position: relative;
+  z-index: 3;
+  flex: 1;
+}
+
+.memo-sticky-preview .memo-body-text {
+  color: #1b263b; 
+  font-family: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  font-size: 1.8rem; 
+  line-height: 1.4; 
+  margin: 0;
+  white-space: pre-wrap; 
+}

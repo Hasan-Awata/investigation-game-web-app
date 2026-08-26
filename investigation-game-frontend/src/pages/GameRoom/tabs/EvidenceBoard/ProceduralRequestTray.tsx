@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
+import { useTranslation } from 'react-i18next';
+import { InvestigationRequestType } from '@/types';
 import type { Evidence } from '@/types';
 import type { FiledRequest } from '@/hooks/useInvestigationRequest';
 import './ProceduralRequestTray.css';
@@ -27,7 +28,7 @@ export default function ProceduralRequestTray({
   submitRequest,
   filedRequests
 }: ProceduralRequestTrayProps) {
-  
+  const { t } = useTranslation();
   const [showArchive, setShowArchive] = useState(false);
 
   const handleDrop = (e: React.DragEvent) => {
@@ -40,13 +41,13 @@ export default function ProceduralRequestTray({
     <div className="filing-tray glass-panel" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
       <div className="tray-header">
         <span className="forensic-icon">⚖️</span>
-        <h3>Procedural Request Tray</h3>
+        <h3>{t('pages.gameRoom.evidence.board.proceduralTrayTitle')}</h3>
       </div>
-      
+
       <div className="tray-layout">
         <div className="tray-dropzone">
           {trayEvidences.length === 0 ? (
-            <span className="tray-placeholder">Drag & Drop Evidence Here</span>
+            <span className="tray-placeholder">{t('pages.gameRoom.evidence.board.dragAndDrop')}</span>
           ) : (
             <div className="tray-items">
               {trayEvidences.map(id => {
@@ -54,7 +55,7 @@ export default function ProceduralRequestTray({
                 return (
                   <div key={id} className="tray-item-pill">
                     <span className="tray-item-id">EX-{id.toString().padStart(3, '0')}</span>
-                    <span className="tray-item-title">{ev?.title || 'Unknown File'}</span>
+                    <span className="tray-item-title">{ev?.title || t('pages.gameRoom.evidence.board.unknownFile')}</span>
                     <button className="tray-item-remove" onClick={() => removeFromTray(id)}>×</button>
                   </div>
                 );
@@ -64,30 +65,33 @@ export default function ProceduralRequestTray({
         </div>
 
         <div className="tray-actions">
-          <select 
-            className="admin-input tray-select" 
-            value={requestType} 
+          <select
+            className="admin-input tray-select"
+            value={requestType}
             onChange={(e) => setRequestType(e.target.value)}
           >
-            <option value="" disabled>-- Select Request Type --</option>
+            <option value="" disabled>{t('pages.gameRoom.evidence.board.selectRequestType')}</option>
             {Object.values(InvestigationRequestType).map(type => (
-              <option key={type} value={type}>{getInvestigationRequestLabel(type)}</option>
+              <option key={type} value={type}>
+                {/* Dynamically translate the raw enum value */}
+                {t(`pages.gameRoom.evidence.board.requestTypes.${type}`)}
+              </option>
             ))}
           </select>
-          
-          <button 
-            className="btn-primary tray-submit-btn" 
+
+          <button
+            className="btn-primary tray-submit-btn"
             disabled={trayEvidences.length < 2 || !requestType || isSubmitting}
             onClick={() => submitRequest()}
           >
-            {isSubmitting ? 'Filing...' : 'Submit Request to DA'}
+            {isSubmitting ? t('pages.gameRoom.evidence.board.filing') : t('pages.gameRoom.evidence.board.submitToDa')}
           </button>
         </div>
       </div>
 
       <div className="tray-footer-actions">
         <button className="archive-toggle-btn" onClick={() => setShowArchive(!showArchive)}>
-          📁 {showArchive ? 'Hide Filed Requests' : `View Filed Requests (${filedRequests.length})`}
+          📁 {showArchive ? t('pages.gameRoom.evidence.board.hideFiled') : `${t('pages.gameRoom.evidence.board.viewFiled')} (${filedRequests.length})`}
         </button>
       </div>
 
@@ -95,20 +99,22 @@ export default function ProceduralRequestTray({
         <div className="filed-requests-drawer">
           {filedRequests.length === 0 ? (
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.5rem' }}>
-              No procedural requests filed yet during this session.
+              {t('pages.gameRoom.evidence.board.noRequestsFiled')}
             </div>
           ) : (
             filedRequests.map(req => (
               <div key={req.id} className="filed-request-row">
                 <div className="filed-request-info">
-                  <span className="filed-request-type">{getInvestigationRequestLabel(req.type)}</span>
+                  <span className="filed-request-type">
+                    {t(`pages.gameRoom.evidence.board.requestTypes.${req.type}`)}
+                  </span>
                   <span className="filed-request-meta">
-                    Cross-referenced: {req.evidenceIds.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
+                    {t('pages.gameRoom.evidence.board.crossReferenced')} {req.evidenceIds.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>{req.timestamp}</span>
-                  <span className="filed-request-status">APPROVED</span>
+                  <span className="filed-request-status">{t('pages.gameRoom.evidence.board.approvedStatus')}</span>
                 </div>
               </div>
             ))

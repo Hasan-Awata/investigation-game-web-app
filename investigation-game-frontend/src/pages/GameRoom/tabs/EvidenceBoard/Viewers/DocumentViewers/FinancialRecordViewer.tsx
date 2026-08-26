@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
-import type { FinancialMetadata, FinancialTransaction } from '@/types/evidence/document';
+import { useTranslation } from 'react-i18next';
+import type { DocumentEvidence } from '@/types/evidence';
+import type { FinancialTransaction } from '@/types/evidence/document';
+import './FinancialRecordViewer.css'; 
+
+type FinancialEvidence = Extract<DocumentEvidence, { sub_type: 'financial' }>;
 
 interface FinancialRecordProps {
-  evidence: { id: number; metadata: FinancialMetadata; };
+  evidence: FinancialEvidence;
 }
 
 const FinancialRecordViewer: React.FC<FinancialRecordProps> = ({ evidence }) => {
+  const { t } = useTranslation();
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const metadata = evidence.metadata;
   const pages = metadata.pages || [];
@@ -13,8 +19,8 @@ const FinancialRecordViewer: React.FC<FinancialRecordProps> = ({ evidence }) => 
 
   return (
     <div className="financial-preview-wrapper">
-      <div className="financial-watermark">CONFIDENTIAL</div>
-      <div className="financial-stamp">SUBPOENAED RECORD</div>
+      <div className="financial-watermark">{t('pages.gameRoom.evidence.viewers.financial.confidential')}</div>
+      <div className="financial-stamp">{t('pages.gameRoom.evidence.viewers.financial.subpoenaedRecord')}</div>
 
       <div className="doc-header-block">
         <div className="financial-header-top">
@@ -22,19 +28,19 @@ const FinancialRecordViewer: React.FC<FinancialRecordProps> = ({ evidence }) => 
           <div className="financial-barcode">*{evidence.id}*</div>
         </div>
         <div className="doc-meta-row">
-          <div><span className="doc-meta-label">ACCOUNT:</span> <span>{metadata.account_holder}</span></div>
-          <div><span className="doc-meta-label">ACCT NO:</span> <span>{metadata.account_number}</span></div>
-          <div><span className="doc-meta-label">PERIOD:</span> <span>{activePage.statement_period}</span></div>
-          <div><span className="doc-meta-label">DOC REF:</span> <span>EX-{evidence.id.toString().padStart(3, '0')}</span></div>
+          <div><span className="doc-meta-label">{t('pages.gameRoom.evidence.viewers.financial.account')}</span> <span>{metadata.account_holder}</span></div>
+          <div><span className="doc-meta-label">{t('pages.gameRoom.evidence.viewers.financial.accountNo')}</span> <span>{metadata.account_number}</span></div>
+          <div><span className="doc-meta-label">{t('pages.gameRoom.evidence.viewers.financial.period')}</span> <span>{activePage.statement_period}</span></div>
+          <div><span className="doc-meta-label">{t('pages.gameRoom.evidence.viewers.financial.docRef')}</span> <span>EX-{evidence.id.toString().padStart(3, '0')}</span></div>
         </div>
       </div>
-      
+
       <table className="financial-table">
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Transaction Detail</th>
-            <th className="amount-header">Amount</th>
+            <th>{t('pages.gameRoom.evidence.viewers.financial.date')}</th>
+            <th>{t('pages.gameRoom.evidence.viewers.financial.transactionDetail')}</th>
+            <th className="amount-header">{t('pages.gameRoom.evidence.viewers.financial.amount')}</th>
           </tr>
         </thead>
         <tbody>
@@ -47,11 +53,11 @@ const FinancialRecordViewer: React.FC<FinancialRecordProps> = ({ evidence }) => 
               </td>
             </tr>
           ))}
-          
+
           {(!activePage.transactions || activePage.transactions.length === 0) && (
             <tr>
               <td colSpan={3} className="empty-ledger-msg">
-                No ledger data available for this period.
+                {t('pages.gameRoom.evidence.viewers.financial.noLedgerData')}
               </td>
             </tr>
           )}
@@ -59,17 +65,21 @@ const FinancialRecordViewer: React.FC<FinancialRecordProps> = ({ evidence }) => 
       </table>
 
       <div className="financial-footer">
-        <span>AUTHORIZED BY DEPT OF TREASURY</span>
-        
+        <span>{t('pages.gameRoom.evidence.viewers.financial.authorizedBy')}</span>
+
         {pages.length > 1 && (
           <div className="document-pagination">
-            <button disabled={currentPageIndex === 0} onClick={() => setCurrentPageIndex(prev => prev - 1)}>&#8592; Prev</button>
-            <span>PAGE {currentPageIndex + 1} OF {pages.length}</span>
-            <button disabled={currentPageIndex === pages.length - 1} onClick={() => setCurrentPageIndex(prev => prev + 1)}>Next &#8594;</button>
+            <button disabled={currentPageIndex === 0} onClick={() => setCurrentPageIndex(prev => prev - 1)}>
+              &#8592; {t('pages.gameRoom.evidence.viewers.financial.prev')}
+            </button>
+            <span>{t('pages.gameRoom.evidence.viewers.financial.page')} {currentPageIndex + 1} {t('pages.gameRoom.evidence.viewers.financial.of')} {pages.length}</span>
+            <button disabled={currentPageIndex === pages.length - 1} onClick={() => setCurrentPageIndex(prev => prev + 1)}>
+              {t('pages.gameRoom.evidence.viewers.financial.next')} &#8594;
+            </button>
           </div>
         )}
-        
-        {pages.length <= 1 && <span>PAGE 1 OF 1</span>}
+
+        {pages.length <= 1 && <span>{t('pages.gameRoom.evidence.viewers.financial.page')} 1 {t('pages.gameRoom.evidence.viewers.financial.of')} 1</span>}
       </div>
     </div>
   );

@@ -1,0 +1,207 @@
+/* ==============================================================
+   AUTOPSY REPORT (Physical Paper Document)
+   ============================================================== */
+.autopsy-paper {
+  background: #fcfcfb; 
+  color: #1a1a1a;
+  padding: 3.5rem 4rem;
+  border-radius: 2px;
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.05), 2px 4px 15px rgba(0, 0, 0, 0.3);
+  position: relative;
+  max-width: 850px;
+  margin: 0 auto;
+}
+
+.autopsy-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 3px solid #1a1a1a;
+  padding-bottom: 1.5rem;
+  margin-bottom: 2.5rem;
+}
+
+.autopsy-agency-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.autopsy-agency {
+  font-weight: 900;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.autopsy-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.autopsy-sub-meta {
+  font-size: 0.85rem;
+  color: #444;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+}
+
+.autopsy-meta-box {
+  border: 2px solid #1a1a1a;
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-weight: 700;
+  min-width: 150px;
+  /* Swapped to logical property */
+  text-align: start;
+}
+
+.autopsy-label {
+  font-weight: 900;
+  /* Swapped to logical property */
+  margin-inline-end: 0.5rem;
+}
+
+.autopsy-body-section {
+  display: grid;
+  grid-template-columns: 1fr 220px;
+  gap: 3rem;
+  margin-bottom: 3rem;
+}
+
+.autopsy-data-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.autopsy-data-row {
+  display: flex;
+  align-items: baseline;
+  border-bottom: 1px dotted #ccc;
+  padding-bottom: 0.5rem;
+}
+
+.autopsy-data-row .autopsy-label {
+  width: 180px;
+  flex-shrink: 0;
+}
+
+.autopsy-value {
+  font-size: 1.1rem;
+}
+
+.critical-row {
+  margin-top: 1rem;
+  border: 2px solid #1a1a1a;
+  padding: 1rem;
+  background: #f4f4f4;
+}
+
+.critical-row .autopsy-label {
+  width: auto;
+  /* Swapped to logical property */
+  margin-inline-end: 1rem;
+}
+
+.cause-of-death {
+  font-weight: 900;
+  font-size: 1.25rem;
+  color: #a33232; 
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.autopsy-notes-section {
+  margin-top: 1.5rem;
+}
+
+.autopsy-notes-content {
+  margin-top: 0.75rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  color: #222;
+}
+
+.autopsy-diagram-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 2px solid #1a1a1a;
+  padding: 1.5rem;
+  background: #fff;
+}
+
+.autopsy-body-wireframe {
+  width: 140px;
+  height: auto;
+  fill: transparent;
+  stroke: #1a1a1a; 
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  margin-bottom: 1rem;
+}
+
+.autopsy-body-wireframe .grid-line {
+  stroke: #aaa;
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.diagram-caption {
+  font-weight: 700;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.autopsy-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  border-top: 2px solid #1a1a1a;
+  padding-top: 1.5rem;
+}
+
+.autopsy-stamp {
+  font-weight: 900;
+  color: #5a8a9e; 
+  border: 3px solid #5a8a9e;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+  transform: rotate(-5deg);
+}
+
+[dir="rtl"] .autopsy-stamp {
+  transform: rotate(5deg);
+}
+
+.autopsy-signature-block {
+  text-align: center;
+  min-width: 250px;
+}
+
+.autopsy-signature {
+  font-family: 'Caveat', cursive;
+  font-size: 2.5rem;
+  color: #1a1a1a;
+  transform: rotate(-2deg);
+  margin-bottom: -10px;
+}
+
+[dir="rtl"] .autopsy-signature {
+  transform: rotate(2deg);
+}
+
+.autopsy-signature-line {
+  border-top: 1px solid #1a1a1a;
+  padding-top: 0.25rem;
+  font-weight: 700;
+  font-size: 0.85rem;
+}

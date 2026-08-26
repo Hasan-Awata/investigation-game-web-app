@@ -1,0 +1,185 @@
+/* ==============================================================
+   DNA REPORT (Clinical Laboratory Printout)
+   ============================================================== */
+.dna-paper {
+  background: #f4f6f8; /* Crisp, cool-toned lab paper */
+  color: #1a1b1e;
+  padding: 3.5rem 4rem;
+  border-radius: 2px;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.03), 2px 4px 15px rgba(0, 0, 0, 0.2);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  max-width: 850px;
+  margin: 0 auto;
+  position: relative;
+  text-align: start; /* Ensures default layout responds to document direction */
+}
+
+.dna-header {
+  border-bottom: 4px solid #1a1b1e;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.dna-lab-title {
+  font-weight: 900;
+  font-size: 1.2rem;
+  letter-spacing: 0.15em;
+  color: #4a5568;
+}
+
+.dna-report-type {
+  font-weight: 900;
+  font-size: 2rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.25rem;
+}
+
+.dna-meta-row {
+  display: flex;
+  justify-content: space-between;
+  background: #e2e8f0;
+  padding: 1rem 1.5rem;
+  border-radius: 4px;
+  margin-bottom: 2.5rem;
+}
+
+.dna-label {
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #4a5568;
+  letter-spacing: 0.05em;
+  /* Swapped to logical property */
+  margin-inline-end: 0.5rem;
+}
+
+.dna-meta-value {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+/* --- THE DNA VISUALIZER --- */
+.dna-visualizer-container {
+  margin-bottom: 2.5rem;
+}
+
+.dna-visualizer-title {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  border-bottom: 2px solid #cbd5e1;
+  padding-bottom: 0.5rem;
+}
+
+.dna-visualizer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.dna-sequence-track {
+  display: flex;
+  align-items: center;
+}
+
+.dna-track-label {
+  width: 160px;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: #4a5568;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.dna-bands-container {
+  flex: 1;
+  height: 60px;
+  background: #fff;
+  border: 1px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: space-evenly;
+  padding: 0 10px;
+}
+
+.dna-band {
+  width: 6px;
+  height: 80%;
+  background: #1a1b1e;
+  border-radius: 1px;
+}
+
+.dna-band.dense {
+  width: 10px; /* Make higher opacity bands thicker for realism */
+}
+
+/* --- RESULTS BOX --- */
+.dna-results-box {
+  border: 3px solid #1a1b1e;
+  padding: 1.5rem 2rem;
+  margin-bottom: 2rem;
+  background: #fff;
+}
+
+.dna-result-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.dna-result-row:last-child {
+  margin-bottom: 0;
+}
+
+.dna-result-row .dna-label {
+  width: 200px;
+  font-size: 1rem;
+}
+
+.dna-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+.dna-value.highlight {
+  color: #2b6cb0; /* Deep clinical blue */
+}
+
+.subject-match {
+  color: #c53030; /* Alert Red for a positive hit */
+  background: rgba(197, 48, 48, 0.1);
+  padding: 0.25rem 0.75rem;
+  border: 1px solid #c53030;
+}
+
+.subject-unknown {
+  color: #718096;
+  font-style: italic;
+}
+
+.dna-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 2px solid #cbd5e1;
+}
+
+.dna-barcode {
+  font-family: monospace;
+  font-size: 1.5rem;
+  color: #718096;
+  letter-spacing: 2px;
+}
+
+.dna-codis-stamp {
+  font-family: var(--font-mono);
+  font-weight: 900;
+  color: #2b6cb0;
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+}

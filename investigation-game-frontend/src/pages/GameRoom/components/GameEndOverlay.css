@@ -1,0 +1,121 @@
+/* Full screen blurred backdrop */
+.victory-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 11, 13, 0.9);
+  backdrop-filter: blur(10px);
+  padding: 1rem;
+}
+
+/* Main glass panel container */
+.victory-content {
+  background: rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xl, 12px);
+  text-align: center;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+  width: 100%;
+}
+
+/* Icon Animations */
+.forensic-icon {
+  font-size: 3.5rem;
+  line-height: 1;
+  /* Logical property instead of margin-bottom */
+  margin-block-end: 1rem; 
+}
+
+.pulse {
+  animation: icon-pulse 2s infinite ease-in-out;
+}
+
+@keyframes icon-pulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 1; text-shadow: 0 0 20px currentColor; }
+  100% { transform: scale(1); opacity: 0.8; }
+}
+
+/* Typography */
+.victory-title {
+  font-size: 2.5rem;
+  /* Logical property instead of margin-bottom */
+  margin-block-end: 0.5rem;
+  letter-spacing: 0.1em;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.victory-subtitle {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  /* Logical property */
+  margin-block-end: 2.5rem;
+}
+
+/* Stats Grid */
+.victory-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1.5rem;
+  /* Logical property */
+  margin-block-end: 2rem;
+}
+
+.stat-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  padding: 1.5rem 1rem;
+  border-radius: var(--radius-md, 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.stat-box:hover {
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-2px);
+}
+
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.stat-value {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: baseline;
+}
+
+/* Value Status Colors */
+.stat-value.highlight {
+  color: var(--accent-amber);
+}
+
+.stat-value.success {
+  color: var(--accent-success, #00e5ff); /* Falls back to cyan if success isn't defined */
+}
+
+.stat-value.error {
+  color: var(--accent-crimson);
+}
+
+.stat-sub {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  /* Logical property instead of margin-left */
+  margin-inline-start: 0.25rem; 
+}

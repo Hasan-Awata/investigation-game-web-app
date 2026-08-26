@@ -1,0 +1,134 @@
+/* ==============================================================
+   BACKGROUND CHECK AESTHETIC (Official Dossier)
+   ============================================================== */
+.bg-check-preview {
+  background-color: #f4f1ea;
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.1);
+  color: #1a1a1a;
+  padding: 3rem 4rem;
+  min-height: 50vh;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden;
+  font-family: var(--font-primary), sans-serif;
+  /* Ensure overall text flows correctly */
+  text-align: start;
+}
+
+.bg-check-header {
+  border-bottom: 3px solid #1a1a1a;
+  padding-bottom: 1rem;
+  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.bg-check-title {
+  font-size: 1.5rem;
+  font-weight: 900;
+  margin: 0 0 0.25rem 0;
+  letter-spacing: 0.1em;
+  color: #1a1a1a;
+}
+
+.bg-check-barcode {
+  font-family: 'Libre Barcode 39', monospace;
+  font-size: 3rem;
+  line-height: 0.7;
+  opacity: 0.8;
+  color: #1a1a1a;
+}
+
+.bg-check-id-block {
+  display: flex;
+  gap: 2rem;
+  margin-bottom: 2.5rem;
+  padding: 1.5rem;
+  background: rgba(0, 0, 0, 0.03);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.bg-check-mugshot {
+  width: 150px;
+  height: 180px;
+  background-color: #d1cfc7;
+  border: 2px solid #1a1a1a;
+  box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
+  object-fit: cover;
+  filter: grayscale(100%) contrast(120%);
+}
+
+.bg-check-data {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.bg-check-data-row {
+  display: flex;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.2);
+  padding-bottom: 0.35rem;
+}
+
+.bg-check-label {
+  font-family: var(--font-mono);
+  font-weight: bold;
+  color: #444;
+  font-size: 0.85rem;
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.bg-check-value {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: #1a1a1a;
+}
+
+.bg-check-section {
+  margin-bottom: 2.5rem;
+  border-top: 2px solid #1a1a1a;
+  padding-top: 1rem;
+}
+
+.bg-check-section-title {
+  font-family: var(--font-mono);
+  font-weight: 900;
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+  text-transform: uppercase;
+  color: #333;
+}
+
+.bg-check-text {
+  font-family: var(--font-mono);
+  white-space: pre-wrap;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: #1a1a1a;
+}
+
+/* HTML formatting effects used inside background checks */
+.redacted {
+  background-color: #1a1a1a;
+  color: #1a1a1a;
+  /* Swapped to logical property */
+  padding-inline: 6px;
+  user-select: none;
+  border-radius: 2px;
+}
+
+.highlighted {
+  background-color: rgba(255, 235, 59, 0.5);
+  /* Swapped to logical property */
+  padding-inline: 2px;
+  border-radius: 2px;
+}
+
+@media (max-width: 600px) {
+  .bg-check-id-block { flex-direction: column; align-items: center; }
+  .bg-check-preview { padding: 1.5rem; }
+}

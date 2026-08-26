@@ -21,44 +21,21 @@
   display: block;
 }
 
-.media-viewer-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-/* --- IMAGE STYLES --- */
-.media-image-container {
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: var(--border-thin);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.media-full-image {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
 /* --- AUDIO STYLES --- */
 .media-audio-container {
   background: rgba(0, 0, 0, 0.5);
   border-radius: var(--radius-md);
   border: var(--border-thin);
+  padding: 2rem;
   display: flex;
   flex-direction: column;
   align-items: center;
-  overflow: hidden;
+  gap: 1.5rem;
 }
 
 .audio-visualizer-mock {
   height: 60px;
-  width: calc(100% - 4rem);
-  margin: 2rem 2rem 1rem 2rem;
+  width: 100%;
   background: repeating-linear-gradient(
     90deg, 
     var(--accent-cyan), 
@@ -70,9 +47,19 @@
   border-radius: 2px;
 }
 
+/* RTL Override: Reverse the gradient animation direction for audio waves */
+[dir="rtl"] .audio-visualizer-mock {
+  background: repeating-linear-gradient(
+    -90deg, 
+    var(--accent-cyan), 
+    var(--accent-cyan) 3px, 
+    transparent 3px, 
+    transparent 8px
+  );
+}
+
 .media-audio-player {
-  width: calc(100% - 4rem);
-  margin: 0 2rem 2rem 2rem;
+  width: 100%;
   outline: none;
 }
 
@@ -80,9 +67,13 @@
 .media-meta-plaque {
   padding: 1.5rem;
   width: 100%;
-  text-align: center;
   background: rgba(20, 21, 24, 0.95);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
+  /* Use flex to handle alignment logically */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
 }
 
 .media-plaque-title {
@@ -99,97 +90,7 @@
   color: var(--text-secondary);
   font-size: 1rem;
   line-height: 1.5;
-}
-
-/* --- TESTIMONY (TRANSCRIPT) STYLES --- */
-.media-testimony-container {
-  background: rgba(20, 21, 24, 0.95);
-  border: 1px solid rgba(90, 138, 158, 0.4);
-  border-left: 4px solid var(--accent-cyan);
-  border-radius: 4px;
-  padding: 2rem;
-  box-shadow: inset 0 0 30px rgba(90, 138, 158, 0.05);
-}
-
-.testimony-header {
-  border-bottom: 1px dashed rgba(90, 138, 158, 0.5);
-  padding-bottom: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.testimony-label {
-  color: var(--accent-cyan);
-  font-family: var(--font-mono);
-  font-size: 1rem;
-  letter-spacing: 0.15em;
-}
-
-.testimony-body {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 1.1rem;
-  line-height: 1.8;
-  color: var(--text-primary);
-  white-space: pre-wrap;
-}
-
-/* --- AUDIO STYLES --- */
-.media-audio-container {
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: var(--radius-md);
-  border: var(--border-thin);
-  padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
-}
-
-.audio-visualizer-mock {
-  height: 60px;
-  width: 100%;
-  background: repeating-linear-gradient(
-    90deg, 
-    var(--accent-cyan), 
-    var(--accent-cyan) 3px, 
-    transparent 3px, 
-    transparent 8px
-  );
-  opacity: 0.4;
-  border-radius: 2px;
-}
-
-.media-audio-player {
-  width: 100%;
-  outline: none;
-}
-
-/* --- TESTIMONY (TRANSCRIPT) STYLES --- */
-.media-testimony-container {
-  background: rgba(20, 21, 24, 0.95);
-  border: 1px solid rgba(90, 138, 158, 0.4);
-  border-left: 4px solid var(--accent-cyan);
-  border-radius: 4px;
-  padding: 2rem;
-  box-shadow: inset 0 0 30px rgba(90, 138, 158, 0.05);
-}
-
-.testimony-header {
-  border-bottom: 1px dashed rgba(90, 138, 158, 0.5);
-  padding-bottom: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.testimony-label {
-  color: var(--accent-cyan);
-  font-family: var(--font-mono);
-  font-size: 1rem;
-  letter-spacing: 0.15em;
-}
-
-.testimony-body {
-  font-family: 'Courier New', Courier, monospace;
-  font-size: 1.1rem;
-  line-height: 1.8;
-  color: var(--text-primary);
-  white-space: pre-wrap;
+  /* Allow long descriptions to read naturally in the respective language direction */
+  text-align: start; 
+  max-width: 800px;
 }

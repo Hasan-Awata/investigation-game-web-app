@@ -1,6 +1,6 @@
-// FILE: src/pages/GameRoom/GameRoomLayout.tsx
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { useRoomState, useRoomActions } from '@/context/RoomContext';
 import type { ToastNotification } from '@/context/RoomContext';
 import CaseDetailsTab from './tabs/CaseDetails/CaseDetailsTab';
@@ -19,18 +19,19 @@ interface GameRoomLayoutProps {
 }
 
 export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }: GameRoomLayoutProps) {
-  const { 
-    room, 
-    accumulatedEvidences, 
-    accumulatedSuspects, 
-    accumulatedVictims, 
-    viewedEvidences, 
-    viewedSuspects, 
-    viewedVictims, 
-    globalFeedback 
+  const { t } = useTranslation();
+  const {
+    room,
+    accumulatedEvidences,
+    accumulatedSuspects,
+    accumulatedVictims,
+    viewedEvidences,
+    viewedSuspects,
+    viewedVictims,
+    globalFeedback
   } = useRoomState();
   const { setGlobalFeedback } = useRoomActions();
-  
+
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [isCopied, setIsCopied] = useState(false);
 
@@ -51,7 +52,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
 
   return (
     <div className="game-room-layout">
-      
+
       {/* 1. THE NEW GLOBAL MODAL */}
       {globalFeedback && (
         <div className="feedback-modal-overlay" style={{ zIndex: 9999 }}>
@@ -68,7 +69,9 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
             )}
             <h3 className="feedback-title">{globalFeedback.title}</h3>
             <p className="feedback-message">{globalFeedback.message}</p>
-            <button className="btn-secondary mt-1" onClick={() => setGlobalFeedback(null)}>Acknowledge</button>
+            <button className="btn-secondary mt-1" onClick={() => setGlobalFeedback(null)}>
+              {t('pages.gameRoom.layout.acknowledge')}
+            </button>
           </div>
         </div>
       )}
@@ -96,8 +99,8 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
       <aside className="sidebar-panel glass-panel">
         <div className="sidebar-section">
           <div className="sidebar-heading-wrapper">
-            <h3 className="sidebar-heading">Session Code</h3>
-            <button 
+            <h3 className="sidebar-heading">{t('gameRoom.sessionCode')}</h3>
+            <button
               className={`copy-btn ${isCopied ? 'copied' : ''}`}
               onClick={handleCopyCode}
               title="Copy Invite Code"
@@ -110,12 +113,12 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
 
         <div className="sidebar-section">
           <h3 className="sidebar-heading" style={{ color: 'var(--accent-crimson)', borderColor: 'rgba(255,51,102,0.2)' }}>
-            Department Heat
+            {t('pages.gameRoom.layout.departmentHeat')}
           </h3>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
             {[...Array(room.game_case?.max_strikes || 5)].map((_, i) => (
-              <div 
-                key={i} 
+              <div
+                key={i}
                 style={{
                   flex: 1, height: '8px', borderRadius: '2px',
                   background: i < (room.strikes || 0) ? 'var(--accent-crimson)' : 'rgba(255,255,255,0.05)',
@@ -126,12 +129,12 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
             ))}
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem', textAlign: 'right' }}>
-            STRIKES: {room.strikes || 0} / {room.game_case?.max_strikes || 5}
+            {t('gameRoom.strikes')}: {room.strikes || 0} / {room.game_case?.max_strikes || 5}
           </div>
         </div>
 
         <div className="sidebar-section">
-          <h3 className="sidebar-heading">Active Agents</h3>
+          <h3 className="sidebar-heading">{t('gameRoom.activeAgents')}</h3>
           <ul className="agent-list">
             {room.users ? room.users.map((participant: any) => (
               <li key={participant.id} className="agent-item">
@@ -141,7 +144,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
             )) : (
               <li className="agent-item">
                 <span className="agent-role host"></span>
-                Host (ID: {room.host_user_id})
+                {t('pages.gameRoom.layout.host')} (ID: {room.host_user_id})
               </li>
             )}
           </ul>
@@ -154,18 +157,20 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
         <header className="workspace-header">
           <nav className="tab-navigation">
             <button className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
-              Case Details
-              {hasUnreadVictims && <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="New Casualty"></div>}
+              {t('pages.gameRoom.layout.tabs.caseDetails')}
+              {hasUnreadVictims && <div className="unread-indicator" style={{ top: '12px', insetInlineEnd: '-15px', width: '12px', height: '12px' }} title={t('pages.gameRoom.layout.tabs.newCasualty')}></div>}
             </button>
             <button className={`tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => setActiveTab('evidences')}>
-              Evidences
-              {hasUnreadEvidence && <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="Unread Intel"></div>}
+              {t('pages.gameRoom.layout.tabs.evidences')}
+              {hasUnreadEvidence && <div className="unread-indicator" style={{ top: '12px', insetInlineEnd: '-15px', width: '12px', height: '12px' }} title={t('pages.gameRoom.layout.tabs.unreadIntel')}></div>}
             </button>
             <button className={`tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} onClick={() => setActiveTab('suspects')}>
-              Suspects
-              {hasUnreadSuspects && <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="Unread Intel"></div>}
+              {t('pages.gameRoom.layout.tabs.suspects')}
+              {hasUnreadSuspects && <div className="unread-indicator" style={{ top: '12px', insetInlineEnd: '-15px', width: '12px', height: '12px' }} title={t('pages.gameRoom.layout.tabs.unreadIntel')}></div>}
             </button>
-            <button className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`} onClick={() => setActiveTab('campaign')}>Campaign</button>
+            <button className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`} onClick={() => setActiveTab('campaign')}>
+              {t('pages.gameRoom.layout.tabs.campaign')}
+            </button>
           </nav>
         </header>
 

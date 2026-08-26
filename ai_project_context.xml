@@ -39,7 +39,13 @@
 │   │   ├── useInvestigationPhase.ts
 │   │   ├── useInvestigationRequest.ts
 │   │   └── useViewedItems.ts
+│   ├── i18n.ts
 │   ├── index.css
+│   ├── locales
+│   │   ├── ar
+│   │   │   └── translation.json
+│   │   └── en
+│   │       └── translation.json
 │   ├── main.tsx
 │   ├── pages
 │   │   ├── Admin
@@ -76,6 +82,7 @@
 │   │   │   ├── GameRoom.tsx
 │   │   │   ├── GameRoomLayout.tsx
 │   │   │   ├── components
+│   │   │   │   ├── GameEndOverlay.css
 │   │   │   │   └── GameEndOverlay.tsx
 │   │   │   └── tabs
 │   │   │       ├── Campaign
@@ -116,15 +123,32 @@
 │   │   │       │   ├── ProceduralRequestTray.css
 │   │   │       │   ├── ProceduralRequestTray.tsx
 │   │   │       │   └── Viewers
+│   │   │       │       ├── DocumentViewer.tsx
 │   │   │       │       ├── DocumentViewers
+│   │   │       │       │   ├── BackgroundCheckViewer.css
+│   │   │       │       │   ├── BackgroundCheckViewer.tsx
+│   │   │       │       │   ├── ContractViewer.css
 │   │   │       │       │   ├── ContractViewer.tsx
-│   │   │       │       │   ├── DocumentViewer.css
-│   │   │       │       │   ├── DocumentViewer.tsx
+│   │   │       │       │   ├── CorrespondenceViewer.css
+│   │   │       │       │   ├── CorrespondenceViewer.tsx
+│   │   │       │       │   ├── FinancialRecordViewer.css
 │   │   │       │       │   ├── FinancialRecordViewer.tsx
+│   │   │       │       │   ├── JournalViewer.css
 │   │   │       │       │   ├── JournalViewer.tsx
+│   │   │       │       │   ├── MemoViewer.css
 │   │   │       │       │   └── MemoViewer.tsx
-│   │   │       │       ├── ForensicViewer.css
 │   │   │       │       ├── ForensicViewer.tsx
+│   │   │       │       ├── ForensicViewers
+│   │   │       │       │   ├── AutopsyViewer.css
+│   │   │       │       │   ├── AutopsyViewer.tsx
+│   │   │       │       │   ├── BallisticsViewer.css
+│   │   │       │       │   ├── BallisticsViewer.tsx
+│   │   │       │       │   ├── DigitalForensicsViewer.css
+│   │   │       │       │   ├── DigitalForensicsViewer.tsx
+│   │   │       │       │   ├── DnaViewer.css
+│   │   │       │       │   ├── DnaViewer.tsx
+│   │   │       │       │   ├── TraceAnalysisViewer.css
+│   │   │       │       │   └── TraceAnalysisViewer.tsx
 │   │   │       │       ├── MediaViewer.css
 │   │   │       │       ├── MediaViewer.tsx
 │   │   │       │       ├── TestimonyViewer.css
@@ -186,7 +210,7 @@ export default defineConfig([
 
 <file path="index.html">
 <!doctype html>
-<html lang="en">
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
@@ -221,10 +245,13 @@ export default defineConfig([
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
+    "i18next": "^26.4.0",
+    "i18next-browser-languagedetector": "^8.2.1",
     "laravel-echo": "^2.4.0",
     "pusher-js": "^8.6.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-i18next": "^17.0.12",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.1",
     "remark-gfm": "^4.0.1"
@@ -421,6 +448,38 @@ function App() {
 export default App;
 </file>
 
+<file path="src/i18n.ts">
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import LanguageDetector from 'i18next-browser-languagedetector';
+
+import translationEN from './locales/en/translation.json';
+import translationAR from './locales/ar/translation.json';
+
+const resources = {
+  en: {
+    translation: translationEN
+  },
+  ar: {
+    translation: translationAR
+  }
+};
+
+i18n
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init({
+    resources,
+    fallbackLng: 'ar', // Set Arabic as your primary fallback
+    debug: false,
+    interpolation: {
+      escapeValue: false // React already heavily safeguards from XSS
+    }
+  });
+
+export default i18n;
+</file>
+
 <file path="src/main.tsx">
 import React from 'react';
 import ReactDOM from 'react-dom/client';
@@ -535,12 +594,16 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 
 <file path="src/components/AdminGuard.tsx">
 import { Navigate, Outlet } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import '@/i18n';
 
 interface AdminGuardProps {
   user: { is_admin?: boolean } | null;
 }
 
 export default function AdminGuard({ user }: AdminGuardProps) {
+  const { t } = useTranslation();
+
   // If no user data or they lack the admin flag, bounce them to the main menu
   if (!user || !user.is_admin) {
     return <Navigate to="/" replace />;
@@ -550,7 +613,7 @@ export default function AdminGuard({ user }: AdminGuardProps) {
   return (
     <div className="admin-layout">
       <header className="admin-header glass-panel" style={{ padding: '1rem 2rem', borderBottom: '1px solid rgba(255,51,102,0.3)' }}>
-        <h2 style={{ margin: 0, color: 'var(--accent-crimson)', fontFamily: 'var(--font-mono)' }}>System Oversight // Admin Root</h2>
+        <h2 style={{ margin: 0, color: 'var(--accent-crimson)', fontFamily: 'var(--font-mono)' }}>{t('components.adminGuard.dashboardTitle')}</h2>
       </header>
       <main className="admin-content" style={{ padding: '2rem' }}>
         <Outlet />
@@ -562,6 +625,8 @@ export default function AdminGuard({ user }: AdminGuardProps) {
 
 <file path="src/components/AgentNotepad/AgentNotepad.tsx">
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import '@/i18n';
 import './AgentNotepad.css';
 
 interface AgentNotepadProps {
@@ -569,6 +634,7 @@ interface AgentNotepadProps {
 }
 
 export default function AgentNotepad({ roomId }: AgentNotepadProps) {
+  const { t } = useTranslation();
   const [notes, setNotes] = useState('');
   const [isSaved, setIsSaved] = useState(true);
 
@@ -620,15 +686,15 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
     <div className="sidebar-section agent-notepad-container">
       <div className="notepad-header">
         <h3 className="sidebar-heading" style={{ marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>
-          Field Ledger
+          {t('components.agentNotepad.fieldLedger')}
         </h3>
         <span className={`save-indicator ${isSaved ? 'synced' : 'saving'}`}>
-          {isSaved ? '✓ SYNCED' : '⟳ SAVING'}
+          {isSaved ? t('components.agentNotepad.synced') : t('components.agentNotepad.saving')}
         </span>
       </div>
       <textarea
         className="notepad-textarea"
-        placeholder="Log timelines, suspect discrepancies, and evidence links here..."
+        placeholder={t('components.agentNotepad.placeholder')}
         value={notes}
         onChange={handleNoteChange}
         spellCheck="false"
@@ -641,6 +707,8 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
 <file path="src/components/CaseBriefingModal/CaseBriefingModal.tsx">
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import '@/i18n';
 import type { GameCase } from '../../types';
 import { CaseUserStatus } from '../../types';
 import { createRoom } from '../../services/api';
@@ -653,6 +721,7 @@ interface CaseBriefingModalProps {
 
 export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingModalProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -678,26 +747,26 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
 
   const showContinue = !!activeInviteCode;
 
-  let primaryButtonText = 'Start the Case';
+  let primaryButtonText = t('components.caseBriefing.startCase');
   if (isLoading) {
-    primaryButtonText = 'Encrypting...';
+    primaryButtonText = t('components.caseBriefing.encrypting');
   } else if (activeInviteCode) {
-    primaryButtonText = 'Restart Case';
+    primaryButtonText = t('components.caseBriefing.restartCase');
   } else if (isFinished) {
-    primaryButtonText = 'Replay Case';
+    primaryButtonText = t('components.caseBriefing.replayCase');
   }
 
-  let rewardText = `${gameCase.XP_on_solve} XP`;
+  let rewardText = `${gameCase.XP_on_solve} ${t('components.caseBriefing.xp')}`;
   let rewardColor = 'var(--accent-amber)';
 
   if (userStatus === CaseUserStatus.SolvedPerfect) {
-    rewardText = `0 XP (PERFECT REPLAY)`;
+    rewardText = `0 ${t('components.caseBriefing.xp')} ${t('components.caseBriefing.perfectReplay')}`;
     rewardColor = 'var(--text-secondary)';
   } else if (userStatus === CaseUserStatus.SolvedPartial) {
-    rewardText = `0 XP (PARTIAL REPLAY)`;
+    rewardText = `0 ${t('components.caseBriefing.xp')} ${t('components.caseBriefing.partialReplay')}`;
     rewardColor = 'var(--text-secondary)';
   } else if (isFailed) {
-    rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} XP (PENALTY ALLOWANCE)`;
+    rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} ${t('components.caseBriefing.xp')} ${t('components.caseBriefing.penaltyAllowance')}`;
     rewardColor = 'var(--accent-crimson)';
   }
 
@@ -718,7 +787,7 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
 
         <div className="modal-header">
           <h2 className="modal-title">{gameCase.title}</h2>
-          <div className="modal-author">Authored by {gameCase.author_name || 'System'}</div>
+          <div className="modal-author">{t('components.caseBriefing.authoredBy')} {gameCase.author_name || t('components.caseBriefing.system')}</div>
         </div>
 
         <div className="modal-dossier-layout">
@@ -733,31 +802,31 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
 
           <div className="modal-metadata-sidebar">
             <div className="meta-block">
-              <span className="meta-label">Player Rating</span>
+              <span className="meta-label">{t('components.caseBriefing.playerRating')}</span>
               <div className="meta-value">{renderStars(gameCase.rating_stars || 0)} <span style={{fontSize: '0.8rem', marginLeft: '0.5rem'}}>({gameCase.rating_stars || 'N/A'})</span></div>
             </div>
 
             <div className="meta-block">
-              <span className="meta-label">Difficulty</span>
-              <div className="meta-value" style={{ color: 'var(--accent-crimson)' }}>{gameCase.difficulty || 'Standard'}</div>
+              <span className="meta-label">{t('components.caseBriefing.difficulty')}</span>
+              <div className="meta-value" style={{ color: 'var(--accent-crimson)' }}>{gameCase.difficulty || t('components.caseBriefing.standard')}</div>
             </div>
 
             <div className="meta-block">
-              <span className="meta-label">Est. Playtime</span>
-              <div className="meta-value">{gameCase.estimated_playtime || 'Unknown'}</div>
+              <span className="meta-label">{t('components.caseBriefing.estPlaytime')}</span>
+              <div className="meta-value">{gameCase.estimated_playtime || t('components.caseBriefing.unknown')}</div>
             </div>
 
             <div className="meta-block">
-              <span className="meta-label">Advisory</span>
-              <div className="meta-value advisory-badge">{gameCase.age_rating || 'Unrated'}</div>
+              <span className="meta-label">{t('components.caseBriefing.advisory')}</span>
+              <div className="meta-value advisory-badge">{gameCase.age_rating || t('components.caseBriefing.unrated')}</div>
             </div>
 
             <div className="meta-block" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
-              <span className="meta-label">Access Requirements</span>
+              <span className="meta-label">{t('components.caseBriefing.accessRequirements')}</span>
               <div className="modal-badges" style={{ marginTop: '0.5rem', flexDirection: 'column' }}>
-                <span className="badge">Min XP: {gameCase.min_player_XP}</span>
+                <span className="badge">{t('components.caseBriefing.minXp')} {gameCase.min_player_XP}</span>
                 <span className="badge reward" style={{ color: rewardColor, borderColor: rewardColor }}>
-                  Reward: {rewardText}
+                  {t('components.caseBriefing.reward')} {rewardText}
                 </span>
               </div>
             </div>
@@ -778,7 +847,7 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
               disabled={isLoading}
               style={{ borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
             >
-              Continue Investigation
+              {t('components.caseBriefing.continueInvestigation')}
             </button>
           )}
         </div>
@@ -789,8 +858,10 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
 </file>
 
 <file path="src/components/CaseCard/CaseCard.tsx">
+import { useTranslation } from 'react-i18next';
 import type { GameCase } from '../../types';
 import { CaseUserStatus } from '../../types';
+import '@/i18n';
 import './CaseCard.css';
 
 interface CaseCardProps {
@@ -799,6 +870,7 @@ interface CaseCardProps {
 }
 
 export default function CaseCard({ gameCase, imageUrl }: CaseCardProps) {
+  const { t } = useTranslation();
   const isSolved = gameCase.user_status === CaseUserStatus.SolvedPerfect ||
                    gameCase.user_status === CaseUserStatus.SolvedPartial;
 
@@ -816,19 +888,21 @@ export default function CaseCard({ gameCase, imageUrl }: CaseCardProps) {
 
       {isSolved && (
         <div className="solved-stamp-container">
-          <span className="solved-stamp">CASE CLOSED</span>
+          <span className="solved-stamp">{t('components.caseCard.caseClosed')}</span>
         </div>
       )}
 
       {isFailed && (
         <div className="solved-stamp-container">
-          <span className="solved-stamp" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }}>FAILED</span>
+          <span className="solved-stamp" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }}>
+            {t('components.caseCard.failed')}
+          </span>
         </div>
       )}
 
       <div className="case-card-badges">
-        <span className="badge">Min XP: {gameCase.min_player_XP}</span>
-        <span className="badge reward">Reward: {gameCase.XP_on_solve} XP</span>
+        <span className="badge">{t('components.caseCard.minXp')} {gameCase.min_player_XP}</span>
+        <span className="badge reward">{t('components.caseCard.reward')} {gameCase.XP_on_solve} {t('components.caseCard.xp')}</span>
       </div>
 
       <div className="case-card-content">
@@ -1562,6 +1636,357 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
   }, [storageKey]);
 
   return { viewedItems, markItemAsViewed };
+}
+</file>
+
+<file path="src/locales/ar/translation.json">
+{
+  "system": {
+    "loading": "جاري تأسيس اتصال آمن...",
+    "error": "خطأ في النظام:"
+  },
+  "admin": {
+    "dashboardTitle": "إشراف النظام // لوحة التحكم",
+    "unauthorized": "غير مصرح لك بالدخول"
+  },
+  "gameRoom": {
+    "sessionCode": "رمز الجلسة",
+    "activeAgents": "العملاء النشطون",
+    "strikes": "الإنذارات"
+  },
+  "components": {
+    "adminGuard": {
+      "dashboardTitle": "إشراف النظام // لوحة التحكم"
+    },
+    "agentNotepad": {
+      "fieldLedger": "السجل الميداني",
+      "synced": "✓ تمت المزامنة",
+      "saving": "⟳ جاري الحفظ",
+      "placeholder": "سجل الجداول الزمنية، وتناقضات المشتبه بهم، وروابط الأدلة هنا..."
+    },
+    "caseBriefing": {
+      "authoredBy": "تأليف",
+      "system": "النظام",
+      "playerRating": "تقييم اللاعبين",
+      "difficulty": "مستوى الصعوبة",
+      "standard": "عادي",
+      "estPlaytime": "وقت اللعب المتوقع",
+      "unknown": "غير معروف",
+      "advisory": "التصنيف العمري",
+      "unrated": "غير مصنف",
+      "accessRequirements": "متطلبات الوصول",
+      "minXp": "الحد الأدنى للخبرة:",
+      "reward": "المكافأة:",
+      "startCase": "بدء القضية",
+      "encrypting": "جاري التشفير...",
+      "restartCase": "إعادة تشغيل القضية",
+      "replayCase": "إعادة لعب القضية",
+      "perfectReplay": "(إعادة لعب مثالية)",
+      "partialReplay": "(إعادة لعب جزئية)",
+      "penaltyAllowance": "(بدل عقوبة)",
+      "continueInvestigation": "متابعة التحقيق",
+      "xp": "نقطة خبرة"
+    },
+    "caseCard": {
+      "caseClosed": "أُغلقت القضية",
+      "failed": "فشلت",
+      "minXp": "الحد الأدنى للخبرة:",
+      "reward": "المكافأة:",
+      "xp": "نقطة خبرة"
+    }
+  },
+  "pages": {
+    "auth": {
+      "title": "الوصول إلى النظام",
+      "subtitleLogin": "أدخل بيانات الاعتماد للوصول إلى ملفات القضية.",
+      "subtitleRegister": "تسجيل ملف محقق جديد.",
+      "usernamePlaceholder": "اسم المستخدم",
+      "fullNamePlaceholder": "الاسم الكامل",
+      "emailPlaceholder": "البريد الإلكتروني",
+      "passwordPlaceholder": "كلمة المرور",
+      "authenticating": "جاري المصادقة...",
+      "loginBtn": "تسجيل الدخول",
+      "registerBtn": "تسجيل",
+      "toggleToRegister": "تحتاج إلى تصريح؟ سجل هنا.",
+      "toggleToLogin": "لديك صلاحية وصول بالفعل؟ سجل دخولك."
+    },
+    "mainMenu": {
+      "agent": "العميل",
+      "xp": "نقطة خبرة",
+      "logout": "تسجيل الخروج",
+      "activeInvestigations": "التحقيقات النشطة",
+      "selectDossier": "حدد ملفاً لبدء الجلسة.",
+      "systemOversight": "إشراف النظام",
+      "decrypting": "جاري فك تشفير ملفات القضية...",
+      "failedToLoad": "فشل في تحميل القضايا"
+    },
+    "gameRoom": {
+      "gameEndOverlay": {
+        "caseClosed": "أُغلقت القضية",
+        "caseClosedFallback": "تم كشف الحقيقة. عمل ممتاز.",
+        "mandateRevoked": "تم إلغاء التفويض",
+        "mandateRevokedFallback": "تمت إساءة قراءة الأدلة. المذنبون أحرار، والأبرياء يدفعون الثمن.",
+        "timeElapsed": "الوقت المستغرق",
+        "xpGranted": "الخبرة الممنوحة",
+        "suspectsCaught": "المقبوض عليهم",
+        "innocentsAccused": "الأبرياء المتهمون",
+        "returnToHq": "العودة إلى المقر الرئيسي"
+      },
+      "caseDetails": {
+        "missingData": "بيانات القضية مفقودة",
+        "missingDataDesc": "لم يقم الخادم بتحميل البيانات الوصفية للقضية.",
+        "minXp": "الحد الأدنى للخبرة:",
+        "reward": "المكافأة:",
+        "xp": "نقطة خبرة",
+        "officialBriefing": "الإحاطة الرسمية",
+        "identifiedCasualties": "الضحايا الذين تم التعرف عليهم",
+        "vic": "ضحية-",
+        "identificationCode": "رمز التعريف: ضحية-",
+        "noBackground": "لا توجد معلومات خلفية متاحة في السجلات الرسمية."
+      },
+      "suspects": {
+        "card": {
+          "viewIntel": "عرض المعلومات الخلفية",
+          "closeIntel": "إغلاق المعلومات",
+          "backgroundIntel": "المعلومات الخلفية",
+          "noBackground": "لا توجد معلومات خلفية مسجلة.",
+          "pid": "رقم-"
+        },
+        "tab": {
+          "suspectBoard": "لوحة المشتبه بهم",
+          "lockWarning": "يجب إكمال جميع مراحل التحقيق الأولية قبل تقديم لائحة الاتهام النهائية.",
+          "indictmentRejected": "رُفضت لائحة الاتهام",
+          "reassessEvidence": "إعادة تقييم الأدلة",
+          "primeSuspects": "المشتبه بهم الرئيسيون (مذنبون)",
+          "dragPrimeHere": "اسحب المشتبه بهم الرئيسيين هنا",
+          "cleared": "تمت تبرئتهم (أبرياء)",
+          "dragClearedHere": "اسحب المشتبه بهم المبرئين هنا",
+          "unassigned": "أشخاص موضع اهتمام غير مصنفين",
+          "allCategorized": "تم تصنيف جميع المشتبه بهم.",
+          "noSuspects": "لم يتم تحديد أي مشتبه بهم حتى الآن.",
+          "filingIndictment": "جاري تقديم لائحة الاتهام...",
+          "ruleAccident": "اعتبارها حادث / انتحار",
+          "submitIndictment": "تقديم لائحة الاتهام النهائية",
+          "emptyPoolWarning": "* بتقديم مجموعة مذنبين فارغة، فإنك تعلن عدم وقوع جريمة."
+        }
+      },
+      "evidence": {
+        "board": {
+          "title": "لوحة الأدلة",
+          "subtitle": "اسحب الملفات إلى الدرج أدناه لطلب مذكرة تفتيش أو استدعاء.",
+          "proceduralTrayTitle": "درج الطلبات الإجرائية",
+          "requestApproved": "تمت الموافقة على الطلب",
+          "requestDenied": "تم رفض الطلب",
+          "acknowledge": "إقرار",
+          "noEvidence": "لم يتم استعادة أي أدلة لهذه المرحلة.",
+          "dragAndDrop": "اسحب وأسقط الأدلة هنا",
+          "unknownFile": "ملف غير معروف",
+          "selectRequestType": "-- حدد نوع الطلب --",
+          "filing": "جاري التقديم...",
+          "submitToDa": "إرسال الطلب إلى المدعي العام",
+          "hideFiled": "إخفاء الطلبات المقدمة",
+          "viewFiled": "عرض الطلبات المقدمة",
+          "noRequestsFiled": "لم يتم تقديم أي طلبات إجرائية حتى الآن خلال هذه الجلسة.",
+          "crossReferenced": "تم التقاطع مع:",
+          "approvedStatus": "موافق عليه"
+        },
+        "variants": {
+          "audio": {
+            "aSide": "الوجه أ"
+          },
+          "image": {
+            "noImage": "لا توجد صورة"
+          },
+          "testimony": {
+            "transcript": "نسخة طبق الأصل"
+          },
+          "forensic": {
+            "medicalExaminer": "مكتب الطبيب الشرعي",
+            "evidenceSealed": "دليل - مختوم",
+            "firearmsUnit": "وحدة الأسلحة النارية وعلامات الأدوات",
+            "dnaProfile": "تحليل الأمصال والملف الجيني",
+            "dataExtraction": "تقرير استخراج البيانات",
+            "traceAnalysis": "تحليل المواد والآثار"
+          },
+          "document": {
+            "financialDate": "التاريخ",
+            "financialDetail": "التفاصيل",
+            "financialAmount": "المبلغ",
+            "financialStatus": "الحالة",
+            "financialCleared": "مُسدد",
+            "contractLegalFiles": "ملفات قانونية",
+            "dossierRestricted": "سري للغاية"
+          }
+        },
+        "viewers": {
+          "contract": {
+            "noTerms": "لا توجد شروط متاحة.",
+            "bindingAgreement": "اتفاقية ملزمة",
+            "deedOfAgreement": "صك اتفاق",
+            "officialInstrument": "أداة قانونية رسمية // موثق من كاتب العدل",
+            "betweenParties": "بين الأطراف:",
+            "party": "الطرف",
+            "termsAndConditions": "الشروط والأحكام (صفحة",
+            "inWitnessWhereof": "وإثباتاً لما تقدم، قام أطراف هذه الاتفاقية بالتوقيع عليها اعتباراً من",
+            "authorizedRep": "ممثل مفوض",
+            "witness": "شاهد",
+            "verifiedNotarized": "تم التحقق: موثق",
+            "flaggedFraudulent": "مُعلّم: مزور",
+            "prev": "السابق",
+            "next": "التالي",
+            "page": "صفحة",
+            "of": "من"
+          },
+          "financial": {
+            "confidential": "سري",
+            "subpoenaedRecord": "سجل مستدعى",
+            "account": "الحساب:",
+            "accountNo": "رقم الحساب:",
+            "period": "الفترة:",
+            "docRef": "مرجع المستند:",
+            "date": "التاريخ",
+            "transactionDetail": "تفاصيل المعاملة",
+            "amount": "المبلغ",
+            "noLedgerData": "لا تتوفر بيانات دفتر الأستاذ لهذه الفترة.",
+            "authorizedBy": "معتمد من وزارة الخزانة",
+            "prev": "السابق",
+            "next": "التالي",
+            "page": "صفحة",
+            "of": "من"
+          },
+          "journal": {
+            "author": "المؤلف:",
+            "date": "التاريخ:",
+            "personalDiary": "إدخال مذكرات شخصية",
+            "empty": "يبدو أن هذه المذكرات فارغة.",
+            "tornPage": "[ تم تمزيق الصفحة - الدليل مفقود ]",
+            "prev": "السابق",
+            "next": "التالي",
+            "page": "صفحة",
+            "of": "من"
+          },
+          "correspondence": {
+            "confidential": "مراسلات سرية",
+            "to": "إلى:",
+            "from": "من:",
+            "subject": "الموضوع:",
+            "intelDivision": "قسم الاستحواذ على المعلومات // القطاع-4"
+          },
+          "backgroundCheck": {
+            "deptOfPublicSafety": "إدارة السلامة العامة - قسم السجلات",
+            "title": "تحقيق في الخلفية",
+            "subjectName": "اسم الموضوع:",
+            "dob": "تاريخ الميلاد:",
+            "sexAge": "الجنس / العمر:",
+            "aliases": "الأسماء المستعارة:",
+            "lastKnownAddress": "آخر عنوان معروف:",
+            "employmentProfile": "الملف الوظيفي والمالي",
+            "criminalHistory": "التاريخ الجنائي والمذكرات",
+            "knownAssociates": "الشركاء المعروفون"
+          },
+          "autopsy": {
+            "officeOfChief": "مكتب كبير الأطباء الشرعيين",
+            "reportOfAutopsy": "تقرير تشريح الجثة",
+            "cityCountyMorgue": "قسم مشرحة المدينة والمقاطعة",
+            "caseNo": "رقم القضية:",
+            "date": "التاريخ:",
+            "examiner": "الطبيب الشرعي:",
+            "estTimeOfDeath": "وقت الوفاة المقدر:",
+            "causeOfDeath": "سبب الوفاة:",
+            "externalExam": "الفحص الخارجي والشذوذ:",
+            "noAnomalies": "الجثة لشخص تطور بشكل طبيعي. لم يتم الإبلاغ عن أي شذوذ واضح أو صدمات ثانوية أثناء الفحص القياسي.",
+            "fig1": "الشكل 1. مرجع تشريحي",
+            "confidentialRecord": "سري // سجل رسمي",
+            "chiefMedicalExaminer": "كبير الأطباء الشرعيين"
+          },
+          "ballistics": {
+            "stateForensicLab": "المختبر الجنائي بالولاية",
+            "divBallistics": "قسم الأسلحة النارية وعلامات الأدوات",
+            "caseFile": "ملف القضية رقم",
+            "officialLabReport": "تقرير مختبر رسمي",
+            "intakeLog": "سجل استلام الأدلة",
+            "noExhibits": "لم يتم تسجيل أي معروضات مادية عند الاستلام.",
+            "section1": "1. بيانات مواصفات السلاح الناري",
+            "section2": "2. التحليل المجهري وعلامات الأدوات",
+            "lensOverlay": "عدسة محاذاة التخطيط",
+            "section3": "3. نتائج المسار والمدى",
+            "seniorExpert": "خبير أسلحة نارية أول",
+            "verifiedLabId": "معرف المختبر المعتمد:"
+          },
+          "dna": {
+            "geneticLab": "مختبر الأدلة الجنائية الجينية",
+            "strAnalysis": "تحليل الحمض النووي (STR) ومطابقة الملف الجيني",
+            "evidenceId": "معرف الدليل:",
+            "sampleType": "نوع العينة:",
+            "date": "التاريخ:",
+            "electropherogram": "مقارنة المخطط الكهربائي",
+            "crimeSceneSample": "عينة مسرح الجريمة",
+            "databaseRecord": "سجل قاعدة البيانات",
+            "probOfMatch": "احتمالية التطابق:",
+            "identifiedSubject": "الموضوع الذي تم التعرف عليه:",
+            "noMatch": "لم يتم العثور على تطابق في قاعدة البيانات",
+            "codisVerified": "اكتمل بحث CODIS // تم التحقق منه"
+          },
+          "digitalForensics": {
+            "terminalTitle": "وحدة_الجرائم_الإلكترونية_v3.4.1 // محطة_فك_التشفير",
+            "initiating": "[+] جاري بدء بروتوكول الاستخراج الجنائي...",
+            "targetDevice": "[+] الجهاز المستهدف:",
+            "method": "[+] الطريقة:",
+            "bypassing": "[+] جاري تجاوز التشفير........ [ نجاح ]",
+            "beginPayload": "--- بداية الحمولة المستردة ---",
+            "endOfFile": "--- نهاية الملف ---"
+          },
+          "traceAnalysis": {
+            "advancedLab": "مختبر المواد المتقدمة والآثار",
+            "massSpec": "تحليل مطياف الكتلة",
+            "sampleId": "معرف العينة:",
+            "scanDate": "تاريخ الفحص:",
+            "spectralChart": "مخطط الوفرة الطيفية",
+            "mzRatio": "نسبة الكتلة إلى الشحنة (m/z)",
+            "relativeAbundance": "الوفرة النسبية ➔",
+            "materialComp": "تركيبة المواد:",
+            "originSource": "مصدر المنشأ المحدد:",
+            "analysisComplete": "اكتمل التحليل",
+            "autoGenerated": "تقرير نظام مُنشأ تلقائياً"
+          },
+          "testimony": {
+            "policeDept": "قسم شرطة المدينة",
+            "officialTranscript": "سجل شهادة رسمي",
+            "date": "التاريخ",
+            "caseNo": "رقم القضية",
+            "subject": "الموضوع المستجوب:",
+            "interviewer": "المحقق:",
+            "watermark": "نسخة رسمية",
+            "certStatement": "أقر بموجب هذا أن هذه الوثيقة هي نسخة صحيحة ودقيقة من الاستجواب المسجل الوارد في المرجع.",
+            "stenoSignature": "كاتب المحكمة / مسؤول التسجيل"
+          },
+          "media": {
+            "audioNotSupported": "متصفحك لا يدعم تشغيل هذا المقطع الصوتي.",
+            "imageAltFallback": "صورة دليل مصورة",
+            "noMediaFound": "لم يتم العثور على وسائط مرتبطة بهذا الملف."
+          }
+        }
+    }
+  }
+}
+}
+</file>
+
+<file path="src/locales/en/translation.json">
+{
+  "system": {
+    "loading": "Establishing Secure Connection...",
+    "error": "System Error:"
+  },
+  "admin": {
+    "dashboardTitle": "System Oversight // Admin Root",
+    "unauthorized": "Unauthorized access"
+  },
+  "gameRoom": {
+    "sessionCode": "Session Code",
+    "activeAgents": "Active Agents",
+    "strikes": "STRIKES"
+  }
 }
 </file>
 
@@ -4870,6 +5295,7 @@ export const buildNodeFormData = (payload: NodePayload): FormData => {
 </file>
 
 <file path="src/pages/Auth/Auth.tsx">
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import type { User } from '@/types';
 import './Auth.css';
@@ -4880,6 +5306,8 @@ interface AuthProps {
 }
 
 export default function Auth({ onSuccess }: AuthProps) {
+  const { t } = useTranslation();
+
   const {
     isLogin, toggleAuthMode,
     isLoading, error,
@@ -4893,9 +5321,9 @@ export default function Auth({ onSuccess }: AuthProps) {
   return (
     <div className="auth-container">
       <div className="auth-panel glass-panel">
-        <h1 className="auth-title">System Access</h1>
+        <h1 className="auth-title">{t('pages.auth.title')}</h1>
         <p className="auth-subtitle">
-          {isLogin ? 'Provide credentials to access case files.' : 'Register a new investigator profile.'}
+          {isLogin ? t('pages.auth.subtitleLogin') : t('pages.auth.subtitleRegister')}
         </p>
 
         {error && <div className="auth-error">{error}</div>}
@@ -4904,31 +5332,49 @@ export default function Auth({ onSuccess }: AuthProps) {
           {!isLogin && (
             <>
               <input
-                type="text" placeholder="Username" required value={username}
-                onChange={(e) => setUsername(e.target.value)} className="auth-input"
+                type="text"
+                placeholder={t('pages.auth.usernamePlaceholder')}
+                required
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="auth-input"
               />
               <input
-                type="text" placeholder="Full Name" required value={name}
-                onChange={(e) => setName(e.target.value)} className="auth-input"
+                type="text"
+                placeholder={t('pages.auth.fullNamePlaceholder')}
+                required
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="auth-input"
               />
             </>
           )}
           <input
-            type="email" placeholder="Email Address" required value={email}
-            onChange={(e) => setEmail(e.target.value)} className="auth-input"
+            type="email"
+            placeholder={t('pages.auth.emailPlaceholder')}
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="auth-input"
           />
           <input
-            type="password" placeholder="Password" required value={password}
-            onChange={(e) => setPassword(e.target.value)} className="auth-input"
+            type="password"
+            placeholder={t('pages.auth.passwordPlaceholder')}
+            required
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="auth-input"
           />
 
           <button type="submit" className="btn-primary" disabled={isLoading}>
-            {isLoading ? 'Authenticating...' : (isLogin ? 'Login' : 'Register')}
+            {isLoading
+              ? t('pages.auth.authenticating')
+              : (isLogin ? t('pages.auth.loginBtn') : t('pages.auth.registerBtn'))}
           </button>
         </form>
 
         <button type="button" className="auth-toggle" onClick={toggleAuthMode}>
-          {isLogin ? 'Need clearance? Register here.' : 'Already have access? Login.'}
+          {isLogin ? t('pages.auth.toggleToRegister') : t('pages.auth.toggleToLogin')}
         </button>
       </div>
     </div>
@@ -5226,8 +5672,9 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
 </file>
 
 <file path="src/pages/GameRoom/components/GameEndOverlay.tsx">
-// FILE: src/pages/GameRoom/components/GameEndOverlay.tsx
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import './GameEndOverlay.css';
 
 interface GameEndOverlayProps {
   status: 'solved' | 'failed' | string;
@@ -5237,6 +5684,7 @@ interface GameEndOverlayProps {
 
 export default function GameEndOverlay({ status, resolutionMessage, finalStats }: GameEndOverlayProps) {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   if (status !== 'solved' && status !== 'failed') return null;
 
@@ -5247,17 +5695,21 @@ export default function GameEndOverlay({ status, resolutionMessage, finalStats }
         {status === 'solved' ? (
           <>
             <div className="forensic-icon pulse" style={{ color: 'var(--accent-cyan)' }}>✧</div>
-            <h1 className="victory-title" style={{ color: 'var(--accent-cyan)' }}>CASE CLOSED</h1>
-            <p className="victory-subtitle">{resolutionMessage || 'The truth is uncovered. Excellent work.'}</p>
+            <h1 className="victory-title" style={{ color: 'var(--accent-cyan)' }}>
+              {t('pages.gameRoom.gameEndOverlay.caseClosed')}
+            </h1>
+            <p className="victory-subtitle">
+              {resolutionMessage || t('pages.gameRoom.gameEndOverlay.caseClosedFallback')}
+            </p>
           </>
         ) : (
           <>
             <div className="forensic-icon pulse" style={{ color: 'var(--accent-crimson)' }}>✕</div>
             <h1 className="victory-title" style={{ color: 'var(--accent-crimson)', textShadow: '0 0 30px rgba(163,50,50,0.4)' }}>
-              MANDATE REVOKED
+              {t('pages.gameRoom.gameEndOverlay.mandateRevoked')}
             </h1>
             <p className="victory-subtitle" style={{ color: 'var(--accent-crimson)' }}>
-              {resolutionMessage || 'The evidence was misread. The guilty walk free, and the innocent pay the price.'}
+              {resolutionMessage || t('pages.gameRoom.gameEndOverlay.mandateRevokedFallback')}
             </p>
           </>
         )}
@@ -5265,19 +5717,19 @@ export default function GameEndOverlay({ status, resolutionMessage, finalStats }
         {finalStats && (
           <div className="victory-stats-grid">
             <div className="stat-box">
-              <span className="stat-label">Time Elapsed</span>
+              <span className="stat-label">{t('pages.gameRoom.gameEndOverlay.timeElapsed')}</span>
               <span className="stat-value">{finalStats.time_taken}</span>
             </div>
             <div className="stat-box">
-              <span className="stat-label">XP Granted</span>
+              <span className="stat-label">{t('pages.gameRoom.gameEndOverlay.xpGranted')}</span>
               <span className="stat-value highlight">{finalStats.xp_gained} <span className="stat-sub">/ {finalStats.max_xp}</span></span>
             </div>
             <div className="stat-box">
-              <span className="stat-label">Suspects Caught</span>
+              <span className="stat-label">{t('pages.gameRoom.gameEndOverlay.suspectsCaught')}</span>
               <span className="stat-value">{finalStats.suspects_caught} <span className="stat-sub">/ {finalStats.total_guilty}</span></span>
             </div>
             <div className="stat-box">
-              <span className="stat-label">Innocents Accused</span>
+              <span className="stat-label">{t('pages.gameRoom.gameEndOverlay.innocentsAccused')}</span>
               <span className={`stat-value ${finalStats.innocents_accused > 0 ? 'error' : 'success'}`}>
                 {finalStats.innocents_accused}
               </span>
@@ -5286,7 +5738,7 @@ export default function GameEndOverlay({ status, resolutionMessage, finalStats }
         )}
 
         <button className="btn-primary" onClick={() => navigate('/')} style={{ marginTop: '1rem', width: '100%' }}>
-          Return to Headquarters
+          {t('pages.gameRoom.gameEndOverlay.returnToHq')}
         </button>
       </div>
     </div>
@@ -6392,9 +6844,8 @@ export default function WiretapPhase({
 </file>
 
 <file path="src/pages/GameRoom/tabs/CaseDetails/CaseDetailsTab.tsx">
-// FILE: src/pages/GameRoom/tabs/CaseDetails/CaseDetailsTab.tsx
-
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRoomState, useRoomActions } from '../../../../context/RoomContext';
 import VictimModal from './VictimModal';
 import type { Victim } from '../../../../types';
@@ -6402,6 +6853,7 @@ import '../SharedOverlay.css';
 import './CaseDetailsTab.css';
 
 export default function CaseDetailsTab() {
+  const { t } = useTranslation();
   const { room, accumulatedVictims, viewedVictims } = useRoomState();
   const { markVictimAsViewed } = useRoomActions();
 
@@ -6409,8 +6861,8 @@ export default function CaseDetailsTab() {
 
   const gameCase = room.game_case || {
     id: room.case_id,
-    title: "Case Data Missing",
-    story: "The case metadata was not eager-loaded by the server.",
+    title: t('pages.gameRoom.caseDetails.missingData'),
+    story: t('pages.gameRoom.caseDetails.missingDataDesc'),
     min_player_XP: 0,
     XP_on_solve: 0,
     img_url: null
@@ -6434,15 +6886,15 @@ export default function CaseDetailsTab() {
           <div className="case-hero-content">
             <h1 className="case-hero-title">{gameCase.title}</h1>
             <div className="case-hero-badges">
-              <span className="badge">Min XP: {gameCase.min_player_XP}</span>
-              <span className="badge reward">Reward: {gameCase.XP_on_solve} XP</span>
+              <span className="badge">{t('pages.gameRoom.caseDetails.minXp')} {gameCase.min_player_XP}</span>
+              <span className="badge reward">{t('pages.gameRoom.caseDetails.reward')} {gameCase.XP_on_solve} {t('pages.gameRoom.caseDetails.xp')}</span>
             </div>
           </div>
         </div>
       </div>
 
       <div className="case-full-story">
-        <h2 className="section-title">Official Briefing</h2>
+        <h2 className="section-title">{t('pages.gameRoom.caseDetails.officialBriefing')}</h2>
         <div className="story-text-block">
           {gameCase.story.split('\n').map((paragraph: string, idx: number) => (
             <p key={idx}>{paragraph}</p>
@@ -6452,7 +6904,9 @@ export default function CaseDetailsTab() {
 
       {accumulatedVictims.length > 0 && (
         <div className="case-victims-section" style={{ marginTop: '3rem', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '3rem' }}>
-          <h2 className="section-title" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }}>Identified Casualties</h2>
+          <h2 className="section-title" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }}>
+            {t('pages.gameRoom.caseDetails.identifiedCasualties')}
+          </h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', marginTop: '1.5rem' }}>
             {accumulatedVictims.map((victim: Victim) => {
               const isNew = !viewedVictims.has(victim.id);
@@ -6482,7 +6936,7 @@ export default function CaseDetailsTab() {
                       {victim.name}
                     </h4>
                     <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--accent-crimson)', marginBottom: '0.5rem' }}>
-                      VIC-{victim.id.toString().padStart(4, '0')}
+                      {t('pages.gameRoom.caseDetails.vic')}{victim.id.toString().padStart(4, '0')}
                     </span>
                     {victim.background && (
                       <p style={{
@@ -6511,6 +6965,7 @@ export default function CaseDetailsTab() {
 </file>
 
 <file path="src/pages/GameRoom/tabs/CaseDetails/VictimModal.tsx">
+import { useTranslation } from 'react-i18next';
 import type { Victim } from '@/types';
 
 interface VictimModalProps {
@@ -6519,6 +6974,8 @@ interface VictimModalProps {
 }
 
 export default function VictimModal({ victim, onClose }: VictimModalProps) {
+  const { t } = useTranslation();
+
   if (!victim) return null;
 
   return (
@@ -6531,7 +6988,7 @@ export default function VictimModal({ victim, onClose }: VictimModalProps) {
         <button className="close-btn" onClick={onClose}>✕</button>
 
         <div style={{ display: 'flex', gap: '2rem', marginTop: '0.5rem' }}>
-          {/* Left Column: Image */}
+          {/* Left/Right Column: Image */}
           <div
             style={{
               width: '180px',
@@ -6546,7 +7003,7 @@ export default function VictimModal({ victim, onClose }: VictimModalProps) {
             }}
           />
 
-          {/* Right Column: Details */}
+          {/* Details Column */}
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
             <h2 style={{
               margin: '0 0 0.25rem 0',
@@ -6566,7 +7023,7 @@ export default function VictimModal({ victim, onClose }: VictimModalProps) {
               paddingBottom: '0.75rem',
               borderBottom: '1px solid rgba(255,255,255,0.1)'
             }}>
-              IDENTIFICATION CODE: VIC-{victim.id.toString().padStart(4, '0')}
+              {t('pages.gameRoom.caseDetails.identificationCode')}{victim.id.toString().padStart(4, '0')}
             </div>
 
             <div style={{
@@ -6575,10 +7032,11 @@ export default function VictimModal({ victim, onClose }: VictimModalProps) {
               whiteSpace: 'pre-wrap',
               maxHeight: '40vh',
               overflowY: 'auto',
-              paddingRight: '1rem',
+              /* Swapped to logical property for scrolling clearance */
+              paddingInlineEnd: '1rem',
               fontFamily: 'var(--font-mono)'
             }}>
-              {victim.background || 'No background information available in the official records.'}
+              {victim.background || t('pages.gameRoom.caseDetails.noBackground')}
             </div>
           </div>
         </div>
@@ -6590,6 +7048,7 @@ export default function VictimModal({ victim, onClose }: VictimModalProps) {
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/EvidenceBoardTab.tsx">
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRoomState, useRoomActions } from '@/context/RoomContext';
 import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
 import type { Evidence } from '@/types';
@@ -6599,6 +7058,7 @@ import ProceduralRequestTray from './ProceduralRequestTray';
 import './EvidenceBoardTab.css';
 
 export default function EvidenceBoardTab() {
+  const { t } = useTranslation();
   const { room, accumulatedEvidences, viewedEvidences } = useRoomState();
   const { markEvidenceAsViewed, refreshRoomData } = useRoomActions();
 
@@ -6642,18 +7102,18 @@ export default function EvidenceBoardTab() {
   return (
     <div className="evidence-board-container" onDragOver={handleDragOverContainer}>
       <header className="board-header">
-        <h2 className="section-title">The Evidence Board</h2>
-        <span className="board-meta">Drag files to the tray below to request warrants or subpoenas.</span>
+        <h2 className="section-title">{t('pages.gameRoom.evidence.board.title')}</h2>
+        <span className="board-meta">{t('pages.gameRoom.evidence.board.subtitle')}</span>
       </header>
 
       {feedback && (
         <div className="feedback-modal-overlay" style={{ zIndex: 1000 }}>
           <div className={`feedback-modal-content ${feedback.type}`}>
             <h3 className="feedback-title">
-              {feedback.type === 'success' ? 'Request Approved' : 'Request Denied'}
+              {feedback.type === 'success' ? t('pages.gameRoom.evidence.board.requestApproved') : t('pages.gameRoom.evidence.board.requestDenied')}
             </h3>
             <p className="feedback-message">{feedback.message}</p>
-            <button className="btn-secondary mt-1" onClick={clearFeedback}>Acknowledge</button>
+            <button className="btn-secondary mt-1" onClick={clearFeedback}>{t('pages.gameRoom.evidence.board.acknowledge')}</button>
           </div>
         </div>
       )}
@@ -6674,7 +7134,7 @@ export default function EvidenceBoardTab() {
 
       <div className="acrylic-workspace">
         {accumulatedEvidences.length === 0 ? (
-          <div className="terminal-text">No evidence recovered for this phase.</div>
+          <div className="terminal-text">{t('pages.gameRoom.evidence.board.noEvidence')}</div>
         ) : (
           <div className="evidence-scatter-grid">
             {accumulatedEvidences.map((evidence: Evidence, index: number) => (
@@ -6747,7 +7207,6 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
       onClick={() => onInspect(evidence)}
       draggable
       onDragStart={(e) => {
-        // Only set the ID, don't stop propagation so click works if they don't drag
         e.dataTransfer.setData('evidenceId', evidence.id.toString());
       }}
     >
@@ -6761,7 +7220,7 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/EvidenceModal.tsx">
 import type { Evidence, ForensicEvidence, DocumentEvidence, MediaEvidence } from '@/types/evidence';
 import ForensicViewer from './Viewers/ForensicViewer';
-import DocumentViewer from './Viewers/DocumentViewers/DocumentViewer';
+import DocumentViewer from './Viewers/DocumentViewer';
 import TestimonyViewer from './Viewers/TestimonyViewer';
 import MediaViewer from './Viewers/MediaViewer';
 import './EvidenceModal.css';
@@ -6823,6 +7282,7 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/ProceduralRequestTray.tsx">
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
 import type { Evidence } from '@/types';
 import type { FiledRequest } from '@/hooks/useInvestigationRequest';
@@ -6851,7 +7311,7 @@ export default function ProceduralRequestTray({
   submitRequest,
   filedRequests
 }: ProceduralRequestTrayProps) {
-
+  const { t } = useTranslation();
   const [showArchive, setShowArchive] = useState(false);
 
   const handleDrop = (e: React.DragEvent) => {
@@ -6864,13 +7324,13 @@ export default function ProceduralRequestTray({
     <div className="filing-tray glass-panel" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
       <div className="tray-header">
         <span className="forensic-icon">⚖️</span>
-        <h3>Procedural Request Tray</h3>
+        <h3>{t('pages.gameRoom.evidence.board.proceduralTrayTitle')}</h3>
       </div>
 
       <div className="tray-layout">
         <div className="tray-dropzone">
           {trayEvidences.length === 0 ? (
-            <span className="tray-placeholder">Drag & Drop Evidence Here</span>
+            <span className="tray-placeholder">{t('pages.gameRoom.evidence.board.dragAndDrop')}</span>
           ) : (
             <div className="tray-items">
               {trayEvidences.map(id => {
@@ -6878,7 +7338,7 @@ export default function ProceduralRequestTray({
                 return (
                   <div key={id} className="tray-item-pill">
                     <span className="tray-item-id">EX-{id.toString().padStart(3, '0')}</span>
-                    <span className="tray-item-title">{ev?.title || 'Unknown File'}</span>
+                    <span className="tray-item-title">{ev?.title || t('pages.gameRoom.evidence.board.unknownFile')}</span>
                     <button className="tray-item-remove" onClick={() => removeFromTray(id)}>×</button>
                   </div>
                 );
@@ -6893,7 +7353,7 @@ export default function ProceduralRequestTray({
             value={requestType}
             onChange={(e) => setRequestType(e.target.value)}
           >
-            <option value="" disabled>-- Select Request Type --</option>
+            <option value="" disabled>{t('pages.gameRoom.evidence.board.selectRequestType')}</option>
             {Object.values(InvestigationRequestType).map(type => (
               <option key={type} value={type}>{getInvestigationRequestLabel(type)}</option>
             ))}
@@ -6904,14 +7364,14 @@ export default function ProceduralRequestTray({
             disabled={trayEvidences.length < 2 || !requestType || isSubmitting}
             onClick={() => submitRequest()}
           >
-            {isSubmitting ? 'Filing...' : 'Submit Request to DA'}
+            {isSubmitting ? t('pages.gameRoom.evidence.board.filing') : t('pages.gameRoom.evidence.board.submitToDa')}
           </button>
         </div>
       </div>
 
       <div className="tray-footer-actions">
         <button className="archive-toggle-btn" onClick={() => setShowArchive(!showArchive)}>
-          📁 {showArchive ? 'Hide Filed Requests' : `View Filed Requests (${filedRequests.length})`}
+          📁 {showArchive ? t('pages.gameRoom.evidence.board.hideFiled') : `${t('pages.gameRoom.evidence.board.viewFiled')} (${filedRequests.length})`}
         </button>
       </div>
 
@@ -6919,7 +7379,7 @@ export default function ProceduralRequestTray({
         <div className="filed-requests-drawer">
           {filedRequests.length === 0 ? (
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.5rem' }}>
-              No procedural requests filed yet during this session.
+              {t('pages.gameRoom.evidence.board.noRequestsFiled')}
             </div>
           ) : (
             filedRequests.map(req => (
@@ -6927,12 +7387,12 @@ export default function ProceduralRequestTray({
                 <div className="filed-request-info">
                   <span className="filed-request-type">{getInvestigationRequestLabel(req.type)}</span>
                   <span className="filed-request-meta">
-                    Cross-referenced: {req.evidenceIds.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
+                    {t('pages.gameRoom.evidence.board.crossReferenced')} {req.evidenceIds.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                   <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>{req.timestamp}</span>
-                  <span className="filed-request-status">APPROVED</span>
+                  <span className="filed-request-status">{t('pages.gameRoom.evidence.board.approvedStatus')}</span>
                 </div>
               </div>
             ))
@@ -6945,17 +7405,20 @@ export default function ProceduralRequestTray({
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/EvidenceVariants/AudioEvidence.tsx">
+import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types';
 import './AudioEvidence.css';
 
 export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
+  const { t } = useTranslation();
+
   return (
     <div className="audio-variant cassette-tape">
       {/* Printed directly on the dark plastic casing */}
       <div className="cassette-top-area">
         <div className="label-header">
           <span className="audio-icon">⏺</span>
-          <span className="tape-indicator">A-SIDE</span>
+          <span className="tape-indicator">{t('pages.gameRoom.evidence.variants.audio.aSide')}</span>
         </div>
 
         {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
@@ -6984,11 +7447,13 @@ export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/EvidenceVariants/DocumentEvidence.tsx">
+import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types';
 import type { DocumentEvidence as DocEvType } from '@/types/evidence';
 import './DocumentEvidence.css';
 
 export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
+  const { t } = useTranslation();
   const docEvidence = evidence as DocEvType;
   const subType = docEvidence.sub_type || 'default';
 
@@ -7003,17 +7468,17 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
             <div className="paper-sheet paper-2">
               <div className="micro-table">
                 <div className="micro-row micro-header">
-                  <div className="micro-col">Date</div>
-                  <div className="micro-col flex-2">Transaction Detail</div>
-                  <div className="micro-col">Amount</div>
-                  <div className="micro-col">Status</div>
+                  <div className="micro-col">{t('pages.gameRoom.evidence.variants.document.financialDate')}</div>
+                  <div className="micro-col flex-2">{t('pages.gameRoom.evidence.variants.document.financialDetail')}</div>
+                  <div className="micro-col">{t('pages.gameRoom.evidence.variants.document.financialAmount')}</div>
+                  <div className="micro-col">{t('pages.gameRoom.evidence.variants.document.financialStatus')}</div>
                 </div>
                 {[...Array(5)].map((_, i) => (
                   <div className="micro-row" key={i}>
                     <div className="micro-col">0{i + 1}</div>
                     <div className="micro-col flex-2">xxxx xxxxx</div>
                     <div className="micro-col">$$$$</div>
-                    <div className="micro-col">CLRD</div>
+                    <div className="micro-col">{t('pages.gameRoom.evidence.variants.document.financialCleared')}</div>
                   </div>
                 ))}
               </div>
@@ -7091,7 +7556,7 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
             <div className="manila-tab">
               {/* The white sticker label */}
               <div className="manila-label">
-                <span className="label-text">LEGAL FILES</span>
+                <span className="label-text">{t('pages.gameRoom.evidence.variants.document.contractLegalFiles')}</span>
               </div>
             </div>
           </div>
@@ -7128,7 +7593,7 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
           <div className="dossier-paperclip"></div>
 
           <div className="dossier-header">
-            <span className="dossier-classification">RESTRICTED</span>
+            <span className="dossier-classification">{t('pages.gameRoom.evidence.variants.document.dossierRestricted')}</span>
             <div className="dossier-barcode"></div>
           </div>
 
@@ -7162,11 +7627,13 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/EvidenceVariants/ForensicEvidence.tsx">
+import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types';
 import type { ForensicEvidence as ForensicEvType } from '@/types/evidence';
 import './ForensicEvidence.css';
 
 export default function ForensicEvidence({ evidence }: { evidence: Evidence }) {
+  const { t } = useTranslation();
   const forensicEv = evidence as ForensicEvType;
   const subType = forensicEv.sub_type || 'default';
 
@@ -7178,7 +7645,7 @@ export default function ForensicEvidence({ evidence }: { evidence: Evidence }) {
           <div className="medical-file-cover">
             <div className="medical-header">
               <span className="medical-cross">✚</span>
-              <span className="coroner-stamp">OFFICE OF THE MEDICAL EXAMINER</span>
+              <span className="coroner-stamp">{t('pages.gameRoom.evidence.variants.forensic.medicalExaminer')}</span>
             </div>
 
             <div className="forensic-text-content">
@@ -7193,12 +7660,12 @@ export default function ForensicEvidence({ evidence }: { evidence: Evidence }) {
       return (
         <div className="forensic-variant ballistics-variant">
           {/* Jagged red tamper-evident tape */}
-          <div className="evidence-tape">EVIDENCE - SEALED</div>
+          <div className="evidence-tape">{t('pages.gameRoom.evidence.variants.forensic.evidenceSealed')}</div>
 
           <div className="ballistics-report">
             <div className="ballistics-header">
               <span className="crosshair-icon">⌖</span>
-              <span className="lab-stamp">FIREARMS & TOOLMARKS UNIT</span>
+              <span className="lab-stamp">{t('pages.gameRoom.evidence.variants.forensic.firearmsUnit')}</span>
             </div>
 
             <div className="forensic-text-content">
@@ -7218,7 +7685,7 @@ export default function ForensicEvidence({ evidence }: { evidence: Evidence }) {
           <div className="dna-report">
             <div className="dna-header">
               <span className="dna-icon">🧬</span>
-              <span className="lab-stamp">SEROLOGY & DNA PROFILE</span>
+              <span className="lab-stamp">{t('pages.gameRoom.evidence.variants.forensic.dnaProfile')}</span>
             </div>
 
             {/* The classic staggered DNA genetic bands */}
@@ -7245,7 +7712,7 @@ export default function ForensicEvidence({ evidence }: { evidence: Evidence }) {
 
             <div className="digital-header">
               <span className="terminal-prompt">{'>_'}</span>
-              <span className="lab-stamp">DATA EXTRACTION REPORT</span>
+              <span className="lab-stamp">{t('pages.gameRoom.evidence.variants.forensic.dataExtraction')}</span>
             </div>
 
             <div className="forensic-text-content">
@@ -7266,7 +7733,7 @@ export default function ForensicEvidence({ evidence }: { evidence: Evidence }) {
           <div className="trace-bag-label">
             <div className="trace-header">
               <span className="trace-icon">🔬</span>
-              <span className="lab-stamp">MATERIALS & TRACE ANALYSIS</span>
+              <span className="lab-stamp">{t('pages.gameRoom.evidence.variants.forensic.traceAnalysis')}</span>
             </div>
 
             <div className="forensic-text-content">
@@ -7292,10 +7759,13 @@ export default function ForensicEvidence({ evidence }: { evidence: Evidence }) {
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/EvidenceVariants/ImageEvidence.tsx">
+import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types';
 import './ImageEvidence.css';
 
 export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
+  const { t } = useTranslation();
+
   return (
     <div className="image-variant polaroid-style">
       {/* 3D red push-pin anchoring the photo */}
@@ -7307,7 +7777,7 @@ export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
           <img src={evidence.img_url} alt={evidence.title} className="actual-photo" />
         ) : (
           <div className="photo-placeholder">
-            <span>NO IMAGE</span>
+            <span>{t('pages.gameRoom.evidence.variants.image.noImage')}</span>
           </div>
         )}
 
@@ -7326,14 +7796,17 @@ export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/EvidenceVariants/TestimonyEvidence.tsx">
+import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types';
 import './TestimonyEvidence.css';
 
 export default function TestimonyEvidence({ evidence }: { evidence: Evidence }) {
+  const { t } = useTranslation();
+
   return (
     <div className="testimony-variant">
       <div className="testimony-paperclip"></div>
-      <div className="testimony-stamp">TRANSCRIPT</div>
+      <div className="testimony-stamp">{t('pages.gameRoom.evidence.variants.testimony.transcript')}</div>
       <h4 className="evidence-title">{evidence.title}</h4>
       {evidence.description && (
         <p className="evidence-desc">{evidence.description}</p>
@@ -7343,353 +7816,83 @@ export default function TestimonyEvidence({ evidence }: { evidence: Evidence }) 
 }
 </file>
 
+<file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/DocumentViewer.tsx">
+import type { DocumentEvidence } from '@/types/evidence';
+import FinancialRecordViewer from './DocumentViewers/FinancialRecordViewer';
+import ContractViewer from './DocumentViewers/ContractViewer';
+import JournalViewer from './DocumentViewers/JournalViewer';
+import MemoViewer from './DocumentViewers/MemoViewer';
+import CorrespondenceViewer from './DocumentViewers/CorrespondenceViewer';
+import BackgroundCheckViewer from './DocumentViewers/BackgroundCheckViewer';
+
+interface DocumentViewerProps {
+  evidence: DocumentEvidence;
+}
+
+export default function DocumentViewer({ evidence }: DocumentViewerProps) {
+  const { sub_type } = evidence;
+
+  const renderDocumentContent = () => {
+    switch (sub_type) {
+      case 'correspondence':
+        return <CorrespondenceViewer evidence={evidence} />;
+      case 'financial':
+        return <FinancialRecordViewer evidence={evidence} />;
+      case 'journal':
+        return <JournalViewer evidence={evidence} />;
+      case 'contract':
+        return <ContractViewer evidence={evidence} />;
+      case 'memo':
+        return <MemoViewer evidence={evidence} />;
+      case 'background_check':
+        return <BackgroundCheckViewer evidence={evidence} />;
+      default:
+        return (
+          <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+            Document contents illegible or corrupted.
+          </div>
+        );
+    }
+  };
+
+  return (
+    <div className="document-report-container">
+      {renderDocumentContent()}
+    </div>
+  );
+}
+</file>
+
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/ForensicViewer.tsx">
 import type { ForensicEvidence } from '@/types/evidence';
-import './ForensicViewer.css';
+import AutopsyViewer from './ForensicViewers/AutopsyViewer';
+import BallisticsViewer from './ForensicViewers/BallisticsViewer';
+import DnaViewer from './ForensicViewers/DnaViewer';
+import DigitalForensicsViewer from './ForensicViewers/DigitalForensicsViewer';
+import TraceAnalysisViewer from './ForensicViewers/TraceAnalysisViewer';
 
 interface ForensicViewerProps {
   evidence: ForensicEvidence;
 }
 
 export default function ForensicViewer({ evidence }: ForensicViewerProps) {
-  const { sub_type, metadata } = evidence;
+  const { sub_type } = evidence;
 
   switch (sub_type) {
     case 'autopsy':
-      return (
-        <div className="forensic-preview autopsy-paper">
-          <div className="autopsy-header">
-            <div className="autopsy-agency-block">
-              <div className="autopsy-agency">OFFICE OF THE CHIEF MEDICAL EXAMINER</div>
-              <h2 className="autopsy-title">REPORT OF AUTOPSY</h2>
-              <div className="autopsy-sub-meta">CITY & COUNTY MORGUE DIVISION</div>
-            </div>
-            <div className="autopsy-meta-box">
-              <div><span className="autopsy-label">CASE NO:</span> {evidence.id.toString().padStart(5, '0')}</div>
-              <div><span className="autopsy-label">DATE:</span> {new Date().toLocaleDateString()}</div>
-            </div>
-          </div>
-
-          <div className="autopsy-body-section">
-            <div className="autopsy-data-col">
-              <div className="autopsy-data-row">
-                <span className="autopsy-label">EXAMINER:</span>
-                <span className="autopsy-value">{metadata.examiner}</span>
-              </div>
-              <div className="autopsy-data-row">
-                <span className="autopsy-label">EST. TIME OF DEATH:</span>
-                <span className="autopsy-value">{metadata.time_of_death}</span>
-              </div>
-              <div className="autopsy-data-row critical-row">
-                <span className="autopsy-label">CAUSE OF DEATH:</span>
-                <span className="autopsy-value cause-of-death">{metadata.cause_of_death}</span>
-              </div>
-
-              <div className="autopsy-notes-section">
-                <span className="autopsy-label">EXTERNAL EXAMINATION & ANOMALIES:</span>
-                <div className="autopsy-notes-content">
-                  {metadata.anomalies || "The body is that of a normally developed individual. No visible anomalies or secondary trauma reported during standard examination."}
-                </div>
-              </div>
-            </div>
-
-            <div className="autopsy-diagram-col">
-              <svg viewBox="0 0 100 220" className="autopsy-body-wireframe">
-                {/* Head */}
-                <circle cx="50" cy="25" r="14" />
-                {/* Torso */}
-                <path d="M35 50 Q50 45 65 50 L60 110 L40 110 Z" />
-                {/* Arms */}
-                <path d="M30 55 Q20 80 15 110" />
-                <path d="M70 55 Q80 80 85 110" />
-                {/* Legs */}
-                <path d="M42 115 L40 195" />
-                <path d="M58 115 L60 195" />
-                {/* Grid Overlay */}
-                <line x1="0" y1="50" x2="100" y2="50" className="grid-line" />
-                <line x1="0" y1="110" x2="100" y2="110" className="grid-line" />
-                <line x1="50" y1="0" x2="50" y2="220" className="grid-line" />
-              </svg>
-              <div className="diagram-caption">FIG 1. ANATOMICAL REFERENCE</div>
-            </div>
-          </div>
-
-          <div className="autopsy-footer">
-            <div className="autopsy-stamp">CONFIDENTIAL // OFFICIAL RECORD</div>
-            <div className="autopsy-signature-block">
-              <div className="autopsy-signature">{metadata.examiner}</div>
-              <div className="autopsy-signature-line">CHIEF MEDICAL EXAMINER</div>
-            </div>
-          </div>
-        </div>
-      );
-
-      case 'dna': {
-      // Deterministically generate a visual sequence based on the evidence ID
-      const generateSequence = (seed: number, isMatch: boolean) => {
-        return [...Array(24)].map((_, i) => {
-          const opacity = ((seed * (i + 1) * 17) % 100) / 100;
-          // If it's a match, we perfectly mirror the original opacity.
-          // If not, we scramble it with a different seed multiplier to create a mismatch.
-          const finalOpacity = isMatch ? opacity : ((seed * (i + 1) * 23) % 100) / 100;
-          return (
-            <div
-              key={i}
-              className={`dna-band ${finalOpacity > 0.5 ? 'dense' : ''}`}
-              style={{ opacity: finalOpacity }}
-            />
-          );
-        });
-      };
-
-      const hasMatch = !!metadata.identified_person;
-
-      return (
-        <div className="forensic-preview dna-paper">
-          <div className="dna-header">
-            <div className="dna-lab-title">GENETIC FORENSICS LABORATORY</div>
-            <div className="dna-report-type">STR DNA ANALYSIS & PROFILE MATCH</div>
-          </div>
-
-          <div className="dna-meta-row">
-            <div className="dna-meta-item">
-              <span className="dna-label">EVIDENCE ID:</span>
-              <span className="dna-meta-value">EX-{evidence.id.toString().padStart(3, '0')}</span>
-            </div>
-            <div className="dna-meta-item">
-              <span className="dna-label">SAMPLE TYPE:</span>
-              <span className="dna-meta-value">{metadata.sample_type}</span>
-            </div>
-            <div className="dna-meta-item">
-              <span className="dna-label">DATE:</span>
-              <span className="dna-meta-value">{new Date().toLocaleDateString()}</span>
-            </div>
-          </div>
-
-          <div className="dna-visualizer-container">
-            <h4 className="dna-visualizer-title">ELECTROPHEROGRAM COMPARISON</h4>
-            <div className="dna-visualizer">
-              <div className="dna-sequence-track">
-                <div className="dna-track-label">CRIME SCENE SAMPLE</div>
-                <div className="dna-bands-container">
-                  {generateSequence(evidence.id, true)}
-                </div>
-              </div>
-              <div className="dna-sequence-track match-track">
-                <div className="dna-track-label">DATABASE RECORD</div>
-                <div className="dna-bands-container">
-                  {generateSequence(evidence.id, hasMatch)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="dna-results-box">
-            <div className="dna-result-row">
-              <span className="dna-label">PROBABILITY OF MATCH:</span>
-              <span className="dna-value highlight">{metadata.match_probability}</span>
-            </div>
-            <div className="dna-result-row">
-              <span className="dna-label">IDENTIFIED SUBJECT:</span>
-              <span className={`dna-value ${hasMatch ? 'subject-match' : 'subject-unknown'}`}>
-                {metadata.identified_person || 'NO MATCH FOUND IN DATABASE'}
-              </span>
-            </div>
-          </div>
-
-          <div className="dna-footer">
-            <div className="dna-barcode">|||||| |||| |||||||| |||||</div>
-            <div className="dna-codis-stamp">CODIS SEARCH COMPLETED // VERIFIED</div>
-          </div>
-        </div>
-      );
-    }
-
-    case 'digital_forensics':
-      return (
-        <div className="forensic-preview digital-terminal">
-          <div className="terminal-header">
-            <span className="terminal-dot red"></span>
-            <span className="terminal-dot yellow"></span>
-            <span className="terminal-dot green"></span>
-            <span className="terminal-title">CYBER_CRIMES_UNIT_v3.4.1 // DECRYPTION_TERMINAL</span>
-          </div>
-
-          <div className="terminal-body">
-            <div className="terminal-line command">
-              <span className="prompt">root@ccu-server:~$</span> ./extract_payload.sh --target=EX-{evidence.id.toString().padStart(3, '0')}
-            </div>
-
-            <div className="terminal-line system">
-              [+] Initiating forensic extraction protocol...
-            </div>
-            <div className="terminal-line system">
-              [+] Target Device: <span className="highlight-cyan">{metadata.device_type}</span>
-            </div>
-            <div className="terminal-line system">
-              [+] Method: <span className="highlight-cyan">{metadata.extraction_method}</span>
-            </div>
-
-            <div className="terminal-line system progress-line">
-              [+] Bypassing encryption........ [ SUCCESS ]
-            </div>
-
-            <div className="terminal-data-box">
-              <div className="data-box-header">
-                <span>--- BEGIN RECOVERED PAYLOAD ---</span>
-                <span className="blink-cursor">_</span>
-              </div>
-              <div className="data-payload">
-                {metadata.recovered_data}
-              </div>
-              <div className="data-box-footer">
-                <span>--- END OF FILE ---</span>
-              </div>
-            </div>
-
-            <div className="terminal-line command">
-              <span className="prompt">root@ccu-server:~$</span> <span className="blink-cursor">_</span>
-            </div>
-          </div>
-        </div>
-      );
-
-      case 'trace_analysis': {
-      // Deterministically generate a jagged mass spectrometry graph based on the Evidence ID
-      const generatePeaks = (seed: number) => {
-        let points = "0,100 ";
-        for (let i = 1; i <= 20; i++) {
-          const x = i * 5;
-          // Generate pseudo-random peaks, with a few intentional large spikes
-          const isMajorPeak = (seed * i) % 7 === 0;
-          const y = isMajorPeak ? 10 + ((seed * i) % 20) : 75 + ((seed * i) % 20);
-          points += `${x},${y} `;
-        }
-        points += "100,100";
-        return points;
-      };
-
-      return (
-        <div className="forensic-preview trace-paper">
-          <div className="trace-header">
-            <div className="trace-agency">ADVANCED MATERIALS & TRACE LAB</div>
-            <h2 className="trace-title">MASS SPECTROMETRY ANALYSIS</h2>
-          </div>
-
-          <div className="trace-meta">
-            <div><span className="trace-label">SAMPLE ID:</span> EX-{evidence.id.toString().padStart(3, '0')}</div>
-            <div><span className="trace-label">SCAN DATE:</span> {new Date().toLocaleDateString()}</div>
-          </div>
-
-          <div className="trace-graph-box">
-            <h4 className="trace-graph-title">SPECTRAL ABUNDANCE CHART</h4>
-            <svg viewBox="0 0 100 100" className="trace-graph" preserveAspectRatio="none">
-              {/* Grid Lines */}
-              <line x1="0" y1="25" x2="100" y2="25" className="trace-grid-line" />
-              <line x1="0" y1="50" x2="100" y2="50" className="trace-grid-line" />
-              <line x1="0" y1="75" x2="100" y2="75" className="trace-grid-line" />
-
-              {/* Data Lines (Primary Blue, Secondary Red Overlay) */}
-              <polyline points={generatePeaks(evidence.id)} className="trace-data-line primary-line" />
-              <polyline points={generatePeaks(evidence.id + 1)} className="trace-data-line secondary-line" />
-            </svg>
-            <div className="trace-axis-labels">
-              <span>m/z (Mass-to-Charge Ratio)</span>
-              <span>Relative Abundance ➔</span>
-            </div>
-          </div>
-
-          <div className="trace-results">
-            <div className="trace-result-row">
-              <span className="trace-label">MATERIAL COMPOSITION:</span>
-              <span className="trace-value">{metadata.material_type}</span>
-            </div>
-            <div className="trace-result-row match-row">
-              <span className="trace-label">IDENTIFIED ORIGIN SOURCE:</span>
-              <span className="trace-value source-match">{metadata.origin_source}</span>
-            </div>
-          </div>
-
-          <div className="trace-footer">
-            <span>ANALYSIS COMPLETE</span>
-            <span className="trace-signature">Auto-Generated System Report</span>
-          </div>
-        </div>
-      );
-    }
-
+      return <AutopsyViewer evidence={evidence} />;
     case 'ballistics':
+      return <BallisticsViewer evidence={evidence} />;
+    case 'dna':
+      return <DnaViewer evidence={evidence} />;
+    case 'digital_forensics':
+      return <DigitalForensicsViewer evidence={evidence} />;
+    case 'trace_analysis':
+      return <TraceAnalysisViewer evidence={evidence} />;
+    default:
       return (
-        <div className="forensic-preview ballistics-modal-viewer">
-          <div className="ballistics-header">
-            <div className="ballistics-agency-block">
-              <div className="ballistics-agency">STATE FORENSIC LABORATORY</div>
-              <h2 className="ballistics-title">DIVISION OF BALLISTICS & TOOLMARKS</h2>
-              <div className="ballistics-sub-meta">CASE FILE #{metadata.case_number}</div>
-              <div className="ballistics-lab-stamp">OFFICIAL LABORATORY REPORT</div>
-            </div>
-            <div className="ballistics-barcode">*{metadata.case_number}*</div>
-          </div>
-
-          <div className="ballistics-specimen-box">
-            <div className="ballistics-specimen-title">EVIDENCE INTAKE LOG</div>
-            {(metadata.exhibits || []).map((ex: any, idx: number) => (
-              <div key={idx} className="ballistics-specimen-row">
-                <span className="ballistics-specimen-label">{ex.reference}:</span>
-                <span className="ballistics-specimen-desc" dangerouslySetInnerHTML={{ __html: ex.description }} />
-              </div>
-            ))}
-            {(!metadata.exhibits || metadata.exhibits.length === 0) && (
-              <div style={{ fontStyle: 'italic', color: '#666' }}>No physical exhibits recorded on intake.</div>
-            )}
-          </div>
-
-          <div className="ballistics-section">
-            <div className="ballistics-section-title">1. Firearm Specification Data</div>
-            <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.firearm_specs }} />
-          </div>
-
-          <div className="ballistics-section">
-            <div className="ballistics-section-title">2. Microscopic & Toolmark Analysis</div>
-            <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.microscopic_analysis }} />
-          </div>
-
-          {evidence.img_url && (
-            <div className="microscope-photo-attachment">
-              <div className="microscope-tape"></div>
-              <div className="microscope-comparison">
-                <img src={evidence.img_url} alt="Microscopic Striations" className="microscope-image" />
-                <div className="microscope-crosshair-v"></div>
-                <div className="microscope-crosshair-h"></div>
-                <div className="microscope-overlay-text">STRIATION ALIGNMENT LENS</div>
-              </div>
-            </div>
-          )}
-
-          {metadata.trajectory_range && (
-            <div className="ballistics-section">
-              <div className="ballistics-section-title">3. Trajectory & Range Findings</div>
-              <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.trajectory_range }} />
-            </div>
-          )}
-
-          <div className="ballistics-conclusion-box">
-            <div className="ballistics-conclusion" dangerouslySetInnerHTML={{ __html: metadata.conclusion }} />
-          </div>
-
-          <div className="ballistics-sign-off">
-            <div className="ballistics-sign-content">
-              <div className="signature-ink">{metadata.examiner_name}</div>
-              <div className="ballistics-signature-line">SENIOR BALLISTICS EXPERT</div>
-              <div className="ballistics-verified-id">VERIFIED LAB ID: {metadata.case_number}</div>
-            </div>
-          </div>
-
-          {metadata.investigator_notes && (
-            <div className="handwritten-note-overlay">
-              {metadata.investigator_notes}
-            </div>
-          )}
+        <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+          Forensic report corrupted or unreadable.
         </div>
       );
   }
@@ -7697,198 +7900,300 @@ export default function ForensicViewer({ evidence }: ForensicViewerProps) {
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/MediaViewer.tsx">
-import type { MediaEvidence } from '@/types/evidence';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import type { Evidence } from '@/types/evidence';
 import './MediaViewer.css';
+
+// Extract strict Media type (only Image and Audio)
+type MediaEvidence = Extract<Evidence, { evidence_type: 'image' | 'audio' }>;
 
 interface MediaViewerProps {
   evidence: MediaEvidence;
 }
 
-export default function MediaViewer({ evidence }: MediaViewerProps) {
-  const { evidence_type, description, img_url, audio_url, metadata, title } = evidence;
+const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
 
-  const renderContent = () => {
-    switch (evidence_type) {
-      case 'image':
-        return (
-          <div className="media-image-container">
-            <img
-              src={img_url || '/placeholder-crime-scene.jpg'}
-              alt={title}
-              className="media-full-image"
-            />
-            <div className="media-meta-plaque">
-              <h3 className="media-plaque-title">{title}</h3>
-              {description && <p className="media-plaque-desc">{description}</p>}
-            </div>
-          </div>
-        );
+  // We assume the asset path is stored in img_url for both images and audio,
+  // or inside metadata.url if your backend splits them up.
+  const mediaUrl = evidence.img_url || (evidence.metadata as any)?.url;
 
-      case 'audio':
-        return (
-          <div className="media-audio-container">
-            <div className="audio-visualizer-mock"></div>
-            <audio controls src={audio_url || undefined} className="media-audio-player">
-              Your browser does not support the audio element.
-            </audio>
-            <div className="media-meta-plaque">
-              <h3 className="media-plaque-title">{title}</h3>
-              {description && <p className="media-plaque-desc">{description}</p>}
-            </div>
-          </div>
-        );
-
-      case 'testimony':
-        return (
-          <div className="media-testimony-container">
-            <div className="testimony-header">
-              <span className="testimony-label">OFFICIAL TRANSCRIPT</span>
-              <h3 className="media-plaque-title" style={{ marginTop: '0.5rem', marginBottom: 0 }}>{title}</h3>
-              {description && <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-secondary)' }}>{description}</p>}
-            </div>
-            <div className="testimony-body">
-              {metadata?.transcript || 'Transcript unavailable.'}
-            </div>
-          </div>
-        );
-
-      default:
-        return <div className="media-caption">Media format unsupported.</div>;
-    }
-  };
+  if (!mediaUrl) {
+    return (
+      <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+        {t('pages.gameRoom.evidence.viewers.media.noMediaFound')}
+      </div>
+    );
+  }
 
   return (
     <div className="media-viewer-wrapper">
-      {renderContent()}
+
+      {/* CONDITIONAL RENDER: IMAGE OR AUDIO */}
+      {evidence.evidence_type === 'image' ? (
+        <div className="media-image-container">
+          <img
+            src={mediaUrl}
+            alt={evidence.title || t('pages.gameRoom.evidence.viewers.media.imageAltFallback')}
+            className="media-full-image"
+          />
+        </div>
+      ) : (
+        <div className="media-audio-container">
+          <div className="audio-visualizer-mock"></div>
+          <audio controls className="media-audio-player">
+            <source src={mediaUrl} type="audio/mpeg" />
+            {t('pages.gameRoom.evidence.viewers.media.audioNotSupported')}
+          </audio>
+        </div>
+      )}
+
+      {/* SHARED PLAQUE FOR TITLE & DESCRIPTION */}
+      <div className="media-meta-plaque">
+        <h3 className="media-plaque-title">{evidence.title}</h3>
+        {evidence.description && (
+          <p className="media-plaque-desc">{evidence.description}</p>
+        )}
+      </div>
+
     </div>
   );
-}
+};
+
+export default MediaViewer;
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/TestimonyViewer.tsx">
-import type { Evidence } from '@/types/evidence';
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TestimonyEvidence } from '@/types/evidence';
 import './TestimonyViewer.css';
 
 interface TestimonyViewerProps {
-  evidence: Evidence;
+  evidence: TestimonyEvidence;
 }
 
-export default function TestimonyViewer({ evidence }: TestimonyViewerProps) {
-  const { metadata } = evidence;
-  const transcript = metadata?.transcript || "No official transcript was filed for this testimony.";
+const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
 
-  // 1. Define the backend URL and signature pool
+  // NO MORE DUCT TAPE! TypeScript knows exactly what these properties are.
+  const {
+    agency = t('pages.gameRoom.evidence.viewers.testimony.policeDept'),
+    title = t('pages.gameRoom.evidence.viewers.testimony.officialTranscript'),
+    date = new Date().toLocaleDateString(),
+    case_number = `EX-${evidence.id.toString().padStart(3, '0')}`,
+    subject_name = 'REDACTED',
+    interviewer = 'REDACTED',
+    context,
+    transcript = []
+  } = evidence.metadata || {};
+
+  // Deterministically fetch a signature image based on the evidence ID
   const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-  const signaturePool = [
-    `${backendUrl}/assets/signatures/signature.svg`,
-    `${backendUrl}/assets/signatures/signature-1.svg`,
-    `${backendUrl}/assets/signatures/signature-2.svg`,
-    `${backendUrl}/assets/signatures/signature-3.svg`,
-    `${backendUrl}/assets/signatures/signature-4.svg`,
-    `${backendUrl}/assets/signatures/signature-5.svg`,
-    `${backendUrl}/assets/signatures/signature-6.svg`,
-    `${backendUrl}/assets/signatures/signature-7.svg`,
-    `${backendUrl}/assets/signatures/signature-8.svg`,
-    `${backendUrl}/assets/signatures/signature-9.svg`,
-    `${backendUrl}/assets/signatures/signature-10.svg`,
-    `${backendUrl}/assets/signatures/signature-11.svg`,
-    `${backendUrl}/assets/signatures/signature-12.svg`,
-    `${backendUrl}/assets/signatures/signature-13.svg`,
-    `${backendUrl}/assets/signatures/signature-14.svg`,
-    `${backendUrl}/assets/signatures/signature-15.svg`,
-    `${backendUrl}/assets/signatures/signature-16.svg`,
-    `${backendUrl}/assets/signatures/signature-17.svg`,
-    `${backendUrl}/assets/signatures/signature-18.svg`,
-  ];
-
-  // 2. Deterministically select a signature based on evidence ID
-  const selectedSignature = signaturePool[evidence.id % signaturePool.length];
-
-  // Helper function to dynamically style Q&A formats
-  const formatTranscript = (text: string) => {
-    return text.split('\n').map((line, idx) => {
-      const trimmedLine = line.trim();
-      if (trimmedLine.startsWith('Q:')) {
-        return <div key={idx} className="transcript-q"><span className="speaker-tag">DETECTIVE:</span> {trimmedLine.substring(2)}</div>;
-      } else if (trimmedLine.startsWith('A:')) {
-        return <div key={idx} className="transcript-a"><span className="speaker-tag">WITNESS:</span> {trimmedLine.substring(2)}</div>;
-      } else if (trimmedLine === '') {
-        return <br key={idx} />;
-      }
-      return <div key={idx} className="transcript-line">{line}</div>;
-    });
+  const getSignature = (seed: number) => {
+    const idx = (seed % 18) + 1; // Assuming you have 18 signatures available
+    const fileName = idx === 1 ? 'signature.svg' : `signature-${idx}.svg`;
+    return `${backendUrl}/assets/signatures/${fileName}`;
   };
 
   return (
     <div className="testimony-modal-viewer">
       <div className="testimony-paper">
+
         <div className="testimony-header">
-          <div className="testimony-agency">CITY POLICE DEPARTMENT</div>
-          <h2 className="testimony-title">RECORD OF INTERVIEW // SWORN STATEMENT</h2>
+          <div className="testimony-agency">{agency}</div>
+          <h2 className="testimony-title">{title}</h2>
+
           <div className="testimony-meta-grid">
             <div className="meta-box">
-              <span className="meta-label">EXHIBIT NO.</span>
-              <span className="meta-value">EX-{evidence.id.toString().padStart(3, '0')}</span>
+              <span className="meta-label">{t('pages.gameRoom.evidence.viewers.testimony.date')}</span>
+              <span className="meta-value">{date}</span>
             </div>
             <div className="meta-box">
-              <span className="meta-label">DATE RECORDED</span>
-              <span className="meta-value">{new Date().toLocaleDateString()}</span>
-            </div>
-            <div className="meta-box">
-              <span className="meta-label">STATUS</span>
-              <span className="meta-value">TRANSCRIBED</span>
+              <span className="meta-label">{t('pages.gameRoom.evidence.viewers.testimony.caseNo')}</span>
+              <span className="meta-value">{case_number}</span>
             </div>
           </div>
         </div>
 
         <div className="testimony-subject-block">
-          <span className="subject-label">SUBJECT / INTERVIEWEE:</span>
-          <span className="subject-value">{evidence.title}</span>
+          <div>
+            <span className="subject-label">{t('pages.gameRoom.evidence.viewers.testimony.subject')}</span>
+            {subject_name}
+          </div>
+          <div style={{ marginTop: '0.5rem' }}>
+            <span className="subject-label">{t('pages.gameRoom.evidence.viewers.testimony.interviewer')}</span>
+            {interviewer}
+          </div>
         </div>
 
-        {evidence.description && (
+        {context && (
           <div className="testimony-context">
-            <strong>CONTEXT: </strong> {evidence.description}
+            {context}
           </div>
         )}
 
         <div className="transcript-container">
-          <div className="transcript-watermark">CONFIDENTIAL</div>
+          <div className="transcript-watermark">
+            {t('pages.gameRoom.evidence.viewers.testimony.watermark')}
+          </div>
+
           <div className="transcript-content">
-            {formatTranscript(transcript)}
+            {/* If transcript is an array of Q/A objects */}
+            {Array.isArray(transcript) ? (
+              transcript.map((line: any, idx: number) => (
+                <div key={idx} className={`transcript-line ${line.type === 'q' ? 'transcript-q' : 'transcript-a'}`}>
+                  <span className="speaker-tag">{line.speaker}:</span>
+                  {line.text}
+                </div>
+              ))
+            ) : (
+              /* Fallback if transcript is just pre-formatted HTML text */
+              <div dangerouslySetInnerHTML={{ __html: transcript }} />
+            )}
           </div>
         </div>
 
         <div className="testimony-footer">
           <div className="certification-statement">
-            I hereby certify that the foregoing is a true and accurate transcript of the recorded interview.
+            {t('pages.gameRoom.evidence.viewers.testimony.certStatement')}
           </div>
+
           <div className="signature-area">
-            {/* 3. Render the image instead of text */}
             <div className="steno-signature">
-              <img src={selectedSignature} alt="Stenographer Signature" className="steno-signature-img" />
+              <img
+                src={getSignature(evidence.id)}
+                alt="Stenographer Signature"
+                className="steno-signature-img"
+              />
             </div>
-            <div className="signature-line">COURT STENOGRAPHER</div>
+            <div className="signature-line">
+              {t('pages.gameRoom.evidence.viewers.testimony.stenoSignature')}
+            </div>
           </div>
         </div>
+
       </div>
     </div>
   );
+};
+
+export default TestimonyViewer;
+</file>
+
+<file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/DocumentViewers/BackgroundCheckViewer.tsx">
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import type { DocumentEvidence } from '@/types/evidence';
+import './BackgroundCheckViewer.css';
+
+type BackgroundCheckEvidence = Extract<DocumentEvidence, { sub_type: 'background_check' }>;
+
+interface BackgroundCheckViewerProps {
+  evidence: BackgroundCheckEvidence;
 }
+
+const BackgroundCheckViewer: React.FC<BackgroundCheckViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
+  const {
+    subject_name, dob, sex_age, aliases, last_known_address,
+    employment_financial, criminal_history, associates, investigator_notes
+  } = evidence.metadata;
+
+  return (
+    <div className="doc-preview bg-check-preview">
+      <div className="bg-check-header">
+        <div>
+          <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.25rem', fontFamily: 'var(--font-mono)', color: '#555' }}>
+            {t('pages.gameRoom.evidence.viewers.backgroundCheck.deptOfPublicSafety')}
+          </div>
+          <h2 className="bg-check-title">{t('pages.gameRoom.evidence.viewers.backgroundCheck.title')}</h2>
+        </div>
+        <div className="bg-check-barcode">*DPS-AUTH-REQ*</div>
+      </div>
+
+      <div className="bg-check-id-block">
+        <img src={evidence.img_url || '/placeholder-mugshot.jpg'} alt="Subject Mugshot" className="bg-check-mugshot" />
+
+        <div className="bg-check-data">
+          <div className="bg-check-data-row">
+            <span className="bg-check-label">{t('pages.gameRoom.evidence.viewers.backgroundCheck.subjectName')}</span>
+            <span className="bg-check-value">{subject_name}</span>
+          </div>
+          <div className="bg-check-data-row">
+            <span className="bg-check-label">{t('pages.gameRoom.evidence.viewers.backgroundCheck.dob')}</span>
+            <span className="bg-check-value">{dob}</span>
+          </div>
+          <div className="bg-check-data-row">
+            <span className="bg-check-label">{t('pages.gameRoom.evidence.viewers.backgroundCheck.sexAge')}</span>
+            <span className="bg-check-value">{sex_age}</span>
+          </div>
+          <div className="bg-check-data-row">
+            <span className="bg-check-label">{t('pages.gameRoom.evidence.viewers.backgroundCheck.aliases')}</span>
+            <span className="bg-check-value">"{aliases}"</span>
+          </div>
+          <div className="bg-check-data-row" style={{ borderBottom: 'none' }}>
+            <span className="bg-check-label">{t('pages.gameRoom.evidence.viewers.backgroundCheck.lastKnownAddress')}</span>
+            <span className="bg-check-value" dangerouslySetInnerHTML={{ __html: last_known_address }} />
+          </div>
+        </div>
+      </div>
+
+      {employment_financial && (
+        <div className="bg-check-section">
+          <div className="bg-check-section-title">{t('pages.gameRoom.evidence.viewers.backgroundCheck.employmentProfile')}</div>
+          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: employment_financial }} />
+        </div>
+      )}
+
+      {criminal_history && (
+        <div className="bg-check-section">
+          <div className="bg-check-section-title">{t('pages.gameRoom.evidence.viewers.backgroundCheck.criminalHistory')}</div>
+          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: criminal_history }} />
+        </div>
+      )}
+
+      {associates && (
+        <div className="bg-check-section">
+          <div className="bg-check-section-title">{t('pages.gameRoom.evidence.viewers.backgroundCheck.knownAssociates')}</div>
+          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: associates }} />
+        </div>
+      )}
+
+      {investigator_notes && (
+        <div className="handwritten-note">
+          {investigator_notes}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default BackgroundCheckViewer;
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/DocumentViewers/ContractViewer.tsx">
 import React, { useState } from 'react';
-import type { ContractMetadata } from '@/types/evidence/document';
+import { useTranslation } from 'react-i18next';
+import type { DocumentEvidence } from '@/types/evidence';
+import './ContractViewer.css';
+
+type ContractEvidence = Extract<DocumentEvidence, { sub_type: 'contract' }>;
 
 interface ContractViewerProps {
-  evidence: { id: number; metadata: ContractMetadata; };
+  evidence: ContractEvidence;
 }
 
 const ContractViewer: React.FC<ContractViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const { parties_involved, signatures_valid, execution_date, pages = [] } = evidence.metadata;
-  const activePage = pages[currentPageIndex] || { terms_text: 'No terms available.', page_number: 1 };
+
+  const activePage = pages[currentPageIndex] || {
+    terms_text: t('pages.gameRoom.evidence.viewers.contract.noTerms'),
+    page_number: 1
+  };
 
   const isFirstPage = currentPageIndex === 0;
   const isLastPage = currentPageIndex === pages.length - 1 || pages.length === 0;
@@ -7914,26 +8219,28 @@ const ContractViewer: React.FC<ContractViewerProps> = ({ evidence }) => {
 
   return (
     <div className="doc-preview contract-legal-preview">
-      <div className="contract-watermark">BINDING AGREEMENT</div>
+      <div className="contract-watermark">{t('pages.gameRoom.evidence.viewers.contract.bindingAgreement')}</div>
 
       <div className="contract-header">
-        <h2 className="contract-title">DEED OF AGREEMENT</h2>
-        <div className="contract-subtitle">OFFICIAL LEGAL INSTRUMENT // NOTARY VERIFIED</div>
+        <h2 className="contract-title">{t('pages.gameRoom.evidence.viewers.contract.deedOfAgreement')}</h2>
+        <div className="contract-subtitle">{t('pages.gameRoom.evidence.viewers.contract.officialInstrument')}</div>
       </div>
 
       {isFirstPage && (
         <div className="contract-section">
-          <span className="contract-label">BETWEEN THE PARTIES:</span>
+          <span className="contract-label">{t('pages.gameRoom.evidence.viewers.contract.betweenParties')}</span>
           <ul className="contract-parties-list">
             {(parties_involved || []).map((party: string, idx: number) => (
-              <li key={idx}><strong>Party {idx + 1}:</strong> {party}</li>
+              <li key={idx}><strong>{t('pages.gameRoom.evidence.viewers.contract.party')} {idx + 1}:</strong> {party}</li>
             ))}
           </ul>
         </div>
       )}
 
       <div className="contract-section contract-terms-container">
-        <span className="contract-label">TERMS AND CONDITIONS (PAGE {activePage.page_number}):</span>
+        <span className="contract-label">
+          {t('pages.gameRoom.evidence.viewers.contract.termsAndConditions')} {activePage.page_number}):
+        </span>
         <div className="contract-terms-text">
           {activePage.terms_text}
         </div>
@@ -7944,7 +8251,7 @@ const ContractViewer: React.FC<ContractViewerProps> = ({ evidence }) => {
           {execution_date && (
             <div className="contract-section">
               <div className="contract-terms-text contract-execution-date">
-                IN WITNESS WHEREOF, the parties hereto have executed this Agreement as of <strong>{execution_date}</strong>.
+                {t('pages.gameRoom.evidence.viewers.contract.inWitnessWhereof')} <strong>{execution_date}</strong>.
               </div>
             </div>
           )}
@@ -7955,28 +8262,36 @@ const ContractViewer: React.FC<ContractViewerProps> = ({ evidence }) => {
                 <img src={sig1} alt="Authorized Signature" className="rendered-signature-img" />
                 <div className="contract-signature-line"></div>
               </div>
-              <span className="signature-caption">Authorized Representative</span>
+              <span className="signature-caption">{t('pages.gameRoom.evidence.viewers.contract.authorizedRep')}</span>
             </div>
             <div className="signature-col">
               <div className="signature-line-wrapper">
                 <img src={sig2} alt="Witness Signature" className="rendered-signature-img" />
                 <div className="contract-signature-line"></div>
               </div>
-              <span className="signature-caption">Witness</span>
+              <span className="signature-caption">{t('pages.gameRoom.evidence.viewers.contract.witness')}</span>
             </div>
           </div>
 
           <div className={`contract-validation-stamp ${signatures_valid ? 'valid' : 'forged'}`}>
-            {signatures_valid ? 'VERIFIED: NOTARIZED' : 'FLAGGED: FRAUDULENT'}
+            {signatures_valid
+              ? t('pages.gameRoom.evidence.viewers.contract.verifiedNotarized')
+              : t('pages.gameRoom.evidence.viewers.contract.flaggedFraudulent')}
           </div>
         </div>
       )}
 
       {pages.length > 1 && (
         <div className="document-pagination">
-          <button disabled={isFirstPage} onClick={() => setCurrentPageIndex(prev => prev - 1)}>&#8592; Prev</button>
-          <span>PAGE {currentPageIndex + 1} OF {pages.length}</span>
-          <button disabled={isLastPage} onClick={() => setCurrentPageIndex(prev => prev + 1)}>Next &#8594;</button>
+          <button disabled={isFirstPage} onClick={() => setCurrentPageIndex(prev => prev - 1)}>
+            &#8592; {t('pages.gameRoom.evidence.viewers.contract.prev')}
+          </button>
+          <span>
+            {t('pages.gameRoom.evidence.viewers.contract.page')} {currentPageIndex + 1} {t('pages.gameRoom.evidence.viewers.contract.of')} {pages.length}
+          </span>
+          <button disabled={isLastPage} onClick={() => setCurrentPageIndex(prev => prev + 1)}>
+            {t('pages.gameRoom.evidence.viewers.contract.next')} &#8594;
+          </button>
         </div>
       )}
     </div>
@@ -7986,173 +8301,72 @@ const ContractViewer: React.FC<ContractViewerProps> = ({ evidence }) => {
 export default ContractViewer;
 </file>
 
-<file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/DocumentViewers/DocumentViewer.tsx">
+<file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/DocumentViewers/CorrespondenceViewer.tsx">
+import React from 'react';
+import { useTranslation } from 'react-i18next';
 import type { DocumentEvidence } from '@/types/evidence';
-import './DocumentViewer.css';
-import FinancialRecordViewer from './FinancialRecordViewer';
-import ContractViewer from './ContractViewer';
-import JournalViewer from './JournalViewer';
+import './CorrespondenceViewer.css';
 
-interface DocumentViewerProps {
-  evidence: DocumentEvidence;
+type CorrespondenceEvidence = Extract<DocumentEvidence, { sub_type: 'correspondence' }>;
+
+interface CorrespondenceViewerProps {
+  evidence: CorrespondenceEvidence;
 }
 
-export default function DocumentViewer({ evidence }: DocumentViewerProps) {
-  const { sub_type, metadata } = evidence;
-
-  const renderDocumentContent = () => {
-    switch (sub_type) {
-      case 'correspondence':
-        return (
-          <div className="correspondence-preview-wrapper">
-            <div className="correspondence-paper-sheet">
-              <div className="correspondence-stamp">CONFIDENTIAL CORRESPONDENCE</div>
-
-              <div className="correspondence-header-block">
-                <div className="correspondence-row">
-                  <span className="correspondence-label">TO:</span>
-                  <span className="correspondence-val">{metadata.recipient}</span>
-                </div>
-                <div className="correspondence-row">
-                  <span className="correspondence-label">FROM:</span>
-                  <span className="correspondence-val">{metadata.sender}</span>
-                </div>
-                <div className="correspondence-row correspondence-subject-row">
-                  <span className="correspondence-label">SUBJECT:</span>
-                  <span className="correspondence-val">{metadata.subject}</span>
-                </div>
-              </div>
-
-              <div className="correspondence-body-text">
-                {metadata.body}
-              </div>
-
-              <div className="correspondence-footer-stamp">
-                <span>INTEL ACQUISITION DIVISION // SEC-4</span>
-              </div>
-            </div>
-          </div>
-        );
-
-      case 'financial':{
-        return <FinancialRecordViewer evidence={evidence} />;
-      }
-
-      case 'journal': {
-        return <JournalViewer evidence={evidence} />;
-      }
-
-      case 'contract': {
-        return <ContractViewer evidence={evidence} />;
-      }
-
-      case 'memo':
-        return (
-        <div className="document-preview memo-preview">
-          <div className="notebook-holes"></div>
-          <div className="crumpled-texture"></div>
-
-          <div className="memo-content">
-            <p className="memo-body-text">{metadata.context || evidence.description}</p>
-          </div>
-        </div>
-      );
-
-      case 'background_check': {
-        const {
-          subject_name, dob, sex_age, aliases, last_known_address,
-          employment_financial, criminal_history, associates, investigator_notes
-        } = evidence.metadata;
-
-        return (
-          <div className="doc-preview bg-check-preview">
-            <div className="bg-check-header">
-              <div>
-                <div style={{ fontSize: '0.8rem', fontWeight: 'bold', marginBottom: '0.25rem', fontFamily: 'var(--font-mono)', color: '#555' }}>DEPARTMENT OF PUBLIC SAFETY - RECORDS DIVISION</div>
-                <h2 className="bg-check-title">BACKGROUND INVESTIGATION</h2>
-              </div>
-              <div className="bg-check-barcode">*DPS-AUTH-REQ*</div>
-            </div>
-
-            <div className="bg-check-id-block">
-              <img src={evidence.img_url || '/placeholder-mugshot.jpg'} alt="Subject Mugshot" className="bg-check-mugshot" />
-
-              <div className="bg-check-data">
-                <div className="bg-check-data-row">
-                  <span className="bg-check-label">SUBJECT NAME:</span>
-                  <span className="bg-check-value">{subject_name}</span>
-                </div>
-                <div className="bg-check-data-row">
-                  <span className="bg-check-label">DOB:</span>
-                  <span className="bg-check-value">{dob}</span>
-                </div>
-                <div className="bg-check-data-row">
-                  <span className="bg-check-label">SEX / AGE:</span>
-                  <span className="bg-check-value">{sex_age}</span>
-                </div>
-                <div className="bg-check-data-row">
-                  <span className="bg-check-label">ALIASES:</span>
-                  <span className="bg-check-value">"{aliases}"</span>
-                </div>
-                <div className="bg-check-data-row" style={{ borderBottom: 'none' }}>
-                  <span className="bg-check-label">LAST KNOWN ADDRESS:</span>
-                  <span className="bg-check-value" dangerouslySetInnerHTML={{ __html: last_known_address }} />
-                </div>
-              </div>
-            </div>
-
-            {employment_financial && (
-              <div className="bg-check-section">
-                <div className="bg-check-section-title">Employment & Financial Profile</div>
-                <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: employment_financial }} />
-              </div>
-            )}
-
-            {criminal_history && (
-              <div className="bg-check-section">
-                <div className="bg-check-section-title">Criminal History & Warrants</div>
-                <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: criminal_history }} />
-              </div>
-            )}
-
-            {associates && (
-              <div className="bg-check-section">
-                <div className="bg-check-section-title">Known Associates</div>
-                <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: associates }} />
-              </div>
-            )}
-
-            {investigator_notes && (
-              <div className="handwritten-note">
-                {investigator_notes}
-              </div>
-            )}
-          </div>
-        );
-      }
-
-        default:
-        return <div className="doc-body">Document contents illegible or corrupted.</div>;
-    }
-  };
+const CorrespondenceViewer: React.FC<CorrespondenceViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
+  const { metadata } = evidence;
 
   return (
-    <div className="document-report-container">
-      {renderDocumentContent()}
+    <div className="correspondence-preview-wrapper">
+      <div className="correspondence-paper-sheet">
+        <div className="correspondence-stamp">{t('pages.gameRoom.evidence.viewers.correspondence.confidential')}</div>
+
+        <div className="correspondence-header-block">
+          <div className="correspondence-row">
+            <span className="correspondence-label">{t('pages.gameRoom.evidence.viewers.correspondence.to')}</span>
+            <span className="correspondence-val">{metadata.recipient}</span>
+          </div>
+          <div className="correspondence-row">
+            <span className="correspondence-label">{t('pages.gameRoom.evidence.viewers.correspondence.from')}</span>
+            <span className="correspondence-val">{metadata.sender}</span>
+          </div>
+          <div className="correspondence-row correspondence-subject-row">
+            <span className="correspondence-label">{t('pages.gameRoom.evidence.viewers.correspondence.subject')}</span>
+            <span className="correspondence-val">{metadata.subject}</span>
+          </div>
+        </div>
+
+        <div className="correspondence-body-text">
+          {metadata.body}
+        </div>
+
+        <div className="correspondence-footer-stamp">
+          <span>{t('pages.gameRoom.evidence.viewers.correspondence.intelDivision')}</span>
+        </div>
+      </div>
     </div>
   );
-}
+};
+
+export default CorrespondenceViewer;
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/DocumentViewers/FinancialRecordViewer.tsx">
 import React, { useState } from 'react';
-import type { FinancialMetadata, FinancialTransaction } from '@/types/evidence/document';
+import { useTranslation } from 'react-i18next';
+import type { DocumentEvidence } from '@/types/evidence';
+import type { FinancialTransaction } from '@/types/evidence/document';
+import './FinancialRecordViewer.css';
+
+type FinancialEvidence = Extract<DocumentEvidence, { sub_type: 'financial' }>;
 
 interface FinancialRecordProps {
-  evidence: { id: number; metadata: FinancialMetadata; };
+  evidence: FinancialEvidence;
 }
 
 const FinancialRecordViewer: React.FC<FinancialRecordProps> = ({ evidence }) => {
+  const { t } = useTranslation();
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const metadata = evidence.metadata;
   const pages = metadata.pages || [];
@@ -8160,8 +8374,8 @@ const FinancialRecordViewer: React.FC<FinancialRecordProps> = ({ evidence }) => 
 
   return (
     <div className="financial-preview-wrapper">
-      <div className="financial-watermark">CONFIDENTIAL</div>
-      <div className="financial-stamp">SUBPOENAED RECORD</div>
+      <div className="financial-watermark">{t('pages.gameRoom.evidence.viewers.financial.confidential')}</div>
+      <div className="financial-stamp">{t('pages.gameRoom.evidence.viewers.financial.subpoenaedRecord')}</div>
 
       <div className="doc-header-block">
         <div className="financial-header-top">
@@ -8169,19 +8383,19 @@ const FinancialRecordViewer: React.FC<FinancialRecordProps> = ({ evidence }) => 
           <div className="financial-barcode">*{evidence.id}*</div>
         </div>
         <div className="doc-meta-row">
-          <div><span className="doc-meta-label">ACCOUNT:</span> <span>{metadata.account_holder}</span></div>
-          <div><span className="doc-meta-label">ACCT NO:</span> <span>{metadata.account_number}</span></div>
-          <div><span className="doc-meta-label">PERIOD:</span> <span>{activePage.statement_period}</span></div>
-          <div><span className="doc-meta-label">DOC REF:</span> <span>EX-{evidence.id.toString().padStart(3, '0')}</span></div>
+          <div><span className="doc-meta-label">{t('pages.gameRoom.evidence.viewers.financial.account')}</span> <span>{metadata.account_holder}</span></div>
+          <div><span className="doc-meta-label">{t('pages.gameRoom.evidence.viewers.financial.accountNo')}</span> <span>{metadata.account_number}</span></div>
+          <div><span className="doc-meta-label">{t('pages.gameRoom.evidence.viewers.financial.period')}</span> <span>{activePage.statement_period}</span></div>
+          <div><span className="doc-meta-label">{t('pages.gameRoom.evidence.viewers.financial.docRef')}</span> <span>EX-{evidence.id.toString().padStart(3, '0')}</span></div>
         </div>
       </div>
 
       <table className="financial-table">
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Transaction Detail</th>
-            <th className="amount-header">Amount</th>
+            <th>{t('pages.gameRoom.evidence.viewers.financial.date')}</th>
+            <th>{t('pages.gameRoom.evidence.viewers.financial.transactionDetail')}</th>
+            <th className="amount-header">{t('pages.gameRoom.evidence.viewers.financial.amount')}</th>
           </tr>
         </thead>
         <tbody>
@@ -8198,7 +8412,7 @@ const FinancialRecordViewer: React.FC<FinancialRecordProps> = ({ evidence }) => 
           {(!activePage.transactions || activePage.transactions.length === 0) && (
             <tr>
               <td colSpan={3} className="empty-ledger-msg">
-                No ledger data available for this period.
+                {t('pages.gameRoom.evidence.viewers.financial.noLedgerData')}
               </td>
             </tr>
           )}
@@ -8206,17 +8420,21 @@ const FinancialRecordViewer: React.FC<FinancialRecordProps> = ({ evidence }) => 
       </table>
 
       <div className="financial-footer">
-        <span>AUTHORIZED BY DEPT OF TREASURY</span>
+        <span>{t('pages.gameRoom.evidence.viewers.financial.authorizedBy')}</span>
 
         {pages.length > 1 && (
           <div className="document-pagination">
-            <button disabled={currentPageIndex === 0} onClick={() => setCurrentPageIndex(prev => prev - 1)}>&#8592; Prev</button>
-            <span>PAGE {currentPageIndex + 1} OF {pages.length}</span>
-            <button disabled={currentPageIndex === pages.length - 1} onClick={() => setCurrentPageIndex(prev => prev + 1)}>Next &#8594;</button>
+            <button disabled={currentPageIndex === 0} onClick={() => setCurrentPageIndex(prev => prev - 1)}>
+              &#8592; {t('pages.gameRoom.evidence.viewers.financial.prev')}
+            </button>
+            <span>{t('pages.gameRoom.evidence.viewers.financial.page')} {currentPageIndex + 1} {t('pages.gameRoom.evidence.viewers.financial.of')} {pages.length}</span>
+            <button disabled={currentPageIndex === pages.length - 1} onClick={() => setCurrentPageIndex(prev => prev + 1)}>
+              {t('pages.gameRoom.evidence.viewers.financial.next')} &#8594;
+            </button>
           </div>
         )}
 
-        {pages.length <= 1 && <span>PAGE 1 OF 1</span>}
+        {pages.length <= 1 && <span>{t('pages.gameRoom.evidence.viewers.financial.page')} 1 {t('pages.gameRoom.evidence.viewers.financial.of')} 1</span>}
       </div>
     </div>
   );
@@ -8227,16 +8445,26 @@ export default FinancialRecordViewer;
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/DocumentViewers/JournalViewer.tsx">
 import React, { useState } from 'react';
-import type { JournalMetadata, JournalPage } from '@/types/evidence/document';
+import { useTranslation } from 'react-i18next';
+import type { DocumentEvidence } from '@/types/evidence';
+import type { JournalPage } from '@/types/evidence/document';
+import './JournalViewer.css';
+
+type JournalEvidence = Extract<DocumentEvidence, { sub_type: 'journal' }>;
 
 interface JournalViewerProps {
-  evidence: { id: number; metadata: JournalMetadata; };
+  evidence: JournalEvidence;
 }
 
 const JournalViewer: React.FC<JournalViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const { owner, cover_title, pages = [] } = evidence.metadata;
-  const activePage: JournalPage = pages[currentPageIndex] || { page_number: 1, content: 'This journal appears to be empty.' };
+
+  const activePage: JournalPage = pages[currentPageIndex] || {
+    page_number: 1,
+    content: t('pages.gameRoom.evidence.viewers.journal.empty')
+  };
 
   return (
     <div className="doc-preview journal-diary-preview">
@@ -8244,18 +8472,18 @@ const JournalViewer: React.FC<JournalViewerProps> = ({ evidence }) => {
 
       <div className="journal-header">
         <div className="journal-meta-box">
-          <div><span className="journal-label">AUTHOR:</span> {owner}</div>
+          <div><span className="journal-label">{t('pages.gameRoom.evidence.viewers.journal.author')}</span> {owner}</div>
           {!activePage.is_torn && activePage.date_entry && (
-            <div><span className="journal-label">DATE:</span> {activePage.date_entry}</div>
+            <div><span className="journal-label">{t('pages.gameRoom.evidence.viewers.journal.date')}</span> {activePage.date_entry}</div>
           )}
         </div>
-        <div className="journal-tag">{cover_title || 'PERSONAL DIARY ENTRY'}</div>
+        <div className="journal-tag">{cover_title || t('pages.gameRoom.evidence.viewers.journal.personalDiary')}</div>
       </div>
 
       <div className="journal-diary-body">
         {activePage.is_torn ? (
           <div className="journal-torn-page">
-            [ PAGE TORN OUT - EVIDENCE MISSING ]
+            {t('pages.gameRoom.evidence.viewers.journal.tornPage')}
           </div>
         ) : (
           activePage.content
@@ -8264,9 +8492,15 @@ const JournalViewer: React.FC<JournalViewerProps> = ({ evidence }) => {
 
       {pages.length > 1 && (
         <div className="document-pagination">
-          <button disabled={currentPageIndex === 0} onClick={() => setCurrentPageIndex(prev => prev - 1)}>&#8592; Prev</button>
-          <span>PAGE {currentPageIndex + 1} OF {pages.length}</span>
-          <button disabled={currentPageIndex === pages.length - 1} onClick={() => setCurrentPageIndex(prev => prev + 1)}>Next &#8594;</button>
+          <button disabled={currentPageIndex === 0} onClick={() => setCurrentPageIndex(prev => prev - 1)}>
+            &#8592; {t('pages.gameRoom.evidence.viewers.journal.prev')}
+          </button>
+          <span>
+            {t('pages.gameRoom.evidence.viewers.journal.page')} {currentPageIndex + 1} {t('pages.gameRoom.evidence.viewers.journal.of')} {pages.length}
+          </span>
+          <button disabled={currentPageIndex === pages.length - 1} onClick={() => setCurrentPageIndex(prev => prev + 1)}>
+            {t('pages.gameRoom.evidence.viewers.journal.next')} &#8594;
+          </button>
         </div>
       )}
     </div>
@@ -8278,14 +8512,13 @@ export default JournalViewer;
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/DocumentViewers/MemoViewer.tsx">
 import React from 'react';
-import type { MemoMetadata } from '@/types/evidence/document';
+import type { DocumentEvidence } from '@/types/evidence';
+import './MemoViewer.css';
+
+type MemoEvidence = Extract<DocumentEvidence, { sub_type: 'memo' }>;
 
 interface MemoViewerProps {
-  evidence: {
-    id: number;
-    description?: string;
-    metadata: MemoMetadata;
-  };
+  evidence: MemoEvidence;
 }
 
 const MemoViewer: React.FC<MemoViewerProps> = ({ evidence }) => {
@@ -8306,7 +8539,7 @@ const MemoViewer: React.FC<MemoViewerProps> = ({ evidence }) => {
     );
   }
 
-  // Default Notebook Fallback (Your exact original structure)
+  // Default Notebook Fallback
   return (
     <div className="document-preview memo-preview">
       <div className="notebook-holes"></div>
@@ -8322,8 +8555,441 @@ const MemoViewer: React.FC<MemoViewerProps> = ({ evidence }) => {
 export default MemoViewer;
 </file>
 
+<file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/ForensicViewers/AutopsyViewer.tsx">
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import type { ForensicEvidence } from '@/types/evidence';
+import './AutopsyViewer.css';
+
+type AutopsyEvidence = Extract<ForensicEvidence, { sub_type: 'autopsy' }>;
+
+interface AutopsyViewerProps {
+  evidence: AutopsyEvidence;
+}
+
+const AutopsyViewer: React.FC<AutopsyViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
+  const { metadata } = evidence;
+
+  return (
+    <div className="forensic-preview autopsy-paper">
+      <div className="autopsy-header">
+        <div className="autopsy-agency-block">
+          <div className="autopsy-agency">{t('pages.gameRoom.evidence.viewers.autopsy.officeOfChief')}</div>
+          <h2 className="autopsy-title">{t('pages.gameRoom.evidence.viewers.autopsy.reportOfAutopsy')}</h2>
+          <div className="autopsy-sub-meta">{t('pages.gameRoom.evidence.viewers.autopsy.cityCountyMorgue')}</div>
+        </div>
+        <div className="autopsy-meta-box">
+          <div><span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.caseNo')}</span> {evidence.id.toString().padStart(5, '0')}</div>
+          <div><span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.date')}</span> {new Date().toLocaleDateString()}</div>
+        </div>
+      </div>
+
+      <div className="autopsy-body-section">
+        <div className="autopsy-data-col">
+          <div className="autopsy-data-row">
+            <span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.examiner')}</span>
+            <span className="autopsy-value">{metadata.examiner}</span>
+          </div>
+          <div className="autopsy-data-row">
+            <span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.estTimeOfDeath')}</span>
+            <span className="autopsy-value">{metadata.time_of_death}</span>
+          </div>
+          <div className="autopsy-data-row critical-row">
+            <span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.causeOfDeath')}</span>
+            <span className="autopsy-value cause-of-death">{metadata.cause_of_death}</span>
+          </div>
+
+          <div className="autopsy-notes-section">
+            <span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.externalExam')}</span>
+            <div className="autopsy-notes-content">
+              {metadata.anomalies || t('pages.gameRoom.evidence.viewers.autopsy.noAnomalies')}
+            </div>
+          </div>
+        </div>
+
+        <div className="autopsy-diagram-col">
+          <svg viewBox="0 0 100 220" className="autopsy-body-wireframe">
+            {/* Head */}
+            <circle cx="50" cy="25" r="14" />
+            {/* Torso */}
+            <path d="M35 50 Q50 45 65 50 L60 110 L40 110 Z" />
+            {/* Arms */}
+            <path d="M30 55 Q20 80 15 110" />
+            <path d="M70 55 Q80 80 85 110" />
+            {/* Legs */}
+            <path d="M42 115 L40 195" />
+            <path d="M58 115 L60 195" />
+            {/* Grid Overlay */}
+            <line x1="0" y1="50" x2="100" y2="50" className="grid-line" />
+            <line x1="0" y1="110" x2="100" y2="110" className="grid-line" />
+            <line x1="50" y1="0" x2="50" y2="220" className="grid-line" />
+          </svg>
+          <div className="diagram-caption">{t('pages.gameRoom.evidence.viewers.autopsy.fig1')}</div>
+        </div>
+      </div>
+
+      <div className="autopsy-footer">
+        <div className="autopsy-stamp">{t('pages.gameRoom.evidence.viewers.autopsy.confidentialRecord')}</div>
+        <div className="autopsy-signature-block">
+          <div className="autopsy-signature">{metadata.examiner}</div>
+          <div className="autopsy-signature-line">{t('pages.gameRoom.evidence.viewers.autopsy.chiefMedicalExaminer')}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default AutopsyViewer;
+</file>
+
+<file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/ForensicViewers/BallisticsViewer.tsx">
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import type { ForensicEvidence } from '@/types/evidence';
+import './BallisticsViewer.css';
+
+type BallisticsEvidence = Extract<ForensicEvidence, { sub_type: 'ballistics' }>;
+
+interface BallisticsViewerProps {
+  evidence: BallisticsEvidence;
+}
+
+const BallisticsViewer: React.FC<BallisticsViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
+  const { metadata } = evidence;
+
+  return (
+    <div className="forensic-preview ballistics-modal-viewer">
+      <div className="ballistics-header">
+        <div className="ballistics-agency-block">
+          <div className="ballistics-agency">{t('pages.gameRoom.evidence.viewers.ballistics.stateForensicLab')}</div>
+          <h2 className="ballistics-title">{t('pages.gameRoom.evidence.viewers.ballistics.divBallistics')}</h2>
+          <div className="ballistics-sub-meta">{t('pages.gameRoom.evidence.viewers.ballistics.caseFile')} {metadata.case_number}</div>
+          <div className="ballistics-lab-stamp">{t('pages.gameRoom.evidence.viewers.ballistics.officialLabReport')}</div>
+        </div>
+        <div className="ballistics-barcode">*{metadata.case_number}*</div>
+      </div>
+
+      <div className="ballistics-specimen-box">
+        <div className="ballistics-specimen-title">{t('pages.gameRoom.evidence.viewers.ballistics.intakeLog')}</div>
+        {(metadata.exhibits || []).map((ex: any, idx: number) => (
+          <div key={idx} className="ballistics-specimen-row">
+            <span className="ballistics-specimen-label">{ex.reference}:</span>
+            <span className="ballistics-specimen-desc" dangerouslySetInnerHTML={{ __html: ex.description }} />
+          </div>
+        ))}
+        {(!metadata.exhibits || metadata.exhibits.length === 0) && (
+          <div style={{ fontStyle: 'italic', color: '#666' }}>{t('pages.gameRoom.evidence.viewers.ballistics.noExhibits')}</div>
+        )}
+      </div>
+
+      <div className="ballistics-section">
+        <div className="ballistics-section-title">{t('pages.gameRoom.evidence.viewers.ballistics.section1')}</div>
+        <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.firearm_specs }} />
+      </div>
+
+      <div className="ballistics-section">
+        <div className="ballistics-section-title">{t('pages.gameRoom.evidence.viewers.ballistics.section2')}</div>
+        <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.microscopic_analysis }} />
+      </div>
+
+      {evidence.img_url && (
+        <div className="microscope-photo-attachment">
+          <div className="microscope-tape"></div>
+          <div className="microscope-comparison">
+            <img src={evidence.img_url} alt="Microscopic Striations" className="microscope-image" />
+            <div className="microscope-crosshair-v"></div>
+            <div className="microscope-crosshair-h"></div>
+            <div className="microscope-overlay-text">{t('pages.gameRoom.evidence.viewers.ballistics.lensOverlay')}</div>
+          </div>
+        </div>
+      )}
+
+      {metadata.trajectory_range && (
+        <div className="ballistics-section">
+          <div className="ballistics-section-title">{t('pages.gameRoom.evidence.viewers.ballistics.section3')}</div>
+          <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.trajectory_range }} />
+        </div>
+      )}
+
+      <div className="ballistics-conclusion-box">
+        <div className="ballistics-conclusion" dangerouslySetInnerHTML={{ __html: metadata.conclusion }} />
+      </div>
+
+      <div className="ballistics-sign-off">
+        <div className="ballistics-sign-content">
+          <div className="signature-ink">{metadata.examiner_name}</div>
+          <div className="ballistics-signature-line">{t('pages.gameRoom.evidence.viewers.ballistics.seniorExpert')}</div>
+          <div className="ballistics-verified-id">{t('pages.gameRoom.evidence.viewers.ballistics.verifiedLabId')} {metadata.case_number}</div>
+        </div>
+      </div>
+
+      {metadata.investigator_notes && (
+        <div className="handwritten-note-overlay">
+          {metadata.investigator_notes}
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default BallisticsViewer;
+</file>
+
+<file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/ForensicViewers/DigitalForensicsViewer.tsx">
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import type { ForensicEvidence } from '@/types/evidence';
+import './DigitalForensicsViewer.css';
+
+type DigitalForensicsEvidence = Extract<ForensicEvidence, { sub_type: 'digital_forensics' }>;
+
+interface DigitalForensicsViewerProps {
+  evidence: DigitalForensicsEvidence;
+}
+
+const DigitalForensicsViewer: React.FC<DigitalForensicsViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
+  const { metadata } = evidence;
+
+  return (
+    <div className="forensic-preview digital-terminal">
+      <div className="terminal-header">
+        <span className="terminal-dot red"></span>
+        <span className="terminal-dot yellow"></span>
+        <span className="terminal-dot green"></span>
+        <span className="terminal-title">{t('pages.gameRoom.evidence.viewers.digitalForensics.terminalTitle')}</span>
+      </div>
+
+      <div className="terminal-body">
+        {/* We force LTR here because authentic UNIX commands are always in English/LTR */}
+        <div className="terminal-line command" dir="ltr">
+          <span className="prompt">root@ccu-server:~$</span> ./extract_payload.sh --target=EX-{evidence.id.toString().padStart(3, '0')}
+        </div>
+
+        <div className="terminal-line system">
+          {t('pages.gameRoom.evidence.viewers.digitalForensics.initiating')}
+        </div>
+        <div className="terminal-line system">
+          {t('pages.gameRoom.evidence.viewers.digitalForensics.targetDevice')} <span className="highlight-cyan">{metadata.device_type}</span>
+        </div>
+        <div className="terminal-line system">
+          {t('pages.gameRoom.evidence.viewers.digitalForensics.method')} <span className="highlight-cyan">{metadata.extraction_method}</span>
+        </div>
+
+        <div className="terminal-line system progress-line">
+          {t('pages.gameRoom.evidence.viewers.digitalForensics.bypassing')}
+        </div>
+
+        <div className="terminal-data-box">
+          <div className="data-box-header">
+            <span>{t('pages.gameRoom.evidence.viewers.digitalForensics.beginPayload')}</span>
+            <span className="blink-cursor">_</span>
+          </div>
+          <div className="data-payload">
+            {metadata.recovered_data}
+          </div>
+          <div className="data-box-footer">
+            <span>{t('pages.gameRoom.evidence.viewers.digitalForensics.endOfFile')}</span>
+          </div>
+        </div>
+
+        {/* Kept authentic LTR for the final awaiting prompt */}
+        <div className="terminal-line command" dir="ltr">
+          <span className="prompt">root@ccu-server:~$</span> <span className="blink-cursor">_</span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default DigitalForensicsViewer;
+</file>
+
+<file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/ForensicViewers/DnaViewer.tsx">
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import type { ForensicEvidence } from '@/types/evidence';
+import './DnaViewer.css';
+
+type DnaEvidence = Extract<ForensicEvidence, { sub_type: 'dna' }>;
+
+interface DnaViewerProps {
+  evidence: DnaEvidence;
+}
+
+const DnaViewer: React.FC<DnaViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
+  const { metadata } = evidence;
+
+  // Deterministically generate a visual sequence based on the evidence ID
+  const generateSequence = (seed: number, isMatch: boolean) => {
+    return [...Array(24)].map((_, i) => {
+      const opacity = ((seed * (i + 1) * 17) % 100) / 100;
+      // If it's a match, we perfectly mirror the original opacity.
+      // If not, we scramble it with a different seed multiplier to create a mismatch.
+      const finalOpacity = isMatch ? opacity : ((seed * (i + 1) * 23) % 100) / 100;
+      return (
+        <div
+          key={i}
+          className={`dna-band ${finalOpacity > 0.5 ? 'dense' : ''}`}
+          style={{ opacity: finalOpacity }}
+        />
+      );
+    });
+  };
+
+  const hasMatch = !!metadata.identified_person;
+
+  return (
+    <div className="forensic-preview dna-paper">
+      <div className="dna-header">
+        <div className="dna-lab-title">{t('pages.gameRoom.evidence.viewers.dna.geneticLab')}</div>
+        <div className="dna-report-type">{t('pages.gameRoom.evidence.viewers.dna.strAnalysis')}</div>
+      </div>
+
+      <div className="dna-meta-row">
+        <div className="dna-meta-item">
+          <span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.evidenceId')}</span>
+          <span className="dna-meta-value">EX-{evidence.id.toString().padStart(3, '0')}</span>
+        </div>
+        <div className="dna-meta-item">
+          <span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.sampleType')}</span>
+          <span className="dna-meta-value">{metadata.sample_type}</span>
+        </div>
+        <div className="dna-meta-item">
+          <span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.date')}</span>
+          <span className="dna-meta-value">{new Date().toLocaleDateString()}</span>
+        </div>
+      </div>
+
+      <div className="dna-visualizer-container">
+        <h4 className="dna-visualizer-title">{t('pages.gameRoom.evidence.viewers.dna.electropherogram')}</h4>
+        <div className="dna-visualizer">
+          <div className="dna-sequence-track">
+            <div className="dna-track-label">{t('pages.gameRoom.evidence.viewers.dna.crimeSceneSample')}</div>
+            <div className="dna-bands-container">
+              {generateSequence(evidence.id, true)}
+            </div>
+          </div>
+          <div className="dna-sequence-track match-track">
+            <div className="dna-track-label">{t('pages.gameRoom.evidence.viewers.dna.databaseRecord')}</div>
+            <div className="dna-bands-container">
+              {generateSequence(evidence.id, hasMatch)}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="dna-results-box">
+        <div className="dna-result-row">
+          <span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.probOfMatch')}</span>
+          <span className="dna-value highlight">{metadata.match_probability}</span>
+        </div>
+        <div className="dna-result-row">
+          <span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.identifiedSubject')}</span>
+          <span className={`dna-value ${hasMatch ? 'subject-match' : 'subject-unknown'}`}>
+            {metadata.identified_person || t('pages.gameRoom.evidence.viewers.dna.noMatch')}
+          </span>
+        </div>
+      </div>
+
+      <div className="dna-footer">
+        <div className="dna-barcode">|||||| |||| |||||||| |||||</div>
+        <div className="dna-codis-stamp">{t('pages.gameRoom.evidence.viewers.dna.codisVerified')}</div>
+      </div>
+    </div>
+  );
+};
+
+export default DnaViewer;
+</file>
+
+<file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/ForensicViewers/TraceAnalysisViewer.tsx">
+import React from 'react';
+import { useTranslation } from 'react-i18next';
+import type { ForensicEvidence } from '@/types/evidence';
+import './TraceAnalysisViewer.css';
+
+type TraceEvidence = Extract<ForensicEvidence, { sub_type: 'trace_analysis' }>;
+
+interface TraceAnalysisViewerProps {
+  evidence: TraceEvidence;
+}
+
+const TraceAnalysisViewer: React.FC<TraceAnalysisViewerProps> = ({ evidence }) => {
+  const { t } = useTranslation();
+  const { metadata } = evidence;
+
+  // Deterministically generate a jagged mass spectrometry graph based on the Evidence ID
+  const generatePeaks = (seed: number) => {
+    let points = "0,100 ";
+    for (let i = 1; i <= 20; i++) {
+      const x = i * 5;
+      const isMajorPeak = (seed * i) % 7 === 0;
+      const y = isMajorPeak ? 10 + ((seed * i) % 20) : 75 + ((seed * i) % 20);
+      points += `${x},${y} `;
+    }
+    points += "100,100";
+    return points;
+  };
+
+  return (
+    <div className="forensic-preview trace-paper">
+      <div className="trace-header">
+        <div className="trace-agency">{t('pages.gameRoom.evidence.viewers.traceAnalysis.advancedLab')}</div>
+        <h2 className="trace-title">{t('pages.gameRoom.evidence.viewers.traceAnalysis.massSpec')}</h2>
+      </div>
+
+      <div className="trace-meta">
+        <div><span className="trace-label">{t('pages.gameRoom.evidence.viewers.traceAnalysis.sampleId')}</span> EX-{evidence.id.toString().padStart(3, '0')}</div>
+        <div><span className="trace-label">{t('pages.gameRoom.evidence.viewers.traceAnalysis.scanDate')}</span> {new Date().toLocaleDateString()}</div>
+      </div>
+
+      <div className="trace-graph-box">
+        <h4 className="trace-graph-title">{t('pages.gameRoom.evidence.viewers.traceAnalysis.spectralChart')}</h4>
+        <svg viewBox="0 0 100 100" className="trace-graph" preserveAspectRatio="none">
+          {/* Grid Lines */}
+          <line x1="0" y1="25" x2="100" y2="25" className="trace-grid-line" />
+          <line x1="0" y1="50" x2="100" y2="50" className="trace-grid-line" />
+          <line x1="0" y1="75" x2="100" y2="75" className="trace-grid-line" />
+
+          {/* Data Lines */}
+          <polyline points={generatePeaks(evidence.id)} className="trace-data-line primary-line" />
+          <polyline points={generatePeaks(evidence.id + 1)} className="trace-data-line secondary-line" />
+        </svg>
+        <div className="trace-axis-labels">
+          <span>{t('pages.gameRoom.evidence.viewers.traceAnalysis.mzRatio')}</span>
+          <span>{t('pages.gameRoom.evidence.viewers.traceAnalysis.relativeAbundance')}</span>
+        </div>
+      </div>
+
+      <div className="trace-results">
+        <div className="trace-result-row">
+          <span className="trace-label">{t('pages.gameRoom.evidence.viewers.traceAnalysis.materialComp')}</span>
+          <span className="trace-value">{metadata.material_type}</span>
+        </div>
+        <div className="trace-result-row match-row">
+          <span className="trace-label">{t('pages.gameRoom.evidence.viewers.traceAnalysis.originSource')}</span>
+          <span className="trace-value source-match">{metadata.origin_source}</span>
+        </div>
+      </div>
+
+      <div className="trace-footer">
+        <span>{t('pages.gameRoom.evidence.viewers.traceAnalysis.analysisComplete')}</span>
+        <span className="trace-signature">{t('pages.gameRoom.evidence.viewers.traceAnalysis.autoGenerated')}</span>
+      </div>
+    </div>
+  );
+};
+
+export default TraceAnalysisViewer;
+</file>
+
 <file path="src/pages/GameRoom/tabs/Suspects/SuspectCard.tsx">
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Suspect } from '@/types';
 import './SuspectCard.css';
 
@@ -8337,6 +9003,7 @@ interface SuspectCardProps {
 }
 
 export default function SuspectCard({ suspect, sourcePool, isDraggable, isNew, onDragStart, onInteract }: SuspectCardProps) {
+  const { t } = useTranslation();
   const [isDragging, setIsDragging] = useState(false);
   const [showIntel, setShowIntel] = useState(false);
 
@@ -8359,11 +9026,11 @@ export default function SuspectCard({ suspect, sourcePool, isDraggable, isNew, o
       onDragEnd={(e) => { e.stopPropagation(); setIsDragging(false); }}
       onMouseEnter={() => onInteract(suspect.id)}
     >
-      {/* Top Left Intel Toggle Button */}
+      {/* Top Left/Right Intel Toggle Button */}
       <button
         className="intel-toggle-btn"
         onClick={toggleIntel}
-        title={showIntel ? "Close Intel" : "View Background Intel"}
+        title={showIntel ? t('pages.gameRoom.suspects.card.closeIntel') : t('pages.gameRoom.suspects.card.viewIntel')}
       >
         {showIntel ? '✕' : 'ℹ'}
       </button>
@@ -8372,8 +9039,8 @@ export default function SuspectCard({ suspect, sourcePool, isDraggable, isNew, o
 
       {showIntel ? (
         <div className="suspect-intel-overlay" onPointerDownCapture={(e) => e.stopPropagation()}>
-          <h5 className="intel-header">Background Intel</h5>
-          <p className="intel-text">{suspect.background || 'No background information filed.'}</p>
+          <h5 className="intel-header">{t('pages.gameRoom.suspects.card.backgroundIntel')}</h5>
+          <p className="intel-text">{suspect.background || t('pages.gameRoom.suspects.card.noBackground')}</p>
         </div>
       ) : (
         <>
@@ -8383,7 +9050,7 @@ export default function SuspectCard({ suspect, sourcePool, isDraggable, isNew, o
           />
           <div className="suspect-info">
             <h4 className="suspect-name" title={suspect.name}>{suspect.name}</h4>
-            <span className="suspect-id">PID-{suspect.id.toString().padStart(4, '0')}</span>
+            <span className="suspect-id">{t('pages.gameRoom.suspects.card.pid')}{suspect.id.toString().padStart(4, '0')}</span>
           </div>
         </>
       )}
@@ -8394,6 +9061,7 @@ export default function SuspectCard({ suspect, sourcePool, isDraggable, isNew, o
 
 <file path="src/pages/GameRoom/tabs/Suspects/SuspectsTab.tsx">
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRoomState, useRoomActions } from '../../../../context/RoomContext';
 import { submitSuspectVerdict } from '../../../../services/api';
 import { useMutation } from '@tanstack/react-query';
@@ -8403,6 +9071,7 @@ import './SuspectsTab.css';
 type PoolType = 'unassigned' | 'guilty' | 'innocent';
 
 export default function SuspectsTab() {
+  const { t } = useTranslation();
   const { room, accumulatedSuspects, viewedSuspects } = useRoomState();
   const { refreshRoomData, markSuspectAsViewed, setGameOverData } = useRoomActions();
 
@@ -8496,10 +9165,10 @@ export default function SuspectsTab() {
   return (
     <div className="suspects-tab-container">
       <header className="suspects-header">
-        <h2 className="section-title">Suspect Board</h2>
+        <h2 className="section-title">{t('pages.gameRoom.suspects.tab.suspectBoard')}</h2>
         {!allInitialCompleted && (
           <div className="lock-warning">
-            <span className="forensic-icon">🔒</span> All initial investigation phases must be completed before filing a final indictment.
+            <span className="forensic-icon">🔒</span> {t('pages.gameRoom.suspects.tab.lockWarning')}
           </div>
         )}
       </header>
@@ -8515,9 +9184,9 @@ export default function SuspectsTab() {
                 <path d="M128 135 C80 135, 40 190, 20 256 L236 256 C216 190, 176 135, 128 135 Z" />
               </svg>
             </div>
-            <h3 className="feedback-title">Indictment Rejected</h3>
+            <h3 className="feedback-title">{t('pages.gameRoom.suspects.tab.indictmentRejected')}</h3>
             <p className="feedback-message">{feedback.message}</p>
-            <button className="btn-secondary mt-1" onClick={clearFeedback}>Reassess Evidence</button>
+            <button className="btn-secondary mt-1" onClick={clearFeedback}>{t('pages.gameRoom.suspects.tab.reassessEvidence')}</button>
           </div>
         </div>
       )}
@@ -8529,7 +9198,7 @@ export default function SuspectsTab() {
           onDrop={(e) => handleDrop(e, 'guilty')}
         >
           <div className="zone-header">
-            <h3>PRIME SUSPECTS (GUILTY)</h3>
+            <h3>{t('pages.gameRoom.suspects.tab.primeSuspects')}</h3>
             <span className="zone-counter">{guiltyPool.length}</span>
           </div>
           <div className="zone-content">
@@ -8544,7 +9213,7 @@ export default function SuspectsTab() {
                 onInteract={markSuspectAsViewed}
               />
             ))}
-            {guiltyPool.length === 0 && <div className="zone-placeholder">Drag prime suspects here</div>}
+            {guiltyPool.length === 0 && <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.dragPrimeHere')}</div>}
           </div>
         </div>
 
@@ -8554,7 +9223,7 @@ export default function SuspectsTab() {
           onDrop={(e) => handleDrop(e, 'innocent')}
         >
           <div className="zone-header">
-            <h3>CLEARED (INNOCENT)</h3>
+            <h3>{t('pages.gameRoom.suspects.tab.cleared')}</h3>
             <span className="zone-counter">{innocentPool.length}</span>
           </div>
           <div className="zone-content">
@@ -8569,7 +9238,7 @@ export default function SuspectsTab() {
                 onInteract={markSuspectAsViewed}
               />
             ))}
-            {innocentPool.length === 0 && <div className="zone-placeholder">Drag cleared suspects here</div>}
+            {innocentPool.length === 0 && <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.dragClearedHere')}</div>}
           </div>
         </div>
       </div>
@@ -8580,7 +9249,7 @@ export default function SuspectsTab() {
         onDrop={(e) => handleDrop(e, 'unassigned')}
       >
         <div className="zone-header">
-          <h3>UNASSIGNED PERSONS OF INTEREST</h3>
+          <h3>{t('pages.gameRoom.suspects.tab.unassigned')}</h3>
         </div>
         <div className="unassigned-grid">
           {unassignedPool.map(s => (
@@ -8595,10 +9264,10 @@ export default function SuspectsTab() {
             />
           ))}
           {unassignedPool.length === 0 && accumulatedSuspects.length > 0 && (
-            <div className="zone-placeholder">All suspects categorized.</div>
+            <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.allCategorized')}</div>
           )}
           {accumulatedSuspects.length === 0 && (
-            <div className="zone-placeholder">No suspects have been identified yet.</div>
+            <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.noSuspects')}</div>
           )}
         </div>
       </div>
@@ -8610,15 +9279,15 @@ export default function SuspectsTab() {
           onClick={handleSubmitVerdict}
         >
           {verdictMutation.isPending
-            ? 'Filing Indictment...'
+            ? t('pages.gameRoom.suspects.tab.filingIndictment')
             : isNoFoulPlay
-              ? 'Rule as Accident / Suicide'
-              : 'Submit Final Indictment'}
+              ? t('pages.gameRoom.suspects.tab.ruleAccident')
+              : t('pages.gameRoom.suspects.tab.submitIndictment')}
         </button>
 
         {isReadyToSubmit && isNoFoulPlay && (
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            * By submitting an empty guilty pool, you are declaring no crime occurred.
+            {t('pages.gameRoom.suspects.tab.emptyPoolWarning')}
           </span>
         )}
       </div>
@@ -8631,6 +9300,7 @@ export default function SuspectsTab() {
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import type { GameCase, User } from '@/types';
 import { fetchCases } from '@/services/api';
 import CaseCard from '@/components/CaseCard/CaseCard';
@@ -8639,6 +9309,7 @@ import './MainMenu.css';
 
 export default function MainMenu() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [user, setUser] = useState<User | null>(null);
   const [selectedCase, setSelectedCase] = useState<GameCase | null>(null);
 
@@ -8671,8 +9342,8 @@ export default function MainMenu() {
     window.dispatchEvent(new CustomEvent('auth:unauthorized'));
   };
 
-  if (isLoading) return <div className="terminal-text">Decrypting case files...</div>;
-  if (error) return <div className="terminal-text error">{error instanceof Error ? error.message : 'Failed to load cases'}</div>;
+  if (isLoading) return <div className="terminal-text">{t('pages.mainMenu.decrypting')}</div>;
+  if (error) return <div className="terminal-text error">{error instanceof Error ? error.message : t('pages.mainMenu.failedToLoad')}</div>;
 
   return (
     <div className="main-menu-container">
@@ -8682,10 +9353,10 @@ export default function MainMenu() {
         {user && (
           <div className="user-profile-widget">
             <span className="user-greeting">
-              Agent <span className="user-name-highlight">{user.username}</span>
+              {t('pages.mainMenu.agent')} <span className="user-name-highlight">{user.username}</span>
             </span>
-            <span className="xp-badge">{user.XP} XP</span>
-            <button className="logout-btn" onClick={handleLogout}>Logout</button>
+            <span className="xp-badge">{user.XP} {t('pages.mainMenu.xp')}</span>
+            <button className="logout-btn" onClick={handleLogout}>{t('pages.mainMenu.logout')}</button>
           </div>
         )}
       </div>
@@ -8693,8 +9364,8 @@ export default function MainMenu() {
       {/* 2. Existing Header */}
       <header className="menu-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="agency-title">Active Investigations</h1>
-          <p className="agency-subtitle">Select a dossier to initiate the session.</p>
+          <h1 className="agency-title">{t('pages.mainMenu.activeInvestigations')}</h1>
+          <p className="agency-subtitle">{t('pages.mainMenu.selectDossier')}</p>
         </div>
 
         {user?.is_admin && (
@@ -8709,7 +9380,7 @@ export default function MainMenu() {
               height: 'fit-content'
             }}
           >
-            System Oversight
+            {t('pages.mainMenu.systemOversight')}
           </button>
         )}
       </header>
@@ -9527,15 +10198,39 @@ export * from './base';
 export * from './forensic';
 export * from './document';
 
-// Legacy/Basic media types that don't utilize complex JSON metadata yet
-export type MediaEvidence = BaseEvidence & {
-  evidence_type: 'image' | 'audio' | 'testimony';
-  sub_type?: string | null;
-  metadata?: any | null;
-};
+// 1. STRICT TESTIMONY TYPE
+export interface TranscriptLine {
+  type: 'q' | 'a';
+  speaker: string;
+  text: string;
+}
 
-// The Master Type
-export type Evidence = ForensicEvidence | DocumentEvidence | MediaEvidence;
+export interface TestimonyMetadata {
+  agency?: string;
+  title?: string;
+  date?: string;
+  case_number?: string;
+  subject_name?: string;
+  interviewer?: string;
+  context?: string;
+  transcript?: TranscriptLine[] | string;
+}
+
+export interface TestimonyEvidence extends BaseEvidence {
+  evidence_type: 'testimony';
+  sub_type?: null;
+  metadata: TestimonyMetadata;
+}
+
+// 2. STRICT MEDIA TYPE (For Audio & Images)
+export interface MediaEvidence extends BaseEvidence {
+  evidence_type: 'image' | 'audio';
+  sub_type?: null;
+  metadata?: Record<string, unknown> | null;
+}
+
+// 3. THE MASTER TYPE
+export type Evidence = ForensicEvidence | DocumentEvidence | TestimonyEvidence | MediaEvidence;
 </file>
 
 <file path="src/utils/Result.ts">

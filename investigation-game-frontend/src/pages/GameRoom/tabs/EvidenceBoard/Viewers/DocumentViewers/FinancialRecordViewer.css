@@ -1,0 +1,182 @@
+/* ==============================================================
+   FINANCIAL PREVIEW 
+   ============================================================== */
+.financial-preview-wrapper {
+  background-color: #f5f2eb; 
+  box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.15); 
+  color: #1a1a1a;
+  padding: 4rem; 
+  font-family: var(--font-primary), sans-serif;
+  min-height: 50vh;
+  box-sizing: border-box;
+  position: relative;
+  overflow: hidden; 
+}
+
+.financial-preview-wrapper .doc-header-block {
+  margin-bottom: 2rem;
+}
+
+.financial-preview-wrapper .doc-header-block h2 {
+  font-size: 2rem;
+  color: #1a1a1a;
+  letter-spacing: 0.05em;
+  margin: 0;
+}
+
+.financial-preview-wrapper .doc-meta-row {
+  font-size: 1.1rem;
+  color: #333;
+  margin-top: 1.5rem;
+  display: flex;
+  flex-wrap: wrap; /* Prevents overflow if accounts have long names */
+  gap: 1.5rem;
+}
+
+.financial-preview-wrapper .doc-meta-label {
+  /* Swapped to logical property */
+  margin-inline-end: 0.25rem;
+  font-weight: bold;
+}
+
+/* --- THE TABLE --- */
+.financial-preview-wrapper .financial-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 1rem;
+  margin-top: 2.5rem;
+  border: 1px solid #b5b0a1; 
+  position: relative;
+  z-index: 1; /* Ensures the table stays above the watermark */
+}
+
+.financial-preview-wrapper .financial-table th,
+.financial-preview-wrapper .financial-table td {
+  border: 1px solid #b5b0a1; 
+  padding: 1rem 1.25rem;
+  /* Swapped to logical property */
+  text-align: start;
+  color: #1a1a1a;
+}
+
+.financial-preview-wrapper .financial-table th {
+  background-color: #e8e4d5; 
+  font-weight: 700;
+}
+
+.financial-preview-wrapper .financial-table td {
+  background-color: transparent;
+}
+
+/* --- FINANCIAL VISUAL FLAIR --- */
+
+.financial-preview-wrapper .financial-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+/* Uses the barcode font from your index.html */
+.financial-preview-wrapper .financial-barcode {
+  font-family: 'Libre Barcode 39', cursive, monospace;
+  font-size: 3.5rem;
+  line-height: 0.8;
+  color: #1a1a1a;
+  opacity: 0.85;
+}
+
+/* The red angled rubber stamp */
+.financial-preview-wrapper .financial-stamp {
+  position: absolute;
+  top: 40px;
+  /* Swapped to logical property */
+  inset-inline-end: 60px;
+  font-family: var(--font-mono);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: rgba(163, 50, 50, 0.7); /* Faded crimson */
+  border: 3px solid rgba(163, 50, 50, 0.7);
+  padding: 0.25rem 0.5rem;
+  transform: rotate(12deg);
+  letter-spacing: 0.1em;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* Flip rotation for RTL */
+[dir="rtl"] .financial-preview-wrapper .financial-stamp {
+  transform: rotate(-12deg);
+}
+
+/* The giant faint text behind the table */
+.financial-preview-wrapper .financial-watermark {
+  position: absolute;
+  top: 50%;
+  /* Swapped to logical property */
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  font-family: var(--font-primary);
+  font-size: 8rem;
+  font-weight: 900;
+  color: rgba(0, 0, 0, 0.03);
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 0;
+}
+
+/* Flip rotation and translation axis for RTL */
+[dir="rtl"] .financial-preview-wrapper .financial-watermark {
+  transform: translate(50%, -50%) rotate(30deg);
+}
+
+/* Official printed footer */
+.financial-preview-wrapper .financial-footer {
+  margin-top: 4rem;
+  padding-top: 1rem;
+  border-top: 2px solid #1a1a1a;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: #555;
+  font-weight: bold;
+  letter-spacing: 0.05em;
+}
+
+/* Reusing the pagination block styles for the footer alignment */
+.financial-footer .document-pagination {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.financial-table th.amount-header,
+.financial-table td.amount-col {
+  /* Swapped to logical property */
+  text-align: end;
+}
+
+.financial-table td.date-col {
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+.financial-table td.amount-col {
+  font-weight: 800;
+  font-family: var(--font-mono);
+}
+
+.financial-table td.amount-col.negative {
+  color: #c62828;
+}
+
+.financial-table td.empty-ledger-msg {
+  text-align: center;
+  font-style: italic;
+  color: #666;
+  padding: 2.5rem;
+}

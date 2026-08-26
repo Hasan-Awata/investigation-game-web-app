@@ -1,0 +1,447 @@
+{
+  "system": {
+    "loading": "جاري تأسيس اتصال آمن...",
+    "error": "خطأ في النظام:"
+  },
+  "admin": {
+    "dashboardTitle": "إشراف النظام // لوحة التحكم",
+    "unauthorized": "غير مصرح لك بالدخول"
+  },
+  "gameRoom": {
+    "sessionCode": "رمز الجلسة",
+    "activeAgents": "العملاء النشطون",
+    "strikes": "الإنذارات"
+  },
+  "components": {
+    "adminGuard": {
+      "dashboardTitle": "إشراف النظام // لوحة التحكم"
+    },
+    "agentNotepad": {
+      "fieldLedger": "السجل الميداني",
+      "synced": "تمت المزامنة ✓",
+      "saving": "جاري الحفظ ⟳",
+      "placeholder": "سجل الجداول الزمنية، وتناقضات المشتبه بهم، وروابط الأدلة هنا..."
+    },
+    "caseBriefing": {
+      "authoredBy": "تأليف",
+      "system": "النظام",
+      "playerRating": "تقييم اللاعبين",
+      "difficulty": "مستوى الصعوبة",
+      "standard": "عادي",
+      "estPlaytime": "وقت اللعب المتوقع",
+      "unknown": "غير معروف",
+      "advisory": "التصنيف العمري",
+      "unrated": "غير مصنف",
+      "accessRequirements": "متطلبات الوصول",
+      "minXp": "الحد الأدنى للخبرة:",
+      "reward": "المكافأة:",
+      "startCase": "بدء القضية",
+      "encrypting": "جاري التشفير...",
+      "restartCase": "إعادة تشغيل القضية",
+      "replayCase": "إعادة لعب القضية",
+      "perfectReplay": "(إعادة لعب مثالية)",
+      "partialReplay": "(إعادة لعب جزئية)",
+      "penaltyAllowance": "(بدل عقوبة)",
+      "continueInvestigation": "متابعة التحقيق",
+      "xp": "نقطة خبرة"
+    },
+    "caseCard": {
+      "caseClosed": "أُغلقت القضية",
+      "failed": "فشلت",
+      "minXp": "الحد الأدنى للخبرة:",
+      "reward": "المكافأة:",
+      "xp": "نقطة خبرة"
+    }
+  },
+  "pages": {
+    "auth": {
+      "title": "الوصول إلى النظام",
+      "subtitleLogin": "أدخل بيانات الاعتماد للوصول إلى ملفات القضية.",
+      "subtitleRegister": "تسجيل ملف محقق جديد.",
+      "usernamePlaceholder": "اسم المستخدم",
+      "fullNamePlaceholder": "الاسم الكامل",
+      "emailPlaceholder": "البريد الإلكتروني",
+      "passwordPlaceholder": "كلمة المرور",
+      "authenticating": "جاري المصادقة...",
+      "loginBtn": "تسجيل الدخول",
+      "registerBtn": "تسجيل",
+      "toggleToRegister": "تحتاج إلى تصريح؟ سجل هنا.",
+      "toggleToLogin": "لديك صلاحية وصول بالفعل؟ سجل دخولك."
+    },
+    "mainMenu": {
+      "agent": "العميل",
+      "xp": "نقطة خبرة",
+      "logout": "تسجيل الخروج",
+      "activeInvestigations": "التحقيقات النشطة",
+      "selectDossier": "حدد ملفاً لبدء الجلسة.",
+      "systemOversight": "إشراف النظام",
+      "decrypting": "جاري فك تشفير ملفات القضية...",
+      "failedToLoad": "فشل في تحميل القضايا"
+    },
+    "gameRoom": {
+      "synchronizing": "جاري مزامنة بيانات الجلسة...",
+      "noInviteCode": "لم يتم توفير رمز دعوة.",
+      "sessionCode":"رمز الجلسة",
+      "activeAgents":"العملاء النشطون",
+      "strikes": "الإنذارات",
+      "sessionNotFound": "الجلسة غير موجودة.",
+      "departmentUpdate": "تحديث الإدارة",
+      "wiretapIntercepted": "تم اعتراض مكالمة",
+      "audioFeedActive": "البث الصوتي نشط. استمع بعناية.",
+      "layout": {
+        "departmentHeat": "ضغط الإدارة",
+        "host": "المضيف",
+        "acknowledge": "إقرار",
+        "tabs": {
+          "caseDetails": "تفاصيل القضية",
+          "evidences": "الأدلة",
+          "suspects": "المشتبه بهم",
+          "campaign": "الحملة"
+        },
+        "notifications":{
+        "newCasualty": "ضحية جديدة",
+        "unreadIntel": "معلومات غير مقروءة"
+        }
+      },
+      "gameEndOverlay": {
+        "caseClosed": "أُغلقت القضية",
+        "caseClosedFallback": "تم كشف الحقيقة. عمل ممتاز.",
+        "mandateRevoked": "تم إلغاء التفويض",
+        "mandateRevokedFallback": "تمت إساءة قراءة الأدلة. المذنبون أحرار، والأبرياء يدفعون الثمن.",
+        "timeElapsed": "الوقت المستغرق",
+        "xpGranted": "الخبرة الممنوحة",
+        "suspectsCaught": "المقبوض عليهم",
+        "innocentsAccused": "الأبرياء المتهمون",
+        "returnToHq": "العودة إلى المقر الرئيسي"
+      },
+      "caseDetails": {
+        "missingData": "بيانات القضية مفقودة",
+        "missingDataDesc": "لم يقم الخادم بتحميل البيانات الوصفية للقضية.",
+        "minXp": "الحد الأدنى للخبرة:",
+        "reward": "المكافأة:",
+        "xp": "نقطة خبرة",
+        "officialBriefing": "الإحاطة الرسمية",
+        "identifiedCasualties": "الضحايا الذين تم التعرف عليهم",
+        "vic": "ضحية-",
+        "identificationCode": "رمز التعريف: ضحية-",
+        "noBackground": "لا توجد معلومات خلفية متاحة في السجلات الرسمية."
+      },
+      "suspects": {
+        "card": {
+          "viewIntel": "عرض المعلومات الخلفية",
+          "closeIntel": "إغلاق المعلومات",
+          "backgroundIntel": "المعلومات الخلفية",
+          "noBackground": "لا توجد معلومات خلفية مسجلة.",
+          "pid": "رقم-"
+        },
+        "tab": {
+          "suspectBoard": "لوحة المشتبه بهم",
+          "lockWarning": "يجب إكمال جميع مراحل التحقيق الأولية قبل تقديم لائحة الاتهام النهائية.",
+          "indictmentRejected": "رُفضت لائحة الاتهام",
+          "reassessEvidence": "إعادة تقييم الأدلة",
+          "primeSuspects": "المشتبه بهم الرئيسيون (مذنبون)",
+          "dragPrimeHere": "اسحب المشتبه بهم الرئيسيين هنا",
+          "cleared": "تمت تبرئتهم (أبرياء)",
+          "dragClearedHere": "اسحب المشتبه بهم المبرئين هنا",
+          "unassigned": "أشخاص موضع اهتمام غير مصنفين",
+          "allCategorized": "تم تصنيف جميع المشتبه بهم.",
+          "noSuspects": "لم يتم تحديد أي مشتبه بهم حتى الآن.",
+          "filingIndictment": "جاري تقديم لائحة الاتهام...",
+          "ruleAccident": "اعتبارها حادث / انتحار",
+          "submitIndictment": "تقديم لائحة الاتهام النهائية",
+          "emptyPoolWarning": "* بتقديم مجموعة مذنبين فارغة، فإنك تعلن عدم وقوع جريمة."
+        }
+      },
+      "evidence": {
+        "board": {
+          "title": "لوحة الأدلة",
+          "subtitle": "اسحب الملفات إلى الدرج أدناه لطلب مذكرة تفتيش أو استدعاء.",
+          "proceduralTrayTitle": "درج الطلبات الإجرائية",
+          "requestApproved": "تمت الموافقة على الطلب",
+          "requestDenied": "تم رفض الطلب",
+          "acknowledge": "إقرار",
+          "noEvidence": "لم يتم استعادة أي أدلة لهذه المرحلة.",
+          "dragAndDrop": "اسحب وأسقط الأدلة هنا",
+          "unknownFile": "ملف غير معروف",
+          "selectRequestType": "-- حدد نوع الطلب --",
+          "filing": "جاري التقديم...",
+          "submitToDa": "إرسال الطلب إلى المدعي العام",
+          "hideFiled": "إخفاء الطلبات المقدمة",
+          "viewFiled": "عرض الطلبات المقدمة",
+          "noRequestsFiled": "لم يتم تقديم أي طلبات إجرائية حتى الآن خلال هذه الجلسة.",
+          "crossReferenced": "تم التقاطع مع:",
+          "approvedStatus": "موافق عليه",
+          "requestTypes": {
+            "search_warrant": "مذكرة تفتيش",
+            "financial_subpoena": "استدعاء سجلات مالية",
+            "toxicology_report": "تقرير سموم",
+            "wiretap_authorization": "تصريح تنصت",
+            "ballistics_analysis": "تحليل مقذوفات",
+            "digital_forensics": "فحص الأدلة الرقمية",
+            "exhumation_order": "أمر استخراج جثة"
+          }
+        },
+        "variants": {
+          "audio": {
+            "aSide": "الوجه أ"
+          },
+          "image": {
+            "noImage": "لا توجد صورة"
+          },
+          "testimony": {
+            "transcript": "نسخة طبق الأصل"
+          },
+          "forensic": {
+            "medicalExaminer": "مكتب الطبيب الشرعي",
+            "evidenceSealed": "دليل - مختوم",
+            "firearmsUnit": "وحدة الأسلحة النارية وعلامات الأدوات",
+            "dnaProfile": "تحليل الأمصال والملف الجيني",
+            "dataExtraction": "تقرير استخراج البيانات",
+            "traceAnalysis": "تحليل المواد والآثار"
+          },
+          "document": {
+            "financialDate": "التاريخ",
+            "financialDetail": "التفاصيل",
+            "financialAmount": "المبلغ",
+            "financialStatus": "الحالة",
+            "financialCleared": "مُسدد",
+            "contractLegalFiles": "ملفات قانونية",
+            "dossierRestricted": "سري للغاية"
+          }
+        },
+        "viewers": {
+          "contract": {
+            "noTerms": "لا توجد شروط متاحة.",
+            "bindingAgreement": "اتفاقية ملزمة",
+            "deedOfAgreement": "صك اتفاق",
+            "officialInstrument": "أداة قانونية رسمية // موثق من كاتب العدل",
+            "betweenParties": "بين الأطراف:",
+            "party": "الطرف",
+            "termsAndConditions": "الشروط والأحكام (صفحة",
+            "inWitnessWhereof": "وإثباتاً لما تقدم، قام أطراف هذه الاتفاقية بالتوقيع عليها اعتباراً من",
+            "authorizedRep": "ممثل مفوض",
+            "witness": "شاهد",
+            "verifiedNotarized": "تم التحقق: موثق",
+            "flaggedFraudulent": "مُعلّم: مزور",
+            "prev": "السابق",
+            "next": "التالي",
+            "page": "صفحة",
+            "of": "من"
+          },
+          "financial": {
+            "confidential": "سري",
+            "subpoenaedRecord": "سجل مستدعى",
+            "account": "الحساب:",
+            "accountNo": "رقم الحساب:",
+            "period": "الفترة:",
+            "docRef": "مرجع المستند:",
+            "date": "التاريخ",
+            "transactionDetail": "تفاصيل المعاملة",
+            "amount": "المبلغ",
+            "noLedgerData": "لا تتوفر بيانات دفتر الأستاذ لهذه الفترة.",
+            "authorizedBy": "معتمد من وزارة الخزانة",
+            "prev": "السابق",
+            "next": "التالي",
+            "page": "صفحة",
+            "of": "من"
+          },
+          "journal": {
+            "author": "المؤلف:",
+            "date": "التاريخ:",
+            "personalDiary": "إدخال مذكرات شخصية",
+            "empty": "يبدو أن هذه المذكرات فارغة.",
+            "tornPage": "[ تم تمزيق الصفحة - الدليل مفقود ]",
+            "prev": "السابق",
+            "next": "التالي",
+            "page": "صفحة",
+            "of": "من"
+          },
+          "correspondence": {
+            "confidential": "مراسلات سرية",
+            "to": "إلى:",
+            "from": "من:",
+            "subject": "الموضوع:",
+            "intelDivision": "قسم الاستحواذ على المعلومات // القطاع-4"
+          },
+          "backgroundCheck": {
+            "deptOfPublicSafety": "إدارة السلامة العامة - قسم السجلات",
+            "title": "تحقيق في الخلفية",
+            "subjectName": "اسم الموضوع:",
+            "dob": "تاريخ الميلاد:",
+            "sexAge": "الجنس / العمر:",
+            "aliases": "الأسماء المستعارة:",
+            "lastKnownAddress": "آخر عنوان معروف:",
+            "employmentProfile": "الملف الوظيفي والمالي",
+            "criminalHistory": "التاريخ الجنائي والمذكرات",
+            "knownAssociates": "الشركاء المعروفون"
+          },
+          "autopsy": {
+            "officeOfChief": "مكتب كبير الأطباء الشرعيين",
+            "reportOfAutopsy": "تقرير تشريح الجثة",
+            "cityCountyMorgue": "قسم مشرحة المدينة والمقاطعة",
+            "caseNo": "رقم القضية:",
+            "date": "التاريخ:",
+            "examiner": "الطبيب الشرعي:",
+            "estTimeOfDeath": "وقت الوفاة المقدر:",
+            "causeOfDeath": "سبب الوفاة:",
+            "externalExam": "الفحص الخارجي والشذوذ:",
+            "noAnomalies": "الجثة لشخص تطور بشكل طبيعي. لم يتم الإبلاغ عن أي شذوذ واضح أو صدمات ثانوية أثناء الفحص القياسي.",
+            "fig1": "الشكل 1. مرجع تشريحي",
+            "confidentialRecord": "سري // سجل رسمي",
+            "chiefMedicalExaminer": "كبير الأطباء الشرعيين"
+          },
+          "ballistics": {
+            "stateForensicLab": "المختبر الجنائي بالولاية",
+            "divBallistics": "قسم الأسلحة النارية وعلامات الأدوات",
+            "caseFile": "ملف القضية رقم",
+            "officialLabReport": "تقرير مختبر رسمي",
+            "intakeLog": "سجل استلام الأدلة",
+            "noExhibits": "لم يتم تسجيل أي معروضات مادية عند الاستلام.",
+            "section1": "1. بيانات مواصفات السلاح الناري",
+            "section2": "2. التحليل المجهري وعلامات الأدوات",
+            "lensOverlay": "عدسة محاذاة التخطيط",
+            "section3": "3. نتائج المسار والمدى",
+            "seniorExpert": "خبير أسلحة نارية أول",
+            "verifiedLabId": "معرف المختبر المعتمد:"
+          },
+          "dna": {
+            "geneticLab": "مختبر الأدلة الجنائية الجينية",
+            "strAnalysis": "تحليل الحمض النووي (STR) ومطابقة الملف الجيني",
+            "evidenceId": "معرف الدليل:",
+            "sampleType": "نوع العينة:",
+            "date": "التاريخ:",
+            "electropherogram": "مقارنة المخطط الكهربائي",
+            "crimeSceneSample": "عينة مسرح الجريمة",
+            "databaseRecord": "سجل قاعدة البيانات",
+            "probOfMatch": "احتمالية التطابق:",
+            "identifiedSubject": "الموضوع الذي تم التعرف عليه:",
+            "noMatch": "لم يتم العثور على تطابق في قاعدة البيانات",
+            "codisVerified": "اكتمل بحث CODIS // تم التحقق منه"
+          },
+          "digitalForensics": {
+            "terminalTitle": "وحدة_الجرائم_الإلكترونية_v3.4.1 // محطة_فك_التشفير",
+            "initiating": "[+] جاري بدء بروتوكول الاستخراج الجنائي...",
+            "targetDevice": "[+] الجهاز المستهدف:",
+            "method": "[+] الطريقة:",
+            "bypassing": "[+] جاري تجاوز التشفير........ [ نجاح ]",
+            "beginPayload": "--- بداية الحمولة المستردة ---",
+            "endOfFile": "--- نهاية الملف ---"
+          },
+          "traceAnalysis": {
+            "advancedLab": "مختبر المواد المتقدمة والآثار",
+            "massSpec": "تحليل مطياف الكتلة",
+            "sampleId": "معرف العينة:",
+            "scanDate": "تاريخ الفحص:",
+            "spectralChart": "مخطط الوفرة الطيفية",
+            "mzRatio": "نسبة الكتلة إلى الشحنة (m/z)",
+            "relativeAbundance": "الوفرة النسبية ➔",
+            "materialComp": "تركيبة المواد:",
+            "originSource": "مصدر المنشأ المحدد:",
+            "analysisComplete": "اكتمل التحليل",
+            "autoGenerated": "تقرير نظام مُنشأ تلقائياً"
+          },
+          "testimony": {
+            "policeDept": "قسم شرطة المدينة",
+            "officialTranscript": "سجل شهادة رسمي",
+            "date": "التاريخ",
+            "caseNo": "رقم القضية",
+            "subject": "الموضوع المستجوب:",
+            "interviewer": "المحقق:",
+            "watermark": "نسخة رسمية",
+            "certStatement": "أقر بموجب هذا أن هذه الوثيقة هي نسخة صحيحة ودقيقة من الاستجواب المسجل الوارد في المرجع.",
+            "stenoSignature": "كاتب المحكمة / مسؤول التسجيل"
+          },
+          "media": {
+            "audioNotSupported": "متصفحك لا يدعم تشغيل هذا المقطع الصوتي.",
+            "imageAltFallback": "صورة دليل مصورة",
+            "noMediaFound": "لم يتم العثور على وسائط مرتبطة بهذا الملف."
+          }
+        }
+    },
+    "campaign": {
+        "unknownPhase": "مرحلة غير معروفة",
+        "noLeads": "لا توجد خيوط متاحة حالياً في هذه المرحلة.",
+        "undiscoveredEncounter": "مواجهة غير مكتشفة",
+        "hiddenPathDesc": "هذا المسار يظل مخفياً. يجب عليك استنتاج الرابط السردي الصحيح أو تحديد أدلة معينة لفتح هذا الخيط.",
+        "activeInvestigation": "تحقيق نشط",
+        "hostInitiateWarning": "بدء هذه المرحلة سيقفل جميع المراحل الأخرى حتى يتم التوصل إلى حكم.",
+        "awaitingHost": "في انتظار تفويض المضيف لبدء مرحلة التحقيق هذه.",
+        "lockingCoordinator": "جاري قفل المنسق...",
+        "commenceInvestigation": "بدء التحقيق",
+        "lead": "الخيط",
+        "levels": {
+          "interrogation": {
+          "suspect": "المشتبه به",
+          "tieDetected": "⚠️ تم اكتشاف تعادل: قم بتغيير التصويت للحل",
+          "voteCast": "تم التصويت ({{votes}}/{{total}}) - يمكنك إعادة التعيين",
+          "selectResponse": "اختر الرد ({{votes}}/{{total}})",
+          "missingIntel": "🔒 [ معلومات مفقودة ]",
+          "investigators": "المحققون",
+          "processing": "جاري المعالجة...",
+          "submitVerdict": "تقديم الحكم النهائي",
+          "awaitingHostVerdict": "في انتظار المضيف لتقديم الحكم النهائي..."
+          },
+          "location": {
+          "leadDiscovered": "اكتشاف خيط",
+          "foundUseful": "لقد وجدت شيئاً مفيداً هنا. سأسجله على اللوحة.",
+          "newSceneUnlocked": "تم فتح مشهد جديد",
+          "newVantagePoint": "تم اكتشاف نقطة مراقبة أو غرفة جديدة.",
+          "deadEnd": "طريق مسدود",
+          "nothingFound": "لم يتم العثور على شيء هنا. يجب أن أستمر في البحث.",
+          "activeSceneSweep": "مسح نشط للمشهد",
+          "closeViewer": "إغلاق العارض",
+          "crimeSceneAlt": "مسرح الجريمة",
+          "requiresIntel": "🔒 [ يتطلب معلومات إضافية ]",
+          "inspectLocation": "فحص الموقع",
+          "enterViewerHint": "أدخل وضع ملء الشاشة لمسح المشهد.",
+          "processing": "جاري المعالجة...",
+          "leaveLocation": "مغادرة الموقع",
+          "awaitingHost": "المسح قيد التقدم. في انتظار المضيف لإنهاء البحث..."
+          },
+          "wiretap": {
+          "activeIntercept": "[ اعتراض نشط ]",
+          "interceptPrefix": "اعتراض-",
+          "tieDetected": "> ⚠️ تم اكتشاف تعادل: قم بتغيير التصويت للحل",
+          "voteRecorded": "> الحالة: تم تسجيل التصويت [{{votes}}/{{total}}]",
+          "awaitingConsensus": "> الحالة: في انتظار إجماع العملاء [{{votes}}/{{total}}]",
+          "connectionSevered": "انقطع الاتصال. اعتمد على الملاحظات الميدانية.",
+          "initiateAudio": "▶ بدء البث الصوتي (مرة واحدة)",
+          "awaitingHostAudio": "في انتظار المضيف لبدء البث",
+          "pathLocked": "🔒 [ المسار مغلق: لم يتم استيفاء المتطلبات ]",
+          "classified": "[ سري ]",
+          "submitAnalysis": "تقديم تحليل الاعتراض",
+          "processing": "جاري المعالجة...",
+          "awaitingHostSubmit": "في انتظار المضيف لتقديم تحليل الاعتراض...",
+          "audioFeedLabel": "[ بث صوتي ]",
+          "feedSeveredLabel": "[ انقطع البث ]"
+          }
+        }
+    },
+    "hooks": {
+        "phase": {
+          "consensusVerified": "تم التحقق من الإجماع",
+          "theoryRejected": "رُفضت النظرية",
+          "systemError": "خطأ في النظام",
+          "transmissionError": "خطأ في الإرسال",
+          "evidenceRecovered": "تم استرداد أدلة",
+          "evidenceRecoveredMsg": "تم تأمين {{count}} قطعة/قطع جديدة من الأدلة المادية.",
+          "phaseUnlocked": "تم فتح مرحلة",
+          "phaseUnlockedMsg": "مسار سردي جديد متاح الآن.",
+          "personOfInterest": "شخص موضع اهتمام",
+          "personOfInterestMsg": "تمت إضافة مشتبه به جديد إلى اللوحة.",
+          "casualtyIdentified": "تم تحديد هوية الضحية",
+          "casualtyIdentifiedMsg": "تم التحقق من تفاصيل الضحية الجديدة."
+        },
+        "request": {
+          "proceduralApproved": "تمت الموافقة على الطلب الإجرائي",
+          "proceduralApprovedMsg": "تم التصريح بملفات قضية جديدة وإضافتها إلى اللوحة.",
+          "warrantExecuted": "تم تنفيذ مذكرة التفتيش",
+          "warrantExecutedMsg": "مرحلة تحقيق جديدة متاحة الآن على خارطة الطريق."
+        }
+    }    
+  }
+}
+}
+
+
+  

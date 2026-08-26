@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useRoomState, useRoomActions } from '@/context/RoomContext';
 import type { Choice } from '@/types';
-import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/services/api'; 
+import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/services/api';
 
 export type { ToastNotification, GlobalFeedback } from '@/context/RoomContext';
 
 interface ApiError { title?: string; message: string; }
 
 export function useInvestigationPhase() {
+  const { t } = useTranslation();
   const { room } = useRoomState();
   const { refreshRoomData, addGlobalToast, setGlobalFeedback } = useRoomActions();
-  
+
   const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
   const roomId = room.id;
 
@@ -21,7 +23,7 @@ export function useInvestigationPhase() {
     if (!currentUser) return;
 
     const serverVotes: Record<number, number> = {};
-    room.votes?.forEach(vote => {
+    room.votes?.forEach((vote: any) => {
       if (vote.user_id === currentUser.id) {
         serverVotes[vote.question_id] = vote.choice_id;
       }
@@ -43,87 +45,95 @@ export function useInvestigationPhase() {
   const submitTheoryMutation = useMutation({
     mutationFn: async () => {
       const result = await submitAssessment(roomId);
-      if (!result.isSuccess) throw { message: result.errorMessage }; 
+      if (!result.isSuccess) throw { message: result.errorMessage };
       return result.value;
     },
     onSuccess: async (data) => {
       if (data.status === 'success' || data.status === 'failed_final') {
-        setGlobalFeedback({ 
-          type: data.status === 'success' ? 'success' : 'error', 
-          title: data.status === 'success' ? 'Consensus Verified' : 'Theory Rejected',
-          message: data.message 
+        setGlobalFeedback({
+          type: data.status === 'success' ? 'success' : 'error',
+          title: data.status === 'success' ? t('pages.gameRoom.hooks.phase.consensusVerified') : t('pages.gameRoom.hooks.phase.theoryRejected'),
+          message: data.message
         });
-        
+
         setTimeout(() => {
           setGlobalFeedback(null);
-          setLocalVotes({}); 
-          refreshRoomData(); 
+          setLocalVotes({});
+          refreshRoomData();
         }, 4000);
       } else {
-        setGlobalFeedback({ type: 'error', title: 'Theory Rejected', message: data.message });
-        setLocalVotes({}); 
-        refreshRoomData(); 
+        setGlobalFeedback({ type: 'error', title: t('pages.gameRoom.hooks.phase.theoryRejected'), message: data.message });
+        setLocalVotes({});
+        refreshRoomData();
       }
     },
     onError: (error: ApiError) => {
-      setGlobalFeedback({ type: 'error', title: error.title || 'Error', message: error.message });
+      setGlobalFeedback({ type: 'error', title: error.title || t('pages.gameRoom.hooks.phase.systemError'), message: error.message });
     }
   });
 
   const initiatePhaseMutation = useMutation({
     mutationFn: async (levelId: number) => {
       const result = await initiatePhase(roomId, levelId);
-      if (!result.isSuccess) throw { message: result.errorMessage }; 
+      if (!result.isSuccess) throw { message: result.errorMessage };
       return result.value;
     },
     onSuccess: () => refreshRoomData(),
-    onError: (error: ApiError) => setGlobalFeedback({ 
-      type: 'error', title: error.title || 'System Error', message: error.message 
+    onError: (error: ApiError) => setGlobalFeedback({
+      type: 'error', title: error.title || t('pages.gameRoom.hooks.phase.systemError'), message: error.message
     })
   });
 
   const triggerWiretapMutation = useMutation({
     mutationFn: async ({ questionId, audioUrl }: { questionId: number, audioUrl: string }) => {
       const result = await triggerWiretap(roomId, questionId);
-      if (!result.isSuccess) throw { message: result.errorMessage }; 
+      if (!result.isSuccess) throw { message: result.errorMessage };
       return { value: result.value, audioUrl };
     },
     onSuccess: () => {
-      refreshRoomData(); 
+      refreshRoomData();
     },
-    onError: (error: ApiError) => setGlobalFeedback({ // <-- FIXED HERE
-      type: 'error', title: error.title || 'Transmission Error', message: error.message 
+    onError: (error: ApiError) => setGlobalFeedback({
+      type: 'error', title: error.title || t('pages.gameRoom.hooks.phase.transmissionError'), message: error.message
     })
   });
-  
+
   const handleSelectChoice = (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => {
-    e.stopPropagation(); 
-    if (status !== 'active') return; 
+    e.stopPropagation();
+    if (status !== 'active') return;
 
     setLocalVotes(prev => ({ ...prev, [questionId]: choice.id }));
 
     if (choice.outcomes?.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) {
-      addGlobalToast({ 
-        type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${choice.outcomes.unlock_evidence.length} new piece(s) of physical evidence secured.`, 
-        icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
+      addGlobalToast({
+        type: 'evidence', 
+        title: t('pages.gameRoom.hooks.phase.evidenceRecovered'), 
+        message: t('pages.gameRoom.hooks.phase.evidenceRecoveredMsg', { count: choice.outcomes.unlock_evidence.length }),
+        icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36'
       });
     }
     if (choice.outcomes?.unlock_levels && choice.outcomes.unlock_levels.length > 0) {
-      addGlobalToast({ 
-        type: 'level', title: 'PHASE UNLOCKED', message: 'A new narrative path is now available.', 
-        icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
+      addGlobalToast({
+        type: 'level', 
+        title: t('pages.gameRoom.hooks.phase.phaseUnlocked'), 
+        message: t('pages.gameRoom.hooks.phase.phaseUnlockedMsg'),
+        icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e'
       });
     }
     if (choice.outcomes?.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) {
-      addGlobalToast({ 
-        type: 'suspect', title: 'PERSON OF INTEREST', message: 'New suspect added to the board.', 
-        icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232' 
+      addGlobalToast({
+        type: 'suspect', 
+        title: t('pages.gameRoom.hooks.phase.personOfInterest'), 
+        message: t('pages.gameRoom.hooks.phase.personOfInterestMsg'),
+        icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232'
       });
     }
     if (choice.outcomes?.unlock_victims && choice.outcomes.unlock_victims.length > 0) {
-      addGlobalToast({ 
-        type: 'victim', title: 'CASUALTY IDENTIFIED', message: 'New victim details have been verified.', 
-        icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91' 
+      addGlobalToast({
+        type: 'victim', 
+        title: t('pages.gameRoom.hooks.phase.casualtyIdentified'), 
+        message: t('pages.gameRoom.hooks.phase.casualtyIdentifiedMsg'),
+        icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91'
       });
     }
 
@@ -137,7 +147,7 @@ export function useInvestigationPhase() {
 
   const clearFeedback = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    setGlobalFeedback(null); 
+    setGlobalFeedback(null);
   };
 
   return {
@@ -148,8 +158,8 @@ export function useInvestigationPhase() {
     handleSubmitTheory,
     initiatePhase: (levelId: number) => initiatePhaseMutation.mutate(levelId),
     clearFeedback,
-    triggerWiretap: (questionId: number, audioUrl: string) => triggerWiretapMutation.mutate({ questionId, audioUrl }), 
+    triggerWiretap: (questionId: number, audioUrl: string) => triggerWiretapMutation.mutate({ questionId, audioUrl }),
     isTriggeringWiretap: triggerWiretapMutation.isPending,
-    addToast: addGlobalToast 
+    addToast: addGlobalToast
   };
 }

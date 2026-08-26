@@ -1,0 +1,172 @@
+/* ==============================================================
+   TRACE ANALYSIS (Mass Spectrometry Lab Report)
+   ============================================================== */
+.trace-paper {
+  background: #fdfcf9; 
+  color: #1a1a1a;
+  padding: 3rem 4rem;
+  border-radius: 2px;
+  box-shadow: inset 0 0 30px rgba(0,0,0,0.02), 2px 4px 15px rgba(0,0,0,0.2);
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  max-width: 800px;
+  margin: 0 auto;
+  border-top: 12px solid #2c3e50; 
+  text-align: start;
+}
+
+.trace-header {
+  text-align: center;
+  border-bottom: 2px solid #bdc3c7;
+  padding-bottom: 1.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.trace-agency {
+  font-weight: 800;
+  color: #7f8c8d;
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  margin-bottom: 0.5rem;
+}
+
+.trace-title {
+  margin: 0;
+  font-size: 1.8rem;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: #2c3e50;
+}
+
+.trace-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  margin-bottom: 2.5rem;
+}
+
+.trace-label {
+  font-weight: 800;
+  color: #7f8c8d;
+  /* Swapped to logical property */
+  margin-inline-end: 0.5rem;
+}
+
+/* --- SPECTROGRAPHY GRAPH --- */
+.trace-graph-box {
+  border: 1px solid #bdc3c7;
+  padding: 1.5rem;
+  background: #ffffff;
+  margin-bottom: 2.5rem;
+}
+
+.trace-graph-title {
+  margin: 0 0 1rem 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #34495e;
+  text-align: center;
+  letter-spacing: 0.05em;
+}
+
+.trace-graph {
+  width: 100%;
+  height: 220px;
+  /* Swapped to logical property */
+  border-inline-start: 2px solid #2c3e50;
+  border-bottom: 2px solid #2c3e50;
+  background: #fdfcf9;
+}
+
+[dir="rtl"] .trace-graph {
+  transform: scaleX(-1); /* Flips the spectrometry graph for RTL layout */
+}
+
+.trace-grid-line {
+  stroke: #ecf0f1;
+  stroke-width: 0.5;
+}
+
+.trace-data-line {
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.primary-line {
+  fill: rgba(41, 128, 185, 0.1);
+  stroke: #2980b9; 
+  stroke-width: 2;
+}
+
+.secondary-line {
+  fill: none;
+  stroke: #e74c3c; 
+  stroke-width: 1.5;
+  opacity: 0.6;
+  stroke-dasharray: 4 4;
+}
+
+.trace-axis-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #7f8c8d;
+  margin-top: 0.75rem;
+  font-family: var(--font-mono);
+}
+
+/* --- RESULTS TABLE --- */
+.trace-results {
+  border: 2px solid #2c3e50;
+  border-radius: 2px;
+  background: #ffffff;
+}
+
+.trace-result-row {
+  display: flex;
+  align-items: center;
+  padding: 1.25rem;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.trace-result-row:last-child {
+  border-bottom: none;
+}
+
+.trace-result-row .trace-label {
+  width: 220px;
+  font-size: 0.85rem;
+}
+
+.trace-value {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #2c3e50;
+}
+
+.match-row {
+  background: rgba(39, 174, 96, 0.08); 
+}
+
+.source-match {
+  color: #27ae60; 
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  text-shadow: 0 0 1px rgba(39, 174, 96, 0.3);
+}
+
+.trace-footer {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 3rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: #95a5a6;
+  border-top: 1px dashed #bdc3c7;
+  padding-top: 1rem;
+}
+
+.trace-signature {
+  font-style: italic;
+}

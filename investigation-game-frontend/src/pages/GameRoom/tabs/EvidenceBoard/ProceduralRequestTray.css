@@ -111,7 +111,7 @@
   background: rgba(var(--accent-amber-rgb), 0.15);
   padding: 0.5rem 0.65rem;
   color: var(--accent-amber);
-  border-right: 1px solid rgba(var(--accent-amber-rgb), 0.2);
+  border-inline-end: 1px solid rgba(var(--accent-amber-rgb), 0.2);
   font-weight: 700;
   letter-spacing: 0.05em;
 }
@@ -129,7 +129,7 @@
 .tray-item-remove {
   background: transparent;
   border: none;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.08);
   color: var(--text-secondary);
   cursor: pointer;
   padding: 0.5rem 0.75rem;
@@ -247,7 +247,7 @@
   align-items: center;
   padding: 0.5rem 0.75rem;
   background: rgba(255, 255, 255, 0.02);
-  border-left: 2px solid var(--accent-amber);
+  border-inline-start: 2px solid var(--accent-amber);
   border-radius: 2px;
   font-family: var(--font-mono);
   font-size: 0.75rem;

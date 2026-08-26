@@ -30,15 +30,23 @@
   background: linear-gradient(90deg, rgba(0, 229, 255, 0.05) 0%, rgba(0, 0, 0, 0.3) 100%);
   padding: 1.25rem;
   margin-top: 1rem;
-  border-left: 3px solid var(--accent-cyan);
+  /* Swapped to logical borders */
+  border-inline-start: 3px solid var(--accent-cyan);
   border-top: 1px solid rgba(0, 229, 255, 0.1);
-  border-right: 1px solid rgba(0, 229, 255, 0.1);
+  border-inline-end: 1px solid rgba(0, 229, 255, 0.1);
   border-bottom: 1px solid rgba(0, 229, 255, 0.1);
-  /* Tactical angled corner */
+  
+  /* LTR tactical angled corner */
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%);
   display: flex;
   gap: 1.5rem;
   align-items: flex-start;
+}
+
+/* RTL OVERRIDE: Flip the angled clip-path corner to the opposite side */
+[dir="rtl"] .wiretap-item {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 15px 100%, 0 calc(100% - 15px));
+  background: linear-gradient(-90deg, rgba(0, 229, 255, 0.05) 0%, rgba(0, 0, 0, 0.3) 100%);
 }
 
 .wiretap-sidebar {
@@ -46,8 +54,9 @@
   flex-direction: column;
   align-items: center;
   min-width: 60px;
-  border-right: 1px solid rgba(0, 229, 255, 0.1);
-  padding-right: 1rem;
+  /* Swapped to logical properties */
+  border-inline-end: 1px solid rgba(0, 229, 255, 0.1);
+  padding-inline-end: 1rem;
 }
 
 .question-number {
@@ -94,11 +103,13 @@
 }
 
 .wiretap-container::before {
-  content: '[ AUDIO FEED ]';
+  /* Dynamic text pulled from React to support localization */
+  content: attr(data-label);
   position: absolute;
   top: -9px;
-  left: 15px;
-  background: var(--bg-dark); /* Match your actual background var here if needed */
+  /* Swapped to logical inset */
+  inset-inline-start: 15px;
+  background: var(--bg-dark); 
   padding: 0 5px;
   font-family: var(--font-mono);
   font-size: 0.65rem;
@@ -119,7 +130,6 @@
 }
 
 .wiretap-container.played::before {
-  content: '[ FEED SEVERED ]';
   color: var(--text-secondary);
 }
 

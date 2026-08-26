@@ -25,32 +25,6 @@
 }
 
 /* ==============================================================
-   BASE FORENSIC STRUCTURE
-   ============================================================== */
-.forensic-variant {
-  position: relative;
-  border-radius: 2px;
-  width: 240px;
-}
-
-.forensic-variant .evidence-title {
-  margin: 0 0 0.25rem 0;
-  font-size: 1.05rem;
-  font-weight: 800;
-}
-
-.forensic-variant .evidence-desc {
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-  line-height: 1.4;
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-/* ==============================================================
    AUTOPSY REPORT (Medical Envelope)
    ============================================================== */
 .autopsy-variant {
@@ -102,9 +76,9 @@
   width: 1.25rem; 
 }
 
-/* Left Diagonal Flap + Shadow */
+/* Diagonal Flap + Shadow - Converted to logical positioning */
 .medical-header::before {
-  left: -1.25rem;
+  inset-inline-start: -1.25rem;
   /* 
     The SVG now contains TWO lines: 
     1. A thicker 4px line offset down and to the right (rgba 0,0,0,0.08)
@@ -114,9 +88,9 @@
   background-size: 100% 100%;
 }
 
-/* Right Diagonal Flap + Shadow */
+/* Diagonal Flap + Shadow - Converted to logical positioning */
 .medical-header::after {
-  right: -1.25rem;
+  inset-inline-end: -1.25rem;
   /* 
     The SVG now contains TWO lines: 
     1. A thicker 4px line offset down and to the left (rgba 0,0,0,0.08)
@@ -124,6 +98,12 @@
   */
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' preserveAspectRatio='none' width='100%25' height='100%25'%3E%3Cline x1='100%25' y1='0' x2='0' y2='100%25' stroke='rgba(0,0,0,0.08)' stroke-width='4' transform='translate(-2, 3)' vector-effect='non-scaling-stroke' /%3E%3Cline x1='100%25' y1='0' x2='0' y2='100%25' stroke='%23b0c0cd' stroke-width='2' vector-effect='non-scaling-stroke' /%3E%3C/svg%3E") no-repeat;
   background-size: 100% 100%;
+}
+
+[dir="rtl"] .medical-header::before,
+[dir="rtl"] .medical-header::after {
+  /* Flip the SVGs horizontally so the angles remain correct when the sides swap in Arabic */
+  transform: scaleX(-1);
 }
 
 .medical-cross {
@@ -194,7 +174,7 @@
   content: '⌖';
   position: absolute;
   top: 50%;
-  left: 50%;
+  left: 50%; /* Centered, RTL safe */
   transform: translate(-50%, -50%);
   font-size: 8rem;
   color: rgba(0,0,0,0.06);
@@ -248,8 +228,8 @@
 .evidence-tape {
   position: absolute;
   bottom: 15px;
-  left: -5px;
-  right: -5px;
+  /* Swapped to logical property */
+  inset-inline: -5px;
   height: 24px;
   background: var(--tape-red);
   color: white;
@@ -505,7 +485,9 @@
 /* The double blue lines of a Ziploc-style evidence bag seal */
 .zipper-seal {
   position: absolute;
-  top: 12px; left: 0; right: 0;
+  top: 12px; 
+  /* Swapped to logical property */
+  inset-inline: 0;
   height: 6px;
   border-top: 2px solid var(--zipper-color);
   border-bottom: 2px solid var(--zipper-color);

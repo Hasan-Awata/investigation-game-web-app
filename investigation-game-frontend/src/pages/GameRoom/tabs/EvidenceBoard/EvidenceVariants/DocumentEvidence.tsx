@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types';
 import type { DocumentEvidence as DocEvType } from '@/types/evidence';
 import './DocumentEvidence.css';
 
 export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
+  const { t } = useTranslation();
   const docEvidence = evidence as DocEvType;
   const subType = docEvidence.sub_type || 'default';
 
@@ -11,29 +13,29 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
       return (
         <div className="document-variant financial-variant">
           <div className="folder-back"></div>
-          
+
           <div className="folder-papers">
             <div className="paper-sheet paper-1"></div>
             <div className="paper-sheet paper-2">
               <div className="micro-table">
                 <div className="micro-row micro-header">
-                  <div className="micro-col">Date</div>
-                  <div className="micro-col flex-2">Transaction Detail</div>
-                  <div className="micro-col">Amount</div>
-                  <div className="micro-col">Status</div>
+                  <div className="micro-col">{t('pages.gameRoom.evidence.variants.document.financialDate')}</div>
+                  <div className="micro-col flex-2">{t('pages.gameRoom.evidence.variants.document.financialDetail')}</div>
+                  <div className="micro-col">{t('pages.gameRoom.evidence.variants.document.financialAmount')}</div>
+                  <div className="micro-col">{t('pages.gameRoom.evidence.variants.document.financialStatus')}</div>
                 </div>
                 {[...Array(5)].map((_, i) => (
                   <div className="micro-row" key={i}>
                     <div className="micro-col">0{i + 1}</div>
                     <div className="micro-col flex-2">xxxx xxxxx</div>
                     <div className="micro-col">$$$$</div>
-                    <div className="micro-col">CLRD</div>
+                    <div className="micro-col">{t('pages.gameRoom.evidence.variants.document.financialCleared')}</div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
-          
+
           <div className="folder-front">
             <div className="folder-text-content">
               <h4 className="evidence-title">{evidence.title}</h4>
@@ -48,7 +50,7 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
         <div className="document-variant correspondence-variant">
           {/* 1. The darker inside of the envelope */}
           <div className="envelope-inside"></div>
-          
+
           {/* 2. The letter sticking out */}
           <div className="letter-paper">
             <div className="letter-text-content">
@@ -56,7 +58,7 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
               {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
             </div>
           </div>
-          
+
           {/* 3. The front flaps of the envelope */}
           <div className="envelope-front-wrapper">
             <div className="envelope-flaps">
@@ -71,31 +73,31 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
           </div>
         </div>
       );
-      
+
     case 'journal':
       return (
         <div className="document-variant journal-variant">
           {/* The ribbon hanging out the bottom */}
           <div className="journal-bookmark"></div>
-          
+
           {/* The white pages peeking out the right side */}
           <div className="journal-pages-edge"></div>
-          
+
           {/* The main leather cover */}
           <div className="journal-cover">
             <div className="journal-spine"></div>
-            
+
             <div className="journal-text-content">
               <h4 className="evidence-title">{evidence.title}</h4>
               {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
             </div>
-            
+
             {/* The elastic band wrapping the notebook */}
             <div className="journal-elastic-band"></div>
           </div>
         </div>
       );
-      
+
     case 'contract':
       return (
         <div className="document-variant contract-variant">
@@ -105,11 +107,11 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
             <div className="manila-tab">
               {/* The white sticker label */}
               <div className="manila-label">
-                <span className="label-text">LEGAL FILES</span>
+                <span className="label-text">{t('pages.gameRoom.evidence.variants.document.contractLegalFiles')}</span>
               </div>
             </div>
           </div>
-          
+
           {/* The front flap of the folder */}
           <div className="manila-front">
             <div className="manila-text-content">
@@ -125,10 +127,10 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
         <div className="document-variant memo-variant">
           {/* Spiral notebook punch holes on the left */}
           <div className="notebook-holes"></div>
-          
+
           {/* The overlay that creates the crumpled shading and creases */}
           <div className="crumpled-texture"></div>
-          
+
           <div className="memo-content">
             <h4 className="evidence-title">{evidence.title}</h4>
             {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
@@ -140,12 +142,12 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
       return (
         <div className="document-variant dossier-variant">
           <div className="dossier-paperclip"></div>
-          
+
           <div className="dossier-header">
-            <span className="dossier-classification">RESTRICTED</span>
+            <span className="dossier-classification">{t('pages.gameRoom.evidence.variants.document.dossierRestricted')}</span>
             <div className="dossier-barcode"></div>
           </div>
-          
+
           <div className="dossier-body">
             {/* Dynamically load the actual photo or fallback to the silhouette */}
             <div className="dossier-mugshot">
@@ -155,7 +157,7 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
                 <div className="mugshot-silhouette"></div>
               )}
             </div>
-            
+
             <div className="dossier-text-content">
               <h4 className="evidence-title">{evidence.title}</h4>
               {evidence.description && <p className="evidence-desc">{evidence.description}</p>}

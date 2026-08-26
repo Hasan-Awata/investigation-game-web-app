@@ -78,7 +78,7 @@
 .cassette-window {
   position: absolute;
   top: 52%;
-  left: 50%;
+  left: 50%; /* Centered, RTL safe */
   transform: translate(-50%, -50%);
   width: 130px;
   height: 45px;
@@ -96,7 +96,9 @@
 .cassette-window::before {
   content: '';
   position: absolute;
-  top: 50%; left: 15px; right: 15px;
+  top: 50%; 
+  /* Swapped to logical inline inset */
+  inset-inline: 15px;
   height: 20px;
   background: var(--tape-color);
   transform: translateY(-50%);
@@ -169,5 +171,6 @@
   box-shadow: inset 1px 1px 1px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.1);
 }
 
-.left-screw { left: -12px; }
-.right-screw { right: -12px; }
+/* Swapped to logical properties */
+.left-screw { inset-inline-start: -12px; }
+.right-screw { inset-inline-end: -12px; }

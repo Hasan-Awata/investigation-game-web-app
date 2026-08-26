@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useGameRoom } from '@/hooks/useGameRoom';
-import { useViewedItems } from '@/hooks/useViewedItems'; 
+import { useViewedItems } from '@/hooks/useViewedItems';
 import { RoomProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
 import GameRoomLayout from './GameRoomLayout';
 import './GameRoom.css';
@@ -10,18 +11,19 @@ interface LevelTransitionedPayload { message: string; status: string; stats?: an
 interface WiretapTriggeredPayload { question_id: number; audio_url: string | null; message?: string; }
 
 export default function GameRoom() {
+  const { t } = useTranslation();
   const { inviteCode } = useParams<{ inviteCode: string }>();
   const { room, isLoading, error, accumulatedEvidences, accumulatedSuspects, accumulatedVictims, refreshRoomData } = useGameRoom(inviteCode);
 
   const { viewedItems: viewedEvidences, markItemAsViewed: markEvidenceAsViewed } = useViewedItems(room?.invite_code, 'evidence');
   const { viewedItems: viewedSuspects, markItemAsViewed: markSuspectAsViewed } = useViewedItems(room?.invite_code, 'suspects');
   const { viewedItems: viewedVictims, markItemAsViewed: markVictimAsViewed } = useViewedItems(room?.invite_code, 'victims');
-  
+
   const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
   const [finalStats, setFinalStats] = useState<any>(room?.final_stats || null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
-  const [globalFeedback, setGlobalFeedback] = useState<GlobalFeedback | null>(null); // Added
-  
+  const [globalFeedback, setGlobalFeedback] = useState<GlobalFeedback | null>(null);
+
   const playedAudioTracker = useRef<Set<number>>(new Set());
 
   const setGameOverData = useCallback((message: string, stats?: any) => {
@@ -38,14 +40,13 @@ export default function GameRoom() {
   useEffect(() => {
     if (!room || !window.Echo) return;
     const channel = window.Echo.private(`room.${room.id}`);
-    
+
     channel.listen('LevelTransitioned', (e: LevelTransitionedPayload) => {
       if (e.message) {
         if (e.status === 'active') {
-          // Replaced window.alert with the global modal
           setGlobalFeedback({
             type: 'success',
-            title: 'DEPARTMENT UPDATE',
+            title: t('pages.gameRoom.departmentUpdate'),
             message: e.message
           });
           setTimeout(() => setGlobalFeedback(null), 4000);
@@ -66,9 +67,9 @@ export default function GameRoom() {
       }
 
       addGlobalToast({
-        type: 'evidence', 
-        title: 'WIRETAP INTERCEPTED', 
-        message: e.message || 'Audio feed active. Listen carefully.',
+        type: 'evidence',
+        title: t('pages.gameRoom.wiretapIntercepted'),
+        message: e.message || t('pages.gameRoom.audioFeedActive'),
         icon: 'https://api.iconify.design/ph:waveform-duotone.svg?color=%23c48b36'
       });
 
@@ -80,21 +81,21 @@ export default function GameRoom() {
       channel.stopListening('VoteLockedIn');
       channel.stopListening('WiretapTriggered');
     };
-  }, [room?.id, refreshRoomData, setGameOverData, addGlobalToast]);
+  }, [room?.id, refreshRoomData, setGameOverData, addGlobalToast, t]);
 
-  if (isLoading) return <div className="terminal-text">Synchronizing session data...</div>;
-  if (error || !room) return <div className="terminal-text error">{error || 'Session not found.'}</div>;
+  if (isLoading) return <div className="terminal-text">{t('pages.gameRoom.synchronizing')}</div>;
+  if (error || !room) return <div className="terminal-text error">{error || t('pages.gameRoom.sessionNotFound')}</div>;
 
   return (
-    <RoomProvider 
+    <RoomProvider
       room={room} accumulatedEvidences={accumulatedEvidences}
       accumulatedSuspects={accumulatedSuspects} accumulatedVictims={accumulatedVictims}
       refreshRoomData={refreshRoomData}
       viewedEvidences={viewedEvidences} markEvidenceAsViewed={markEvidenceAsViewed}
       viewedSuspects={viewedSuspects} markSuspectAsViewed={markSuspectAsViewed}
       viewedVictims={viewedVictims} markVictimAsViewed={markVictimAsViewed}
-      setGameOverData={setGameOverData} addGlobalToast={addGlobalToast} 
-      globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback} // Added
+      setGameOverData={setGameOverData} addGlobalToast={addGlobalToast}
+      globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback}
     >
       <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={finalStats} toasts={toasts} />
     </RoomProvider>

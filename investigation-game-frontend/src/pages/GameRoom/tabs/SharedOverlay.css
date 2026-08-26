@@ -1,7 +1,8 @@
 /* --- Feedback Overlay Modal (Persona Screen) --- */
 .feedback-modal-overlay {
   position: absolute; 
-  top: 0; left: 0; right: 0; bottom: 0;
+  /* Swapped physical directions for the logical 'inset' property */
+  inset: 0;
   background: rgba(18, 18, 18, 0.85);
   backdrop-filter: blur(8px);
   z-index: 100;
@@ -58,8 +59,9 @@
 /* --- Tactical Toast Notification --- */
 .toast-container {
   position: fixed;
-  bottom: 2rem;
-  right: 2rem;
+  /* Swapped to logical properties to pin to bottom-left in RTL */
+  inset-block-end: 2rem;
+  inset-inline-end: 2rem;
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -70,7 +72,8 @@
 .system-toast-notification {
   background: rgba(15, 15, 20, 0.95);
   border: 1px solid var(--accent-amber);
-  border-left: 4px solid var(--accent-amber);
+  /* Swapped to logical property */
+  border-inline-start: 4px solid var(--accent-amber);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 170, 0, 0.15);
   padding: 1rem 1.5rem;
   border-radius: 4px;
@@ -79,6 +82,11 @@
   gap: 1rem;
   pointer-events: auto; 
   animation: slide-in-toast 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+/* RTL OVERRIDE: Hook the specific RTL sliding animation */
+[dir="rtl"] .system-toast-notification {
+  animation: slide-in-toast-rtl 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
 }
 
 .toast-icon { font-size: 1.5rem; color: var(--accent-amber); }
@@ -109,6 +117,12 @@
 
 @keyframes slide-in-toast {
   0% { opacity: 0; transform: translateX(50px) translateY(10px); }
+  100% { opacity: 1; transform: translateX(0) translateY(0); }
+}
+
+/* RTL ANIMATION: Slide in from the left side instead of the right */
+@keyframes slide-in-toast-rtl {
+  0% { opacity: 0; transform: translateX(-50px) translateY(10px); }
   100% { opacity: 1; transform: translateX(0) translateY(0); }
 }
 
@@ -161,14 +175,26 @@
   background: rgba(var(--border-light-rgb), 0.1);
   border-color: rgba(var(--border-light-rgb), 0.4);
   color: var(--text-primary);
+  /* Standard LTR shadow on the left */
   box-shadow: inset 3px 0 0 0 var(--text-secondary); 
+}
+
+/* RTL OVERRIDE: Flip inset shadow to the right */
+[dir="rtl"] .choice-pill.interactable:hover {
+  box-shadow: inset -3px 0 0 0 var(--text-secondary); 
 }
 
 .choice-pill.selected {
   background: rgba(var(--bg-dark-rgb), 1);
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
+  /* Standard LTR shadow on the left */
   box-shadow: inset 3px 0 0 0 var(--accent-cyan); 
+}
+
+/* RTL OVERRIDE: Flip inset shadow to the right */
+[dir="rtl"] .choice-pill.selected {
+  box-shadow: inset -3px 0 0 0 var(--accent-cyan); 
 }
 
 .choice-pill.historical-correct {

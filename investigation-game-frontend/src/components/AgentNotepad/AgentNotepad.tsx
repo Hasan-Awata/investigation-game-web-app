@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import '@/i18n';
 import './AgentNotepad.css';
 
 interface AgentNotepadProps {
@@ -6,12 +8,13 @@ interface AgentNotepadProps {
 }
 
 export default function AgentNotepad({ roomId }: AgentNotepadProps) {
+  const { t } = useTranslation();
   const [notes, setNotes] = useState('');
   const [isSaved, setIsSaved] = useState(true);
-  
+
   // We use a ref for the timer to debounce the "Saved" UI indicator
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  
+
   // We use a ref for the storage key so it's instantly available without triggering re-renders
   const storageKey = useRef(`notepad_fallback`);
 
@@ -19,7 +22,7 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
     try {
       const storedUser = localStorage.getItem('auth_user');
       const currentUser = storedUser ? JSON.parse(storedUser) : null;
-      
+
       if (currentUser) {
          storageKey.current = `room_${roomId}_user_${currentUser.id}_ledger`;
          const savedNotes = localStorage.getItem(storageKey.current);
@@ -35,7 +38,7 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
         setNotes(e.newValue);
       }
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [roomId]);
@@ -44,7 +47,7 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
     const text = e.target.value;
     setNotes(text);
     setIsSaved(false);
-    
+
     // Save to local storage instantly on every keystroke
     localStorage.setItem(storageKey.current, text);
 
@@ -57,15 +60,15 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
     <div className="sidebar-section agent-notepad-container">
       <div className="notepad-header">
         <h3 className="sidebar-heading" style={{ marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>
-          Field Ledger
+          {t('components.agentNotepad.fieldLedger')}
         </h3>
         <span className={`save-indicator ${isSaved ? 'synced' : 'saving'}`}>
-          {isSaved ? '✓ SYNCED' : '⟳ SAVING'}
+          {isSaved ? t('components.agentNotepad.synced') : t('components.agentNotepad.saving')}
         </span>
       </div>
       <textarea
         className="notepad-textarea"
-        placeholder="Log timelines, suspect discrepancies, and evidence links here..."
+        placeholder={t('components.agentNotepad.placeholder')}
         value={notes}
         onChange={handleNoteChange}
         spellCheck="false"

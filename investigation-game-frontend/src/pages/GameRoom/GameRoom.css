@@ -8,7 +8,8 @@
 
 /* --- Left Sidebar --- */
 .sidebar-panel {
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  /* Swapped to logical property */
+  border-inline-end: 1px solid rgba(255, 255, 255, 0.05);
   background: rgba(20, 20, 20, 0.8);
   backdrop-filter: blur(10px);
   padding: 2rem 1.5rem;
@@ -130,7 +131,8 @@
 .workspace-header {
   background: rgba(30, 30, 30, 0.5);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 0 2rem;
+  /* Swapped padding to logical for consistency */
+  padding-inline: 2rem;
 }
 
 .tab-navigation {
@@ -163,7 +165,8 @@
   content: '';
   position: absolute;
   bottom: -1px;
-  left: 0;
+  /* Swapped to logical property */
+  inset-inline-start: 0;
   width: 100%;
   height: 2px;
   background-color: var(--accent-cyan);
@@ -229,13 +232,14 @@
   .game-room-layout {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
-    height: 100dvh; /* Uses dynamic viewport height for mobile browsers */
+    height: 100dvh; 
     overflow-y: auto;
   }
 
   /* Transform the sidebar into a collapsible/stacked top header */
   .sidebar-panel {
-    border-right: none;
+    /* Swapped to logical property */
+    border-inline-end: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     padding: 1rem;
     flex-direction: row;
@@ -250,7 +254,8 @@
   }
 
   .workspace-header {
-    padding: 0 1rem;
+    /* Swapped to logical property */
+    padding-inline: 1rem;
   }
 
   /* Allow tabs to scroll horizontally if they overflow */

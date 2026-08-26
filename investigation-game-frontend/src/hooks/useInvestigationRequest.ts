@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { submitInvestigationRequest } from '@/services/api';
 import type { GameRoom } from '@/types';
 import type { ToastNotification } from './useInvestigationPhase';
@@ -12,6 +13,7 @@ export interface FiledRequest {
 }
 
 export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => void) {
+  const { t } = useTranslation();
   const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
   const [requestType, setRequestType] = useState<string>('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -34,7 +36,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
     },
     onSuccess: (data) => {
       setFeedback({ type: 'success', message: data.message });
-      
+
       // Save to local filed requests history
       const newRequest: FiledRequest = {
         id: crypto.randomUUID(),
@@ -42,7 +44,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         evidenceIds: [...trayEvidences]
       };
-      
+
       const updatedHistory = [newRequest, ...filedRequests];
       setFiledRequests(updatedHistory);
       sessionStorage.setItem(historyStorageKey, JSON.stringify(updatedHistory));
@@ -54,24 +56,24 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
       // Trigger respective toast notifications based on what the DA unlocked
       setTimeout(() => {
         const newToasts: ToastNotification[] = [];
-        
+
         if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
-          newToasts.push({ 
-            id: crypto.randomUUID(), 
-            type: 'evidence', 
-            title: 'PROCEDURAL REQUEST APPROVED', 
-            message: 'New case files have been authorized and added to the board.', 
-            icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36' 
+          newToasts.push({
+            id: crypto.randomUUID(),
+            type: 'evidence',
+            title: t('pages.gameRoom.hooks.request.proceduralApproved'),
+            message: t('pages.gameRoom.hooks.request.proceduralApprovedMsg'),
+            icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36'
           });
         }
 
         if (data.unlocked_levels && data.unlocked_levels.length > 0) {
-          newToasts.push({ 
-            id: crypto.randomUUID(), 
-            type: 'level', 
-            title: 'WARRANT EXECUTED', 
-            message: 'A new investigative phase is now available on the roadmap.', 
-            icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e' 
+          newToasts.push({
+            id: crypto.randomUUID(),
+            type: 'level',
+            title: t('pages.gameRoom.hooks.request.warrantExecuted'),
+            message: t('pages.gameRoom.hooks.request.warrantExecutedMsg'),
+            icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e'
           });
         }
 

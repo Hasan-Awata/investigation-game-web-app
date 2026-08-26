@@ -60,9 +60,10 @@
   text-transform: uppercase;
   font-size: 1.1rem;
   letter-spacing: 0.1em;
-  border-left: 3px solid var(--accent-cyan);
-  padding-left: 1rem;
-  margin-bottom: 1.5rem;
+  /* Swapped to logical properties to ensure the accent line respects RTL */
+  border-inline-start: 3px solid var(--accent-cyan);
+  padding-inline-start: 1rem;
+  margin-block-end: 1.5rem;
 }
 
 .story-text-block {
@@ -72,5 +73,5 @@
 }
 
 .story-text-block p {
-  margin-bottom: 1.5rem;
+  margin-block-end: 1.5rem;
 }

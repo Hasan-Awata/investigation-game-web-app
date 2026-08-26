@@ -46,7 +46,9 @@
   align-items: center;
   gap: 1.5rem;
   background: rgba(30, 30, 30, 0.6);
-  padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+  /* Swapped to logical properties for RTL support */
+  padding: 0.5rem;
+  padding-inline-start: 1.5rem;
   border-radius: 50px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
@@ -62,7 +64,8 @@
   color: var(--text-primary);
   font-weight: 600;
   font-family: var(--font-mono);
-  margin-left: 0.5rem;
+  /* Swapped to logical property */
+  margin-inline-start: 0.5rem;
 }
 
 .xp-badge {

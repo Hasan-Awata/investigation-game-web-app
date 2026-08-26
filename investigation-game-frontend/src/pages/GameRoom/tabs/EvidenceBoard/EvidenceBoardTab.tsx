@@ -1,16 +1,18 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRoomState, useRoomActions } from '@/context/RoomContext';
 import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
 import type { Evidence } from '@/types';
 import EvidenceCard from './EvidenceCard';
-import EvidenceModal from './EvidenceModal'; 
+import EvidenceModal from './EvidenceModal';
 import ProceduralRequestTray from './ProceduralRequestTray';
 import './EvidenceBoardTab.css';
 
 export default function EvidenceBoardTab() {
+  const { t } = useTranslation();
   const { room, accumulatedEvidences, viewedEvidences } = useRoomState();
   const { markEvidenceAsViewed, refreshRoomData } = useRoomActions();
-  
+
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
 
   const {
@@ -51,18 +53,18 @@ export default function EvidenceBoardTab() {
   return (
     <div className="evidence-board-container" onDragOver={handleDragOverContainer}>
       <header className="board-header">
-        <h2 className="section-title">The Evidence Board</h2>
-        <span className="board-meta">Drag files to the tray below to request warrants or subpoenas.</span>
+        <h2 className="section-title">{t('pages.gameRoom.evidence.board.title')}</h2>
+        <span className="board-meta">{t('pages.gameRoom.evidence.board.subtitle')}</span>
       </header>
-      
+
       {feedback && (
         <div className="feedback-modal-overlay" style={{ zIndex: 1000 }}>
           <div className={`feedback-modal-content ${feedback.type}`}>
             <h3 className="feedback-title">
-              {feedback.type === 'success' ? 'Request Approved' : 'Request Denied'}
+              {feedback.type === 'success' ? t('pages.gameRoom.evidence.board.requestApproved') : t('pages.gameRoom.evidence.board.requestDenied')}
             </h3>
             <p className="feedback-message">{feedback.message}</p>
-            <button className="btn-secondary mt-1" onClick={clearFeedback}>Acknowledge</button>
+            <button className="btn-secondary mt-1" onClick={clearFeedback}>{t('pages.gameRoom.evidence.board.acknowledge')}</button>
           </div>
         </div>
       )}
@@ -80,26 +82,26 @@ export default function EvidenceBoardTab() {
           </div>
         ))}
       </div>
-      
+
       <div className="acrylic-workspace">
         {accumulatedEvidences.length === 0 ? (
-          <div className="terminal-text">No evidence recovered for this phase.</div>
+          <div className="terminal-text">{t('pages.gameRoom.evidence.board.noEvidence')}</div>
         ) : (
           <div className="evidence-scatter-grid">
             {accumulatedEvidences.map((evidence: Evidence, index: number) => (
-              <EvidenceCard 
-                key={evidence.id} 
-                evidence={evidence} 
+              <EvidenceCard
+                key={evidence.id}
+                evidence={evidence}
                 index={index}
-                isNew={!viewedEvidences.has(evidence.id)} 
-                onInspect={handleInspect} 
+                isNew={!viewedEvidences.has(evidence.id)}
+                onInspect={handleInspect}
               />
             ))}
           </div>
         )}
       </div>
 
-      <ProceduralRequestTray 
+      <ProceduralRequestTray
         accumulatedEvidences={accumulatedEvidences}
         trayEvidences={trayEvidences}
         requestType={requestType}

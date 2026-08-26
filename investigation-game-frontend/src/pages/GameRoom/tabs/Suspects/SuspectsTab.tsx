@@ -1,23 +1,25 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRoomState, useRoomActions } from '../../../../context/RoomContext';
 import { submitSuspectVerdict } from '../../../../services/api';
 import { useMutation } from '@tanstack/react-query';
-import SuspectCard from './SuspectCard'; 
+import SuspectCard from './SuspectCard';
 import './SuspectsTab.css';
 
 type PoolType = 'unassigned' | 'guilty' | 'innocent';
 
 export default function SuspectsTab() {
+  const { t } = useTranslation();
   const { room, accumulatedSuspects, viewedSuspects } = useRoomState();
   const { refreshRoomData, markSuspectAsViewed, setGameOverData } = useRoomActions();
-  
+
   const [guiltyIds, setGuiltyIds] = useState<number[]>(() => {
     try {
       const saved = sessionStorage.getItem(`room_${room.invite_code}_guilty_suspects`);
       return saved ? JSON.parse(saved) : [];
     } catch { return []; }
   });
-  
+
   const [innocentIds, setInnocentIds] = useState<number[]>(() => {
     try {
       const saved = sessionStorage.getItem(`room_${room.invite_code}_innocent_suspects`);
@@ -51,7 +53,7 @@ export default function SuspectsTab() {
             sessionStorage.removeItem(key);
           }
         });
-        
+
         setGameOverData(data.message, data.stats);
         refreshRoomData();
       }
@@ -101,10 +103,10 @@ export default function SuspectsTab() {
   return (
     <div className="suspects-tab-container">
       <header className="suspects-header">
-        <h2 className="section-title">Suspect Board</h2>
+        <h2 className="section-title">{t('pages.gameRoom.suspects.tab.suspectBoard')}</h2>
         {!allInitialCompleted && (
           <div className="lock-warning">
-            <span className="forensic-icon">🔒</span> All initial investigation phases must be completed before filing a final indictment.
+            <span className="forensic-icon">🔒</span> {t('pages.gameRoom.suspects.tab.lockWarning')}
           </div>
         )}
       </header>
@@ -120,110 +122,110 @@ export default function SuspectsTab() {
                 <path d="M128 135 C80 135, 40 190, 20 256 L236 256 C216 190, 176 135, 128 135 Z" />
               </svg>
             </div>
-            <h3 className="feedback-title">Indictment Rejected</h3>
+            <h3 className="feedback-title">{t('pages.gameRoom.suspects.tab.indictmentRejected')}</h3>
             <p className="feedback-message">{feedback.message}</p>
-            <button className="btn-secondary mt-1" onClick={clearFeedback}>Reassess Evidence</button>
+            <button className="btn-secondary mt-1" onClick={clearFeedback}>{t('pages.gameRoom.suspects.tab.reassessEvidence')}</button>
           </div>
         </div>
       )}
 
       <div className="verdict-zones">
-        <div 
+        <div
           className="drop-zone guilty-zone glass-panel"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => handleDrop(e, 'guilty')}
         >
           <div className="zone-header">
-            <h3>PRIME SUSPECTS (GUILTY)</h3>
+            <h3>{t('pages.gameRoom.suspects.tab.primeSuspects')}</h3>
             <span className="zone-counter">{guiltyPool.length}</span>
           </div>
           <div className="zone-content">
             {guiltyPool.map(s => (
-              <SuspectCard 
-                key={s.id} 
-                suspect={s} 
-                sourcePool="guilty" 
-                isDraggable={true} 
+              <SuspectCard
+                key={s.id}
+                suspect={s}
+                sourcePool="guilty"
+                isDraggable={true}
                 isNew={!viewedSuspects.has(s.id)}
-                onDragStart={handleDragStart} 
+                onDragStart={handleDragStart}
                 onInteract={markSuspectAsViewed}
               />
             ))}
-            {guiltyPool.length === 0 && <div className="zone-placeholder">Drag prime suspects here</div>}
+            {guiltyPool.length === 0 && <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.dragPrimeHere')}</div>}
           </div>
         </div>
 
-        <div 
+        <div
           className="drop-zone innocent-zone glass-panel"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => handleDrop(e, 'innocent')}
         >
           <div className="zone-header">
-            <h3>CLEARED (INNOCENT)</h3>
+            <h3>{t('pages.gameRoom.suspects.tab.cleared')}</h3>
             <span className="zone-counter">{innocentPool.length}</span>
           </div>
           <div className="zone-content">
             {innocentPool.map(s => (
-              <SuspectCard 
-                key={s.id} 
-                suspect={s} 
-                sourcePool="innocent" 
-                isDraggable={true} 
+              <SuspectCard
+                key={s.id}
+                suspect={s}
+                sourcePool="innocent"
+                isDraggable={true}
                 isNew={!viewedSuspects.has(s.id)}
-                onDragStart={handleDragStart} 
+                onDragStart={handleDragStart}
                 onInteract={markSuspectAsViewed}
               />
             ))}
-            {innocentPool.length === 0 && <div className="zone-placeholder">Drag cleared suspects here</div>}
+            {innocentPool.length === 0 && <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.dragClearedHere')}</div>}
           </div>
         </div>
       </div>
 
-      <div 
+      <div
         className="unassigned-pool glass-panel"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => handleDrop(e, 'unassigned')}
       >
         <div className="zone-header">
-          <h3>UNASSIGNED PERSONS OF INTEREST</h3>
+          <h3>{t('pages.gameRoom.suspects.tab.unassigned')}</h3>
         </div>
         <div className="unassigned-grid">
           {unassignedPool.map(s => (
-            <SuspectCard 
-              key={s.id} 
-              suspect={s} 
-              sourcePool="unassigned" 
-              isDraggable={true} 
+            <SuspectCard
+              key={s.id}
+              suspect={s}
+              sourcePool="unassigned"
+              isDraggable={true}
               isNew={!viewedSuspects.has(s.id)}
-              onDragStart={handleDragStart} 
+              onDragStart={handleDragStart}
               onInteract={markSuspectAsViewed}
             />
           ))}
           {unassignedPool.length === 0 && accumulatedSuspects.length > 0 && (
-            <div className="zone-placeholder">All suspects categorized.</div>
+            <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.allCategorized')}</div>
           )}
           {accumulatedSuspects.length === 0 && (
-            <div className="zone-placeholder">No suspects have been identified yet.</div>
+            <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.noSuspects')}</div>
           )}
         </div>
       </div>
 
       <div className="submit-verdict-container" style={{ flexDirection: 'column', gap: '1rem' }}>
-        <button 
+        <button
           className={`btn-primary final-verdict-btn ${isNoFoulPlay ? 'no-foul-play' : ''}`}
           disabled={!isReadyToSubmit || verdictMutation.isPending}
           onClick={handleSubmitVerdict}
         >
-          {verdictMutation.isPending 
-            ? 'Filing Indictment...' 
-            : isNoFoulPlay 
-              ? 'Rule as Accident / Suicide' 
-              : 'Submit Final Indictment'}
+          {verdictMutation.isPending
+            ? t('pages.gameRoom.suspects.tab.filingIndictment')
+            : isNoFoulPlay
+              ? t('pages.gameRoom.suspects.tab.ruleAccident')
+              : t('pages.gameRoom.suspects.tab.submitIndictment')}
         </button>
-        
+
         {isReadyToSubmit && isNoFoulPlay && (
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-            * By submitting an empty guilty pool, you are declaring no crime occurred.
+            {t('pages.gameRoom.suspects.tab.emptyPoolWarning')}
           </span>
         )}
       </div>

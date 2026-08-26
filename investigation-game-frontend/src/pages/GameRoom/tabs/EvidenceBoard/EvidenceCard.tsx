@@ -18,7 +18,7 @@ const EvidenceComponents: Record<string, React.FC<{ evidence: Evidence }>> = {
 interface EvidenceCardProps {
   evidence: Evidence;
   index: number;
-  isNew: boolean; 
+  isNew: boolean;
   onInspect: (evidence: Evidence) => void;
 }
 
@@ -27,16 +27,15 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
 
   if (!SpecificEvidenceComponent) {
     console.warn(`System Error: Unknown evidence type encountered -> ${evidence.evidence_type}`);
-    return null; 
+    return null;
   }
 
   return (
-    <div 
-      className={`evidence-card-wrapper item-${index % 5}`} 
+    <div
+      className={`evidence-card-wrapper item-${index % 5}`}
       onClick={() => onInspect(evidence)}
       draggable
       onDragStart={(e) => {
-        // Only set the ID, don't stop propagation so click works if they don't drag
         e.dataTransfer.setData('evidenceId', evidence.id.toString());
       }}
     >

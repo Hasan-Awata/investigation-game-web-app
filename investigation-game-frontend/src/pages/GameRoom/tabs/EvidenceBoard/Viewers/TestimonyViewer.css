@@ -3,14 +3,15 @@
    ============================================================== */
 .testimony-modal-viewer {
   background: #f4f1ea; 
-  padding: 2.5rem 3rem; /* Reduced so it fits nicely inside the modal */
+  padding: 2.5rem 3rem; 
   border-radius: 2px;
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.05), 2px 4px 20px rgba(0, 0, 0, 0.2);
   width: 100%;
-  box-sizing: border-box; /* CRITICAL: Prevents padding from breaking width */
+  box-sizing: border-box; 
   margin: 0 auto;
   color: #1a1a1a;
-  overflow: hidden; /* CRITICAL: Traps the watermark inside the paper */
+  overflow: hidden; 
+  text-align: start; /* CRITICAL: Allows natural flow of LTR/RTL text */
 }
 
 .testimony-paper {
@@ -83,7 +84,8 @@
 
 .subject-label {
   font-weight: bold;
-  margin-right: 1rem;
+  /* Swapped to logical property */
+  margin-inline-end: 1rem;
 }
 
 .testimony-context {
@@ -92,8 +94,9 @@
   font-style: italic;
   margin-bottom: 2rem;
   color: #444;
-  padding-left: 1rem;
-  border-left: 4px solid #ccc;
+  /* Swapped to logical properties */
+  padding-inline-start: 1rem;
+  border-inline-start: 4px solid #ccc;
 }
 
 /* Transcript Area */
@@ -106,7 +109,8 @@
 .transcript-watermark {
   position: absolute;
   top: 50%;
-  left: 50%;
+  /* Swapped to logical property */
+  inset-inline-start: 50%;
   transform: translate(-50%, -50%) rotate(-30deg);
   font-family: 'Times New Roman', Times, serif;
   font-size: 6rem;
@@ -116,6 +120,11 @@
   z-index: 0;
   letter-spacing: 0.2em;
   white-space: nowrap; 
+}
+
+/* RTL Override: Ensure watermark rotates the opposite direction */
+[dir="rtl"] .transcript-watermark {
+  transform: translate(50%, -50%) rotate(30deg);
 }
 
 .transcript-content {
@@ -134,31 +143,33 @@
 
 .speaker-tag {
   font-weight: 900;
-  margin-right: 0.5rem;
+  /* Swapped to logical property */
+  margin-inline-end: 0.5rem;
 }
 
 .transcript-q .speaker-tag {
-  color: #1a4f8b; /* Faint blue ink for the detective */
+  color: #1a4f8b; 
 }
 
 .transcript-a .speaker-tag {
-  color: #a33232; /* Faint red ink for the suspect/witness */
+  color: #a33232; 
 }
 
 .transcript-q {
   margin-top: 1rem;
-  padding-left: 1rem;
-  border-left: 2px solid rgba(26, 79, 139, 0.3);
+  /* Swapped to logical properties */
+  padding-inline-start: 1rem;
+  border-inline-start: 2px solid rgba(26, 79, 139, 0.3);
 }
 
 .transcript-a {
   margin-bottom: 1rem;
-  padding-left: 1rem;
-  border-left: 2px solid rgba(163, 50, 50, 0.3);
+  /* Swapped to logical properties */
+  padding-inline-start: 1rem;
+  border-inline-start: 2px solid rgba(163, 50, 50, 0.3);
   background: rgba(163, 50, 50, 0.02);
 }
 
-/* Footer / Signature */
 /* Footer / Signature */
 .testimony-footer {
   border-top: 2px solid #1a1a1a;
@@ -176,19 +187,20 @@
   font-style: italic;
   max-width: 400px;
   color: #555;
-  margin-bottom: 0.5rem; /* Adds breathing room if it stacks on small screens */
+  margin-bottom: 0.5rem; 
 }
 
 .signature-area {
   text-align: center;
-  width: 280px; /* CRITICAL: Locks the signature line from stretching across the page */
-  margin-left: auto; /* CRITICAL: Forces it to stay pinned to the right */
+  width: 280px; 
+  /* Swapped to logical property to ensure it stays pinned to the correct reading side */
+  margin-inline-start: auto; 
 }
 
 .steno-signature {
   position: relative;
-  height: 60px; /* Gives the image a fixed vertical space */
-  margin-bottom: 2px; /* Pulls it down slightly to touch the line */
+  height: 60px; 
+  margin-bottom: 2px; 
   z-index: 5;
 }
 
@@ -196,9 +208,14 @@
   width: 100%;
   height: 100%;
   object-fit: contain;
-  transform: rotate(-3deg) scale(1.3); /* Adjust scale if your PNGs have too much transparent padding */
+  transform: rotate(-3deg) scale(1.3); 
   transform-origin: bottom center;
   pointer-events: none;
+}
+
+/* RTL Override: Mirror signature slant */
+[dir="rtl"] .steno-signature-img {
+  transform: rotate(3deg) scale(1.3);
 }
 
 .signature-line {

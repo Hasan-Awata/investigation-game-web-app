@@ -1,6 +1,6 @@
 import type { Evidence, ForensicEvidence, DocumentEvidence, MediaEvidence } from '@/types/evidence';
 import ForensicViewer from './Viewers/ForensicViewer';
-import DocumentViewer from './Viewers/DocumentViewers/DocumentViewer';
+import DocumentViewer from './Viewers/DocumentViewer';
 import TestimonyViewer from './Viewers/TestimonyViewer';
 import MediaViewer from './Viewers/MediaViewer';
 import './EvidenceModal.css';
@@ -17,17 +17,17 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
     switch (evidence.evidence_type) {
       case 'forensic':
         return <ForensicViewer evidence={evidence as ForensicEvidence} />;
-      
+
       case 'document':
         return <DocumentViewer evidence={evidence as DocumentEvidence} />;
-      
+
       case 'testimony':
-        return <TestimonyViewer evidence={evidence} />; 
-      
+        return <TestimonyViewer evidence={evidence} />;
+
       case 'image':
       case 'audio':
         return <MediaViewer evidence={evidence as MediaEvidence} />;
-        
+
       default:
         return (
           <div style={{ color: 'var(--accent-crimson)', fontFamily: 'var(--font-mono)' }}>
@@ -40,7 +40,7 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
   return (
     <div className="evidence-modal-overlay" onClick={onClose}>
       <div className="evidence-modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
-        
+
         <header className="modal-header">
           <div className="modal-meta">
             <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>

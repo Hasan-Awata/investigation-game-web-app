@@ -31,7 +31,8 @@
 .testimony-stamp {
   position: absolute;
   top: 15px;
-  right: 15px;
+  /* Swapped to logical property */
+  inset-inline-end: 15px;
   font-family: var(--font-mono);
   font-size: 0.75rem;
   font-weight: bold;
@@ -47,7 +48,8 @@
 .testimony-paperclip {
   position: absolute; 
   top: -12px; 
-  left: 25px;
+  /* Swapped to logical property */
+  inset-inline-start: 25px;
   width: 14px; 
   height: 45px;
   border: 2px solid #a0a0a0;
