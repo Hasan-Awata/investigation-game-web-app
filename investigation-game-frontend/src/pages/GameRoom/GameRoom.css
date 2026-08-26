@@ -121,11 +121,13 @@
   background: var(--accent-cyan);
 }
 
-/* --- Main Workspace & Tabs --- */
 .workspace-panel {
+  flex: 1;
   display: flex;
   flex-direction: column;
   height: 100vh;
+  overflow: hidden;
+  position: relative;
 }
 
 .workspace-header {
@@ -176,7 +178,10 @@
 .tab-content-area {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 2rem;
+  box-sizing: border-box;
+  position: relative;
 }
 
 /* --- Victory Overlay --- */

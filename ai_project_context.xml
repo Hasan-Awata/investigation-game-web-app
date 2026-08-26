@@ -1,9 +1,11 @@
 <system_directives>
-  <rule>Read this entire document carefully. Do NOT assume code is missing. Never use placeholders like `...` or `// rest of the code` in your responses. Write complete, fully functional blocks.</rule>
+  <rule>Read this entire document carefully. Do NOT assume code is missing. Write complete, fully functional blocks.</rule>
   <rule>Strictly adhere to Clean Architecture, SOLID principles, and Dependency Injection patterns. Maintain strict Separation of Concerns.</rule>
   <rule>Do NOT write inline CSS or Tailwind utility classes in .tsx files unless explicitly asked. The directory tree shows existing stylesheet files; if you need to modify UI visuals, ask the user to provide the relevant CSS/SCSS file.</rule>
   <rule>Rely ONLY on the explicit state variables, custom hooks, and props provided in this context. Do not hallucinate external libraries, utility functions, or imports not present in the code.</rule>
   <rule>When troubleshooting WebSocket connections or complex component state, verify the data flow through the entire component tree before suggesting a fix.</rule>
+  <rule>If the fix/update you are suggesting require less than three modifications within the same file, don't rewrite the whole file, just inicate precisely where the user should write the changes</rule>
+  <rule>Maintain the translation mechanic used all around the codebase in all of your responses</rule>
 </system_directives>
 
 <project_context>
@@ -451,7 +453,8 @@ export default App;
 <file path="src/i18n.ts">
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import LanguageDetector from 'i18next-browser-languagedetector';
+// You can remove LanguageDetector entirely if this game is exclusively Arabic
+// import LanguageDetector from 'i18next-browser-languagedetector';
 
 import translationEN from './locales/en/translation.json';
 import translationAR from './locales/ar/translation.json';
@@ -466,14 +469,15 @@ const resources = {
 };
 
 i18n
-  .use(LanguageDetector)
+  // .use(LanguageDetector) <-- Comment or remove this line
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'ar', // Set Arabic as your primary fallback
+    lng: 'ar', // <-- ADD THIS LINE: Explicitly force Arabic as the active language
+    fallbackLng: 'ar',
     debug: false,
     interpolation: {
-      escapeValue: false // React already heavily safeguards from XSS
+      escapeValue: false
     }
   });
 
@@ -1242,13 +1246,14 @@ export function useAuth(onSuccess: (user: User) => void) {
 </file>
 
 <file path="src/hooks/useGameRoom.ts">
-// FILE: src/hooks/useGameRoom.ts
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { joinRoom, fetchRoomState } from '@/services/api';
 import type { Evidence, Suspect, Victim } from '@/types';
 
 export function useGameRoom(inviteCode: string | undefined) {
+  const { t } = useTranslation();
 
   const {
     data: room,
@@ -1258,7 +1263,7 @@ export function useGameRoom(inviteCode: string | undefined) {
   } = useQuery({
     queryKey: ['gameRoom', inviteCode],
     queryFn: async () => {
-      if (!inviteCode) throw new Error('No invite code provided.');
+      if (!inviteCode) throw new Error(t('pages.gameRoom.noInviteCode'));
 
       const storageKey = `active_room_id_for_${inviteCode}`;
       let roomId = sessionStorage.getItem(storageKey);
@@ -1268,7 +1273,6 @@ export function useGameRoom(inviteCode: string | undefined) {
         if (!joinResult.isSuccess) throw new Error(joinResult.errorMessage);
 
         roomId = joinResult.value.id.toString();
-        // REMOVED: sessionStorage.setItem(storageKey, roomId); -> Side-effect removed from queryFn
       }
 
       const stateResult = await fetchRoomState(parseInt(roomId, 10));
@@ -1319,6 +1323,7 @@ export function useGameRoom(inviteCode: string | undefined) {
 <file path="src/hooks/useInvestigationPhase.ts">
 import { useState, useEffect } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { useRoomState, useRoomActions } from '@/context/RoomContext';
 import type { Choice } from '@/types';
 import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/services/api';
@@ -1328,6 +1333,7 @@ export type { ToastNotification, GlobalFeedback } from '@/context/RoomContext';
 interface ApiError { title?: string; message: string; }
 
 export function useInvestigationPhase() {
+  const { t } = useTranslation();
   const { room } = useRoomState();
   const { refreshRoomData, addGlobalToast, setGlobalFeedback } = useRoomActions();
 
@@ -1340,7 +1346,7 @@ export function useInvestigationPhase() {
     if (!currentUser) return;
 
     const serverVotes: Record<number, number> = {};
-    room.votes?.forEach(vote => {
+    room.votes?.forEach((vote: any) => {
       if (vote.user_id === currentUser.id) {
         serverVotes[vote.question_id] = vote.choice_id;
       }
@@ -1369,7 +1375,7 @@ export function useInvestigationPhase() {
       if (data.status === 'success' || data.status === 'failed_final') {
         setGlobalFeedback({
           type: data.status === 'success' ? 'success' : 'error',
-          title: data.status === 'success' ? 'Consensus Verified' : 'Theory Rejected',
+          title: data.status === 'success' ? t('pages.gameRoom.hooks.phase.consensusVerified') : t('pages.gameRoom.hooks.phase.theoryRejected'),
           message: data.message
         });
 
@@ -1379,13 +1385,13 @@ export function useInvestigationPhase() {
           refreshRoomData();
         }, 4000);
       } else {
-        setGlobalFeedback({ type: 'error', title: 'Theory Rejected', message: data.message });
+        setGlobalFeedback({ type: 'error', title: t('pages.gameRoom.hooks.phase.theoryRejected'), message: data.message });
         setLocalVotes({});
         refreshRoomData();
       }
     },
     onError: (error: ApiError) => {
-      setGlobalFeedback({ type: 'error', title: error.title || 'Error', message: error.message });
+      setGlobalFeedback({ type: 'error', title: error.title || t('pages.gameRoom.hooks.phase.systemError'), message: error.message });
     }
   });
 
@@ -1397,7 +1403,7 @@ export function useInvestigationPhase() {
     },
     onSuccess: () => refreshRoomData(),
     onError: (error: ApiError) => setGlobalFeedback({
-      type: 'error', title: error.title || 'System Error', message: error.message
+      type: 'error', title: error.title || t('pages.gameRoom.hooks.phase.systemError'), message: error.message
     })
   });
 
@@ -1410,8 +1416,8 @@ export function useInvestigationPhase() {
     onSuccess: () => {
       refreshRoomData();
     },
-    onError: (error: ApiError) => setGlobalFeedback({ // <-- FIXED HERE
-      type: 'error', title: error.title || 'Transmission Error', message: error.message
+    onError: (error: ApiError) => setGlobalFeedback({
+      type: 'error', title: error.title || t('pages.gameRoom.hooks.phase.transmissionError'), message: error.message
     })
   });
 
@@ -1423,25 +1429,33 @@ export function useInvestigationPhase() {
 
     if (choice.outcomes?.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) {
       addGlobalToast({
-        type: 'evidence', title: 'EVIDENCE RECOVERED', message: `${choice.outcomes.unlock_evidence.length} new piece(s) of physical evidence secured.`,
+        type: 'evidence',
+        title: t('pages.gameRoom.hooks.phase.evidenceRecovered'),
+        message: t('pages.gameRoom.hooks.phase.evidenceRecoveredMsg', { count: choice.outcomes.unlock_evidence.length }),
         icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36'
       });
     }
     if (choice.outcomes?.unlock_levels && choice.outcomes.unlock_levels.length > 0) {
       addGlobalToast({
-        type: 'level', title: 'PHASE UNLOCKED', message: 'A new narrative path is now available.',
+        type: 'level',
+        title: t('pages.gameRoom.hooks.phase.phaseUnlocked'),
+        message: t('pages.gameRoom.hooks.phase.phaseUnlockedMsg'),
         icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e'
       });
     }
     if (choice.outcomes?.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) {
       addGlobalToast({
-        type: 'suspect', title: 'PERSON OF INTEREST', message: 'New suspect added to the board.',
+        type: 'suspect',
+        title: t('pages.gameRoom.hooks.phase.personOfInterest'),
+        message: t('pages.gameRoom.hooks.phase.personOfInterestMsg'),
         icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232'
       });
     }
     if (choice.outcomes?.unlock_victims && choice.outcomes.unlock_victims.length > 0) {
       addGlobalToast({
-        type: 'victim', title: 'CASUALTY IDENTIFIED', message: 'New victim details have been verified.',
+        type: 'victim',
+        title: t('pages.gameRoom.hooks.phase.casualtyIdentified'),
+        message: t('pages.gameRoom.hooks.phase.casualtyIdentifiedMsg'),
         icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91'
       });
     }
@@ -1477,6 +1491,7 @@ export function useInvestigationPhase() {
 <file path="src/hooks/useInvestigationRequest.ts">
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
+import { useTranslation } from 'react-i18next';
 import { submitInvestigationRequest } from '@/services/api';
 import type { GameRoom } from '@/types';
 import type { ToastNotification } from './useInvestigationPhase';
@@ -1489,6 +1504,7 @@ export interface FiledRequest {
 }
 
 export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => void) {
+  const { t } = useTranslation();
   const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
   const [requestType, setRequestType] = useState<string>('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -1536,8 +1552,8 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
           newToasts.push({
             id: crypto.randomUUID(),
             type: 'evidence',
-            title: 'PROCEDURAL REQUEST APPROVED',
-            message: 'New case files have been authorized and added to the board.',
+            title: t('pages.gameRoom.hooks.request.proceduralApproved'),
+            message: t('pages.gameRoom.hooks.request.proceduralApprovedMsg'),
             icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36'
           });
         }
@@ -1546,8 +1562,8 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
           newToasts.push({
             id: crypto.randomUUID(),
             type: 'level',
-            title: 'WARRANT EXECUTED',
-            message: 'A new investigative phase is now available on the roadmap.',
+            title: t('pages.gameRoom.hooks.request.warrantExecuted'),
+            message: t('pages.gameRoom.hooks.request.warrantExecutedMsg'),
             icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e'
           });
         }
@@ -1660,8 +1676,8 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
     },
     "agentNotepad": {
       "fieldLedger": "السجل الميداني",
-      "synced": "✓ تمت المزامنة",
-      "saving": "⟳ جاري الحفظ",
+      "synced": "تمت المزامنة ✓",
+      "saving": "جاري الحفظ ⟳",
       "placeholder": "سجل الجداول الزمنية، وتناقضات المشتبه بهم، وروابط الأدلة هنا..."
     },
     "caseBriefing": {
@@ -1721,6 +1737,30 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
       "failedToLoad": "فشل في تحميل القضايا"
     },
     "gameRoom": {
+      "synchronizing": "جاري مزامنة بيانات الجلسة...",
+      "noInviteCode": "لم يتم توفير رمز دعوة.",
+      "sessionCode":"رمز الجلسة",
+      "activeAgents":"العملاء النشطون",
+      "strikes": "الإنذارات",
+      "sessionNotFound": "الجلسة غير موجودة.",
+      "departmentUpdate": "تحديث الإدارة",
+      "wiretapIntercepted": "تم اعتراض مكالمة",
+      "audioFeedActive": "البث الصوتي نشط. استمع بعناية.",
+      "layout": {
+        "departmentHeat": "ضغط الإدارة",
+        "host": "المضيف",
+        "acknowledge": "إقرار",
+        "tabs": {
+          "caseDetails": "تفاصيل القضية",
+          "evidences": "الأدلة",
+          "suspects": "المشتبه بهم",
+          "campaign": "الحملة"
+        },
+        "notifications":{
+        "newCasualty": "ضحية جديدة",
+        "unreadIntel": "معلومات غير مقروءة"
+        }
+      },
       "gameEndOverlay": {
         "caseClosed": "أُغلقت القضية",
         "caseClosedFallback": "تم كشف الحقيقة. عمل ممتاز.",
@@ -1788,7 +1828,16 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
           "viewFiled": "عرض الطلبات المقدمة",
           "noRequestsFiled": "لم يتم تقديم أي طلبات إجرائية حتى الآن خلال هذه الجلسة.",
           "crossReferenced": "تم التقاطع مع:",
-          "approvedStatus": "موافق عليه"
+          "approvedStatus": "موافق عليه",
+          "requestTypes": {
+            "search_warrant": "مذكرة تفتيش",
+            "financial_subpoena": "استدعاء سجلات مالية",
+            "toxicology_report": "تقرير سموم",
+            "wiretap_authorization": "تصريح تنصت",
+            "ballistics_analysis": "تحليل مقذوفات",
+            "digital_forensics": "فحص الأدلة الرقمية",
+            "exhumation_order": "أمر استخراج جثة"
+          }
         },
         "variants": {
           "audio": {
@@ -1965,6 +2014,87 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
             "imageAltFallback": "صورة دليل مصورة",
             "noMediaFound": "لم يتم العثور على وسائط مرتبطة بهذا الملف."
           }
+        }
+    },
+    "campaign": {
+        "unknownPhase": "مرحلة غير معروفة",
+        "noLeads": "لا توجد خيوط متاحة حالياً في هذه المرحلة.",
+        "undiscoveredEncounter": "مواجهة غير مكتشفة",
+        "hiddenPathDesc": "هذا المسار يظل مخفياً. يجب عليك استنتاج الرابط السردي الصحيح أو تحديد أدلة معينة لفتح هذا الخيط.",
+        "activeInvestigation": "تحقيق نشط",
+        "hostInitiateWarning": "بدء هذه المرحلة سيقفل جميع المراحل الأخرى حتى يتم التوصل إلى حكم.",
+        "awaitingHost": "في انتظار تفويض المضيف لبدء مرحلة التحقيق هذه.",
+        "lockingCoordinator": "جاري قفل المنسق...",
+        "commenceInvestigation": "بدء التحقيق",
+        "lead": "الخيط",
+        "levels": {
+          "interrogation": {
+          "suspect": "المشتبه به",
+          "tieDetected": "⚠️ تم اكتشاف تعادل: قم بتغيير التصويت للحل",
+          "voteCast": "تم التصويت ({{votes}}/{{total}}) - يمكنك إعادة التعيين",
+          "selectResponse": "اختر الرد ({{votes}}/{{total}})",
+          "missingIntel": "🔒 [ معلومات مفقودة ]",
+          "investigators": "المحققون",
+          "processing": "جاري المعالجة...",
+          "submitVerdict": "تقديم الحكم النهائي",
+          "awaitingHostVerdict": "في انتظار المضيف لتقديم الحكم النهائي..."
+          },
+          "location": {
+          "leadDiscovered": "اكتشاف خيط",
+          "foundUseful": "لقد وجدت شيئاً مفيداً هنا. سأسجله على اللوحة.",
+          "newSceneUnlocked": "تم فتح مشهد جديد",
+          "newVantagePoint": "تم اكتشاف نقطة مراقبة أو غرفة جديدة.",
+          "deadEnd": "طريق مسدود",
+          "nothingFound": "لم يتم العثور على شيء هنا. يجب أن أستمر في البحث.",
+          "activeSceneSweep": "مسح نشط للمشهد",
+          "closeViewer": "إغلاق العارض",
+          "crimeSceneAlt": "مسرح الجريمة",
+          "requiresIntel": "🔒 [ يتطلب معلومات إضافية ]",
+          "inspectLocation": "فحص الموقع",
+          "enterViewerHint": "أدخل وضع ملء الشاشة لمسح المشهد.",
+          "processing": "جاري المعالجة...",
+          "leaveLocation": "مغادرة الموقع",
+          "awaitingHost": "المسح قيد التقدم. في انتظار المضيف لإنهاء البحث..."
+          },
+          "wiretap": {
+          "activeIntercept": "[ اعتراض نشط ]",
+          "interceptPrefix": "اعتراض-",
+          "tieDetected": "> ⚠️ تم اكتشاف تعادل: قم بتغيير التصويت للحل",
+          "voteRecorded": "> الحالة: تم تسجيل التصويت [{{votes}}/{{total}}]",
+          "awaitingConsensus": "> الحالة: في انتظار إجماع العملاء [{{votes}}/{{total}}]",
+          "connectionSevered": "انقطع الاتصال. اعتمد على الملاحظات الميدانية.",
+          "initiateAudio": "▶ بدء البث الصوتي (مرة واحدة)",
+          "awaitingHostAudio": "في انتظار المضيف لبدء البث",
+          "pathLocked": "🔒 [ المسار مغلق: لم يتم استيفاء المتطلبات ]",
+          "classified": "[ سري ]",
+          "submitAnalysis": "تقديم تحليل الاعتراض",
+          "processing": "جاري المعالجة...",
+          "awaitingHostSubmit": "في انتظار المضيف لتقديم تحليل الاعتراض...",
+          "audioFeedLabel": "[ بث صوتي ]",
+          "feedSeveredLabel": "[ انقطع البث ]"
+          }
+        }
+    },
+    "hooks": {
+        "phase": {
+          "consensusVerified": "تم التحقق من الإجماع",
+          "theoryRejected": "رُفضت النظرية",
+          "systemError": "خطأ في النظام",
+          "transmissionError": "خطأ في الإرسال",
+          "evidenceRecovered": "تم استرداد أدلة",
+          "evidenceRecoveredMsg": "تم تأمين {{count}} قطعة/قطع جديدة من الأدلة المادية.",
+          "phaseUnlocked": "تم فتح مرحلة",
+          "phaseUnlockedMsg": "مسار سردي جديد متاح الآن.",
+          "personOfInterest": "شخص موضع اهتمام",
+          "personOfInterestMsg": "تمت إضافة مشتبه به جديد إلى اللوحة.",
+          "casualtyIdentified": "تم تحديد هوية الضحية",
+          "casualtyIdentifiedMsg": "تم التحقق من تفاصيل الضحية الجديدة."
+        },
+        "request": {
+          "proceduralApproved": "تمت الموافقة على الطلب الإجرائي",
+          "proceduralApprovedMsg": "تم التصريح بملفات قضية جديدة وإضافتها إلى اللوحة.",
+          "warrantExecuted": "تم تنفيذ مذكرة التفتيش",
+          "warrantExecutedMsg": "مرحلة تحقيق جديدة متاحة الآن على خارطة الطريق."
         }
     }
   }
@@ -5385,6 +5515,7 @@ export default function Auth({ onSuccess }: AuthProps) {
 <file path="src/pages/GameRoom/GameRoom.tsx">
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useViewedItems } from '@/hooks/useViewedItems';
 import { RoomProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
@@ -5395,6 +5526,7 @@ interface LevelTransitionedPayload { message: string; status: string; stats?: an
 interface WiretapTriggeredPayload { question_id: number; audio_url: string | null; message?: string; }
 
 export default function GameRoom() {
+  const { t } = useTranslation();
   const { inviteCode } = useParams<{ inviteCode: string }>();
   const { room, isLoading, error, accumulatedEvidences, accumulatedSuspects, accumulatedVictims, refreshRoomData } = useGameRoom(inviteCode);
 
@@ -5405,7 +5537,7 @@ export default function GameRoom() {
   const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
   const [finalStats, setFinalStats] = useState<any>(room?.final_stats || null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
-  const [globalFeedback, setGlobalFeedback] = useState<GlobalFeedback | null>(null); // Added
+  const [globalFeedback, setGlobalFeedback] = useState<GlobalFeedback | null>(null);
 
   const playedAudioTracker = useRef<Set<number>>(new Set());
 
@@ -5427,10 +5559,9 @@ export default function GameRoom() {
     channel.listen('LevelTransitioned', (e: LevelTransitionedPayload) => {
       if (e.message) {
         if (e.status === 'active') {
-          // Replaced window.alert with the global modal
           setGlobalFeedback({
             type: 'success',
-            title: 'DEPARTMENT UPDATE',
+            title: t('pages.gameRoom.departmentUpdate'),
             message: e.message
           });
           setTimeout(() => setGlobalFeedback(null), 4000);
@@ -5452,8 +5583,8 @@ export default function GameRoom() {
 
       addGlobalToast({
         type: 'evidence',
-        title: 'WIRETAP INTERCEPTED',
-        message: e.message || 'Audio feed active. Listen carefully.',
+        title: t('pages.gameRoom.wiretapIntercepted'),
+        message: e.message || t('pages.gameRoom.audioFeedActive'),
         icon: 'https://api.iconify.design/ph:waveform-duotone.svg?color=%23c48b36'
       });
 
@@ -5465,10 +5596,10 @@ export default function GameRoom() {
       channel.stopListening('VoteLockedIn');
       channel.stopListening('WiretapTriggered');
     };
-  }, [room?.id, refreshRoomData, setGameOverData, addGlobalToast]);
+  }, [room?.id, refreshRoomData, setGameOverData, addGlobalToast, t]);
 
-  if (isLoading) return <div className="terminal-text">Synchronizing session data...</div>;
-  if (error || !room) return <div className="terminal-text error">{error || 'Session not found.'}</div>;
+  if (isLoading) return <div className="terminal-text">{t('pages.gameRoom.synchronizing')}</div>;
+  if (error || !room) return <div className="terminal-text error">{error || t('pages.gameRoom.sessionNotFound')}</div>;
 
   return (
     <RoomProvider
@@ -5479,7 +5610,7 @@ export default function GameRoom() {
       viewedSuspects={viewedSuspects} markSuspectAsViewed={markSuspectAsViewed}
       viewedVictims={viewedVictims} markVictimAsViewed={markVictimAsViewed}
       setGameOverData={setGameOverData} addGlobalToast={addGlobalToast}
-      globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback} // Added
+      globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback}
     >
       <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={finalStats} toasts={toasts} />
     </RoomProvider>
@@ -5488,9 +5619,9 @@ export default function GameRoom() {
 </file>
 
 <file path="src/pages/GameRoom/GameRoomLayout.tsx">
-// FILE: src/pages/GameRoom/GameRoomLayout.tsx
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { useRoomState, useRoomActions } from '@/context/RoomContext';
 import type { ToastNotification } from '@/context/RoomContext';
 import CaseDetailsTab from './tabs/CaseDetails/CaseDetailsTab';
@@ -5509,6 +5640,7 @@ interface GameRoomLayoutProps {
 }
 
 export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }: GameRoomLayoutProps) {
+  const { t } = useTranslation();
   const {
     room,
     accumulatedEvidences,
@@ -5558,7 +5690,9 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
             )}
             <h3 className="feedback-title">{globalFeedback.title}</h3>
             <p className="feedback-message">{globalFeedback.message}</p>
-            <button className="btn-secondary mt-1" onClick={() => setGlobalFeedback(null)}>Acknowledge</button>
+            <button className="btn-secondary mt-1" onClick={() => setGlobalFeedback(null)}>
+              {t('pages.gameRoom.layout.acknowledge')}
+            </button>
           </div>
         </div>
       )}
@@ -5586,7 +5720,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
       <aside className="sidebar-panel glass-panel">
         <div className="sidebar-section">
           <div className="sidebar-heading-wrapper">
-            <h3 className="sidebar-heading">Session Code</h3>
+            <h3 className="sidebar-heading">{t('gameRoom.sessionCode')}</h3>
             <button
               className={`copy-btn ${isCopied ? 'copied' : ''}`}
               onClick={handleCopyCode}
@@ -5600,7 +5734,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
 
         <div className="sidebar-section">
           <h3 className="sidebar-heading" style={{ color: 'var(--accent-crimson)', borderColor: 'rgba(255,51,102,0.2)' }}>
-            Department Heat
+            {t('pages.gameRoom.layout.departmentHeat')}
           </h3>
           <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
             {[...Array(room.game_case?.max_strikes || 5)].map((_, i) => (
@@ -5616,12 +5750,12 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
             ))}
           </div>
           <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.75rem', textAlign: 'right' }}>
-            STRIKES: {room.strikes || 0} / {room.game_case?.max_strikes || 5}
+            {t('gameRoom.strikes')}: {room.strikes || 0} / {room.game_case?.max_strikes || 5}
           </div>
         </div>
 
         <div className="sidebar-section">
-          <h3 className="sidebar-heading">Active Agents</h3>
+          <h3 className="sidebar-heading">{t('gameRoom.activeAgents')}</h3>
           <ul className="agent-list">
             {room.users ? room.users.map((participant: any) => (
               <li key={participant.id} className="agent-item">
@@ -5631,7 +5765,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
             )) : (
               <li className="agent-item">
                 <span className="agent-role host"></span>
-                Host (ID: {room.host_user_id})
+                {t('pages.gameRoom.layout.host')} (ID: {room.host_user_id})
               </li>
             )}
           </ul>
@@ -5644,18 +5778,20 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
         <header className="workspace-header">
           <nav className="tab-navigation">
             <button className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
-              Case Details
-              {hasUnreadVictims && <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="New Casualty"></div>}
+              {t('pages.gameRoom.layout.tabs.caseDetails')}
+              {hasUnreadVictims && <div className="unread-indicator" style={{ top: '12px', insetInlineEnd: '-15px', width: '12px', height: '12px' }} title={t('pages.gameRoom.layout.tabs.newCasualty')}></div>}
             </button>
             <button className={`tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => setActiveTab('evidences')}>
-              Evidences
-              {hasUnreadEvidence && <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="Unread Intel"></div>}
+              {t('pages.gameRoom.layout.tabs.evidences')}
+              {hasUnreadEvidence && <div className="unread-indicator" style={{ top: '12px', insetInlineEnd: '-15px', width: '12px', height: '12px' }} title={t('pages.gameRoom.layout.tabs.unreadIntel')}></div>}
             </button>
             <button className={`tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} onClick={() => setActiveTab('suspects')}>
-              Suspects
-              {hasUnreadSuspects && <div className="unread-indicator" style={{ top: '12px', right: '-15px', width: '12px', height: '12px' }} title="Unread Intel"></div>}
+              {t('pages.gameRoom.layout.tabs.suspects')}
+              {hasUnreadSuspects && <div className="unread-indicator" style={{ top: '12px', insetInlineEnd: '-15px', width: '12px', height: '12px' }} title={t('pages.gameRoom.layout.tabs.unreadIntel')}></div>}
             </button>
-            <button className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`} onClick={() => setActiveTab('campaign')}>Campaign</button>
+            <button className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`} onClick={() => setActiveTab('campaign')}>
+              {t('pages.gameRoom.layout.tabs.campaign')}
+            </button>
           </nav>
         </header>
 
@@ -5748,9 +5884,10 @@ export default function GameEndOverlay({ status, resolutionMessage, finalStats }
 
 <file path="src/pages/GameRoom/tabs/Campaign/CampaignTab.tsx">
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
-import type { Question } from '@/types';
+import type { Question, Phase, Level } from '@/types';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
 import LocationPhase from './Levels/Location/LocationPhase';
 import WiretapPhase from './Levels/Wiretap/WiretapPhase';
@@ -5758,9 +5895,10 @@ import '../SharedOverlay.css';
 import './CampaignTab.css';
 
 export default function CampaignTab() {
+  const { t } = useTranslation();
   const { room } = useRoomState();
 
-  const phases = room.game_case?.phases || [];
+  const phases: Phase[] = room.game_case?.phases || [];
   const currentLevelId = room.current_level_id;
   const roomStatus = room.status;
 
@@ -5768,7 +5906,6 @@ export default function CampaignTab() {
   const currentUser = storedUser ? JSON.parse(storedUser) : null;
   const isHost = currentUser?.id === room.host_user_id;
 
-  // Feedback and clearFeedback have been removed; UI logic now lives in the parent layout
   const {
     isSubmitting,
     isInitiating,
@@ -5778,8 +5915,8 @@ export default function CampaignTab() {
 
   const [expandedId, setExpandedId] = useState<number | null>(null);
 
-  const unlockedLevelIds = new Set(room.unlocked_levels?.map((l: any) => l.id) || []);
-  const sortedPhases = [...phases].sort((a: any, b: any) => a.order_index - b.order_index);
+  const unlockedLevelIds = new Set(room.unlocked_levels?.map((l: Level) => l.id) || []);
+  const sortedPhases = [...phases].sort((a: Phase, b: Phase) => a.order_index - b.order_index);
   const phaseStorageKey = `room_${room.id}_active_phase`;
 
   const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
@@ -5821,7 +5958,7 @@ export default function CampaignTab() {
 
     if (votesCast < totalPlayers) return { votesCast, isResolved: false, isTie: false, winningChoiceId: null };
 
-    let maxWeight = -1, isTie = false, winningChoiceId = null;
+    let maxWeight = -1, isTie = false, winningChoiceId: number | null = null;
     for (const [cId, weight] of Object.entries(tally)) {
       if (weight > maxWeight) { maxWeight = weight; winningChoiceId = Number(cId); isTie = false; }
       else if (weight === maxWeight) { isTie = true; }
@@ -5829,14 +5966,14 @@ export default function CampaignTab() {
     return { votesCast, isResolved: !isTie, isTie, winningChoiceId: isTie ? null : winningChoiceId };
   };
 
-  const activePhaseData = sortedPhases.find((p: any) => p.id === activePhaseId);
-  const sortedLevels = activePhaseData?.levels ? [...activePhaseData.levels].sort((a: any, b: any) => a.order_index - b.order_index) : [];
+  const activePhaseData = sortedPhases.find((p: Phase) => p.id === activePhaseId);
+  const sortedLevels = activePhaseData?.levels ? [...activePhaseData.levels].sort((a: Level, b: Level) => a.order_index - b.order_index) : [];
 
   return (
     <div className="campaign-roadmap-container">
       <div className="phase-subnav">
-        {sortedPhases.map((phase: any) => {
-          const isPhaseUnlocked = phase.levels?.some((l: any) => l.is_initial || unlockedLevelIds.has(l.id));
+        {sortedPhases.map((phase: Phase) => {
+          const isPhaseUnlocked = phase.levels?.some((l: Level) => l.is_initial || unlockedLevelIds.has(l.id));
 
           return (
             <button
@@ -5857,7 +5994,7 @@ export default function CampaignTab() {
       </div>
 
       <div style={{ marginBottom: '2rem' }}>
-        <h2 className="section-title">{activePhaseData?.title || 'Unknown Phase'}</h2>
+        <h2 className="section-title">{activePhaseData?.title || t('pages.gameRoom.campaign.unknownPhase')}</h2>
         {activePhaseData?.description && (
           <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
             {activePhaseData.description}
@@ -5867,12 +6004,14 @@ export default function CampaignTab() {
 
       <div className="roadmap-timeline">
         {sortedLevels.length === 0 && (
-          <div className="terminal-text" style={{ padding: 0, textAlign: 'left' }}>No leads currently available in this phase.</div>
+          <div className="terminal-text" style={{ padding: 0, textAlign: 'start' }}>
+            {t('pages.gameRoom.campaign.noLeads')}
+          </div>
         )}
 
-        {sortedLevels.map((level: any) => {
+        {sortedLevels.map((level: Level) => {
           const isDiscovered = level.is_initial || unlockedLevelIds.has(level.id);
-          const isCompleted = room.completed_levels?.some((cl: any) => cl.id === level.id);
+          const isCompleted = room.completed_levels?.some((cl: Level) => cl.id === level.id);
           const isActive = currentLevelId === level.id;
           const isAnotherPhaseRunning = currentLevelId !== null;
 
@@ -5884,10 +6023,10 @@ export default function CampaignTab() {
 
           const isExpanded = expandedId === level.id;
 
-          const displayTitle = isDiscovered ? level.title : 'Undiscovered Encounter';
+          const displayTitle = isDiscovered ? level.title : t('pages.gameRoom.campaign.undiscoveredEncounter');
           const displayDesc = isDiscovered
             ? level.details
-            : 'This path remains hidden. You must deduce the correct narrative link or locate specific evidence to unlock this lead.';
+            : t('pages.gameRoom.campaign.hiddenPathDesc');
 
           return (
             <div key={level.id} className={`roadmap-node ${status}`}>
@@ -5908,10 +6047,10 @@ export default function CampaignTab() {
                     <div className="node-image-overlay"></div>
                   </div>
                   <div className="node-details">
-                    <span className="node-phase">Lead {level.order_index}</span>
+                    <span className="node-phase">{t('pages.gameRoom.campaign.lead')} {level.order_index}</span>
                     <h3 className="node-title">{displayTitle}</h3>
                     <p className="node-desc">{displayDesc}</p>
-                    {status === 'active' && <div className="active-badge">Active Investigation</div>}
+                    {status === 'active' && <div className="active-badge">{t('pages.gameRoom.campaign.activeInvestigation')}</div>}
                   </div>
                 </div>
 
@@ -5922,12 +6061,12 @@ export default function CampaignTab() {
                       <div style={{ textAlign: 'center', padding: '1rem' }}>
                         <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontFamily: 'var(--font-mono)' }}>
                           {isHost
-                            ? 'Initiating this phase will lock all other phases until a verdict is reached.'
-                            : 'Awaiting Host authorization to commence this investigation phase.'}
+                            ? t('pages.gameRoom.campaign.hostInitiateWarning')
+                            : t('pages.gameRoom.campaign.awaitingHost')}
                         </p>
                         {isHost && (
                           <button className="btn-primary" onClick={() => initiatePhase(level.id)} disabled={isInitiating}>
-                            {isInitiating ? 'Locking Coordinator...' : 'Commence Investigation'}
+                            {isInitiating ? t('pages.gameRoom.campaign.lockingCoordinator') : t('pages.gameRoom.campaign.commenceInvestigation')}
                           </button>
                         )}
                       </div>
@@ -5980,6 +6119,7 @@ export default function CampaignTab() {
 
 <file path="src/pages/GameRoom/tabs/Campaign/Levels/Interrogation/InterrogationPhase.tsx">
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Level, Choice, Question } from '@/types';
@@ -6042,7 +6182,7 @@ interface InterrogationPhaseProps {
 export default function InterrogationPhase({
   level, status, totalPlayers, getQuestionConsensus, isHost, isSubmitting, handleSubmitTheory
 }: InterrogationPhaseProps) {
-
+  const { t } = useTranslation();
   const { room, accumulatedEvidences } = useRoomState();
   const { localVotes, handleSelectChoice } = useInvestigationPhase();
 
@@ -6159,7 +6299,9 @@ export default function InterrogationPhase({
           <div key={q.id} className="chat-exchange">
 
             <div className="chat-bubble suspect-bubble">
-              <span className="speaker-label suspect">SUSPECT {customReaction ? `[${customReaction}]` : ''}</span>
+              <span className="speaker-label suspect">
+                {t('pages.gameRoom.campaign.levels.interrogation.suspect')} {customReaction ? `[${customReaction}]` : ''}
+              </span>
               <p>
                 <Typewriter
                   text={q.text}
@@ -6178,10 +6320,10 @@ export default function InterrogationPhase({
                     <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
                       <span className="speaker-label" style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
                         {consensus.isTie
-                          ? '⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE'
+                          ? t('pages.gameRoom.campaign.levels.interrogation.tieDetected')
                           : hasLocalVote
-                            ? `VOTE CAST (${consensus.votesCast}/${totalPlayers}) - YOU MAY REASSIGN`
-                            : `SELECT RESPONSE (${consensus.votesCast}/${totalPlayers})`
+                            ? t('pages.gameRoom.campaign.levels.interrogation.voteCast', { votes: consensus.votesCast, total: totalPlayers })
+                            : t('pages.gameRoom.campaign.levels.interrogation.selectResponse', { votes: consensus.votesCast, total: totalPlayers })
                         }
                       </span>
                       <div className="vote-choices-grid">
@@ -6202,7 +6344,7 @@ export default function InterrogationPhase({
                               }}
                               style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}
                             >
-                              {isNarrativeLocked ? '🔒 [ MISSING INTEL ]' : c.text}
+                              {isNarrativeLocked ? t('pages.gameRoom.campaign.levels.interrogation.missingIntel') : c.text}
                             </span>
                           );
                         })}
@@ -6215,7 +6357,7 @@ export default function InterrogationPhase({
                 {isGloballyLocked && winningChoice && (
                   <div className="investigator-interaction-area">
                     <div className="chat-bubble agent-bubble">
-                      <span className="speaker-label investigator">INVESTIGATORS</span>
+                      <span className="speaker-label investigator">{t('pages.gameRoom.campaign.levels.interrogation.investigators')}</span>
                       <p>
                         <Typewriter
                           text={winningChoice.text}
@@ -6237,11 +6379,11 @@ export default function InterrogationPhase({
         <div className="submit-theory-container" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '1.5rem' }}>
           {isHost ? (
             <button className="btn-primary submit-theory-btn" disabled={isSubmitting} onClick={handleSubmitTheory}>
-              {isSubmitting ? 'Processing...' : 'Submit Final Verdict'}
+              {isSubmitting ? t('pages.gameRoom.campaign.levels.interrogation.processing') : t('pages.gameRoom.campaign.levels.interrogation.submitVerdict')}
             </button>
           ) : (
             <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
-              Awaiting Host to submit final verdict...
+              {t('pages.gameRoom.campaign.levels.interrogation.awaitingHostVerdict')}
             </div>
           )}
         </div>
@@ -6254,6 +6396,7 @@ export default function InterrogationPhase({
 <file path="src/pages/GameRoom/tabs/Campaign/Levels/Location/LocationPhase.tsx">
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Level, Choice } from '@/types';
@@ -6268,6 +6411,7 @@ interface LocationPhaseProps {
 }
 
 export default function LocationPhase({ level, status, isHost, isSubmitting, handleSubmitTheory }: LocationPhaseProps) {
+  const { t } = useTranslation();
   const { room, accumulatedEvidences } = useRoomState();
   const { localVotes, handleSelectChoice, addToast } = useInvestigationPhase();
 
@@ -6324,7 +6468,7 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     } catch { return new Set(); }
   });
 
-  // --- NEW: P2P State Synchronization ---
+  // --- P2P State Synchronization ---
   const stateRef = useRef({ deadEnds: clickedDeadEnds, found: foundPoints });
   useEffect(() => {
     stateRef.current = { deadEnds: clickedDeadEnds, found: foundPoints };
@@ -6334,7 +6478,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     if (!window.Echo) return;
     const channel = window.Echo.private(`room.${room.id}`);
 
-    // 1. Listen for real-time clicks from other agents
     channel.listenForWhisper('location-interacted', (e: { type: string, choiceId: number }) => {
       if (e.type === 'deadEnd') {
         setClickedDeadEnds(prev => {
@@ -6351,7 +6494,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
       }
     });
 
-    // 2. Listen for late-joiners requesting the current board state
     channel.listenForWhisper('request-location-sync', () => {
       const { deadEnds, found } = stateRef.current;
       if (deadEnds.size > 0 || found.size > 0) {
@@ -6362,7 +6504,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
       }
     });
 
-    // 3. Receive the sync data if we were the late-joiner
     channel.listenForWhisper('location-sync-reply', (e: { deadEnds: number[], foundPoints: number[] }) => {
       if (e.deadEnds?.length) {
         setClickedDeadEnds(prev => {
@@ -6380,21 +6521,18 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
       }
     });
 
-    // 4. Trigger the sync request 1 second after mount to ensure connections are stable
     const syncTimer = setTimeout(() => {
       channel.whisper('request-location-sync', {});
     }, 1000);
 
     return () => clearTimeout(syncTimer);
   }, [room.id, deadEndsStorageKey, foundPointsStorageKey]);
-  // ----------------------------------------
 
   if (!level.questions) return null;
 
   const isCompleted = status === 'completed';
   const visibleQuestionIds = new Set<number>();
 
-  // 1. Map out all scenes that are intentionally locked behind a coordinate click
   const lockedBehindChoiceIds = new Set<number>();
   level.questions.forEach(q => {
     q.choices?.forEach(c => {
@@ -6404,14 +6542,12 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     });
   });
 
-  // 2. Any scene NOT explicitly locked behind a choice is an independent scene. Make it visible.
   level.questions.forEach(q => {
     if (!lockedBehindChoiceIds.has(q.id)) {
       visibleQuestionIds.add(q.id);
     }
   });
 
-  // 3. Add dynamically unlocked scenes based on player interactions
   level.questions.forEach(q => {
     q.choices?.forEach(c => {
       const isSelectedLocally = foundPoints.has(c.id) || localVotes[q.id] === c.id;
@@ -6453,16 +6589,16 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 
     if (isCorrectFind) {
       setPopup({
-        title: "LEAD DISCOVERED",
-        message: choice.outcomes?.feedback || "I found something useful here. Logging it to the board.",
+        title: t('pages.gameRoom.campaign.levels.location.leadDiscovered'),
+        message: choice.outcomes?.feedback || t('pages.gameRoom.campaign.levels.location.foundUseful'),
         isSuccess: true
       });
 
       if (isFirstTimeDiscovery && choice.outcomes?.next_question_id) {
         addToast({
           type: 'level',
-          title: 'NEW SCENE UNLOCKED',
-          message: 'A new vantage point or room has been discovered.',
+          title: t('pages.gameRoom.campaign.levels.location.newSceneUnlocked'),
+          message: t('pages.gameRoom.campaign.levels.location.newVantagePoint'),
           icon: 'https://api.iconify.design/ph:map-pin-line-duotone.svg?color=%235a8a9e'
         });
       }
@@ -6473,7 +6609,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
         return newSet;
       });
 
-      // Broadcast correct find
       window.Echo?.private(`room.${room.id}`).whisper('location-interacted', { type: 'foundPoint', choiceId: choice.id });
 
       if (isFirstTimeDiscovery) {
@@ -6481,8 +6616,8 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
       }
     } else {
         setPopup({
-          title: "DEAD END",
-          message: choice.outcomes?.feedback || "Nothing was found here. I should keep looking.",
+          title: t('pages.gameRoom.campaign.levels.location.deadEnd'),
+          message: choice.outcomes?.feedback || t('pages.gameRoom.campaign.levels.location.nothingFound'),
           isSuccess: false
         });
 
@@ -6492,7 +6627,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
           return newSet;
         });
 
-        // Broadcast dead end
         window.Echo?.private(`room.${room.id}`).whisper('location-interacted', { type: 'deadEnd', choiceId: choice.id });
       }
 
@@ -6510,10 +6644,10 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
           <h2 className="section-title" style={{ margin: 0, border: 'none', padding: 0 }}>
             {activeQuestion.text || level.title}
           </h2>
-          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>Active Scene Sweep</span>
+          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{t('pages.gameRoom.campaign.levels.location.activeSceneSweep')}</span>
         </div>
         <button className="btn-secondary" style={{ flex: 'none', padding: '0.5rem 1.5rem' }} onClick={() => setInspectingQuestionId(null)}>
-          Close Viewer
+          {t('pages.gameRoom.campaign.levels.location.closeViewer')}
         </button>
       </div>
 
@@ -6528,7 +6662,7 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
         )}
 
         <div className="location-image-wrapper">
-          <img src={activeQuestion.img_url || '/placeholder-crime-scene.jpg'} alt="Crime Scene" className="location-image-full" />
+          <img src={activeQuestion.img_url || '/placeholder-crime-scene.jpg'} alt={t('pages.gameRoom.campaign.levels.location.crimeSceneAlt')} className="location-image-full" />
 
           {activeQuestion.choices?.map(choice => {
             const parts = choice.text.split('|');
@@ -6574,7 +6708,7 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
               >
                 <div className="loc-crosshair"></div>
                 <div className="loc-tooltip">
-                  {isNarrativeLocked ? '🔒 [ REQUIRES ADDITIONAL INTEL ]' : title}
+                  {isNarrativeLocked ? t('pages.gameRoom.campaign.levels.location.requiresIntel') : title}
                 </div>
               </div>
             );
@@ -6585,7 +6719,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     document.body
   ) : null;
 
-  // Evaluate if any interaction has occurred globally or via our synced local state
   const hasGlobalInteraction = level.questions?.some(q => room.votes?.some((v: any) => v.question_id === q.id));
   const hasInteracted = foundPoints.size > 0 || clickedDeadEnds.size > 0 || hasGlobalInteraction;
 
@@ -6600,15 +6733,14 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
                 onClick={() => setInspectingQuestionId(q.id)}
                 style={{ flex: 'none', width: 'auto', padding: '0.75rem 2rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}
               >
-                <span style={{ marginRight: '0.5rem'}}>👁️</span> Inspect Location
+                <span style={{ marginInlineEnd: '0.5rem'}}>👁️</span> {t('pages.gameRoom.campaign.levels.location.inspectLocation')}
               </button>
             </div>
           </div>
-          <p className="location-hint">{q.text || 'Enter the full-screen viewer to sweep the scene.'}</p>
+          <p className="location-hint">{q.text || t('pages.gameRoom.campaign.levels.location.enterViewerHint')}</p>
         </div>
       ))}
 
-      {/* Conditional Leave Location Button */}
       {status === 'active' && (
         <div style={{ gridColumn: '1 / -1', marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
           {isHost ? (
@@ -6618,11 +6750,11 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
               onClick={handleSubmitTheory}
               style={{ padding: '1rem 3rem', width: 'auto' }}
             >
-              {isSubmitting ? 'Processing...' : 'Leave Location'}
+              {isSubmitting ? t('pages.gameRoom.campaign.levels.location.processing') : t('pages.gameRoom.campaign.levels.location.leaveLocation')}
             </button>
           ) : (
             <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
-              Sweep in progress. Awaiting Host to conclude the search...
+              {t('pages.gameRoom.campaign.levels.location.awaitingHost')}
             </div>
           )}
         </div>
@@ -6635,6 +6767,7 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 </file>
 
 <file path="src/pages/GameRoom/tabs/Campaign/Levels/Wiretap/WiretapPhase.tsx">
+import { useTranslation } from 'react-i18next';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Level, Choice, Question } from '@/types';
@@ -6653,7 +6786,7 @@ interface WiretapPhaseProps {
 export default function WiretapPhase({
   level, status, totalPlayers, getQuestionConsensus, isHost, isSubmitting, handleSubmitTheory
 }: WiretapPhaseProps) {
-
+  const { t } = useTranslation();
   const { room, accumulatedEvidences } = useRoomState();
   const { localVotes, handleSelectChoice, triggerWiretap, isTriggeringWiretap } = useInvestigationPhase();
 
@@ -6705,14 +6838,13 @@ export default function WiretapPhase({
     }
   }
 
-  // --- NEW: Audio Completion Validation ---
   const requiredAudios = level.questions?.filter(q => q.audio_url) || [];
   const allAudiosPlayed = requiredAudios.length === 0 || requiredAudios.every(q => playedWiretaps.has(q.id));
 
   return (
     <div className="wiretap-phase-wrapper">
       <h4 className="drawer-title" style={{ color: 'var(--accent-cyan)', margin: '0 0 1rem 0', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>
-        [ Active Intercept ]
+        {t('pages.gameRoom.campaign.levels.wiretap.activeIntercept')}
       </h4>
 
       <div className="questions-list">
@@ -6735,7 +6867,7 @@ export default function WiretapPhase({
             <div key={q.id} className="question-item wiretap-item">
 
               <div className="wiretap-sidebar">
-                <span className="question-number">INT-{interceptNumber}</span>
+                <span className="question-number">{t('pages.gameRoom.campaign.levels.wiretap.interceptPrefix')}{interceptNumber}</span>
                 {isAudioIntercept && !hasBeenPlayed && (
                   <span className="tactical-pulse">🎙️</span>
                 )}
@@ -6750,21 +6882,24 @@ export default function WiretapPhase({
                   {status === 'active' && !isLocked && (
                     <span style={{ display: 'block', fontSize: '0.75rem', color: consensus.isTie ? 'var(--accent-crimson)' : 'var(--text-secondary)', marginTop: '0.75rem', fontFamily: 'var(--font-mono)' }}>
                       {consensus.isTie
-                          ? '> ⚠️ TIE DETECTED: CHANGE VOTE TO RESOLVE'
+                          ? t('pages.gameRoom.campaign.levels.wiretap.tieDetected')
                           : hasLocalVote
-                            ? `> STATUS: Vote recorded [${consensus.votesCast}/${totalPlayers}]`
-                            : `> STATUS: Awaiting Agent consensus [${consensus.votesCast}/${totalPlayers}]`
+                            ? t('pages.gameRoom.campaign.levels.wiretap.voteRecorded', { votes: consensus.votesCast, total: totalPlayers })
+                            : t('pages.gameRoom.campaign.levels.wiretap.awaitingConsensus', { votes: consensus.votesCast, total: totalPlayers })
                         }
                     </span>
                   )}
                 </p>
 
                 {isAudioIntercept && (
-                  <div className={`wiretap-container ${hasBeenPlayed ? 'played' : ''}`}>
+                  <div
+                    className={`wiretap-container ${hasBeenPlayed ? 'played' : ''}`}
+                    data-label={hasBeenPlayed ? t('pages.gameRoom.campaign.levels.wiretap.feedSeveredLabel') : t('pages.gameRoom.campaign.levels.wiretap.audioFeedLabel')}
+                  >
                     {hasBeenPlayed ? (
                       <div className="wiretap-burned">
-                        <span style={{ fontSize: '1.2rem', marginRight: '0.5rem' }}>🔒</span>
-                        CONNECTION SEVERED. RELY ON FIELD NOTES.
+                        <span style={{ fontSize: '1.2rem', marginInlineEnd: '0.5rem' }}>🔒</span>
+                        {t('pages.gameRoom.campaign.levels.wiretap.connectionSevered')}
                       </div>
                     ) : (
                       <button
@@ -6772,7 +6907,7 @@ export default function WiretapPhase({
                         disabled={!isHost || isTriggeringWiretap}
                         onClick={(e) => { e.stopPropagation(); triggerWiretap(q.id, q.audio_url!); }}
                       >
-                        {isHost ? '▶ INITIATE AUDIO FEED (ONCE)' : 'AWAITING HOST TO INITIATE'}
+                        {isHost ? t('pages.gameRoom.campaign.levels.wiretap.initiateAudio') : t('pages.gameRoom.campaign.levels.wiretap.awaitingHostAudio')}
                       </button>
                     )}
                   </div>
@@ -6804,9 +6939,9 @@ export default function WiretapPhase({
                         }}
                       >
                         {isNarrativeLocked
-                          ? '🔒 [ PATH LOCKED: PREREQUISITES NOT MET ]'
+                          ? t('pages.gameRoom.campaign.levels.wiretap.pathLocked')
                           : (isAudioIntercept && !hasBeenPlayed)
-                            ? '[ CLASSIFIED ]'
+                            ? t('pages.gameRoom.campaign.levels.wiretap.classified')
                             : c.text
                         }
                       </span>
@@ -6819,7 +6954,6 @@ export default function WiretapPhase({
         })}
       </div>
 
-      {/* --- NEW: Conditional Submission Button --- */}
       {status === 'active' && (
         <div style={{ marginTop: '2rem', borderTop: '1px solid rgba(0, 229, 255, 0.2)', paddingTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
           {isHost ? (
@@ -6829,11 +6963,11 @@ export default function WiretapPhase({
               onClick={handleSubmitTheory}
               style={{ padding: '1rem 3rem', width: 'auto' }}
             >
-              {isSubmitting ? 'Processing...' : 'Submit Intercept Analysis'}
+              {isSubmitting ? t('pages.gameRoom.campaign.levels.wiretap.processing') : t('pages.gameRoom.campaign.levels.wiretap.submitAnalysis')}
             </button>
           ) : (
             <div style={{ padding: '1rem', background: 'rgba(0, 229, 255, 0.05)', border: '1px dashed rgba(0, 229, 255, 0.2)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
-              Awaiting Host to submit intercept analysis...
+              {t('pages.gameRoom.campaign.levels.wiretap.awaitingHostSubmit')}
             </div>
           )}
         </div>
@@ -7283,7 +7417,7 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/ProceduralRequestTray.tsx">
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { InvestigationRequestType, getInvestigationRequestLabel } from '@/types';
+import { InvestigationRequestType } from '@/types';
 import type { Evidence } from '@/types';
 import type { FiledRequest } from '@/hooks/useInvestigationRequest';
 import './ProceduralRequestTray.css';
@@ -7355,7 +7489,10 @@ export default function ProceduralRequestTray({
           >
             <option value="" disabled>{t('pages.gameRoom.evidence.board.selectRequestType')}</option>
             {Object.values(InvestigationRequestType).map(type => (
-              <option key={type} value={type}>{getInvestigationRequestLabel(type)}</option>
+              <option key={type} value={type}>
+                {/* Dynamically translate the raw enum value */}
+                {t(`pages.gameRoom.evidence.board.requestTypes.${type}`)}
+              </option>
             ))}
           </select>
 
@@ -7385,7 +7522,9 @@ export default function ProceduralRequestTray({
             filedRequests.map(req => (
               <div key={req.id} className="filed-request-row">
                 <div className="filed-request-info">
-                  <span className="filed-request-type">{getInvestigationRequestLabel(req.type)}</span>
+                  <span className="filed-request-type">
+                    {t(`pages.gameRoom.evidence.board.requestTypes.${req.type}`)}
+                  </span>
                   <span className="filed-request-meta">
                     {t('pages.gameRoom.evidence.board.crossReferenced')} {req.evidenceIds.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
                   </span>

@@ -1,0 +1,145 @@
+.campaign-map-container {
+  position: relative;
+  width: 100%;
+  height: 660px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  background-color: #0a0a0a;
+  box-sizing: border-box;
+}
+
+.map-transform-wrapper {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* 2. Forces the content to fill 100% of the width, but lets height overflow for dragging */
+.map-transform-content {
+  width: 100% !important; 
+  height: max-content !important; 
+}
+
+/* 3. Canvas wraps the image tightly to maintain pin coordinates */
+.custom-map-canvas {
+  position: relative;
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* 4. Image fills the width completely, scales height proportionally */
+.custom-map-image {
+  width: 100%;
+  height: auto;
+  display: block;
+  pointer-events: none; /* Prevents ghost-dragging native to browsers */
+}
+
+.map-overlay-grid {
+  position: absolute;
+  inset: 0;
+  background-image: 
+    linear-gradient(rgba(0, 229, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 229, 255, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.map-pin-wrapper {
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -100%);
+  z-index: 10;
+}
+
+.pin-icon {
+  width: 28px;
+  height: 28px;
+  background-color: var(--accent-cyan);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: -3px 3px 10px rgba(0,0,0,0.6);
+  border: 2px solid var(--bg-dark);
+  position: relative;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.pin-icon::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  background: white;
+  border-radius: 50%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.map-pin-wrapper.locked {
+  cursor: not-allowed;
+}
+
+.map-pin-wrapper.locked .pin-icon {
+  background-color: #555;
+  border-color: #333;
+}
+
+.map-pin-wrapper.locked .pin-icon::after {
+  background: #888;
+}
+
+.map-pin-wrapper.unlocked:hover .pin-icon {
+  transform: scale(1.15) rotate(-45deg);
+  background-color: var(--accent-amber);
+}
+
+.pin-tooltip {
+  position: absolute;
+  bottom: 110%;
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.2s ease;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 20;
+}
+
+.map-pin-wrapper:hover .pin-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pin-order-badge {
+  background: var(--accent-cyan);
+  color: var(--bg-dark);
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: bold;
+}
+
+.map-pin-wrapper.locked .pin-order-badge {
+  background: #555;
+  color: #ccc;
+}

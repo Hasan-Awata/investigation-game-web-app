@@ -54,11 +54,13 @@ def gather_project_code(root_dir, output_file, include_styles=False):
     with open(output_file, 'w', encoding='utf-8') as outfile:
         
         outfile.write("<system_directives>\n")
-        outfile.write("  <rule>Read this entire document carefully. Do NOT assume code is missing. Never use placeholders like `...` or `// rest of the code` in your responses. Write complete, fully functional blocks.</rule>\n")
+        outfile.write("  <rule>Read this entire document carefully. Do NOT assume code is missing. Write complete, fully functional blocks.</rule>\n")
         outfile.write("  <rule>Strictly adhere to Clean Architecture, SOLID principles, and Dependency Injection patterns. Maintain strict Separation of Concerns.</rule>\n")
         outfile.write("  <rule>Do NOT write inline CSS or Tailwind utility classes in .tsx files unless explicitly asked. The directory tree shows existing stylesheet files; if you need to modify UI visuals, ask the user to provide the relevant CSS/SCSS file.</rule>\n")
         outfile.write("  <rule>Rely ONLY on the explicit state variables, custom hooks, and props provided in this context. Do not hallucinate external libraries, utility functions, or imports not present in the code.</rule>\n")
         outfile.write("  <rule>When troubleshooting WebSocket connections or complex component state, verify the data flow through the entire component tree before suggesting a fix.</rule>\n")
+        outfile.write("  <rule>If the fix/update you are suggesting require less than three modifications within the same file, don't rewrite the whole file, just inicate precisely where the user should write the changes</rule>\n")
+        outfile.write("  <rule>Maintain the translation mechanic used all around the codebase in all of your responses</rule>\n")
         outfile.write("</system_directives>\n\n")
 
         outfile.write("<project_context>\n")

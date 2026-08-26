@@ -415,6 +415,13 @@
           "audioFeedLabel": "[ بث صوتي ]",
           "feedSeveredLabel": "[ انقطع البث ]"
           }
+        },
+        "map": {
+          "backToMap": "العودة إلى الخريطة",
+          "goToLocation": "الذهاب إلى الموقع",
+          "noDescription": "لا يوجد وصف متاح لهذه المرحلة.",
+          "levelsPreview": "نظرة على المستويات",
+          "phaseIndex": "المرحلة"
         }
     },
     "hooks": {
