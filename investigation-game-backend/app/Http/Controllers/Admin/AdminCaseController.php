@@ -67,12 +67,12 @@ class AdminCaseController extends Controller
     }
 
     /**
-     * Fetch all cases, their levels, and their evidence for admin dropdowns.
+     * Fetch all cases and their top-level metadata. 
+     * Deep eager loading of phases and levels has been removed to optimize payload size.
      */
     public function index(): JsonResponse
     {
         $cases = GameCase::with([
-            'phases.levels.questions.choices',
             'evidences',
             'suspects',
             'victims',

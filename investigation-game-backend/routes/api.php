@@ -55,8 +55,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Admin Dashboard Routes (Protected by auth:sanctum from outer group + IsAdmin middleware)
     Route::middleware([IsAdmin::class])->prefix('admin')->group(function () {
-        // GET (Fetch)
+        // GET (Fetch) Granular Endpoints
         Route::get('/cases', [AdminCaseController::class, 'index']); 
+        Route::get('/cases/{caseId}/phases', [AdminPhaseController::class, 'indexByCase']);
+        Route::get('/phases/{phaseId}/levels', [AdminLevelController::class, 'indexByPhase']);
         
         // POST (Create)
         Route::post('/cases', [AdminCaseController::class, 'store']);

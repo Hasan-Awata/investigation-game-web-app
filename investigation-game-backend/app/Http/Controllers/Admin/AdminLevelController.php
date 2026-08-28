@@ -102,4 +102,16 @@ class AdminLevelController extends Controller
 
         return response()->json(['message' => 'Level deleted.'], 200);
     }
+
+    public function indexByPhase($phaseId): \Illuminate\Http\JsonResponse
+    {
+        // We load questions and choices here because the node builders
+        // explicitly require them immediately upon selecting a Level.
+        $levels = Level::with(['questions.choices'])
+            ->where('phase_id', $phaseId)
+            ->orderBy('order_index', 'asc')
+            ->get();
+            
+        return response()->json($levels, 200);
+    }
 }

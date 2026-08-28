@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react';
-import { useAdminData } from '@/hooks/useAdminData';
+import { useAdminCases, useAdminPhases, useAdminLevels } from '@/hooks/useAdminData';
 import type { GameCase, Phase, Level } from '@/types';
 
 interface AdminContextState {
@@ -24,32 +24,38 @@ interface AdminContextState {
 const AdminContext = createContext<AdminContextState | undefined>(undefined);
 
 export function AdminProvider({ children }: { children: ReactNode }) {
-  const { data: cases = [], isLoading, error } = useAdminData();
-
+  // Local state for dropdown selections
   const [caseId, setCaseId] = useState<string>('');
   const [phaseId, setPhaseId] = useState<string>('');
   const [levelId, setLevelId] = useState<string>('');
 
+  // Granular Data Fetching
+  const { data: cases = [], isLoading: isCasesLoading, error: casesError } = useAdminCases();
+  const { data: availablePhases = [], isLoading: isPhasesLoading, error: phasesError } = useAdminPhases(caseId);
+  const { data: availableLevels = [], isLoading: isLevelsLoading, error: levelsError } = useAdminLevels(phaseId);
+
   // Cascading state handlers memoized to maintain stable reference equality
   const handleSetCaseId = useCallback((id: string) => {
     setCaseId(id);
-    setPhaseId('');
+    setPhaseId(''); // Reset child selections when parent changes
     setLevelId('');
   }, []);
 
   const handleSetPhaseId = useCallback((id: string) => {
     setPhaseId(id);
-    setLevelId('');
+    setLevelId(''); // Reset child selections when parent changes
   }, []);
 
   // Derived Data (Memoized to prevent unnecessary recalculations)
   const selectedCase = useMemo(() => cases.find(c => c.id.toString() === caseId), [cases, caseId]);
-  const availablePhases = useMemo(() => selectedCase?.phases || [], [selectedCase]);
   const selectedPhase = useMemo(() => availablePhases.find(p => p.id.toString() === phaseId), [availablePhases, phaseId]);
-  const availableLevels = useMemo(() => selectedPhase?.levels || [], [selectedPhase]);
   const selectedLevel = useMemo(() => availableLevels.find(l => l.id.toString() === levelId), [availableLevels, levelId]);
 
-  // The Provider value is strictly memoized. 
+  // Aggregate loading and error states
+  const isLoading = isCasesLoading || isPhasesLoading || isLevelsLoading;
+  const error = (casesError || phasesError || levelsError) as Error | null;
+
+  // The Provider value is strictly memoized.
   // It will ONLY trigger consumer re-renders when a dependency genuinely updates.
   const value = useMemo(() => ({
     caseId,
@@ -65,7 +71,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     availableLevels,
     selectedLevel,
     isLoading,
-    error: error as Error | null
+    error
   }), [
     caseId,
     phaseId,

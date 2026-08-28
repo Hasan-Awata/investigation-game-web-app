@@ -45,4 +45,13 @@ class AdminPhaseController extends Controller
         $phase->delete();
         return response()->json(['message' => 'Phase deleted.'], 200);
     }
+
+    public function indexByCase($caseId): \Illuminate\Http\JsonResponse
+    {
+        $phases = Phase::where('case_id', $caseId)
+            ->orderBy('order_index', 'asc')
+            ->get();
+            
+        return response()->json($phases, 200);
+    }
 }

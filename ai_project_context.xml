@@ -159,7 +159,9 @@
 │   │   │       │       ├── MediaViewer.css
 │   │   │       │       ├── MediaViewer.tsx
 │   │   │       │       ├── TestimonyViewer.css
-│   │   │       │       └── TestimonyViewer.tsx
+│   │   │       │       ├── TestimonyViewer.tsx
+│   │   │       │       ├── ViewersContainer.css
+│   │   │       │       └── ViewersContainer.tsx
 │   │   │       ├── SharedOverlay.css
 │   │   │       └── Suspects
 │   │   │           ├── SuspectCard.css
@@ -181,7 +183,8 @@
 │   │   │   └── index.ts
 │   │   └── index.ts
 │   └── utils
-│       └── Result.ts
+│       ├── Result.ts
+│       └── sanitize.ts
 ├── tsconfig.app.json
 ├── tsconfig.json
 ├── tsconfig.node.json
@@ -252,6 +255,7 @@ export default defineConfig([
   },
   "dependencies": {
     "@tanstack/react-query": "^5.101.4",
+    "dompurify": "^3.4.14",
     "i18next": "^26.4.0",
     "i18next-browser-languagedetector": "^8.2.1",
     "laravel-echo": "^2.4.0",
@@ -269,6 +273,7 @@ export default defineConfig([
     "@eslint/js": "^10.0.1",
     "@rolldown/plugin-babel": "^0.2.3",
     "@types/babel__core": "^7.20.5",
+    "@types/dompurify": "^3.0.5",
     "@types/node": "^24.13.2",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
@@ -2218,8 +2223,14 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
             "noAnomalies": "الجثة لشخص تطور بشكل طبيعي. لم يتم الإبلاغ عن أي شذوذ واضح أو صدمات ثانوية أثناء الفحص القياسي.",
             "fig1": "الشكل 1. مرجع تشريحي",
             "confidentialRecord": "سري // سجل رسمي",
-            "chiefMedicalExaminer": "كبير الأطباء الشرعيين"
-          },
+            "chiefMedicalExaminer": "كبير الأطباء الشرعيين",
+            "victimName": "الضحية:",
+            "gender": "الجنس:",
+            "estimatedAge": "العمر المقدر:",
+            "internalExam": "الفحص الداخلي والأعضاء:",
+            "toxicologyReport": "تقرير السموم / المختبر:",
+            "collectedEvidence": "العينات والأدلة المستخرجة:"
+        },
           "ballistics": {
             "stateForensicLab": "المختبر الجنائي بالولاية",
             "divBallistics": "قسم الأسلحة النارية وعلامات الأدوات",
@@ -2236,7 +2247,7 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
           },
           "dna": {
             "geneticLab": "مختبر الأدلة الجنائية الجينية",
-            "strAnalysis": "تحليل الحمض النووي (STR) ومطابقة الملف الجيني",
+            "strAnalysis": "تحليل الحمض النووي ومطابقة الملف الجيني",
             "evidenceId": "معرف الدليل:",
             "sampleType": "نوع العينة:",
             "date": "التاريخ:",
@@ -2246,8 +2257,12 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
             "probOfMatch": "احتمالية التطابق:",
             "identifiedSubject": "الموضوع الذي تم التعرف عليه:",
             "noMatch": "لم يتم العثور على تطابق في قاعدة البيانات",
-            "codisVerified": "اكتمل بحث CODIS // تم التحقق منه"
-          },
+            "codisVerified": "اكتمل بحث CODIS // تم التحقق منه",
+            "labTechnician": "فاحص المختبر:",
+            "extractionMethod": "طريقة الاستخلاص:",
+            "lociProfileSummary": "ملخص تحليل المواقع الوراثية (STR Loci):",
+            "labNotes": "ملاحظات ومرئيات المختبر:"
+        },
           "digitalForensics": {
             "terminalTitle": "وحدة_الجرائم_الإلكترونية_v3.4.1 // محطة_فك_التشفير",
             "initiating": "[+] جاري بدء بروتوكول الاستخراج الجنائي...",
@@ -5141,17 +5156,155 @@ export default function EvidenceMetadataFields({
   const renderDynamicInputs = () => {
     switch (subType) {
       // --- FORENSIC SUB-TYPES ---
-      case 'autopsy':
+      case 'autopsy': {
+        const collectedEvidence = metadata.evidence_collected || [];
+
+        const addEvidenceItem = () => {
+          updateMeta('evidence_collected', [...collectedEvidence, '']);
+        };
+
+        const updateEvidenceItem = (index: number, value: string) => {
+          const newEv = [...collectedEvidence];
+          newEv[index] = value;
+          updateMeta('evidence_collected', newEv);
+        };
+
+        const removeEvidenceItem = (index: number) => {
+          const newEv = collectedEvidence.filter((_: any, i: number) => i !== index);
+          updateMeta('evidence_collected', newEv);
+        };
+
         return (
           <>
             <div className="admin-form-row">
-              <div className="form-group"><label>Chief Medical Examiner</label><input type="text" className="admin-input" value={metadata.examiner || ''} onChange={e => updateMeta('examiner', e.target.value)} required /></div>
-              <div className="form-group"><label>Est. Time of Death</label><input type="text" className="admin-input" value={metadata.time_of_death || ''} onChange={e => updateMeta('time_of_death', e.target.value)} required /></div>
+              <div className="form-group">
+                <label>Victim Name</label>
+                <input
+                  type="text"
+                  className="admin-input"
+                  value={metadata.victim_name || ''}
+                  onChange={e => updateMeta('victim_name', e.target.value)}
+                  placeholder="e.g., John Doe"
+                />
+              </div>
+              <div className="form-group">
+                <label>Gender</label>
+                <input
+                  type="text"
+                  className="admin-input"
+                  value={metadata.gender || ''}
+                  onChange={e => updateMeta('gender', e.target.value)}
+                  placeholder="e.g., Male / Female"
+                />
+              </div>
+              <div className="form-group">
+                <label>Estimated Age</label>
+                <input
+                  type="text"
+                  className="admin-input"
+                  value={metadata.victim_age || ''}
+                  onChange={e => updateMeta('victim_age', e.target.value)}
+                  placeholder="e.g., 30-35"
+                />
+              </div>
             </div>
-            <div className="form-group"><label>Primary Cause of Death</label><input type="text" className="admin-input" value={metadata.cause_of_death || ''} onChange={e => updateMeta('cause_of_death', e.target.value)} required /></div>
-            <div className="form-group"><label>Examiner Notes / Anomalies (Optional)</label><textarea className="admin-textarea" value={metadata.anomalies || ''} onChange={e => updateMeta('anomalies', e.target.value)} /></div>
+
+            <div className="admin-form-row">
+              <div className="form-group">
+                <label>Chief Medical Examiner</label>
+                <input
+                  type="text"
+                  className="admin-input"
+                  value={metadata.examiner || ''}
+                  onChange={e => updateMeta('examiner', e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Est. Time of Death</label>
+                <input
+                  type="text"
+                  className="admin-input"
+                  value={metadata.time_of_death || ''}
+                  onChange={e => updateMeta('time_of_death', e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Primary Cause of Death</label>
+              <input
+                type="text"
+                className="admin-input"
+                value={metadata.cause_of_death || ''}
+                onChange={e => updateMeta('cause_of_death', e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <label>External Examination & Anomalies</label>
+              <textarea
+                className="admin-textarea"
+                value={metadata.anomalies || ''}
+                onChange={e => updateMeta('anomalies', e.target.value)}
+                style={{ minHeight: '80px' }}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Internal Examination & Organs</label>
+              <textarea
+                className="admin-textarea"
+                value={metadata.internal_exam || ''}
+                onChange={e => updateMeta('internal_exam', e.target.value)}
+                style={{ minHeight: '80px' }}
+                placeholder="Findings from internal cavities and organs..."
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Toxicology Report / Lab Analysis</label>
+              <textarea
+                className="admin-textarea"
+                value={metadata.toxicology_report || ''}
+                onChange={e => updateMeta('toxicology_report', e.target.value)}
+                style={{ minHeight: '60px' }}
+                placeholder="Blood alcohol, poisons, or chemical substances detected..."
+              />
+            </div>
+
+            <div style={{ marginTop: '1.5rem', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>COLLECTED EVIDENCE / SAMPLES</label>
+                <button type="button" className="btn-secondary" onClick={addEvidenceItem} style={{ padding: '0.25rem 0.75rem', width: 'auto', fontSize: '0.75rem' }}>+ Add Sample</button>
+              </div>
+
+              {collectedEvidence.map((item: string, idx: number) => (
+                <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    className="admin-input"
+                    placeholder="e.g. 9mm bullet fragment extracted from chest"
+                    value={item || ''}
+                    onChange={e => updateEvidenceItem(idx, e.target.value)}
+                    style={{ flex: 1 }}
+                    required
+                  />
+                  <button type="button" onClick={() => removeEvidenceItem(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem' }} title="Remove Item">×</button>
+                </div>
+              ))}
+
+              {collectedEvidence.length === 0 && (
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>
+                  No evidence items logged. Add a row above.
+                </div>
+              )}
+            </div>
           </>
         );
+      }
 
       case 'ballistics': {
         const exhibits = metadata.exhibits || [];
@@ -5228,10 +5381,82 @@ export default function EvidenceMetadataFields({
         return (
           <>
             <div className="admin-form-row">
-              <div className="form-group"><label>Sample Type (e.g., Blood, Hair)</label><input type="text" className="admin-input" value={metadata.sample_type || ''} onChange={e => updateMeta('sample_type', e.target.value)} required /></div>
-              <div className="form-group"><label>Match Probability</label><input type="text" className="admin-input" value={metadata.match_probability || ''} onChange={e => updateMeta('match_probability', e.target.value)} required /></div>
+              <div className="form-group">
+                <label>Sample Type (e.g., Blood, Hair)</label>
+                <input
+                  type="text"
+                  className="admin-input"
+                  value={metadata.sample_type || ''}
+                  onChange={e => updateMeta('sample_type', e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group">
+                <label>Match Probability</label>
+                <input
+                  type="text"
+                  className="admin-input"
+                  value={metadata.match_probability || ''}
+                  onChange={e => updateMeta('match_probability', e.target.value)}
+                  required
+                />
+              </div>
             </div>
-            <div className="form-group"><label>Identified Subject (Leave blank if inconclusive)</label><input type="text" className="admin-input" value={metadata.identified_person || ''} onChange={e => updateMeta('identified_person', e.target.value)} /></div>
+
+            <div className="admin-form-row">
+              <div className="form-group">
+                <label>Lab Technician</label>
+                <input
+                  type="text"
+                  className="admin-input"
+                  value={metadata.lab_technician || ''}
+                  onChange={e => updateMeta('lab_technician', e.target.value)}
+                  placeholder="e.g., Dr. Jane Doe"
+                />
+              </div>
+              <div className="form-group">
+                <label>Extraction Method</label>
+                <input
+                  type="text"
+                  className="admin-input"
+                  value={metadata.extraction_method || ''}
+                  onChange={e => updateMeta('extraction_method', e.target.value)}
+                  placeholder="e.g., FTA Card / Phenol-Chloroform"
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Identified Subject (Leave blank if inconclusive)</label>
+              <input
+                type="text"
+                className="admin-input"
+                value={metadata.identified_person || ''}
+                onChange={e => updateMeta('identified_person', e.target.value)}
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label>STR Loci Profile Summary</label>
+              <textarea
+                className="admin-textarea"
+                value={metadata.loci_profile_summary || ''}
+                onChange={e => updateMeta('loci_profile_summary', e.target.value)}
+                style={{ minHeight: '80px' }}
+                placeholder="Details on allele frequencies and genetic markers..."
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label>Laboratory Notes & Observations</label>
+              <textarea
+                className="admin-textarea"
+                value={metadata.lab_notes || ''}
+                onChange={e => updateMeta('lab_notes', e.target.value)}
+                style={{ minHeight: '60px' }}
+                placeholder="Additional analytical insights or chain of custody notes..."
+              />
+            </div>
           </>
         );
 
@@ -8543,6 +8768,7 @@ export default function DocumentViewer({ evidence }: DocumentViewerProps) {
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/ForensicViewer.tsx">
 import type { ForensicEvidence } from '@/types/evidence';
+import ViewersContainer from './ViewersContainer';
 import AutopsyViewer from './ForensicViewers/AutopsyViewer';
 import BallisticsViewer from './ForensicViewers/BallisticsViewer';
 import DnaViewer from './ForensicViewers/DnaViewer';
@@ -8556,24 +8782,36 @@ interface ForensicViewerProps {
 export default function ForensicViewer({ evidence }: ForensicViewerProps) {
   const { sub_type } = evidence;
 
+  let content;
   switch (sub_type) {
     case 'autopsy':
-      return <AutopsyViewer evidence={evidence} />;
+      content = <AutopsyViewer evidence={evidence} />;
+      break;
     case 'ballistics':
-      return <BallisticsViewer evidence={evidence} />;
+      content = <BallisticsViewer evidence={evidence} />;
+      break;
     case 'dna':
-      return <DnaViewer evidence={evidence} />;
+      content = <DnaViewer evidence={evidence} />;
+      break;
     case 'digital_forensics':
-      return <DigitalForensicsViewer evidence={evidence} />;
+      content = <DigitalForensicsViewer evidence={evidence} />;
+      break;
     case 'trace_analysis':
-      return <TraceAnalysisViewer evidence={evidence} />;
+      content = <TraceAnalysisViewer evidence={evidence} />;
+      break;
     default:
-      return (
+      content = (
         <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
           Forensic report corrupted or unreadable.
         </div>
       );
   }
+
+  return (
+    <ViewersContainer evidence={evidence}>
+      {content}
+    </ViewersContainer>
+  );
 }
 </file>
 
@@ -8645,6 +8883,7 @@ export default MediaViewer;
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/TestimonyViewer.tsx">
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { sanitizeHtml } from '@/utils/sanitize';
 import type { TestimonyEvidence } from '@/types/evidence';
 import './TestimonyViewer.css';
 
@@ -8655,7 +8894,6 @@ interface TestimonyViewerProps {
 const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
   const { t } = useTranslation();
 
-  // NO MORE DUCT TAPE! TypeScript knows exactly what these properties are.
   const {
     agency = t('pages.gameRoom.evidence.viewers.testimony.policeDept'),
     title = t('pages.gameRoom.evidence.viewers.testimony.officialTranscript'),
@@ -8667,10 +8905,9 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
     transcript = []
   } = evidence.metadata || {};
 
-  // Deterministically fetch a signature image based on the evidence ID
   const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const getSignature = (seed: number) => {
-    const idx = (seed % 18) + 1; // Assuming you have 18 signatures available
+    const idx = (seed % 18) + 1;
     const fileName = idx === 1 ? 'signature.svg' : `signature-${idx}.svg`;
     return `${backendUrl}/assets/signatures/${fileName}`;
   };
@@ -8718,7 +8955,6 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
           </div>
 
           <div className="transcript-content">
-            {/* If transcript is an array of Q/A objects */}
             {Array.isArray(transcript) ? (
               transcript.map((line: any, idx: number) => (
                 <div key={idx} className={`transcript-line ${line.type === 'q' ? 'transcript-q' : 'transcript-a'}`}>
@@ -8727,8 +8963,7 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
                 </div>
               ))
             ) : (
-              /* Fallback if transcript is just pre-formatted HTML text */
-              <div dangerouslySetInnerHTML={{ __html: transcript }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(transcript) }} />
             )}
           </div>
         </div>
@@ -8760,9 +8995,65 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
 export default TestimonyViewer;
 </file>
 
+<file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/ViewersContainer.tsx">
+import React, { useState } from 'react';
+import ReactDOM from 'react-dom';
+import './ViewersContainer.css';
+
+interface ViewersContainerProps {
+  evidence: { id: string | number; [key: string]: any };
+  children: React.ReactNode;
+}
+
+const ViewersContainer: React.FC<ViewersContainerProps> = ({ children }) => {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
+  const containerContent = (
+    <div className={`viewers-container-wrapper ${isFullscreen ? 'fullscreen-mode' : ''}`}>
+      <div className="viewers-floating-toolbar">
+        <button
+          type="button"
+          className="btn-icon-fullscreen"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Close" : "Fullscreen"}
+        >
+          {isFullscreen ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          ) : (
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"></path>
+            </svg>
+          )}
+        </button>
+      </div>
+
+      <div className="viewers-content-area">
+        {children}
+      </div>
+    </div>
+  );
+
+  if (isFullscreen) {
+    return ReactDOM.createPortal(containerContent, document.body);
+  }
+
+  return containerContent;
+};
+
+export default ViewersContainer;
+</file>
+
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/DocumentViewers/BackgroundCheckViewer.tsx">
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { sanitizeHtml } from '@/utils/sanitize';
 import type { DocumentEvidence } from '@/types/evidence';
 import './BackgroundCheckViewer.css';
 
@@ -8813,7 +9104,7 @@ const BackgroundCheckViewer: React.FC<BackgroundCheckViewerProps> = ({ evidence 
           </div>
           <div className="bg-check-data-row" style={{ borderBottom: 'none' }}>
             <span className="bg-check-label">{t('pages.gameRoom.evidence.viewers.backgroundCheck.lastKnownAddress')}</span>
-            <span className="bg-check-value" dangerouslySetInnerHTML={{ __html: last_known_address }} />
+            <span className="bg-check-value" dangerouslySetInnerHTML={{ __html: sanitizeHtml(last_known_address) }} />
           </div>
         </div>
       </div>
@@ -8821,21 +9112,21 @@ const BackgroundCheckViewer: React.FC<BackgroundCheckViewerProps> = ({ evidence 
       {employment_financial && (
         <div className="bg-check-section">
           <div className="bg-check-section-title">{t('pages.gameRoom.evidence.viewers.backgroundCheck.employmentProfile')}</div>
-          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: employment_financial }} />
+          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(employment_financial) }} />
         </div>
       )}
 
       {criminal_history && (
         <div className="bg-check-section">
           <div className="bg-check-section-title">{t('pages.gameRoom.evidence.viewers.backgroundCheck.criminalHistory')}</div>
-          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: criminal_history }} />
+          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(criminal_history) }} />
         </div>
       )}
 
       {associates && (
         <div className="bg-check-section">
           <div className="bg-check-section-title">{t('pages.gameRoom.evidence.viewers.backgroundCheck.knownAssociates')}</div>
-          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: associates }} />
+          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(associates) }} />
         </div>
       )}
 
@@ -9263,6 +9554,22 @@ const AutopsyViewer: React.FC<AutopsyViewerProps> = ({ evidence }) => {
         </div>
       </div>
 
+      {/* معلومات الضحية الأساسية */}
+      {(metadata.victim_name || metadata.gender || metadata.victim_age) && (
+        <div className="autopsy-victim-info">
+          {metadata.victim_name && (
+            <div><span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.victimName')}</span> {metadata.victim_name}</div>
+          )}
+          {metadata.gender && (
+            <div><span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.gender')}</span> {metadata.gender}</div>
+          )}
+          {metadata.victim_age && (
+            <div><span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.estimatedAge')}</span> {metadata.victim_age}</div>
+          )}
+        </div>
+      )}
+
+      {/* الجزء العلوي: البيانات الأساسية مع المخطط التشريحي */}
       <div className="autopsy-body-section">
         <div className="autopsy-data-col">
           <div className="autopsy-data-row">
@@ -9307,6 +9614,37 @@ const AutopsyViewer: React.FC<AutopsyViewerProps> = ({ evidence }) => {
         </div>
       </div>
 
+      <div className="autopsy-extended-section">
+        {metadata.internal_exam && (
+          <div className="autopsy-notes-section">
+            <span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.internalExam')}</span>
+            <div className="autopsy-notes-content">
+              {metadata.internal_exam}
+            </div>
+          </div>
+        )}
+
+        {metadata.toxicology_report && (
+          <div className="autopsy-notes-section">
+            <span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.toxicologyReport')}</span>
+            <div className="autopsy-notes-content toxicology-box">
+              {metadata.toxicology_report}
+            </div>
+          </div>
+        )}
+
+        {metadata.evidence_collected && metadata.evidence_collected.length > 0 && (
+          <div className="autopsy-notes-section">
+            <span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.collectedEvidence')}</span>
+            <ul className="autopsy-evidence-list">
+              {metadata.evidence_collected.map((item, idx) => (
+                <li key={idx}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
       <div className="autopsy-footer">
         <div className="autopsy-stamp">{t('pages.gameRoom.evidence.viewers.autopsy.confidentialRecord')}</div>
         <div className="autopsy-signature-block">
@@ -9324,6 +9662,7 @@ export default AutopsyViewer;
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/ForensicViewers/BallisticsViewer.tsx">
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { sanitizeHtml } from '@/utils/sanitize';
 import type { ForensicEvidence } from '@/types/evidence';
 import './BallisticsViewer.css';
 
@@ -9354,7 +9693,7 @@ const BallisticsViewer: React.FC<BallisticsViewerProps> = ({ evidence }) => {
         {(metadata.exhibits || []).map((ex: any, idx: number) => (
           <div key={idx} className="ballistics-specimen-row">
             <span className="ballistics-specimen-label">{ex.reference}:</span>
-            <span className="ballistics-specimen-desc" dangerouslySetInnerHTML={{ __html: ex.description }} />
+            <span className="ballistics-specimen-desc" dangerouslySetInnerHTML={{ __html: sanitizeHtml(ex.description || '') }} />
           </div>
         ))}
         {(!metadata.exhibits || metadata.exhibits.length === 0) && (
@@ -9364,12 +9703,12 @@ const BallisticsViewer: React.FC<BallisticsViewerProps> = ({ evidence }) => {
 
       <div className="ballistics-section">
         <div className="ballistics-section-title">{t('pages.gameRoom.evidence.viewers.ballistics.section1')}</div>
-        <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.firearm_specs }} />
+        <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(metadata.firearm_specs || '') }} />
       </div>
 
       <div className="ballistics-section">
         <div className="ballistics-section-title">{t('pages.gameRoom.evidence.viewers.ballistics.section2')}</div>
-        <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.microscopic_analysis }} />
+        <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(metadata.microscopic_analysis || '') }} />
       </div>
 
       {evidence.img_url && (
@@ -9387,12 +9726,12 @@ const BallisticsViewer: React.FC<BallisticsViewerProps> = ({ evidence }) => {
       {metadata.trajectory_range && (
         <div className="ballistics-section">
           <div className="ballistics-section-title">{t('pages.gameRoom.evidence.viewers.ballistics.section3')}</div>
-          <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.trajectory_range }} />
+          <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(metadata.trajectory_range || '') }} />
         </div>
       )}
 
       <div className="ballistics-conclusion-box">
-        <div className="ballistics-conclusion" dangerouslySetInnerHTML={{ __html: metadata.conclusion }} />
+        <div className="ballistics-conclusion" dangerouslySetInnerHTML={{ __html: sanitizeHtml(metadata.conclusion || '') }} />
       </div>
 
       <div className="ballistics-sign-off">
@@ -9501,12 +9840,9 @@ const DnaViewer: React.FC<DnaViewerProps> = ({ evidence }) => {
   const { t } = useTranslation();
   const { metadata } = evidence;
 
-  // Deterministically generate a visual sequence based on the evidence ID
   const generateSequence = (seed: number, isMatch: boolean) => {
     return [...Array(24)].map((_, i) => {
       const opacity = ((seed * (i + 1) * 17) % 100) / 100;
-      // If it's a match, we perfectly mirror the original opacity.
-      // If not, we scramble it with a different seed multiplier to create a mismatch.
       const finalOpacity = isMatch ? opacity : ((seed * (i + 1) * 23) % 100) / 100;
       return (
         <div
@@ -9542,6 +9878,15 @@ const DnaViewer: React.FC<DnaViewerProps> = ({ evidence }) => {
         </div>
       </div>
 
+      {metadata.lab_technician && (
+        <div className="dna-extra-meta">
+          <div><span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.labTechnician')}</span> {metadata.lab_technician}</div>
+          {metadata.extraction_method && (
+            <div><span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.extractionMethod')}</span> {metadata.extraction_method}</div>
+          )}
+        </div>
+      )}
+
       <div className="dna-visualizer-container">
         <h4 className="dna-visualizer-title">{t('pages.gameRoom.evidence.viewers.dna.electropherogram')}</h4>
         <div className="dna-visualizer">
@@ -9560,6 +9905,13 @@ const DnaViewer: React.FC<DnaViewerProps> = ({ evidence }) => {
         </div>
       </div>
 
+      {metadata.loci_profile_summary && (
+        <div className="dna-notes-section">
+          <span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.lociProfileSummary')}</span>
+          <div className="dna-notes-content">{metadata.loci_profile_summary}</div>
+        </div>
+      )}
+
       <div className="dna-results-box">
         <div className="dna-result-row">
           <span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.probOfMatch')}</span>
@@ -9573,8 +9925,15 @@ const DnaViewer: React.FC<DnaViewerProps> = ({ evidence }) => {
         </div>
       </div>
 
+      {metadata.lab_notes && (
+        <div className="dna-notes-section">
+          <span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.labNotes')}</span>
+          <div className="dna-notes-content">{metadata.lab_notes}</div>
+        </div>
+      )}
+
       <div className="dna-footer">
-        <div className="dna-barcode">|||||| |||| |||||||| |||||</div>
+        <div className="dna-barcode">|||||| |||| ||||||||</div>
         <div className="dna-codis-stamp">{t('pages.gameRoom.evidence.viewers.dna.codisVerified')}</div>
       </div>
     </div>
@@ -10872,6 +11231,12 @@ export interface AutopsyMetadata {
   time_of_death: string;
   cause_of_death: string;
   anomalies: string;
+  victim_name?: string;
+  victim_age?: string | number;
+  gender?: string;
+  internal_exam?: string;
+  toxicology_report?: string;
+  evidence_collected?: string[];
 }
 
 export interface BallisticsExhibit {
@@ -10894,6 +11259,10 @@ export interface DnaMetadata {
   sample_type: string;
   match_probability: string;
   identified_person: string | null;
+  lab_technician?: string;
+  extraction_method?: string;
+  loci_profile_summary?: string;
+  lab_notes?: string;
 }
 
 export interface DigitalForensicsMetadata {
@@ -10973,6 +11342,23 @@ export const failure = <E>(errorMessage: E): Result<never, E> => ({
   isSuccess: false,
   errorMessage,
 });
+</file>
+
+<file path="src/utils/sanitize.ts">
+import DOMPurify from 'dompurify';
+
+const PURIFY_CONFIG = {
+  ALLOWED_TAGS: ['b', 'i', 'em', 'strong', 'a', 'p', 'span', 'br', 'ul', 'li', 'ol', 'div'],
+  ALLOWED_ATTR: ['class', 'href', 'target'],
+};
+
+/**
+ * Sanitizes dirty HTML strings to prevent XSS attacks.
+ * Preserves specific safe tags and attributes required for immersive formatting.
+ */
+export const sanitizeHtml = (dirty: string): string => {
+  return DOMPurify.sanitize(dirty, PURIFY_CONFIG);
+};
 </file>
 
 </source_code>
