@@ -13,12 +13,9 @@ const DnaViewer: React.FC<DnaViewerProps> = ({ evidence }) => {
   const { t } = useTranslation();
   const { metadata } = evidence;
 
-  // Deterministically generate a visual sequence based on the evidence ID
   const generateSequence = (seed: number, isMatch: boolean) => {
     return [...Array(24)].map((_, i) => {
       const opacity = ((seed * (i + 1) * 17) % 100) / 100;
-      // If it's a match, we perfectly mirror the original opacity.
-      // If not, we scramble it with a different seed multiplier to create a mismatch.
       const finalOpacity = isMatch ? opacity : ((seed * (i + 1) * 23) % 100) / 100;
       return (
         <div
@@ -54,6 +51,15 @@ const DnaViewer: React.FC<DnaViewerProps> = ({ evidence }) => {
         </div>
       </div>
 
+      {metadata.lab_technician && (
+        <div className="dna-extra-meta">
+          <div><span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.labTechnician')}</span> {metadata.lab_technician}</div>
+          {metadata.extraction_method && (
+            <div><span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.extractionMethod')}</span> {metadata.extraction_method}</div>
+          )}
+        </div>
+      )}
+
       <div className="dna-visualizer-container">
         <h4 className="dna-visualizer-title">{t('pages.gameRoom.evidence.viewers.dna.electropherogram')}</h4>
         <div className="dna-visualizer">
@@ -72,6 +78,13 @@ const DnaViewer: React.FC<DnaViewerProps> = ({ evidence }) => {
         </div>
       </div>
 
+      {metadata.loci_profile_summary && (
+        <div className="dna-notes-section">
+          <span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.lociProfileSummary')}</span>
+          <div className="dna-notes-content">{metadata.loci_profile_summary}</div>
+        </div>
+      )}
+
       <div className="dna-results-box">
         <div className="dna-result-row">
           <span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.probOfMatch')}</span>
@@ -85,8 +98,15 @@ const DnaViewer: React.FC<DnaViewerProps> = ({ evidence }) => {
         </div>
       </div>
 
+      {metadata.lab_notes && (
+        <div className="dna-notes-section">
+          <span className="dna-label">{t('pages.gameRoom.evidence.viewers.dna.labNotes')}</span>
+          <div className="dna-notes-content">{metadata.lab_notes}</div>
+        </div>
+      )}
+
       <div className="dna-footer">
-        <div className="dna-barcode">|||||| |||| |||||||| |||||</div>
+        <div className="dna-barcode">|||||| |||| ||||||||</div>
         <div className="dna-codis-stamp">{t('pages.gameRoom.evidence.viewers.dna.codisVerified')}</div>
       </div>
     </div>

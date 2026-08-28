@@ -1,4 +1,5 @@
 import type { ForensicEvidence } from '@/types/evidence';
+import ViewersContainer from './ViewersContainer';
 import AutopsyViewer from './ForensicViewers/AutopsyViewer';
 import BallisticsViewer from './ForensicViewers/BallisticsViewer';
 import DnaViewer from './ForensicViewers/DnaViewer';
@@ -12,22 +13,34 @@ interface ForensicViewerProps {
 export default function ForensicViewer({ evidence }: ForensicViewerProps) {
   const { sub_type } = evidence;
 
+  let content;
   switch (sub_type) {
     case 'autopsy':
-      return <AutopsyViewer evidence={evidence} />;
+      content = <AutopsyViewer evidence={evidence} />;
+      break;
     case 'ballistics':
-      return <BallisticsViewer evidence={evidence} />;
+      content = <BallisticsViewer evidence={evidence} />;
+      break;
     case 'dna':
-      return <DnaViewer evidence={evidence} />; 
+      content = <DnaViewer evidence={evidence} />; 
+      break;
     case 'digital_forensics':
-      return <DigitalForensicsViewer evidence={evidence} />;
+      content = <DigitalForensicsViewer evidence={evidence} />;
+      break;
     case 'trace_analysis':
-      return <TraceAnalysisViewer evidence={evidence} />;
+      content = <TraceAnalysisViewer evidence={evidence} />;
+      break;
     default:
-      return (
+      content = (
         <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
           Forensic report corrupted or unreadable.
         </div>
       );
   }
+
+  return (
+    <ViewersContainer evidence={evidence}>
+      {content}
+    </ViewersContainer>
+  );
 }

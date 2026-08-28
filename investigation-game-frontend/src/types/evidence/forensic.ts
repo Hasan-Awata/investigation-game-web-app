@@ -5,6 +5,12 @@ export interface AutopsyMetadata {
   time_of_death: string;
   cause_of_death: string;
   anomalies: string;
+  victim_name?: string;
+  victim_age?: string | number;
+  gender?: string;
+  internal_exam?: string;
+  toxicology_report?: string;
+  evidence_collected?: string[];
 }
 
 export interface BallisticsExhibit {
@@ -27,6 +33,10 @@ export interface DnaMetadata {
   sample_type: string;
   match_probability: string;
   identified_person: string | null;
+  lab_technician?: string;
+  extraction_method?: string;
+  loci_profile_summary?: string;
+  lab_notes?: string;
 }
 
 export interface DigitalForensicsMetadata {

@@ -27,6 +27,22 @@ const AutopsyViewer: React.FC<AutopsyViewerProps> = ({ evidence }) => {
         </div>
       </div>
 
+      {/* معلومات الضحية الأساسية */}
+      {(metadata.victim_name || metadata.gender || metadata.victim_age) && (
+        <div className="autopsy-victim-info">
+          {metadata.victim_name && (
+            <div><span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.victimName')}</span> {metadata.victim_name}</div>
+          )}
+          {metadata.gender && (
+            <div><span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.gender')}</span> {metadata.gender}</div>
+          )}
+          {metadata.victim_age && (
+            <div><span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.estimatedAge')}</span> {metadata.victim_age}</div>
+          )}
+        </div>
+      )}
+
+      {/* الجزء العلوي: البيانات الأساسية مع المخطط التشريحي */}
       <div className="autopsy-body-section">
         <div className="autopsy-data-col">
           <div className="autopsy-data-row">
@@ -69,6 +85,37 @@ const AutopsyViewer: React.FC<AutopsyViewerProps> = ({ evidence }) => {
           </svg>
           <div className="diagram-caption">{t('pages.gameRoom.evidence.viewers.autopsy.fig1')}</div>
         </div>
+      </div>
+
+      <div className="autopsy-extended-section">
+        {metadata.internal_exam && (
+          <div className="autopsy-notes-section">
+            <span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.internalExam')}</span>
+            <div className="autopsy-notes-content">
+              {metadata.internal_exam}
+            </div>
+          </div>
+        )}
+
+        {metadata.toxicology_report && (
+          <div className="autopsy-notes-section">
+            <span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.toxicologyReport')}</span>
+            <div className="autopsy-notes-content toxicology-box">
+              {metadata.toxicology_report}
+            </div>
+          </div>
+        )}
+
+        {metadata.evidence_collected && metadata.evidence_collected.length > 0 && (
+          <div className="autopsy-notes-section">
+            <span className="autopsy-label">{t('pages.gameRoom.evidence.viewers.autopsy.collectedEvidence')}</span>
+            <ul className="autopsy-evidence-list">
+              {metadata.evidence_collected.map((item, idx) => (
+                <li key={idx}>{item}</li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="autopsy-footer">

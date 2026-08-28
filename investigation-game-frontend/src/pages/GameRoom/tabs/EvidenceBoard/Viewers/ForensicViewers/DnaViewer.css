@@ -2,7 +2,7 @@
    DNA REPORT (Clinical Laboratory Printout)
    ============================================================== */
 .dna-paper {
-  background: #f4f6f8; /* Crisp, cool-toned lab paper */
+  background: #f4f6f8; 
   color: #1a1b1e;
   padding: 3.5rem 4rem;
   border-radius: 2px;
@@ -11,7 +11,7 @@
   max-width: 850px;
   margin: 0 auto;
   position: relative;
-  text-align: start; /* Ensures default layout responds to document direction */
+  text-align: start; 
 }
 
 .dna-header {
@@ -42,7 +42,19 @@
   background: #e2e8f0;
   padding: 1rem 1.5rem;
   border-radius: 4px;
-  margin-bottom: 2.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.dna-extra-meta {
+  display: flex;
+  gap: 2rem;
+  background: #edf2f7;
+  padding: 0.75rem 1.25rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  margin-bottom: 2rem;
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .dna-label {
@@ -50,7 +62,6 @@
   font-size: 0.85rem;
   color: #4a5568;
   letter-spacing: 0.05em;
-  /* Swapped to logical property */
   margin-inline-end: 0.5rem;
 }
 
@@ -62,7 +73,7 @@
 
 /* --- THE DNA VISUALIZER --- */
 .dna-visualizer-container {
-  margin-bottom: 2.5rem;
+  margin-bottom: 2rem;
 }
 
 .dna-visualizer-title {
@@ -112,7 +123,24 @@
 }
 
 .dna-band.dense {
-  width: 10px; /* Make higher opacity bands thicker for realism */
+  width: 10px; 
+}
+
+/* --- NOTES & SUMMARY SECTIONS --- */
+.dna-notes-section {
+  margin-bottom: 2rem;
+  background: #fff;
+  padding: 1rem 1.25rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+}
+
+.dna-notes-content {
+  margin-top: 0.5rem;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #2d3748;
+  white-space: pre-wrap;
 }
 
 /* --- RESULTS BOX --- */
@@ -145,11 +173,11 @@
 }
 
 .dna-value.highlight {
-  color: #2b6cb0; /* Deep clinical blue */
+  color: #2b6cb0; 
 }
 
 .subject-match {
-  color: #c53030; /* Alert Red for a positive hit */
+  color: #c53030; 
   background: rgba(197, 48, 48, 0.1);
   padding: 0.25rem 0.75rem;
   border: 1px solid #c53030;

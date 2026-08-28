@@ -49,17 +49,155 @@ export default function EvidenceMetadataFields({
   const renderDynamicInputs = () => {
     switch (subType) {
       // --- FORENSIC SUB-TYPES ---
-      case 'autopsy':
+      case 'autopsy': {
+        const collectedEvidence = metadata.evidence_collected || [];
+
+        const addEvidenceItem = () => {
+          updateMeta('evidence_collected', [...collectedEvidence, '']);
+        };
+
+        const updateEvidenceItem = (index: number, value: string) => {
+          const newEv = [...collectedEvidence];
+          newEv[index] = value;
+          updateMeta('evidence_collected', newEv);
+        };
+
+        const removeEvidenceItem = (index: number) => {
+          const newEv = collectedEvidence.filter((_: any, i: number) => i !== index);
+          updateMeta('evidence_collected', newEv);
+        };
+
         return (
           <>
             <div className="admin-form-row">
-              <div className="form-group"><label>Chief Medical Examiner</label><input type="text" className="admin-input" value={metadata.examiner || ''} onChange={e => updateMeta('examiner', e.target.value)} required /></div>
-              <div className="form-group"><label>Est. Time of Death</label><input type="text" className="admin-input" value={metadata.time_of_death || ''} onChange={e => updateMeta('time_of_death', e.target.value)} required /></div>
+              <div className="form-group">
+                <label>Victim Name</label>
+                <input 
+                  type="text" 
+                  className="admin-input" 
+                  value={metadata.victim_name || ''} 
+                  onChange={e => updateMeta('victim_name', e.target.value)} 
+                  placeholder="e.g., John Doe" 
+                />
+              </div>
+              <div className="form-group">
+                <label>Gender</label>
+                <input 
+                  type="text" 
+                  className="admin-input" 
+                  value={metadata.gender || ''} 
+                  onChange={e => updateMeta('gender', e.target.value)} 
+                  placeholder="e.g., Male / Female" 
+                />
+              </div>
+              <div className="form-group">
+                <label>Estimated Age</label>
+                <input 
+                  type="text" 
+                  className="admin-input" 
+                  value={metadata.victim_age || ''} 
+                  onChange={e => updateMeta('victim_age', e.target.value)} 
+                  placeholder="e.g., 30-35" 
+                />
+              </div>
             </div>
-            <div className="form-group"><label>Primary Cause of Death</label><input type="text" className="admin-input" value={metadata.cause_of_death || ''} onChange={e => updateMeta('cause_of_death', e.target.value)} required /></div>
-            <div className="form-group"><label>Examiner Notes / Anomalies (Optional)</label><textarea className="admin-textarea" value={metadata.anomalies || ''} onChange={e => updateMeta('anomalies', e.target.value)} /></div>
+
+            <div className="admin-form-row">
+              <div className="form-group">
+                <label>Chief Medical Examiner</label>
+                <input 
+                  type="text" 
+                  className="admin-input" 
+                  value={metadata.examiner || ''} 
+                  onChange={e => updateMeta('examiner', e.target.value)} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Est. Time of Death</label>
+                <input 
+                  type="text" 
+                  className="admin-input" 
+                  value={metadata.time_of_death || ''} 
+                  onChange={e => updateMeta('time_of_death', e.target.value)} 
+                  required 
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Primary Cause of Death</label>
+              <input 
+                type="text" 
+                className="admin-input" 
+                value={metadata.cause_of_death || ''} 
+                onChange={e => updateMeta('cause_of_death', e.target.value)} 
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label>External Examination & Anomalies</label>
+              <textarea 
+                className="admin-textarea" 
+                value={metadata.anomalies || ''} 
+                onChange={e => updateMeta('anomalies', e.target.value)} 
+                style={{ minHeight: '80px' }} 
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Internal Examination & Organs</label>
+              <textarea 
+                className="admin-textarea" 
+                value={metadata.internal_exam || ''} 
+                onChange={e => updateMeta('internal_exam', e.target.value)} 
+                style={{ minHeight: '80px' }} 
+                placeholder="Findings from internal cavities and organs..." 
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Toxicology Report / Lab Analysis</label>
+              <textarea 
+                className="admin-textarea" 
+                value={metadata.toxicology_report || ''} 
+                onChange={e => updateMeta('toxicology_report', e.target.value)} 
+                style={{ minHeight: '60px' }} 
+                placeholder="Blood alcohol, poisons, or chemical substances detected..." 
+              />
+            </div>
+
+            <div style={{ marginTop: '1.5rem', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>COLLECTED EVIDENCE / SAMPLES</label>
+                <button type="button" className="btn-secondary" onClick={addEvidenceItem} style={{ padding: '0.25rem 0.75rem', width: 'auto', fontSize: '0.75rem' }}>+ Add Sample</button>
+              </div>
+
+              {collectedEvidence.map((item: string, idx: number) => (
+                <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+                  <input 
+                    type="text" 
+                    className="admin-input" 
+                    placeholder="e.g. 9mm bullet fragment extracted from chest" 
+                    value={item || ''} 
+                    onChange={e => updateEvidenceItem(idx, e.target.value)} 
+                    style={{ flex: 1 }} 
+                    required 
+                  />
+                  <button type="button" onClick={() => removeEvidenceItem(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem' }} title="Remove Item">×</button>
+                </div>
+              ))}
+              
+              {collectedEvidence.length === 0 && (
+                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>
+                  No evidence items logged. Add a row above.
+                </div>
+              )}
+            </div>
           </>
         );
+      }
 
       case 'ballistics': {
         const exhibits = metadata.exhibits || [];
@@ -136,10 +274,82 @@ export default function EvidenceMetadataFields({
         return (
           <>
             <div className="admin-form-row">
-              <div className="form-group"><label>Sample Type (e.g., Blood, Hair)</label><input type="text" className="admin-input" value={metadata.sample_type || ''} onChange={e => updateMeta('sample_type', e.target.value)} required /></div>
-              <div className="form-group"><label>Match Probability</label><input type="text" className="admin-input" value={metadata.match_probability || ''} onChange={e => updateMeta('match_probability', e.target.value)} required /></div>
+              <div className="form-group">
+                <label>Sample Type (e.g., Blood, Hair)</label>
+                <input 
+                  type="text" 
+                  className="admin-input" 
+                  value={metadata.sample_type || ''} 
+                  onChange={e => updateMeta('sample_type', e.target.value)} 
+                  required 
+                />
+              </div>
+              <div className="form-group">
+                <label>Match Probability</label>
+                <input 
+                  type="text" 
+                  className="admin-input" 
+                  value={metadata.match_probability || ''} 
+                  onChange={e => updateMeta('match_probability', e.target.value)} 
+                  required 
+                />
+              </div>
             </div>
-            <div className="form-group"><label>Identified Subject (Leave blank if inconclusive)</label><input type="text" className="admin-input" value={metadata.identified_person || ''} onChange={e => updateMeta('identified_person', e.target.value)} /></div>
+
+            <div className="admin-form-row">
+              <div className="form-group">
+                <label>Lab Technician</label>
+                <input 
+                  type="text" 
+                  className="admin-input" 
+                  value={metadata.lab_technician || ''} 
+                  onChange={e => updateMeta('lab_technician', e.target.value)} 
+                  placeholder="e.g., Dr. Jane Doe" 
+                />
+              </div>
+              <div className="form-group">
+                <label>Extraction Method</label>
+                <input 
+                  type="text" 
+                  className="admin-input" 
+                  value={metadata.extraction_method || ''} 
+                  onChange={e => updateMeta('extraction_method', e.target.value)} 
+                  placeholder="e.g., FTA Card / Phenol-Chloroform" 
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>Identified Subject (Leave blank if inconclusive)</label>
+              <input 
+                type="text" 
+                className="admin-input" 
+                value={metadata.identified_person || ''} 
+                onChange={e => updateMeta('identified_person', e.target.value)} 
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label>STR Loci Profile Summary</label>
+              <textarea 
+                className="admin-textarea" 
+                value={metadata.loci_profile_summary || ''} 
+                onChange={e => updateMeta('loci_profile_summary', e.target.value)} 
+                style={{ minHeight: '80px' }} 
+                placeholder="Details on allele frequencies and genetic markers..." 
+              />
+            </div>
+
+            <div className="form-group" style={{ marginTop: '1rem' }}>
+              <label>Laboratory Notes & Observations</label>
+              <textarea 
+                className="admin-textarea" 
+                value={metadata.lab_notes || ''} 
+                onChange={e => updateMeta('lab_notes', e.target.value)} 
+                style={{ minHeight: '60px' }} 
+                placeholder="Additional analytical insights or chain of custody notes..." 
+              />
+            </div>
           </>
         );
 

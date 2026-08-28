@@ -288,8 +288,14 @@
             "noAnomalies": "الجثة لشخص تطور بشكل طبيعي. لم يتم الإبلاغ عن أي شذوذ واضح أو صدمات ثانوية أثناء الفحص القياسي.",
             "fig1": "الشكل 1. مرجع تشريحي",
             "confidentialRecord": "سري // سجل رسمي",
-            "chiefMedicalExaminer": "كبير الأطباء الشرعيين"
-          },
+            "chiefMedicalExaminer": "كبير الأطباء الشرعيين",
+            "victimName": "الضحية:",
+            "gender": "الجنس:",
+            "estimatedAge": "العمر المقدر:",
+            "internalExam": "الفحص الداخلي والأعضاء:",
+            "toxicologyReport": "تقرير السموم / المختبر:",
+            "collectedEvidence": "العينات والأدلة المستخرجة:"
+        },
           "ballistics": {
             "stateForensicLab": "المختبر الجنائي بالولاية",
             "divBallistics": "قسم الأسلحة النارية وعلامات الأدوات",
@@ -306,7 +312,7 @@
           },
           "dna": {
             "geneticLab": "مختبر الأدلة الجنائية الجينية",
-            "strAnalysis": "تحليل الحمض النووي (STR) ومطابقة الملف الجيني",
+            "strAnalysis": "تحليل الحمض النووي ومطابقة الملف الجيني",
             "evidenceId": "معرف الدليل:",
             "sampleType": "نوع العينة:",
             "date": "التاريخ:",
@@ -316,8 +322,12 @@
             "probOfMatch": "احتمالية التطابق:",
             "identifiedSubject": "الموضوع الذي تم التعرف عليه:",
             "noMatch": "لم يتم العثور على تطابق في قاعدة البيانات",
-            "codisVerified": "اكتمل بحث CODIS // تم التحقق منه"
-          },
+            "codisVerified": "اكتمل بحث CODIS // تم التحقق منه",
+            "labTechnician": "فاحص المختبر:",
+            "extractionMethod": "طريقة الاستخلاص:",
+            "lociProfileSummary": "ملخص تحليل المواقع الوراثية (STR Loci):",
+            "labNotes": "ملاحظات ومرئيات المختبر:"
+        },
           "digitalForensics": {
             "terminalTitle": "وحدة_الجرائم_الإلكترونية_v3.4.1 // محطة_فك_التشفير",
             "initiating": "[+] جاري بدء بروتوكول الاستخراج الجنائي...",
