@@ -265,3 +265,31 @@ export const triggerWiretap = async (roomId: number, questionId: number): Promis
     return failure({ title: 'Network Error', message: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
+
+export const inspectLocation = async (roomId: number, choiceId: number): Promise<Result<any>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/inspect`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ choice_id: choiceId }),
+    });
+    
+    if (!response.ok) {
+      if (response.status === 401) {
+        handleUnauthorized();
+        return failure('Session expired.');
+      }
+      const data = await response.json().catch(() => null);
+      return failure(data?.message || 'Failed to inspect location.');
+    }
+    
+    const data = await response.json();
+    return success(data);
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};

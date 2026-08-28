@@ -1,32 +1,28 @@
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { submitInvestigationRequest } from '@/services/api';
 import type { GameRoom } from '@/types';
 import type { ToastNotification } from './useInvestigationPhase';
 
 export interface FiledRequest {
-  id: string;
-  type: string;
-  timestamp: string;
-  evidenceIds: number[];
+  id: number | string;
+  request_type: string;
+  created_at: string;
+  evidence_ids: number[];
 }
 
 export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => void) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  
   const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
   const [requestType, setRequestType] = useState<string>('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
-  // Persistent history in sessionStorage for this room
-  const historyStorageKey = `room_${room.id}_filed_requests`;
-  const [filedRequests, setFiledRequests] = useState<FiledRequest[]>(() => {
-    try {
-      const saved = sessionStorage.getItem(historyStorageKey);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  // Derived directly from the authoritative room payload
+  const filedRequests: FiledRequest[] = room.filed_requests || [];
 
   const requestMutation = useMutation({
     mutationFn: async () => {
@@ -34,21 +30,34 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
-    onSuccess: (data) => {
-      setFeedback({ type: 'success', message: data.message });
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['gameRoom', room.invite_code] });
+      const previousRoom = queryClient.getQueryData(['gameRoom', room.invite_code]);
 
-      // Save to local filed requests history
-      const newRequest: FiledRequest = {
-        id: crypto.randomUUID(),
-        type: requestType,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        evidenceIds: [...trayEvidences]
+      const optimisticRequest: FiledRequest = {
+        id: `temp-${Date.now()}`,
+        request_type: requestType,
+        created_at: new Date().toISOString(),
+        evidence_ids: [...trayEvidences]
       };
 
-      const updatedHistory = [newRequest, ...filedRequests];
-      setFiledRequests(updatedHistory);
-      sessionStorage.setItem(historyStorageKey, JSON.stringify(updatedHistory));
+      queryClient.setQueryData(['gameRoom', room.invite_code], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          filed_requests: [optimisticRequest, ...(old.filed_requests || [])]
+        };
+      });
 
+      return { previousRoom };
+    },
+    onError: (error: Error, _variables: void, context: any) => {
+      queryClient.setQueryData(['gameRoom', room.invite_code], context?.previousRoom);
+      setFeedback({ type: 'error', message: error.message });
+      setTrayEvidences([]);
+    },
+    onSuccess: (data) => {
+      setFeedback({ type: 'success', message: data.message });
       setTrayEvidences([]);
       setRequestType('');
       refreshRoomData();
@@ -84,10 +93,6 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
           }, 5000);
         }
       }, 500);
-    },
-    onError: (error: Error) => {
-      setFeedback({ type: 'error', message: error.message });
-      setTrayEvidences([]);
     }
   });
 

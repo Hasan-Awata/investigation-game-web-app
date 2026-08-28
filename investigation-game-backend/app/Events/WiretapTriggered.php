@@ -3,6 +3,7 @@
 namespace App\Events;
 
 use App\Models\GameRoom;
+use App\Models\Question;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -15,8 +16,7 @@ class WiretapTriggered implements ShouldBroadcastNow
 
     public function __construct(
         public readonly GameRoom $room,
-        public readonly int $questionId,
-        public readonly string $audioUrl
+        public readonly Question $question
     ) {}
 
     public function broadcastOn(): array
@@ -29,9 +29,10 @@ class WiretapTriggered implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'question_id' => $this->questionId,
-            'audio_url' => $this->audioUrl,
-            'message' => 'Wiretap feed active. Listen carefully.'
+            'question_id' => $this->question->id,
+            'audio_url' => $this->question->audio_url,
+            'message' => 'Wiretap feed active. Listen carefully.',
+            'played_wiretap' => $this->question->toArray()
         ];
     }
 }

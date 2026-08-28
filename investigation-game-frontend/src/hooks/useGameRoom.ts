@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { joinRoom, fetchRoomState } from '@/services/api';
-import type { Evidence, Suspect, Victim } from '@/types';
+import type { GameRoom, Evidence, Suspect, Victim } from '@/types';
 
 export function useGameRoom(inviteCode: string | undefined) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
   const {
     data: room,
@@ -42,6 +43,16 @@ export function useGameRoom(inviteCode: string | undefined) {
     }
   }, [room?.id, inviteCode]);
 
+  // Expose a pure cache patching function to enforce the "Zero-Refetch" rule
+  const patchRoomData = (updater: (oldRoom: GameRoom) => GameRoom) => {
+    if (inviteCode) {
+      queryClient.setQueryData(['gameRoom', inviteCode], (oldData: GameRoom | undefined) => {
+        if (!oldData) return oldData;
+        return updater(oldData);
+      });
+    }
+  };
+
   const caseEvidences = room?.game_case?.evidences || [];
   const unlockedEvidenceIds = new Set(room?.unlocked_evidences?.map((e: Evidence) => e.id) || []);
   const accumulatedEvidences: Evidence[] = caseEvidences.filter(
@@ -67,6 +78,7 @@ export function useGameRoom(inviteCode: string | undefined) {
     accumulatedEvidences,
     accumulatedSuspects,
     accumulatedVictims,
-    refreshRoomData: async () => { await refetch(); }
+    refreshRoomData: async () => { await refetch(); },
+    patchRoomData
   };
 }

@@ -73,7 +73,6 @@ export default function ProceduralRequestTray({
             <option value="" disabled>{t('pages.gameRoom.evidence.board.selectRequestType')}</option>
             {Object.values(InvestigationRequestType).map(type => (
               <option key={type} value={type}>
-                {/* Dynamically translate the raw enum value */}
                 {t(`pages.gameRoom.evidence.board.requestTypes.${type}`)}
               </option>
             ))}
@@ -106,14 +105,16 @@ export default function ProceduralRequestTray({
               <div key={req.id} className="filed-request-row">
                 <div className="filed-request-info">
                   <span className="filed-request-type">
-                    {t(`pages.gameRoom.evidence.board.requestTypes.${req.type}`)}
+                    {t(`pages.gameRoom.evidence.board.requestTypes.${req.request_type}`)}
                   </span>
                   <span className="filed-request-meta">
-                    {t('pages.gameRoom.evidence.board.crossReferenced')} {req.evidenceIds.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
+                    {t('pages.gameRoom.evidence.board.crossReferenced')} {req.evidence_ids.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>{req.timestamp}</span>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
+                    {new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                   <span className="filed-request-status">{t('pages.gameRoom.evidence.board.approvedStatus')}</span>
                 </div>
               </div>

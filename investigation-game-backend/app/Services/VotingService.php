@@ -7,14 +7,16 @@ use App\Models\Question;
 use App\Models\Choice;
 use App\Models\RoomVote;
 use App\Models\User;
+use App\Models\Evidence;
+use App\Models\Level;
+use App\Models\Suspect;
+use App\Models\Victim;
 use App\Support\Result;
 use App\Events\VoteLockedIn;
+use App\Events\ItemsUnlocked;
 
 class VotingService
 {
-    /**
-     * Lock in or update a user's vote for a specific verdict.
-     */
     public function lockInVote(GameRoom $room, User $user, Question $question, Choice $choice): Result
     {
         if ($question->level_id !== $room->current_level_id) {
@@ -25,7 +27,6 @@ class VotingService
             return Result::failure("Invalid choice for the given verdict.");
         }
 
-        // Upsert the vote
         $vote = RoomVote::updateOrCreate(
             [
                 'room_id' => $room->id,
@@ -37,69 +38,67 @@ class VotingService
             ]
         );
 
-        // --- DYNAMIC NARRATIVE UNLOCKS VIA JSON PAYLOAD ---
-        $unlocked = [
-            'evidence' => [],
-            'levels' => [],
-            'suspects' => [],
-            'victims' => []
-        ];
+        $unlockedEvidences = collect();
+        $unlockedLevels = collect();
+        $unlockedSuspects = collect();
+        $unlockedVictims = collect();
 
-        // Access the automatically casted JSON array
         $outcomes = $choice->outcomes ?? [];
 
-        // Evidence Unlocks
+        // Eager load models to pass exactly what the frontend cache needs (avoids N+1)
         if (!empty($outcomes['unlock_evidence']) && is_array($outcomes['unlock_evidence'])) {
-            // Check that the items exist to prevent ghost relations
-            $validEvidence = \App\Models\Evidence::whereIn('id', $outcomes['unlock_evidence'])->pluck('id')->toArray();
-            if (!empty($validEvidence)) {
-                $room->unlockedEvidences()->syncWithoutDetaching($validEvidence);
-                $unlocked['evidence'] = array_merge($unlocked['evidence'], $validEvidence);
-                \App\Events\EvidenceDiscovered::dispatch($room, $validEvidence);
+            $unlockedEvidences = Evidence::whereIn('id', $outcomes['unlock_evidence'])->get();
+            if ($unlockedEvidences->isNotEmpty()) {
+                $room->unlockedEvidences()->syncWithoutDetaching($unlockedEvidences->pluck('id')->toArray());
             }
         }
 
-        // Level Unlocks
         if (!empty($outcomes['unlock_levels']) && is_array($outcomes['unlock_levels'])) {
-            $validLevels = \App\Models\Level::whereIn('id', $outcomes['unlock_levels'])->pluck('id')->toArray();
-            if (!empty($validLevels)) {
-                $room->unlockedLevels()->syncWithoutDetaching($validLevels);
-                $unlocked['levels'] = array_merge($unlocked['levels'], $validLevels);
+            $unlockedLevels = Level::whereIn('id', $outcomes['unlock_levels'])->get();
+            if ($unlockedLevels->isNotEmpty()) {
+                $room->unlockedLevels()->syncWithoutDetaching($unlockedLevels->pluck('id')->toArray());
             }
         }
 
-        // Suspect Unlocks
         if (!empty($outcomes['unlock_suspects']) && is_array($outcomes['unlock_suspects'])) {
-            $validSuspects = \App\Models\Suspect::whereIn('id', $outcomes['unlock_suspects'])->pluck('id')->toArray();
-            if (!empty($validSuspects)) {
-                $room->unlockedSuspects()->syncWithoutDetaching($validSuspects);
-                $unlocked['suspects'] = array_merge($unlocked['suspects'], $validSuspects);
-                \App\Events\SuspectDiscovered::dispatch($room, $validSuspects);
+            $unlockedSuspects = Suspect::whereIn('id', $outcomes['unlock_suspects'])->get();
+            if ($unlockedSuspects->isNotEmpty()) {
+                $room->unlockedSuspects()->syncWithoutDetaching($unlockedSuspects->pluck('id')->toArray());
             }
         }
 
-        // Victim Unlocks
         if (!empty($outcomes['unlock_victims']) && is_array($outcomes['unlock_victims'])) {
-            $validVictims = \App\Models\Victim::whereIn('id', $outcomes['unlock_victims'])->pluck('id')->toArray();
-            if (!empty($validVictims)) {
-                $room->unlockedVictims()->syncWithoutDetaching($validVictims);
-                $unlocked['victims'] = array_merge($unlocked['victims'], $validVictims);
-                \App\Events\VictimDiscovered::dispatch($room, $validVictims);
+            $unlockedVictims = Victim::whereIn('id', $outcomes['unlock_victims'])->get();
+            if ($unlockedVictims->isNotEmpty()) {
+                $room->unlockedVictims()->syncWithoutDetaching($unlockedVictims->pluck('id')->toArray());
             }
         }
 
-        // Broadcast the real-time vote update
         VoteLockedIn::dispatch($room, $vote);
+
+        // Blanket Broadcast for the new ItemsUnlocked engine
+        if ($unlockedEvidences->isNotEmpty() || $unlockedLevels->isNotEmpty() || $unlockedSuspects->isNotEmpty() || $unlockedVictims->isNotEmpty()) {
+            ItemsUnlocked::dispatch(
+                $room, 
+                $unlockedEvidences->isNotEmpty() ? $unlockedEvidences : null,
+                $unlockedLevels->isNotEmpty() ? $unlockedLevels : null,
+                $unlockedSuspects->isNotEmpty() ? $unlockedSuspects : null,
+                $unlockedVictims->isNotEmpty() ? $unlockedVictims : null,
+                null
+            );
+        }
 
         return Result::success([
             'vote' => $vote,
-            'unlocked' => $unlocked
+            'unlocked' => [
+                'evidence' => $unlockedEvidences->toArray(),
+                'levels' => $unlockedLevels->toArray(),
+                'suspects' => $unlockedSuspects->toArray(),
+                'victims' => $unlockedVictims->toArray()
+            ]
         ]);
     }
 
-    /**
-     * Calculate the current consensus of the room based on weighted votes.
-     */
     public function calculateLevelConsensus(GameRoom $room, int $levelId): array
     {
         $votes = RoomVote::where('room_id', $room->id)

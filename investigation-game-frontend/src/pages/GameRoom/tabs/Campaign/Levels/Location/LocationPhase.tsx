@@ -1,9 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Level, Choice } from '@/types';
+// Assume api.inspectLocation is added mapping to POST /rooms/{room}/inspect
+import * as api from '@/services/api'; 
 import './LocationPhase.css';
 
 interface LocationPhaseProps {
@@ -16,6 +19,7 @@ interface LocationPhaseProps {
 
 export default function LocationPhase({ level, status, isHost, isSubmitting, handleSubmitTheory }: LocationPhaseProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { room, accumulatedEvidences } = useRoomState();
   const { localVotes, handleSelectChoice, addToast } = useInvestigationPhase();
 
@@ -46,7 +50,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 
   const [inspectingQuestionId, setInspectingQuestionId] = useState<number | null>(null);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
-
   const popupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -55,82 +58,46 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     };
   }, []);
 
-  const deadEndsStorageKey = `room_${room.id}_level_${level.id}_dead_ends`;
-  const foundPointsStorageKey = `room_${room.id}_level_${level.id}_found_points`;
+  // DERIVE STATE FROM AUTHORITATIVE BACKEND INSTEAD OF SESSION STORAGE
+  const foundPoints = new Set(room.inspections?.filter((i: any) => !i.is_dead_end).map((i: any) => i.choice_id) || []);
+  const clickedDeadEnds = new Set(room.inspections?.filter((i: any) => i.is_dead_end).map((i: any) => i.choice_id) || []);
 
-  const [clickedDeadEnds, setClickedDeadEnds] = useState<Set<number>>(() => {
-    try {
-      const saved = sessionStorage.getItem(deadEndsStorageKey);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
+  // OPTIMISTIC MUTATION
+  const inspectMutation = useMutation({
+    mutationFn: async (choiceId: number) => {
+      const result = await api.inspectLocation(room.id, choiceId);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onMutate: async (choiceId) => {
+      await queryClient.cancelQueries({ queryKey: ['gameRoom', room.invite_code] });
+      const previousRoom = queryClient.getQueryData(['gameRoom', room.invite_code]);
+
+      // Optimistically patch the cache
+      queryClient.setQueryData(['gameRoom', room.invite_code], (old: any) => {
+        if (!old) return old;
+        
+        // Find choice to determine dead-end status locally for the instant UX snapshot
+        let isCorrectFind = false;
+        level.questions?.forEach(q => {
+          const c = q.choices?.find(x => x.id === choiceId);
+          if (c) {
+            isCorrectFind = !!(c.outcomes?.next_question_id || c.outcomes?.unlock_evidence?.length || c.outcomes?.unlock_levels?.length || c.outcomes?.unlock_suspects?.length || c.outcomes?.unlock_victims?.length);
+          }
+        });
+
+        return {
+          ...old,
+          inspections: [...(old.inspections || []), { choice_id: choiceId, is_dead_end: !isCorrectFind }]
+        };
+      });
+
+      return { previousRoom };
+    },
+    onError: (_error, _variables, context) => {
+      queryClient.setQueryData(['gameRoom', room.invite_code], context?.previousRoom);
+    }
   });
-
-  const [foundPoints, setFoundPoints] = useState<Set<number>>(() => {
-    try {
-      const saved = sessionStorage.getItem(foundPointsStorageKey);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
-  });
-
-  // --- P2P State Synchronization ---
-  const stateRef = useRef({ deadEnds: clickedDeadEnds, found: foundPoints });
-  useEffect(() => {
-    stateRef.current = { deadEnds: clickedDeadEnds, found: foundPoints };
-  }, [clickedDeadEnds, foundPoints]);
-
-  useEffect(() => {
-    if (!window.Echo) return;
-    const channel = window.Echo.private(`room.${room.id}`);
-
-    channel.listenForWhisper('location-interacted', (e: { type: string, choiceId: number }) => {
-      if (e.type === 'deadEnd') {
-        setClickedDeadEnds(prev => {
-          const next = new Set(prev).add(e.choiceId);
-          sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(next)));
-          return next;
-        });
-      } else if (e.type === 'foundPoint') {
-        setFoundPoints(prev => {
-          const next = new Set(prev).add(e.choiceId);
-          sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(next)));
-          return next;
-        });
-      }
-    });
-
-    channel.listenForWhisper('request-location-sync', () => {
-      const { deadEnds, found } = stateRef.current;
-      if (deadEnds.size > 0 || found.size > 0) {
-        channel.whisper('location-sync-reply', {
-          deadEnds: Array.from(deadEnds),
-          foundPoints: Array.from(found)
-        });
-      }
-    });
-
-    channel.listenForWhisper('location-sync-reply', (e: { deadEnds: number[], foundPoints: number[] }) => {
-      if (e.deadEnds?.length) {
-        setClickedDeadEnds(prev => {
-          const next = new Set([...prev, ...e.deadEnds]);
-          sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(next)));
-          return next;
-        });
-      }
-      if (e.foundPoints?.length) {
-        setFoundPoints(prev => {
-          const next = new Set([...prev, ...e.foundPoints]);
-          sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(next)));
-          return next;
-        });
-      }
-    });
-
-    const syncTimer = setTimeout(() => {
-      channel.whisper('request-location-sync', {});
-    }, 1000);
-
-    return () => clearTimeout(syncTimer);
-  }, [room.id, deadEndsStorageKey, foundPointsStorageKey]);
 
   if (!level.questions) return null;
 
@@ -191,6 +158,11 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     const isCorrectFind = !!hasUnlocks;
     const isFirstTimeDiscovery = !foundPoints.has(choice.id);
 
+    // Fire the optimistic TanStack mutation to the server
+    if (isFirstTimeDiscovery && !clickedDeadEnds.has(choice.id)) {
+        inspectMutation.mutate(choice.id);
+    }
+
     if (isCorrectFind) {
       setPopup({
         title: t('pages.gameRoom.campaign.levels.location.leadDiscovered'),
@@ -207,14 +179,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
         });
       }
 
-      setFoundPoints(prev => {
-        const newSet = new Set(prev).add(choice.id);
-        sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(newSet)));
-        return newSet;
-      });
-
-      window.Echo?.private(`room.${room.id}`).whisper('location-interacted', { type: 'foundPoint', choiceId: choice.id });
-
       if (isFirstTimeDiscovery) {
         handleSelectChoice(e, qId, choice, status);
       }
@@ -224,15 +188,7 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
           message: choice.outcomes?.feedback || t('pages.gameRoom.campaign.levels.location.nothingFound'),
           isSuccess: false
         });
-
-        setClickedDeadEnds(prev => {
-          const newSet = new Set(prev).add(choice.id);
-          sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(newSet)));
-          return newSet;
-        });
-
-        window.Echo?.private(`room.${room.id}`).whisper('location-interacted', { type: 'deadEnd', choiceId: choice.id });
-      }
+    }
 
     popupTimeoutRef.current = setTimeout(() => {
       setPopup(null);

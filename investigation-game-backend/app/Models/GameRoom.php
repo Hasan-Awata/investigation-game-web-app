@@ -15,82 +15,36 @@ class GameRoom extends Model
         'invite_code',
         'current_level_id',
         'status',
-        'strikes', 
-        'final_stats', 
+        'strikes',
+        'final_stats',
     ];
 
     protected function casts(): array
     {
         return [
             'status' => RoomStatus::class,
-            'final_stats' => 'array', 
+            'final_stats' => 'array',
         ];
     }
 
-    public function gameCase(): BelongsTo
-    {
-        return $this->belongsTo(GameCase::class, 'case_id');
-    }
-
-    public function host(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'host_user_id');
-    }
-
-    public function currentLevel(): BelongsTo
-    {
-        return $this->belongsTo(Level::class, 'current_level_id');
-    }
-
-    public function users(): HasMany
-    {
-        return $this->hasMany(RoomUser::class, 'room_id');
-    }
-
-    public function votes(): HasMany
-    {
-        return $this->hasMany(RoomVote::class, 'room_id');
-    }
-
-    public function unlockedEvidences()
-    {
-        return $this->belongsToMany(Evidence::class, 'room_evidences', 'room_id', 'evidence_id')
-                    ->withTimestamps();
-    }
+    public function gameCase(): BelongsTo { return $this->belongsTo(GameCase::class, 'case_id'); }
+    public function host(): BelongsTo { return $this->belongsTo(User::class, 'host_user_id'); }
+    public function currentLevel(): BelongsTo { return $this->belongsTo(Level::class, 'current_level_id'); }
+    public function users(): HasMany { return $this->hasMany(RoomUser::class, 'room_id'); }
+    public function votes(): HasMany { return $this->hasMany(RoomVote::class, 'room_id'); }
     
-    public function unlockedLevels()
-    {
-        return $this->belongsToMany(Level::class, 'room_unlocked_levels', 'room_id', 'level_id')
-                    ->withTimestamps();
+    public function inspections(): HasMany { 
+        return $this->hasMany(RoomInspection::class, 'room_id'); 
+    }
+    public function filedRequests(): HasMany { 
+        return $this->hasMany(RoomFiledRequest::class, 'room_id')->orderBy('created_at', 'desc'); 
     }
 
-    public function unlockedSuspects()
-    {
-        return $this->belongsToMany(Suspect::class, 'room_suspects', 'room_id', 'suspect_id')
-                    ->withTimestamps();
-    }
-
-    public function completedLevels()
-    {
-        return $this->belongsToMany(Level::class, 'room_completed_levels', 'room_id', 'level_id')
-                    ->withTimestamps();
-    }
-
-    public function completedRequests()
-    {
-        return $this->belongsToMany(InvestigationRequest::class, 'room_investigation_requests', 'room_id', 'request_id')
-                    ->withTimestamps();
-    }
-
-    public function unlockedVictims()
-    { 
-        return $this->belongsToMany(Victim::class, 'room_victims', 'room_id', 'victim_id')
-                    ->withTimestamps(); 
-    }
-
-    public function playedWiretaps()
-    {
-        return $this->belongsToMany(Question::class, 'room_played_wiretaps', 'room_id', 'question_id')
-                    ->withTimestamps();
-    }    
+    public function unlockedEvidences() { return $this->belongsToMany(Evidence::class, 'room_evidences', 'room_id', 'evidence_id')->withTimestamps(); }
+    public function unlockedLevels() { return $this->belongsToMany(Level::class, 'room_unlocked_levels', 'room_id', 'level_id')->withTimestamps(); }
+    public function unlockedSuspects() { return $this->belongsToMany(Suspect::class, 'room_suspects', 'room_id', 'suspect_id')->withTimestamps(); }
+    public function completedLevels() { return $this->belongsToMany(Level::class, 'room_completed_levels', 'room_id', 'level_id')->withTimestamps(); }
+    public function completedRequests() { return $this->belongsToMany(InvestigationRequest::class, 'room_investigation_requests', 'room_id', 'request_id')->withTimestamps(); }
+    public function unlockedVictims() { return $this->belongsToMany(Victim::class, 'room_victims', 'room_id', 'victim_id')->withTimestamps(); }
+    public function playedWiretaps() { return $this->belongsToMany(Question::class, 'room_played_wiretaps', 'room_id', 'question_id')->withTimestamps(); }
 }

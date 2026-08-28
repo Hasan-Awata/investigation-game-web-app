@@ -88,18 +88,22 @@
 │   │   │   │   └── GameEndOverlay.tsx
 │   │   │   └── tabs
 │   │   │       ├── Campaign
+│   │   │       │   ├── CampaignMap.css
+│   │   │       │   ├── CampaignMap.tsx
 │   │   │       │   ├── CampaignTab.css
 │   │   │       │   ├── CampaignTab.tsx
-│   │   │       │   └── Levels
-│   │   │       │       ├── Interrogation
-│   │   │       │       │   ├── InterrogationPhase.css
-│   │   │       │       │   └── InterrogationPhase.tsx
-│   │   │       │       ├── Location
-│   │   │       │       │   ├── LocationPhase.css
-│   │   │       │       │   └── LocationPhase.tsx
-│   │   │       │       └── Wiretap
-│   │   │       │           ├── WiretapPhase.css
-│   │   │       │           └── WiretapPhase.tsx
+│   │   │       │   ├── Levels
+│   │   │       │   │   ├── Interrogation
+│   │   │       │   │   │   ├── InterrogationPhase.css
+│   │   │       │   │   │   └── InterrogationPhase.tsx
+│   │   │       │   │   ├── Location
+│   │   │       │   │   │   ├── LocationPhase.css
+│   │   │       │   │   │   └── LocationPhase.tsx
+│   │   │       │   │   └── Wiretap
+│   │   │       │   │       ├── WiretapPhase.css
+│   │   │       │   │       └── WiretapPhase.tsx
+│   │   │       │   ├── PhaseCard.css
+│   │   │       │   └── PhaseCard.tsx
 │   │   │       ├── CaseDetails
 │   │   │       │   ├── CaseDetailsTab.css
 │   │   │       │   ├── CaseDetailsTab.tsx
@@ -256,6 +260,7 @@ export default defineConfig([
     "react-i18next": "^17.0.12",
     "react-markdown": "^10.1.0",
     "react-router-dom": "^7.18.1",
+    "react-zoom-pan-pinch": "^4.0.4",
     "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
@@ -2073,6 +2078,13 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
           "audioFeedLabel": "[ بث صوتي ]",
           "feedSeveredLabel": "[ انقطع البث ]"
           }
+        },
+        "map": {
+          "backToMap": "العودة إلى الخريطة",
+          "goToLocation": "الذهاب إلى الموقع",
+          "noDescription": "لا يوجد وصف متاح لهذه المرحلة.",
+          "levelsPreview": "نظرة على المستويات",
+          "phaseIndex": "المرحلة"
         }
     },
     "hooks": {
@@ -5882,6 +5894,99 @@ export default function GameEndOverlay({ status, resolutionMessage, finalStats }
 }
 </file>
 
+<file path="src/pages/GameRoom/tabs/Campaign/CampaignMap.tsx">
+import { useState } from 'react';
+import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import type { Phase } from '@/types';
+import PhaseCard from './PhaseCard';
+import './CampaignMap.css';
+
+interface CampaignMapProps {
+  phases: Phase[];
+  unlockedLevelIds: Set<number>;
+  onEnterPhase: (phaseId: number) => void;
+  mapImageUrl?: string;
+}
+
+export default function CampaignMap({ phases, unlockedLevelIds, onEnterPhase, mapImageUrl }: CampaignMapProps) {
+  const [selectedPhase, setSelectedPhase] = useState<Phase | null>(null);
+
+  const getCoordinates = (index: number) => {
+    const row = Math.floor(index / 3);
+    const col = index % 3;
+    const isEvenRow = row % 2 === 0;
+
+    const x = isEvenRow ? 20 + (col * 30) : 80 - (col * 30);
+    const y = 20 + (row * 25);
+
+    return { top: `${y}%`, left: `${x}%` };
+  };
+
+  return (
+    <div className="campaign-map-container">
+      <TransformWrapper
+        initialScale={1}
+        minScale={1}
+        maxScale={1}
+        limitToBounds={true}
+        centerOnInit={true}
+        wheel={{ disabled: true }}
+        pinch={{ disabled: true }}
+        doubleClick={{ disabled: true }}
+      >
+        {({ resetTransform }) => (
+          <TransformComponent wrapperClass="map-transform-wrapper" contentClass="map-transform-content">
+            <div className="custom-map-canvas">
+              <img
+                src={mapImageUrl || '/tactical-damascus-blueprint.png'}
+                alt="Tactical Map"
+                className="custom-map-image"
+                onLoad={() => {
+                  resetTransform();
+                }}
+              />
+
+              <div className="map-overlay-grid"></div>
+
+              {phases.map((phase, index) => {
+                const isPhaseUnlocked = phase.levels?.some(l => l.is_initial || unlockedLevelIds.has(l.id));
+                const coords = getCoordinates(index);
+
+                return (
+                  <div
+                    key={phase.id}
+                    className={`map-pin-wrapper ${isPhaseUnlocked ? 'unlocked' : 'locked'}`}
+                    style={{ ...coords, position: 'absolute' }}
+                    onClick={() => {
+                      if (isPhaseUnlocked) setSelectedPhase(phase);
+                    }}
+                  >
+                    <div className="pin-icon"></div>
+                    <div className="pin-tooltip">
+                      <span className="pin-order-badge">{index + 1}</span>
+                      {phase.title} {!isPhaseUnlocked && '🔒'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </TransformComponent>
+        )}
+      </TransformWrapper>
+
+      {selectedPhase && (
+        <PhaseCard
+          phase={selectedPhase}
+          unlockedLevelIds={unlockedLevelIds}
+          onClose={() => setSelectedPhase(null)}
+          onEnter={onEnterPhase}
+        />
+      )}
+    </div>
+  );
+}
+</file>
+
 <file path="src/pages/GameRoom/tabs/Campaign/CampaignTab.tsx">
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -5891,6 +5996,7 @@ import type { Question, Phase, Level } from '@/types';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
 import LocationPhase from './Levels/Location/LocationPhase';
 import WiretapPhase from './Levels/Wiretap/WiretapPhase';
+import CampaignMap from './CampaignMap';
 import '../SharedOverlay.css';
 import './CampaignTab.css';
 
@@ -5919,7 +6025,14 @@ export default function CampaignTab() {
   const sortedPhases = [...phases].sort((a: Phase, b: Phase) => a.order_index - b.order_index);
   const phaseStorageKey = `room_${room.id}_active_phase`;
 
+  // Auto-detect if there is an active phase in progress
+  const hasActiveLevel = currentLevelId !== null && currentLevelId !== undefined;
+  const activePhaseFromRoom = hasActiveLevel
+    ? sortedPhases.find(p => p.levels?.some(l => l.id === currentLevelId))
+    : null;
+
   const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
+    if (activePhaseFromRoom) return activePhaseFromRoom.id;
     try {
       const saved = sessionStorage.getItem(phaseStorageKey);
       if (saved) {
@@ -5930,9 +6043,26 @@ export default function CampaignTab() {
     return sortedPhases.length > 0 ? sortedPhases[0].id : null;
   });
 
+  // Default to map ONLY if there is no active level and no session-saved phase
+  const [isMapMode, setIsMapMode] = useState<boolean>(() => {
+    if (hasActiveLevel) return false;
+    return !sessionStorage.getItem(phaseStorageKey);
+  });
+
   const toggleExpand = (levelId: number, status: string) => {
     if (status === 'locked') return;
     setExpandedId(expandedId === levelId ? null : levelId);
+  };
+
+  const handleEnterPhase = (phaseId: number) => {
+    setActivePhaseId(phaseId);
+    setExpandedId(null);
+    setIsMapMode(false);
+    sessionStorage.setItem(phaseStorageKey, phaseId.toString());
+  };
+
+  const handleReturnToMap = () => {
+    setIsMapMode(true);
   };
 
   const totalPlayers = room.users?.length || 1;
@@ -5971,146 +6101,201 @@ export default function CampaignTab() {
 
   return (
     <div className="campaign-roadmap-container">
-      <div className="phase-subnav">
-        {sortedPhases.map((phase: Phase) => {
-          const isPhaseUnlocked = phase.levels?.some((l: Level) => l.is_initial || unlockedLevelIds.has(l.id));
-
-          return (
-            <button
-              key={phase.id}
-              className={`phase-subnav-btn ${activePhaseId === phase.id ? 'active' : ''}`}
-              disabled={!isPhaseUnlocked}
-              onClick={() => {
-                setActivePhaseId(phase.id);
-                setExpandedId(null);
-                sessionStorage.setItem(phaseStorageKey, phase.id.toString());
-              }}
-            >
-              {!isPhaseUnlocked && <span className="phase-lock-icon">🔒</span>}
-              {phase.title}
+      {isMapMode ? (
+        <CampaignMap
+          onEnterPhase={handleEnterPhase}
+          phases={sortedPhases}
+          unlockedLevelIds={unlockedLevelIds}
+        />
+      ) : (
+        <>
+          <div className="phase-subnav" style={{ justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+            <button className="btn-secondary" onClick={handleReturnToMap} style={{ width: 'auto', padding: '0.5rem 1rem' }}>
+              &larr; {t('pages.gameRoom.campaign.map.backToMap')}
             </button>
-          );
-        })}
-      </div>
-
-      <div style={{ marginBottom: '2rem' }}>
-        <h2 className="section-title">{activePhaseData?.title || t('pages.gameRoom.campaign.unknownPhase')}</h2>
-        {activePhaseData?.description && (
-          <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
-            {activePhaseData.description}
-          </p>
-        )}
-      </div>
-
-      <div className="roadmap-timeline">
-        {sortedLevels.length === 0 && (
-          <div className="terminal-text" style={{ padding: 0, textAlign: 'start' }}>
-            {t('pages.gameRoom.campaign.noLeads')}
+            <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>
+              {t('pages.gameRoom.campaign.map.phaseIndex')} {activePhaseData?.order_index}
+            </div>
           </div>
-        )}
 
-        {sortedLevels.map((level: Level) => {
-          const isDiscovered = level.is_initial || unlockedLevelIds.has(level.id);
-          const isCompleted = room.completed_levels?.some((cl: Level) => cl.id === level.id);
-          const isActive = currentLevelId === level.id;
-          const isAnotherPhaseRunning = currentLevelId !== null;
+          <div style={{ marginBottom: '2rem', marginTop: '1.5rem' }}>
+            <h2 className="section-title">{activePhaseData?.title || t('pages.gameRoom.campaign.unknownPhase')}</h2>
+            {activePhaseData?.description && (
+              <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+                {activePhaseData.description}
+              </p>
+            )}
+          </div>
 
-          let status = 'available';
-          if (!isDiscovered) status = 'locked';
-          else if (roomStatus === 'solved' || isCompleted) status = 'completed';
-          else if (isActive) status = 'active';
-          else if (isAnotherPhaseRunning) status = 'locked';
-
-          const isExpanded = expandedId === level.id;
-
-          const displayTitle = isDiscovered ? level.title : t('pages.gameRoom.campaign.undiscoveredEncounter');
-          const displayDesc = isDiscovered
-            ? level.details
-            : t('pages.gameRoom.campaign.hiddenPathDesc');
-
-          return (
-            <div key={level.id} className={`roadmap-node ${status}`}>
-              <div className="timeline-connector">
-                <div className="node-indicator">
-                  {status === 'completed' && '✓'}
-                  {status === 'locked' && '🔒'}
-                </div>
-                <div className="node-line"></div>
+          <div className="roadmap-timeline">
+            {sortedLevels.length === 0 && (
+              <div className="terminal-text" style={{ padding: 0, textAlign: 'start' }}>
+                {t('pages.gameRoom.campaign.noLeads')}
               </div>
+            )}
 
-              <div
-                className={`node-content glass-panel ${status !== 'locked' ? 'clickable' : ''}`}
-                onClick={() => toggleExpand(level.id, status)}
-              >
-                <div className="node-main-card">
-                  <div className="node-image" style={{ backgroundImage: `url(${level.img_url || '/placeholder-crime-scene.jpg'})` }}>
-                    <div className="node-image-overlay"></div>
+            {sortedLevels.map((level: Level) => {
+              const isDiscovered = level.is_initial || unlockedLevelIds.has(level.id);
+              const isCompleted = room.completed_levels?.some((cl: Level) => cl.id === level.id);
+              const isActive = currentLevelId === level.id;
+              const isAnotherPhaseRunning = currentLevelId !== null;
+
+              let status = 'available';
+              if (!isDiscovered) status = 'locked';
+              else if (roomStatus === 'solved' || isCompleted) status = 'completed';
+              else if (isActive) status = 'active';
+              else if (isAnotherPhaseRunning) status = 'locked';
+
+              const isExpanded = expandedId === level.id;
+
+              const displayTitle = isDiscovered ? level.title : t('pages.gameRoom.campaign.undiscoveredEncounter');
+              const displayDesc = isDiscovered
+                ? level.details
+                : t('pages.gameRoom.campaign.hiddenPathDesc');
+
+              return (
+                <div key={level.id} className={`roadmap-node ${status}`}>
+                  <div className="timeline-connector">
+                    <div className="node-indicator">
+                      {status === 'completed' && '✓'}
+                      {status === 'locked' && '🔒'}
+                    </div>
+                    <div className="node-line"></div>
                   </div>
-                  <div className="node-details">
-                    <span className="node-phase">{t('pages.gameRoom.campaign.lead')} {level.order_index}</span>
-                    <h3 className="node-title">{displayTitle}</h3>
-                    <p className="node-desc">{displayDesc}</p>
-                    {status === 'active' && <div className="active-badge">{t('pages.gameRoom.campaign.activeInvestigation')}</div>}
-                  </div>
-                </div>
 
-                {isExpanded && isDiscovered && (
-                  <div className="node-questions-drawer" onClick={(e) => e.stopPropagation()}>
+                  <div
+                    className={`node-content glass-panel ${status !== 'locked' ? 'clickable' : ''}`}
+                    onClick={() => toggleExpand(level.id, status)}
+                  >
+                    <div className="node-main-card">
+                      <div className="node-image" style={{ backgroundImage: `url(${level.img_url || '/placeholder-crime-scene.jpg'})` }}>
+                        <div className="node-image-overlay"></div>
+                      </div>
+                      <div className="node-details">
+                        <span className="node-phase">{t('pages.gameRoom.campaign.lead')} {level.order_index}</span>
+                        <h3 className="node-title">{displayTitle}</h3>
+                        <p className="node-desc">{displayDesc}</p>
+                        {status === 'active' && <div className="active-badge">{t('pages.gameRoom.campaign.activeInvestigation')}</div>}
+                      </div>
+                    </div>
 
-                    {status === 'available' && (
-                      <div style={{ textAlign: 'center', padding: '1rem' }}>
-                        <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontFamily: 'var(--font-mono)' }}>
-                          {isHost
-                            ? t('pages.gameRoom.campaign.hostInitiateWarning')
-                            : t('pages.gameRoom.campaign.awaitingHost')}
-                        </p>
-                        {isHost && (
-                          <button className="btn-primary" onClick={() => initiatePhase(level.id)} disabled={isInitiating}>
-                            {isInitiating ? t('pages.gameRoom.campaign.lockingCoordinator') : t('pages.gameRoom.campaign.commenceInvestigation')}
-                          </button>
+                    {isExpanded && isDiscovered && (
+                      <div className="node-questions-drawer" onClick={(e) => e.stopPropagation()}>
+
+                        {status === 'available' && (
+                          <div style={{ textAlign: 'center', padding: '1rem' }}>
+                            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontFamily: 'var(--font-mono)' }}>
+                              {isHost
+                                ? t('pages.gameRoom.campaign.hostInitiateWarning')
+                                : t('pages.gameRoom.campaign.awaitingHost')}
+                            </p>
+                            {isHost && (
+                              <button className="btn-primary" onClick={() => initiatePhase(level.id)} disabled={isInitiating}>
+                                {isInitiating ? t('pages.gameRoom.campaign.lockingCoordinator') : t('pages.gameRoom.campaign.commenceInvestigation')}
+                              </button>
+                            )}
+                          </div>
+                        )}
+
+                        {(status === 'active' || status === 'completed') && level.questions && (
+                          <>
+                            {level.presentation_type === 'interrogation' ? (
+                              <InterrogationPhase
+                                getQuestionConsensus={getQuestionConsensus}
+                                handleSubmitTheory={handleSubmitTheory}
+                                isHost={isHost}
+                                isSubmitting={isSubmitting}
+                                level={level}
+                                status={status}
+                                totalPlayers={totalPlayers}
+                              />
+                            ) : level.presentation_type === 'location' ? (
+                              <LocationPhase
+                                handleSubmitTheory={handleSubmitTheory}
+                                isHost={isHost}
+                                isSubmitting={isSubmitting}
+                                level={level}
+                                status={status}
+                              />
+                            ) : level.presentation_type === 'wiretap' ? (
+                              <WiretapPhase
+                                getQuestionConsensus={getQuestionConsensus}
+                                handleSubmitTheory={handleSubmitTheory}
+                                isHost={isHost}
+                                isSubmitting={isSubmitting}
+                                level={level}
+                                status={status}
+                                totalPlayers={totalPlayers}
+                              />
+                            ) : null}
+                          </>
                         )}
                       </div>
                     )}
-
-                    {(status === 'active' || status === 'completed') && level.questions && (
-                      <>
-                        {level.presentation_type === 'interrogation' ? (
-                          <InterrogationPhase
-                            level={level}
-                            status={status}
-                            totalPlayers={totalPlayers}
-                            getQuestionConsensus={getQuestionConsensus}
-                            isHost={isHost}
-                            isSubmitting={isSubmitting}
-                            handleSubmitTheory={handleSubmitTheory}
-                          />
-                        ) : level.presentation_type === 'location' ? (
-                          <LocationPhase
-                            level={level}
-                            status={status}
-                            isHost={isHost}
-                            isSubmitting={isSubmitting}
-                            handleSubmitTheory={handleSubmitTheory}
-                          />
-                        ) : level.presentation_type === 'wiretap' ? (
-                          <WiretapPhase
-                            level={level}
-                            status={status}
-                            totalPlayers={totalPlayers}
-                            getQuestionConsensus={getQuestionConsensus}
-                            isHost={isHost}
-                            isSubmitting={isSubmitting}
-                            handleSubmitTheory={handleSubmitTheory}
-                          />
-                        ) : null}
-                      </>
-                    )}
                   </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="src/pages/GameRoom/tabs/Campaign/PhaseCard.tsx">
+import { useTranslation } from 'react-i18next';
+import type { Phase } from '@/types';
+import './PhaseCard.css';
+
+interface PhaseCardProps {
+  phase: Phase;
+  unlockedLevelIds: Set<number>;
+  onClose: () => void;
+  onEnter: (phaseId: number) => void;
+}
+
+export default function PhaseCard({ phase, unlockedLevelIds, onClose, onEnter }: PhaseCardProps) {
+  const { t } = useTranslation();
+
+  // Guarantee chronological display order
+  const levels = phase.levels ? [...phase.levels].sort((a, b) => a.order_index - b.order_index) : [];
+
+  return (
+    <div className="phase-card-overlay" onClick={onClose}>
+      <div className="phase-card-content glass-panel" onClick={e => e.stopPropagation()}>
+        <button className="close-btn" onClick={onClose}>✕</button>
+
+        <div className="phase-card-header">
+          <span className="phase-card-meta">{t('pages.gameRoom.campaign.map.phaseIndex')} {phase.order_index}</span>
+          <h2 className="phase-card-title">{phase.title}</h2>
+        </div>
+
+        <p className="phase-card-desc">
+          {phase.description || t('pages.gameRoom.campaign.map.noDescription')}
+        </p>
+
+        <div className="phase-card-levels-container">
+          <h4 className="levels-heading">{t('pages.gameRoom.campaign.map.levelsPreview')}</h4>
+          <ul className="levels-preview-list">
+            {levels.map(level => {
+              const isDiscovered = level.is_initial || unlockedLevelIds.has(level.id);
+              return (
+                <li key={level.id} className={`level-preview-item ${isDiscovered ? 'unlocked' : 'locked'}`}>
+                  <span className="level-icon">{isDiscovered ? '📍' : '🔒'}</span>
+                  <span className="level-title">
+                    {isDiscovered ? level.title : t('pages.gameRoom.campaign.undiscoveredEncounter')}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+
+        <button className="btn-primary enter-location-btn" onClick={() => onEnter(phase.id)}>
+          {t('pages.gameRoom.campaign.map.goToLocation')}
+        </button>
       </div>
     </div>
   );

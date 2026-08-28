@@ -79,12 +79,26 @@ export interface RoomVote {
   choice_id: number;
 }
 
+export interface RoomInspection {
+  id?: number;
+  room_id: number;
+  choice_id: number;
+  is_dead_end: boolean;
+}
+
+export interface FiledRequest {
+  id: number | string;
+  request_type: string;
+  created_at: string;
+  evidence_ids: number[];
+}
+
 export interface GameRoom {
   id: number;
   invite_code: string;
   case_id: number;
   host_user_id: number;
-  current_level_id: number;
+  current_level_id?: number | null;
   status: string;
   strikes: number;
   final_stats?: FinalStats | null; 
@@ -97,7 +111,9 @@ export interface GameRoom {
   unlocked_victims?: Victim[];
   completed_levels?: Level[];
   votes?: RoomVote[];
-  played_wiretaps?: Question[]; 
+  played_wiretaps?: Question[];
+  inspections?: RoomInspection[];
+  filed_requests?: FiledRequest[];
 }
 
 export interface FinalStats {

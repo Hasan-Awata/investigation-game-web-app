@@ -19,9 +19,6 @@ class LevelTransitioned implements ShouldBroadcastNow
         public readonly ?array $stats = null
     ) {}
 
-    /**
-     * Get the channels the event should broadcast on.
-     */
     public function broadcastOn(): array
     {
         return [
@@ -29,21 +26,22 @@ class LevelTransitioned implements ShouldBroadcastNow
         ];
     }
 
-    /**
-     * The data to broadcast to the frontend.
-     */
     public function broadcastWith(): array
     {
-        // Load the fresh level data to send down the wire
-        $this->room->load([
-            'currentLevel.questions.choices'
-        ]);
+        // 1 query to gather the newly updated completed levels state
+        $completedLevels = $this->room->completedLevels()->get();
 
         return [
-            'room_id' => $this->room->id, 
-            'status' => $this->room->status->value, 
-            'message' => $this->message, 
-            'stats' => $this->stats, 
+            'room_id' => $this->room->id,
+            'status' => $this->room->status->value,
+            'message' => $this->message,
+            'stats' => $this->stats,
+            // The precise state patch to synchronize TanStack's cache
+            'room_patch' => [
+                'current_level_id' => $this->room->current_level_id,
+                'status' => $this->room->status->value,
+                'completed_levels' => $completedLevels->toArray(),
+            ]
         ];
     }
 }

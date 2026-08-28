@@ -19,29 +19,18 @@ class VoteLockedIn implements ShouldBroadcastNow
         public readonly RoomVote $vote
     ) {}
 
-    /**
-     * Get the channels the event should broadcast on.
-     */
     public function broadcastOn(): array
     {
-        // Broadcast strictly to this specific room's private channel
         return [
             new PrivateChannel('room.' . $this->room->id),
         ];
     }
 
-    /**
-     * The data to broadcast to the frontend.
-     */
     public function broadcastWith(): array
     {
+        // Shipped as a complete object for the frontend to patch directly
         return [
-            'vote' => [
-                'id' => $this->vote->id,
-                'user_id' => $this->vote->user_id,
-                'question_id' => $this->vote->question_id,
-                'choice_id' => $this->vote->choice_id,
-            ]
+            'vote' => $this->vote->toArray()
         ];
     }
 }
