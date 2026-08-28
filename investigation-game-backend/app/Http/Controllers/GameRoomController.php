@@ -81,7 +81,7 @@ class GameRoomController extends Controller
     }
 
     /**
-     * NEW: Server authoritative tracking for Location sweeps. 
+     * Server authoritative tracking for Location sweeps. 
      */
     public function inspect(Request $request, GameRoom $room): JsonResponse
     {
@@ -133,6 +133,24 @@ class GameRoomController extends Controller
         ]);
 
         $this->roomService->distributeLocationQuestions($room);
+
+        // --- SERVER-SIDE PRE-COMPILATION ---
+        // Offloads heavy array mapping/filtering from the React Client to the Server.
+        
+        $unlockedEvidenceIds = $room->unlockedEvidences->pluck('id')->toArray();
+        $room->accumulated_evidences = $room->gameCase->evidences->filter(function ($e) use ($unlockedEvidenceIds) {
+            return $e->is_initial || in_array($e->id, $unlockedEvidenceIds);
+        })->values();
+
+        $unlockedSuspectIds = $room->unlockedSuspects->pluck('id')->toArray();
+        $room->accumulated_suspects = $room->gameCase->suspects->filter(function ($s) use ($unlockedSuspectIds) {
+            return $s->is_initial || in_array($s->id, $unlockedSuspectIds);
+        })->values();
+
+        $unlockedVictimIds = $room->unlockedVictims->pluck('id')->toArray();
+        $room->accumulated_victims = $room->gameCase->victims->filter(function ($v) use ($unlockedVictimIds) {
+            return $v->is_initial || in_array($v->id, $unlockedVictimIds);
+        })->values();
 
         return response()->json(['room' => $room], 200);
     }

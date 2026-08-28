@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDroppable } from '@dnd-kit/core';
 import { InvestigationRequestType } from '@/types';
 import type { Evidence } from '@/types';
 import type { FiledRequest } from '@/hooks/useInvestigationRequest';
@@ -22,7 +23,6 @@ export default function ProceduralRequestTray({
   trayEvidences,
   requestType,
   setRequestType,
-  addToTray,
   removeFromTray,
   isSubmitting,
   submitRequest,
@@ -31,21 +31,25 @@ export default function ProceduralRequestTray({
   const { t } = useTranslation();
   const [showArchive, setShowArchive] = useState(false);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const evidenceId = parseInt(e.dataTransfer.getData('evidenceId'), 10);
-    if (!isNaN(evidenceId)) addToTray(evidenceId);
-  };
+  // Register the dropzone with dnd-kit
+  const { isOver, setNodeRef } = useDroppable({
+    id: 'procedural-tray'
+  });
 
   return (
-    <div className="filing-tray glass-panel" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+    <div className="filing-tray glass-panel">
       <div className="tray-header">
         <span className="forensic-icon">⚖️</span>
         <h3>{t('pages.gameRoom.evidence.board.proceduralTrayTitle')}</h3>
       </div>
 
       <div className="tray-layout">
-        <div className="tray-dropzone">
+        {/* Bind the droppable ref to the dropzone area */}
+        <div 
+          ref={setNodeRef} 
+          className={`tray-dropzone ${isOver ? 'is-drag-over' : ''}`}
+          style={{ backgroundColor: isOver ? 'rgba(255, 255, 255, 0.15)' : 'transparent', transition: 'background-color 0.2s ease' }}
+        >
           {trayEvidences.length === 0 ? (
             <span className="tray-placeholder">{t('pages.gameRoom.evidence.board.dragAndDrop')}</span>
           ) : (

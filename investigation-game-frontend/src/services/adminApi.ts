@@ -50,27 +50,10 @@ export const deleteAdminCase = (id: number) => adminRequest(`/cases/${id}`, { me
 // ==========================================
 // PHASES
 // ==========================================
-export async function fetchAdminPhases(caseId: string | number) {
-  try {
-    const response = await fetch(`${BASE_URL}/api/admin/cases/${caseId}/phases`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Server rejected the phase request with status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return { isSuccess: true, value: data, errorMessage: null };
-  } catch (error: any) {
-    return { isSuccess: false, value: null, errorMessage: error.message || 'Network error fetching phases' };
-  }
-}
+export const fetchAdminPhases = async (caseId: string | number): Promise<Result<any[]>> => {
+  if (!caseId) return success([]);
+  return await adminRequest(`/cases/${caseId}/phases`, { method: 'GET' });
+};
 
 export const createAdminPhase = (fd: FormData) => adminRequest('/phases', { method: 'POST', body: fd });
 export const updateAdminPhase = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/phases/${id}`, { method: 'POST', body: fd }); };
@@ -79,31 +62,14 @@ export const deleteAdminPhase = (id: number) => adminRequest(`/phases/${id}`, { 
 // ==========================================
 // LEVELS
 // ==========================================
-export async function fetchAdminLevels(phaseId: string | number) {
-  try {
-    const response = await fetch(`${BASE_URL}/api/admin/phases/${phaseId}/levels`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      }
-    });
+export const fetchAdminLevels = async (phaseId: string | number): Promise<Result<any[]>> => {
+  if (!phaseId) return success([]);
+  return await adminRequest(`/phases/${phaseId}/levels`, { method: 'GET' });
+};
 
-    if (!response.ok) {
-      throw new Error(`Server rejected the level request with status: ${response.status}`);
-    }
-
-    const data = await response.json();
-    return { isSuccess: true, value: data, errorMessage: null };
-  } catch (error: any) {
-    return { isSuccess: false, value: null, errorMessage: error.message || 'Network error fetching levels' };
-  }
-}
 export const createAdminLevel = (fd: FormData) => adminRequest('/levels', { method: 'POST', body: fd });
 export const updateAdminLevel = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/levels/${id}`, { method: 'POST', body: fd }); };
 export const deleteAdminLevel = (id: number) => adminRequest(`/levels/${id}`, { method: 'DELETE' });
-
 // ==========================================
 // QUESTIONS (Nodes, Intercepts, Locations)
 // ==========================================

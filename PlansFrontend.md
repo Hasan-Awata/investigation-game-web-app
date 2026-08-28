@@ -240,7 +240,7 @@ Provide the fully refactored, complete code blocks for BackgroundCheckViewer.tsx
 Please refactor the following files:
 (Paste the contents of BackgroundCheckViewer.tsx and TestimonyViewer.tsx here) -->
 =================================================================================================================================
-[SYSTEM DIRECTIVES & ROLE]
+<!-- [SYSTEM DIRECTIVES & ROLE]
 You are a Senior Full-Stack Architect specializing in Laravel, React.js, and TanStack Query.
 
 No Shortcuts: Write complete, fully functional file replacements.
@@ -270,9 +270,9 @@ Briefly explain the API route changes. Then, provide the refactored code for Adm
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following files:
-(Paste the contents of AdminCaseController.php, routes/api.php, useAdminData.ts, and AdminContext.tsx here)
+(Paste the contents of AdminCaseController.php, routes/api.php, useAdminData.ts, and AdminContext.tsx here) -->
 =================================================================================================================================
-[SYSTEM DIRECTIVES & ROLE]
+<!-- [SYSTEM DIRECTIVES & ROLE]
 You are a Senior React.js Architect enforcing SOLID principles.
 
 No Shortcuts: Write complete, production-ready code.
@@ -295,9 +295,9 @@ Provide the fully refactored, complete code blocks for DocumentViewer.tsx and Fo
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following files:
-(Paste the contents of DocumentViewer.tsx and ForensicViewer.tsx here)
+(Paste the contents of DocumentViewer.tsx and ForensicViewer.tsx here) -->
 =================================================================================================================================
-[SYSTEM DIRECTIVES & ROLE]
+<!-- [SYSTEM DIRECTIVES & ROLE]
 You are a Senior Full-Stack Architect specializing in Laravel and React.js.
 
 No Shortcuts: Write complete, production-ready code.
@@ -325,9 +325,9 @@ Provide the fully refactored, complete code blocks for GameRoomController.php an
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following files:
-(Paste the contents of GameRoomController.php and useGameRoom.ts here)
+(Paste the contents of GameRoomController.php and useGameRoom.ts here) -->
 =================================================================================================================================
-Here is the final batch of ironclad prompts to tackle the remaining UX, technical debt, and maintainability issues.
+<!-- Here is the final batch of ironclad prompts to tackle the remaining UX, technical debt, and maintainability issues.
 
 By executing these, you will polish the application into a truly professional, fault-tolerant system ready for a proper deployment.
 
@@ -357,9 +357,9 @@ Briefly explain how skeleton loaders improve perceived performance. Then, provid
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following files:
-(Paste the contents of ImageEvidence.tsx and MediaViewer.tsx here)
+(Paste the contents of ImageEvidence.tsx and MediaViewer.tsx here) -->
 =================================================================================================================================
-[SYSTEM DIRECTIVES & ROLE]
+<!-- [SYSTEM DIRECTIVES & ROLE]
 You are a Senior Frontend Engineer specializing in interactive React UIs.
 
 No Shortcuts: Write complete, fully functional file replacements.
@@ -384,7 +384,7 @@ Outline the installation command for @dnd-kit/core. Then, provide the fully refa
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following files:
-(Paste the contents of EvidenceBoardTab.tsx, EvidenceCard.tsx, and ProceduralRequestTray.tsx here)
+(Paste the contents of EvidenceBoardTab.tsx, EvidenceCard.tsx, and ProceduralRequestTray.tsx here) -->
 =================================================================================================================================
 [SYSTEM DIRECTIVES & ROLE]
 You are a Senior React.js Architect enforcing the DRY (Don't Repeat Yourself) principle.
@@ -440,7 +440,7 @@ Provide the updated JSON structure for locales/en/translation.json. Then, provid
 Please refactor the following files:
 (Paste the contents of App.tsx, AdminDashboard.tsx, and the current translation.json here)
 =================================================================================================================================
-Here is the final set of ironclad prompts to patch those last few frontend stability and UX issues.
+<!-- Here is the final set of ironclad prompts to patch those last few frontend stability and UX issues.
 
 By grouping the fatal crashes and memory leaks into one prompt, and the payload validation into another, we keep the AI laser-focused on specific architectural goals.
 
@@ -473,7 +473,7 @@ Provide the fully refactored, complete code blocks for GameRoom.tsx, App.tsx, an
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following files:
-(Paste the contents of GameRoom.tsx, App.tsx, and AgentNotepad.tsx here)
+(Paste the contents of GameRoom.tsx, App.tsx, and AgentNotepad.tsx here) -->
 =================================================================================================================================
 [SYSTEM DIRECTIVES & ROLE]
 You are a Senior Frontend UX/UI Architect.

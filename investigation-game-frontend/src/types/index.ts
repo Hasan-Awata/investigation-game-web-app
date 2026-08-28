@@ -114,6 +114,9 @@ export interface GameRoom {
   played_wiretaps?: Question[];
   inspections?: RoomInspection[];
   filed_requests?: FiledRequest[];
+  accumulated_evidences?: Evidence[];
+  accumulated_suspects?: Suspect[];
+  accumulated_victims?: Victim[];
 }
 
 export interface FinalStats {

@@ -24,7 +24,7 @@ function AppRouter() {
 
   // Rely strictly on the server evaluation
   const { data: user, isLoading, isError } = useAuthSession();
-  
+
   // The kill-switch state to instantly sever the component tree on 401
   const [isSessionRevoked, setIsSessionRevoked] = useState(false);
 
@@ -32,11 +32,17 @@ function AppRouter() {
     const handleForceLogout = () => {
       // 1. Nuke the token immediately
       logout();
-      localStorage.removeItem('auth_user'); 
       
+      // Safe execution context to prevent unhandled storage exceptions
+      try {
+        localStorage.removeItem('auth_user'); 
+      } catch (e) {
+        console.warn('Storage operation restricted by browser:', e);
+      }
+
       // 2. Instantly sever the protected UI tree to prevent a refetch stampede
       setIsSessionRevoked(true);
-      
+
       // 3. Defer the cache wipe to the next execution tick, ensuring the component tree is gone
       setTimeout(() => {
         queryClient.cancelQueries();

@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useAdminData } from '@/hooks/useAdminData';
+import { useAdminCases } from '@/hooks/useAdminData';
 import { useAdminMutations } from '@/hooks/useAdminMutations';
 import EntityList from './Shared/EntityList';
 import type { GameCase } from '@/types';
@@ -23,7 +23,7 @@ export default function CaseForm() {
   const [storeLocally, setStoreLocally] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: cases = [], isLoading: isFetchingCases } = useAdminData();
+  const { data: cases = [], isLoading: isFetchingCases } = useAdminCases();
 
   const { 
     createEntity, updateEntity, deleteEntity, isProcessing, 

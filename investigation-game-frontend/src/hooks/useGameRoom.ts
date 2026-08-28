@@ -48,28 +48,37 @@ export function useGameRoom(inviteCode: string | undefined) {
     if (inviteCode) {
       queryClient.setQueryData(['gameRoom', inviteCode], (oldData: GameRoom | undefined) => {
         if (!oldData) return oldData;
-        return updater(oldData);
+        
+        const updatedRoom = updater(oldData);
+        
+        // AUTO-SYNC PRE-COMPILED ARRAYS
+        // Syncs WebSocket payload data into the server's pre-compiled arrays to prevent UI desync,
+        // eliminating the need for expensive `.filter()` operations on every React render cycle.
+        
+        if (updatedRoom.unlocked_evidences) {
+            const newEvidences = updatedRoom.unlocked_evidences.filter(ue => !updatedRoom.accumulated_evidences?.some(ae => ae.id === ue.id));
+            if (newEvidences.length) updatedRoom.accumulated_evidences = [...(updatedRoom.accumulated_evidences || []), ...newEvidences];
+        }
+        
+        if (updatedRoom.unlocked_suspects) {
+            const newSuspects = updatedRoom.unlocked_suspects.filter(us => !updatedRoom.accumulated_suspects?.some(as => as.id === us.id));
+            if (newSuspects.length) updatedRoom.accumulated_suspects = [...(updatedRoom.accumulated_suspects || []), ...newSuspects];
+        }
+        
+        if (updatedRoom.unlocked_victims) {
+            const newVictims = updatedRoom.unlocked_victims.filter(uv => !updatedRoom.accumulated_victims?.some(av => av.id === uv.id));
+            if (newVictims.length) updatedRoom.accumulated_victims = [...(updatedRoom.accumulated_victims || []), ...newVictims];
+        }
+
+        return updatedRoom;
       });
     }
   };
 
-  const caseEvidences = room?.game_case?.evidences || [];
-  const unlockedEvidenceIds = new Set(room?.unlocked_evidences?.map((e: Evidence) => e.id) || []);
-  const accumulatedEvidences: Evidence[] = caseEvidences.filter(
-    (evidence: Evidence) => evidence.is_initial || unlockedEvidenceIds.has(evidence.id)
-  );
-
-  const caseSuspects = room?.game_case?.suspects || [];
-  const unlockedSuspectIds = new Set(room?.unlocked_suspects?.map((s: Suspect) => s.id) || []);
-  const accumulatedSuspects: Suspect[] = caseSuspects.filter(
-    (suspect: Suspect) => suspect.is_initial || unlockedSuspectIds.has(suspect.id)
-  );
-
-  const caseVictims = room?.game_case?.victims || [];
-  const unlockedVictimIds = new Set(room?.unlocked_victims?.map((v: Victim) => v.id) || []);
-  const accumulatedVictims: Victim[] = caseVictims.filter(
-    (victim: Victim) => victim.is_initial || unlockedVictimIds.has(victim.id)
-  );
+  // 🚀 SERVER IS AUTHORITATIVE: Render constraints stripped. Arrays assigned directly.
+  const accumulatedEvidences: Evidence[] = room?.accumulated_evidences || [];
+  const accumulatedSuspects: Suspect[] = room?.accumulated_suspects || [];
+  const accumulatedVictims: Victim[] = room?.accumulated_victims || [];
 
   return {
     room,

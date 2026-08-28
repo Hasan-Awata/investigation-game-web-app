@@ -186,10 +186,14 @@ export default function GameRoom() {
     });
 
     return () => {
+      // Unbind specific event listeners
       channel.stopListening('LevelTransitioned');
       channel.stopListening('VoteLockedIn');
       channel.stopListening('WiretapTriggered');
       channel.stopListening('ItemsUnlocked');
+      
+      // EXPLICITLY SEVER THE CONNECTION to prevent WebSocket zombie leaks
+      window.Echo.leave(`room.${room.id}`);
     };
   }, [room?.id, patchRoomData, patchArray, setGameOverData, addGlobalToast, t]);
 

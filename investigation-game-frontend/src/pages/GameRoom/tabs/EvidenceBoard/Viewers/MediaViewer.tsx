@@ -1,5 +1,5 @@
-import React from 'react';
-import { useTranslation } from 'react-i18next';
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next'; 
 import type { Evidence } from '@/types/evidence';
 import './MediaViewer.css';
 
@@ -12,10 +12,10 @@ interface MediaViewerProps {
 
 const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
   const { t } = useTranslation();
+  const [isImageLoaded, setIsImageLoaded] = useState<boolean>(false);
   
-  // We assume the asset path is stored in img_url for both images and audio, 
-  // or inside metadata.url if your backend splits them up.
-  const mediaUrl = evidence.img_url || (evidence.metadata as any)?.url;
+  // Safely extract the media URL depending on the data shape
+  const mediaUrl = evidence.img_url || (evidence.metadata as Record<string, any>)?.url;
 
   if (!mediaUrl) {
     return (
@@ -30,11 +30,40 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
       
       {/* CONDITIONAL RENDER: IMAGE OR AUDIO */}
       {evidence.evidence_type === 'image' ? (
-        <div className="media-image-container">
+        <div className="media-image-container" style={{ position: 'relative', width: '100%', minHeight: '300px' }}>
+          
+          {/* Skeleton Loader: Renders underneath and displays while loading */}
+          {!isImageLoaded && (
+            <div 
+              className="media-skeleton-loader"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'var(--bg-skeleton, #e0e0e0)',
+                animation: 'pulse 1.5s infinite ease-in-out',
+                borderRadius: '8px'
+              }}
+            />
+          )}
+
           <img 
             src={mediaUrl} 
             alt={evidence.title || t('pages.gameRoom.evidence.viewers.media.imageAltFallback')} 
-            className="media-full-image" 
+            className="media-full-image"
+            loading="lazy"
+            onLoad={() => setIsImageLoaded(true)}
+            style={{
+              opacity: isImageLoaded ? 1 : 0,
+              transition: 'opacity 0.4s ease-in-out',
+              display: 'block',
+              width: '100%',
+              height: 'auto',
+              position: 'relative',
+              zIndex: 1
+            }}
           />
         </div>
       ) : (
@@ -47,7 +76,6 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
         </div>
       )}
 
-      {/* SHARED PLAQUE FOR TITLE & DESCRIPTION */}
       <div className="media-meta-plaque">
         <h3 className="media-plaque-title">{evidence.title}</h3>
         {evidence.description && (

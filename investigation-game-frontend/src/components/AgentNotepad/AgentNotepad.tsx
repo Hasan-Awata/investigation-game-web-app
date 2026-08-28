@@ -16,7 +16,7 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
   const storageKey = useRef(`notepad_fallback`);
   const isInitialized = useRef(false);
 
-  // 1. Initialization and Cross-Tab Sync
+  // 1. Initialization, Safe Hydration, and Cross-Tab Sync
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('auth_user');
@@ -30,7 +30,16 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
          }
       }
     } catch (e) {
-      console.error("Failed to parse user data", e);
+      // Self-Healing Architecture: Intercept fatal parse error and purge corruption
+      console.error("Corrupted JSON state detected in localStorage. Executing automatic purge.", e);
+      setNotes(''); // Safely default local state
+      
+      try {
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem(storageKey.current);
+      } catch (purgeError) {
+        console.warn('Failed to purge corrupted storage keys. Browser may be in strict mode.', purgeError);
+      }
     }
 
     isInitialized.current = true;
@@ -53,8 +62,12 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
     if (!isInitialized.current || isSaved) return;
 
     const timerId = setTimeout(() => {
-      localStorage.setItem(storageKey.current, notes);
-      setIsSaved(true);
+      try {
+        localStorage.setItem(storageKey.current, notes);
+        setIsSaved(true);
+      } catch (e) {
+        console.warn('Failed to write notepad to storage. Quota exceeded or restricted mode.', e);
+      }
     }, 800);
 
     // Cleanup: If notes or isSaved change before 800ms, clear the timeout to prevent a race condition

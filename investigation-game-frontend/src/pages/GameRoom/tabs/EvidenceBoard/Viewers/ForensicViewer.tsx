@@ -1,3 +1,4 @@
+import React from 'react';
 import type { ForensicEvidence } from '@/types/evidence';
 import ViewersContainer from './ViewersContainer';
 import AutopsyViewer from './ForensicViewers/AutopsyViewer';
@@ -10,37 +11,32 @@ interface ForensicViewerProps {
   evidence: ForensicEvidence;
 }
 
-export default function ForensicViewer({ evidence }: ForensicViewerProps) {
-  const { sub_type } = evidence;
+type ForensicRegistryMap = {
+  [K in ForensicEvidence['sub_type']]: React.FC<{
+    evidence: Extract<ForensicEvidence, { sub_type: K }>;
+  }>;
+};
 
-  let content;
-  switch (sub_type) {
-    case 'autopsy':
-      content = <AutopsyViewer evidence={evidence} />;
-      break;
-    case 'ballistics':
-      content = <BallisticsViewer evidence={evidence} />;
-      break;
-    case 'dna':
-      content = <DnaViewer evidence={evidence} />; 
-      break;
-    case 'digital_forensics':
-      content = <DigitalForensicsViewer evidence={evidence} />;
-      break;
-    case 'trace_analysis':
-      content = <TraceAnalysisViewer evidence={evidence} />;
-      break;
-    default:
-      content = (
-        <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
-          Forensic report corrupted or unreadable.
-        </div>
-      );
-  }
+const ForensicViewerRegistry: ForensicRegistryMap = {
+  autopsy: AutopsyViewer,
+  ballistics: BallisticsViewer,
+  dna: DnaViewer,
+  digital_forensics: DigitalForensicsViewer,
+  trace_analysis: TraceAnalysisViewer,
+};
+
+export default function ForensicViewer({ evidence }: ForensicViewerProps) {
+  const ViewerComponent = ForensicViewerRegistry[evidence.sub_type] as React.FC<{ evidence: ForensicEvidence }> | undefined;
 
   return (
     <ViewersContainer evidence={evidence}>
-      {content}
+      {ViewerComponent ? (
+        <ViewerComponent evidence={evidence} />
+      ) : (
+        <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+          Forensic report corrupted or unreadable.
+        </div>
+      )}
     </ViewersContainer>
   );
 }

@@ -1098,7 +1098,7 @@ class GameRoomController extends Controller
     }
 
     /**
-     * NEW: Server authoritative tracking for Location sweeps.
+     * Server authoritative tracking for Location sweeps.
      */
     public function inspect(Request $request, GameRoom $room): JsonResponse
     {
@@ -1150,6 +1150,24 @@ class GameRoomController extends Controller
         ]);
 
         $this->roomService->distributeLocationQuestions($room);
+
+        // --- SERVER-SIDE PRE-COMPILATION ---
+        // Offloads heavy array mapping/filtering from the React Client to the Server.
+
+        $unlockedEvidenceIds = $room->unlockedEvidences->pluck('id')->toArray();
+        $room->accumulated_evidences = $room->gameCase->evidences->filter(function ($e) use ($unlockedEvidenceIds) {
+            return $e->is_initial || in_array($e->id, $unlockedEvidenceIds);
+        })->values();
+
+        $unlockedSuspectIds = $room->unlockedSuspects->pluck('id')->toArray();
+        $room->accumulated_suspects = $room->gameCase->suspects->filter(function ($s) use ($unlockedSuspectIds) {
+            return $s->is_initial || in_array($s->id, $unlockedSuspectIds);
+        })->values();
+
+        $unlockedVictimIds = $room->unlockedVictims->pluck('id')->toArray();
+        $room->accumulated_victims = $room->gameCase->victims->filter(function ($v) use ($unlockedVictimIds) {
+            return $v->is_initial || in_array($v->id, $unlockedVictimIds);
+        })->values();
 
         return response()->json(['room' => $room], 200);
     }
@@ -1402,12 +1420,12 @@ class AdminCaseController extends Controller
     }
 
     /**
-     * Fetch all cases, their levels, and their evidence for admin dropdowns.
+     * Fetch all cases and their top-level metadata.
+     * Deep eager loading of phases and levels has been removed to optimize payload size.
      */
     public function index(): JsonResponse
     {
         $cases = GameCase::with([
-            'phases.levels.questions.choices',
             'evidences',
             'suspects',
             'victims',
@@ -1824,6 +1842,18 @@ class AdminLevelController extends Controller
 
         return response()->json(['message' => 'Level deleted.'], 200);
     }
+
+    public function indexByPhase($phaseId): \Illuminate\Http\JsonResponse
+    {
+        // We load questions and choices here because the node builders
+        // explicitly require them immediately upon selecting a Level.
+        $levels = Level::with(['questions.choices'])
+            ->where('phase_id', $phaseId)
+            ->orderBy('order_index', 'asc')
+            ->get();
+
+        return response()->json($levels, 200);
+    }
 }
 </file>
 
@@ -1874,6 +1904,15 @@ class AdminPhaseController extends Controller
         $phase = Phase::findOrFail($id);
         $phase->delete();
         return response()->json(['message' => 'Phase deleted.'], 200);
+    }
+
+    public function indexByCase($caseId): \Illuminate\Http\JsonResponse
+    {
+        $phases = Phase::where('case_id', $caseId)
+            ->orderBy('order_index', 'asc')
+            ->get();
+
+        return response()->json($phases, 200);
     }
 }
 </file>
@@ -6963,6 +7002,7 @@ class DatabaseSeeder extends Seeder
 <file path="routes/api.php">
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CaseController;
@@ -6993,6 +7033,10 @@ Route::post('/login', [AuthController::class, 'login']);
 // Protected Gameplay Routes
 Route::middleware('auth:sanctum')->group(function () {
 
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Case Discovery
@@ -7011,10 +7055,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rooms/{room}/investigate', [InvestigationRequestController::class, 'store']);
     Route::post('/rooms/{room}/questions/{question}/wiretap/play', [WiretapController::class, 'play']);
 
-    // Admin Dashboard Routes
-    Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
-        // GET (Fetch)
+    // Admin Dashboard Routes (Protected by auth:sanctum from outer group + IsAdmin middleware)
+    Route::middleware([IsAdmin::class])->prefix('admin')->group(function () {
+        // GET (Fetch) Granular Endpoints
         Route::get('/cases', [AdminCaseController::class, 'index']);
+        Route::get('/cases/{caseId}/phases', [AdminPhaseController::class, 'indexByCase']);
+        Route::get('/phases/{phaseId}/levels', [AdminLevelController::class, 'indexByPhase']);
 
         // POST (Create)
         Route::post('/cases', [AdminCaseController::class, 'store']);
