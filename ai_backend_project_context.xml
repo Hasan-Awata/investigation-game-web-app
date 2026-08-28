@@ -20,10 +20,10 @@
 │   │   ├── LevelPresentationType.php
 │   │   └── RoomStatus.php
 │   ├── Events
-│   │   ├── EvidenceDiscovered.php
+│   │   ├── ItemsUnlocked.php
 │   │   ├── LevelTransitioned.php
-│   │   ├── SuspectDiscovered.php
-│   │   ├── VictimDiscovered.php
+│   │   ├── LocationInspected.php
+│   │   ├── RequestFiled.php
 │   │   ├── VoteLockedIn.php
 │   │   └── WiretapTriggered.php
 │   ├── Http
@@ -59,6 +59,8 @@
 │   │   ├── Level.php
 │   │   ├── Phase.php
 │   │   ├── Question.php
+│   │   ├── RoomFiledRequest.php
+│   │   ├── RoomInspection.php
 │   │   ├── RoomUser.php
 │   │   ├── RoomVote.php
 │   │   ├── Suspect.php
@@ -147,7 +149,8 @@
 │   │   ├── 2026_08_10_205829_drop_msg_when_wrong_from_questions_table.php
 │   │   ├── 2026_08_11_154156_add_requirements_to_choices_table.php
 │   │   ├── 2026_08_14_185138_drop_is_mandatory_from_questions_table.php
-│   │   └── 2026_08_19_112215_refactor_evidences_for_json_metadata.php
+│   │   ├── 2026_08_19_112215_refactor_evidences_for_json_metadata.php
+│   │   └── 2026_08_28_104024_create_room_state_tracking_tables.php
 │   ├── schema
 │   └── seeders
 │       └── DatabaseSeeder.php
@@ -540,7 +543,7 @@ enum RoomStatus: string
 }
 </file>
 
-<file path="app/Events/EvidenceDiscovered.php">
+<file path="app/Events/ItemsUnlocked.php">
 <?php
 
 namespace App\Events;
@@ -551,14 +554,19 @@ use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Database\Eloquent\Collection;
 
-class EvidenceDiscovered implements ShouldBroadcastNow
+class ItemsUnlocked implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
     public function __construct(
         public readonly GameRoom $room,
-        public readonly array $evidenceIds
+        public readonly ?Collection $unlockedEvidences = null,
+        public readonly ?Collection $unlockedLevels = null,
+        public readonly ?Collection $unlockedSuspects = null,
+        public readonly ?Collection $unlockedVictims = null,
+        public readonly ?int $strikes = null
     ) {}
 
     public function broadcastOn(): array
@@ -571,8 +579,11 @@ class EvidenceDiscovered implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'evidence_ids' => $this->evidenceIds,
-            'message' => 'New evidence recovered based on your narrative deductions.'
+            'unlocked_evidences' => $this->unlockedEvidences ? $this->unlockedEvidences->toArray() : [],
+            'unlocked_levels' => $this->unlockedLevels ? $this->unlockedLevels->toArray() : [],
+            'unlocked_suspects' => $this->unlockedSuspects ? $this->unlockedSuspects->toArray() : [],
+            'unlocked_victims' => $this->unlockedVictims ? $this->unlockedVictims->toArray() : [],
+            'strikes' => $this->strikes,
         ];
     }
 }
@@ -600,9 +611,6 @@ class LevelTransitioned implements ShouldBroadcastNow
         public readonly ?array $stats = null
     ) {}
 
-    /**
-     * Get the channels the event should broadcast on.
-     */
     public function broadcastOn(): array
     {
         return [
@@ -610,95 +618,80 @@ class LevelTransitioned implements ShouldBroadcastNow
         ];
     }
 
-    /**
-     * The data to broadcast to the frontend.
-     */
     public function broadcastWith(): array
     {
-        // Load the fresh level data to send down the wire
-        $this->room->load([
-            'currentLevel.questions.choices'
-        ]);
+        // 1 query to gather the newly updated completed levels state
+        $completedLevels = $this->room->completedLevels()->get();
 
         return [
             'room_id' => $this->room->id,
             'status' => $this->room->status->value,
             'message' => $this->message,
             'stats' => $this->stats,
+            // The precise state patch to synchronize TanStack's cache
+            'room_patch' => [
+                'current_level_id' => $this->room->current_level_id,
+                'status' => $this->room->status->value,
+                'completed_levels' => $completedLevels->toArray(),
+            ]
         ];
     }
 }
 </file>
 
-<file path="app/Events/SuspectDiscovered.php">
+<file path="app/Events/LocationInspected.php">
 <?php
-
 namespace App\Events;
-
 use App\Models\GameRoom;
+use App\Models\RoomFiledRequest;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class SuspectDiscovered implements ShouldBroadcastNow
-{
+class RequestFiled implements ShouldBroadcastNow {
     use Dispatchable, InteractsWithSockets, SerializesModels;
-
-    public function __construct(
-        public readonly GameRoom $room,
-        public readonly array $suspectIds
-    ) {}
-
-    public function broadcastOn(): array
-    {
-        return [
-            new PrivateChannel('room.' . $this->room->id),
-        ];
-    }
-
-    public function broadcastWith(): array
-    {
-        return [
-            'suspect_ids' => $this->suspectIds,
-            'message' => 'A new suspect has been identified based on your deductions.'
-        ];
-    }
+    public function __construct(public GameRoom $room, public RoomFiledRequest $request) {}
+    public function broadcastOn(): array { return [new PrivateChannel('room.' . $this->room->id)]; }
+    public function broadcastWith(): array { return ['filed_request' => $this->request->toArray()]; }
 }
 </file>
 
-<file path="app/Events/VictimDiscovered.php">
+<file path="app/Events/RequestFiled.php">
 <?php
 
 namespace App\Events;
 
-use App\Models\GameRoom;
+use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class VictimDiscovered implements ShouldBroadcastNow
+class RequestFiled
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(
-        public readonly GameRoom $room,
-        public readonly array $victimIds
-    ) {}
-
-    public function broadcastOn(): array
+    /**
+     * Create a new event instance.
+     */
+    public function __construct()
     {
-        return [new PrivateChannel('room.' . $this->room->id)];
+        //
     }
 
-    public function broadcastWith(): array
+    /**
+     * Get the channels the event should broadcast on.
+     *
+     * @return array<int, Channel>
+     */
+    public function broadcastOn(): array
     {
         return [
-            'victim_ids' => $this->victimIds,
-            'message' => 'New casualty identified based on your deductions.'
+            new PrivateChannel('channel-name'),
         ];
     }
 }
@@ -726,29 +719,18 @@ class VoteLockedIn implements ShouldBroadcastNow
         public readonly RoomVote $vote
     ) {}
 
-    /**
-     * Get the channels the event should broadcast on.
-     */
     public function broadcastOn(): array
     {
-        // Broadcast strictly to this specific room's private channel
         return [
             new PrivateChannel('room.' . $this->room->id),
         ];
     }
 
-    /**
-     * The data to broadcast to the frontend.
-     */
     public function broadcastWith(): array
     {
+        // Shipped as a complete object for the frontend to patch directly
         return [
-            'vote' => [
-                'id' => $this->vote->id,
-                'user_id' => $this->vote->user_id,
-                'question_id' => $this->vote->question_id,
-                'choice_id' => $this->vote->choice_id,
-            ]
+            'vote' => $this->vote->toArray()
         ];
     }
 }
@@ -760,6 +742,7 @@ class VoteLockedIn implements ShouldBroadcastNow
 namespace App\Events;
 
 use App\Models\GameRoom;
+use App\Models\Question;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
@@ -772,8 +755,7 @@ class WiretapTriggered implements ShouldBroadcastNow
 
     public function __construct(
         public readonly GameRoom $room,
-        public readonly int $questionId,
-        public readonly string $audioUrl
+        public readonly Question $question
     ) {}
 
     public function broadcastOn(): array
@@ -786,9 +768,10 @@ class WiretapTriggered implements ShouldBroadcastNow
     public function broadcastWith(): array
     {
         return [
-            'question_id' => $this->questionId,
-            'audio_url' => $this->audioUrl,
-            'message' => 'Wiretap feed active. Listen carefully.'
+            'question_id' => $this->question->id,
+            'audio_url' => $this->question->audio_url,
+            'message' => 'Wiretap feed active. Listen carefully.',
+            'played_wiretap' => $this->question->toArray()
         ];
     }
 }
@@ -1038,8 +1021,11 @@ namespace App\Http\Controllers;
 
 use App\Models\GameCase;
 use App\Models\Level;
+use App\Models\Choice;
+use App\Models\RoomInspection;
 use App\Enums\LevelPresentationType;
 use App\Services\GameRoomService;
+use App\Events\LocationInspected;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Models\GameRoom;
@@ -1050,9 +1036,6 @@ class GameRoomController extends Controller
         private readonly GameRoomService $roomService
     ) {}
 
-    /**
-     * Handle the incoming request to start a new case session.
-     */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -1065,47 +1048,25 @@ class GameRoomController extends Controller
         $result = $this->roomService->createRoom($gameCase, $host);
 
         if ($result->isFailure()) {
-            return response()->json([
-                'error' => 'Room Creation Failed',
-                'message' => $result->errorMessage
-            ], 400);
+            return response()->json(['error' => 'Room Creation Failed', 'message' => $result->errorMessage], 400);
         }
 
-        return response()->json([
-            'message' => 'Room created successfully',
-            'room' => $result->value->load('currentLevel'),
-        ], 201);
+        return response()->json(['message' => 'Room created successfully', 'room' => $result->value->load('currentLevel')], 201);
     }
 
-    /**
-     * Handle the incoming request to join an existing session.
-     */
     public function join(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'invite_code' => 'required|string',
-        ]);
-
+        $validated = $request->validate(['invite_code' => 'required|string']);
         $player = $request->user();
-
         $result = $this->roomService->joinRoom($validated['invite_code'], $player);
 
         if ($result->isFailure()) {
-            return response()->json([
-                'error' => 'Join Failed',
-                'message' => $result->errorMessage
-            ], 404);
+            return response()->json(['error' => 'Join Failed', 'message' => $result->errorMessage], 404);
         }
 
-        return response()->json([
-            'message' => 'Successfully joined the room',
-            'room' => $result->value,
-        ], 200);
+        return response()->json(['message' => 'Successfully joined the room', 'room' => $result->value], 200);
     }
 
-    /**
-     * Fetch the active state of a specific room, including the current level's puzzle data.
-     */
     public function startLevel(Request $request, GameRoom $room, Level $level): JsonResponse
     {
         if ($request->user()->id !== $room->host_user_id) {
@@ -1120,32 +1081,51 @@ class GameRoomController extends Controller
             return response()->json(['error' => 'Conflict', 'message' => 'This phase is already solved.'], 409);
         }
 
-        // --- ROBUST GATEKEEPER ---
         if ($level->required_request_id) {
-            // Did the room complete THIS exact request combo?
-            $hasRequirement = $room->completedRequests()
-                ->where('request_id', $level->required_request_id)
-                ->exists();
+            $hasRequirement = $room->completedRequests()->where('request_id', $level->required_request_id)->exists();
 
             if (!$hasRequirement) {
-                // Eager load to get the exact label for the error message
                 $level->load('requiredRequest');
                 $label = $level->requiredRequest ? $level->requiredRequest->request_type->label() : 'specific procedural request';
-
-                return response()->json([
-                    'error' => 'Missing Prerequisite',
-                    'message' => "We can't proceed without a " . $label . "."
-                ], 403);
+                return response()->json(['error' => 'Missing Prerequisite', 'message' => "We can't proceed without a " . $label . "."], 403);
             }
         }
 
         $room->update(['current_level_id' => $level->id]);
         \App\Events\LevelTransitioned::dispatch($room);
 
-        return response()->json([
-            'message' => 'Phase initiated.',
-            'room' => $room->load('currentLevel')
-        ], 200);
+        return response()->json(['message' => 'Phase initiated.', 'room' => $room->load('currentLevel')], 200);
+    }
+
+    /**
+     * NEW: Server authoritative tracking for Location sweeps.
+     */
+    public function inspect(Request $request, GameRoom $room): JsonResponse
+    {
+        $validated = $request->validate([
+            'choice_id' => 'required|exists:choices,id',
+        ]);
+
+        $choice = Choice::findOrFail($validated['choice_id']);
+        $outcomes = $choice->outcomes ?? [];
+
+        // The backend deterministically calculates if this yields zero clues
+        $isDeadEnd = empty($outcomes['unlock_evidence'])
+            && empty($outcomes['unlock_levels'])
+            && empty($outcomes['unlock_suspects'])
+            && empty($outcomes['unlock_victims'])
+            && empty($outcomes['next_question_id']);
+
+        $inspection = RoomInspection::firstOrCreate([
+            'room_id' => $room->id,
+            'choice_id' => $choice->id
+        ], [
+            'is_dead_end' => $isDeadEnd
+        ]);
+
+        LocationInspected::dispatch($room, $inspection);
+
+        return response()->json(['message' => 'Location point inspected.', 'inspection' => $inspection], 200);
     }
 
     public function show(GameRoom $room): JsonResponse
@@ -1164,7 +1144,9 @@ class GameRoomController extends Controller
             'gameCase.victims',
             'unlockedVictims',
             'playedWiretaps',
-            'votes'
+            'votes',
+            'inspections',
+            'filedRequests'
         ]);
 
         $this->roomService->distributeLocationQuestions($room);
@@ -1326,26 +1308,21 @@ class WiretapController extends Controller
 {
     public function play(Request $request, GameRoom $room, Question $question): JsonResponse
     {
-        // 1. Host Authorization Gate
         if ($request->user()->id !== $room->host_user_id) {
             return response()->json(['error' => 'Unauthorized', 'message' => 'Only the Host can initiate the wiretap.'], 403);
         }
 
-        // 2. Validate Audio Exists
         if (!$question->audio_url) {
             return response()->json(['error' => 'Invalid Request', 'message' => 'This intercept does not contain wiretap audio.'], 422);
         }
 
-        // 3. Playback State Lock (The "Play Once" Simulation)
         if ($room->playedWiretaps()->where('question_id', $question->id)->exists()) {
             return response()->json(['error' => 'Conflict', 'message' => 'This wiretap has already been burned. Signal lost.'], 409);
         }
 
-        // 4. Burn the wiretap
         $room->playedWiretaps()->attach($question->id);
 
-        // 5. Broadcast real-time playback to all squad members
-        WiretapTriggered::dispatch($room, $question->id, $question->audio_url);
+        WiretapTriggered::dispatch($room, $question);
 
         return response()->json([
             'status' => 'success',
@@ -2588,72 +2565,26 @@ class GameRoom extends Model
         ];
     }
 
-    public function gameCase(): BelongsTo
-    {
-        return $this->belongsTo(GameCase::class, 'case_id');
+    public function gameCase(): BelongsTo { return $this->belongsTo(GameCase::class, 'case_id'); }
+    public function host(): BelongsTo { return $this->belongsTo(User::class, 'host_user_id'); }
+    public function currentLevel(): BelongsTo { return $this->belongsTo(Level::class, 'current_level_id'); }
+    public function users(): HasMany { return $this->hasMany(RoomUser::class, 'room_id'); }
+    public function votes(): HasMany { return $this->hasMany(RoomVote::class, 'room_id'); }
+
+    public function inspections(): HasMany {
+        return $this->hasMany(RoomInspection::class, 'room_id');
+    }
+    public function filedRequests(): HasMany {
+        return $this->hasMany(RoomFiledRequest::class, 'room_id')->orderBy('created_at', 'desc');
     }
 
-    public function host(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'host_user_id');
-    }
-
-    public function currentLevel(): BelongsTo
-    {
-        return $this->belongsTo(Level::class, 'current_level_id');
-    }
-
-    public function users(): HasMany
-    {
-        return $this->hasMany(RoomUser::class, 'room_id');
-    }
-
-    public function votes(): HasMany
-    {
-        return $this->hasMany(RoomVote::class, 'room_id');
-    }
-
-    public function unlockedEvidences()
-    {
-        return $this->belongsToMany(Evidence::class, 'room_evidences', 'room_id', 'evidence_id')
-                    ->withTimestamps();
-    }
-
-    public function unlockedLevels()
-    {
-        return $this->belongsToMany(Level::class, 'room_unlocked_levels', 'room_id', 'level_id')
-                    ->withTimestamps();
-    }
-
-    public function unlockedSuspects()
-    {
-        return $this->belongsToMany(Suspect::class, 'room_suspects', 'room_id', 'suspect_id')
-                    ->withTimestamps();
-    }
-
-    public function completedLevels()
-    {
-        return $this->belongsToMany(Level::class, 'room_completed_levels', 'room_id', 'level_id')
-                    ->withTimestamps();
-    }
-
-    public function completedRequests()
-    {
-        return $this->belongsToMany(InvestigationRequest::class, 'room_investigation_requests', 'room_id', 'request_id')
-                    ->withTimestamps();
-    }
-
-    public function unlockedVictims()
-    {
-        return $this->belongsToMany(Victim::class, 'room_victims', 'room_id', 'victim_id')
-                    ->withTimestamps();
-    }
-
-    public function playedWiretaps()
-    {
-        return $this->belongsToMany(Question::class, 'room_played_wiretaps', 'room_id', 'question_id')
-                    ->withTimestamps();
-    }
+    public function unlockedEvidences() { return $this->belongsToMany(Evidence::class, 'room_evidences', 'room_id', 'evidence_id')->withTimestamps(); }
+    public function unlockedLevels() { return $this->belongsToMany(Level::class, 'room_unlocked_levels', 'room_id', 'level_id')->withTimestamps(); }
+    public function unlockedSuspects() { return $this->belongsToMany(Suspect::class, 'room_suspects', 'room_id', 'suspect_id')->withTimestamps(); }
+    public function completedLevels() { return $this->belongsToMany(Level::class, 'room_completed_levels', 'room_id', 'level_id')->withTimestamps(); }
+    public function completedRequests() { return $this->belongsToMany(InvestigationRequest::class, 'room_investigation_requests', 'room_id', 'request_id')->withTimestamps(); }
+    public function unlockedVictims() { return $this->belongsToMany(Victim::class, 'room_victims', 'room_id', 'victim_id')->withTimestamps(); }
+    public function playedWiretaps() { return $this->belongsToMany(Question::class, 'room_played_wiretaps', 'room_id', 'question_id')->withTimestamps(); }
 }
 </file>
 
@@ -2865,6 +2796,28 @@ class Question extends Model
     {
         return $this->hasMany(Choice::class);
     }
+}
+</file>
+
+<file path="app/Models/RoomFiledRequest.php">
+<?php
+namespace App\Models;
+use Illuminate\Database\Eloquent\Model;
+
+class RoomFiledRequest extends Model {
+    protected $fillable = ['room_id', 'request_type', 'evidence_ids'];
+    protected $casts = ['evidence_ids' => 'array'];
+}
+</file>
+
+<file path="app/Models/RoomInspection.php">
+<?php
+namespace App\Models;
+use Illuminate\Database\Eloquent\Model;
+
+class RoomInspection extends Model {
+    protected $fillable = ['room_id', 'choice_id', 'is_dead_end'];
+    protected $casts = ['is_dead_end' => 'boolean'];
 }
 </file>
 
@@ -3121,7 +3074,7 @@ use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use App\Support\Result;
 use App\Events\LevelTransitioned;
-use App\Events\EvidenceDiscovered;
+use App\Events\ItemsUnlocked;
 use App\Enums\RoomStatus;
 use App\Enums\CaseUserStatus;
 
@@ -3129,26 +3082,26 @@ class AssessmentService
 {
     public function __construct(private readonly VotingService $votingService) {}
 
-    /**
-     * Evaluate the team's final locked-in batch submission for the current level.
-     */
     public function evaluateSubmission(GameRoom $room): Result
     {
         return DB::transaction(function () use ($room) {
             $level = $room->currentLevel;
 
-            // Loop through all votes currently cast in this level to check for penalty strikes
-            $votes = \App\Models\RoomVote::where('room_id', $room->id)
+            // Eager load `choice` to resolve the N+1 loop flaw
+            $votes = \App\Models\RoomVote::with('choice')->where('room_id', $room->id)
                 ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
                 ->get();
 
             foreach ($votes as $vote) {
-                $choice = Choice::find($vote->choice_id);
+                $choice = $vote->choice;
                 $givesStrike = filter_var($choice->outcomes['gives_strike'] ?? false, FILTER_VALIDATE_BOOLEAN);
 
                 if ($givesStrike) {
                     $room->increment('strikes');
                     $room->refresh();
+
+                    // Seamlessly broadcast the specific strike update
+                    ItemsUnlocked::dispatch($room, null, null, null, null, $room->strikes);
 
                     if ($room->strikes >= $room->gameCase->max_strikes) {
                         $totalGuilty = \App\Models\Suspect::where('case_id', $room->case_id)->where('is_guilty', true)->count();
@@ -3156,7 +3109,7 @@ class AssessmentService
 
                         $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
                         $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
-                        \App\Events\LevelTransitioned::dispatch($room, 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.', $stats);
+                        LevelTransitioned::dispatch($room, 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.', $stats);
 
                         return Result::success([
                             'status' => 'failed_final',
@@ -3165,35 +3118,29 @@ class AssessmentService
                         ]);
                     }
 
-                    // Extract the Persona hint for the exact question they failed
                     $hint = $choice->outcomes['feedback'] ?? "Re-evaluate the evidence thoroughly.";
 
-                    // Wipe votes so they must restart the phase
                     \App\Models\RoomVote::where('room_id', $room->id)
                         ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
                         ->delete();
 
-                    return \App\Support\Result::success([
+                    return Result::success([
                         'status' => 'success',
                         'message' => $hint,
                     ]);
                 }
             }
 
-            // 2. Mark Phase Complete & Check Suspension Condition
             $room->completedLevels()->syncWithoutDetaching([$level->id]);
 
             $completedCount = $room->completedLevels()->count();
             $totalLevels = $room->gameCase->levels()->count();
 
-            // Unhook the current level to return players to the roadmap UI
             $room->update(['current_level_id' => null]);
 
             if ($completedCount >= $totalLevels) {
-                // ALL PHASES COMPLETE: Room remains active. Custom flow takes over from here.
                 $responseMessage = 'Final verdict accepted. Stand by for further instructions.';
             } else {
-                // PHASE COMPLETE: Return to roadmap
                 $responseMessage = 'Verdict accepted. Return to the roadmap to select the next phase.';
             }
 
@@ -3206,20 +3153,15 @@ class AssessmentService
         });
     }
 
-    /**
-     * Evaluate the final suspect indictment submitted by the team.
-     */
-    public function evaluateFinalVerdict(GameRoom $room, array $submittedSuspectIds): \App\Support\Result
+    public function evaluateFinalVerdict(GameRoom $room, array $submittedSuspectIds): Result
     {
-        return \Illuminate\Support\Facades\DB::transaction(function () use ($room, $submittedSuspectIds) {
+        return DB::transaction(function () use ($room, $submittedSuspectIds) {
             $case = $room->gameCase;
 
-            // 1. STATUS GUARD
             if ($room->status !== \App\Enums\RoomStatus::Active) {
-                return \App\Support\Result::failure("This investigation has already been concluded.");
+                return Result::failure("This investigation has already been concluded.");
             }
 
-            // --- 2. THE PROOF CHECK (THE GATEKEEPER) ---
             $vitalEvidenceIds = \App\Models\Evidence::where('case_id', $case->id)
                 ->where('is_vital_for_conviction', true)->pluck('id')->toArray();
 
@@ -3236,26 +3178,21 @@ class AssessmentService
                 $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedNoProof->value, 0);
 
                 $message = 'INSTANT FAILURE: The DA threw out the case due to lack of definitive proof. You failed to uncover vital evidence.';
-                \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+                LevelTransitioned::dispatch($room, $message, $stats);
 
-                return \App\Support\Result::success([
+                return Result::success([
                     'status' => 'failed_final',
                     'message' => $message,
                     'stats' => $stats
                 ]);
             }
 
-            // --- 3. THE INDICTMENT CHECK (THE VERDICT) ---
-            $trueGuiltyIds = \App\Models\Suspect::where('case_id', $case->id)
-                ->where('is_guilty', true)
-                ->pluck('id')
-                ->toArray();
+            $trueGuiltyIds = \App\Models\Suspect::where('case_id', $case->id)->where('is_guilty', true)->pluck('id')->toArray();
 
             $innocentsSubmitted = array_diff($submittedSuspectIds, $trueGuiltyIds);
             $missedGuilty = array_diff($trueGuiltyIds, $submittedSuspectIds);
             $correctGuesses = array_intersect($submittedSuspectIds, $trueGuiltyIds);
 
-            // Generate the dynamic message for accused innocents to append later
             $innocentMessage = "";
             if (count($innocentsSubmitted) > 0) {
                 $innocentNames = \App\Models\Suspect::whereIn('id', $innocentsSubmitted)->pluck('name')->toArray();
@@ -3263,27 +3200,26 @@ class AssessmentService
                 $innocentMessage = " " . implode(', ', $innocentNames) . " {$verb} found innocent.";
             }
 
-            // --- SCENARIO 0: NO FOUL PLAY (Suicide / Accident) ---
             if ($totalGuiltyCount === 0) {
                 if (count($submittedSuspectIds) === 0) {
-                    // Perfect Win: They correctly deduced there was no murderer
                     $stats = $this->generateFinalStats($room, $case->XP_on_solve, 0, 0, 0);
                     $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
                     $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
 
                     $message = 'PERFECT WIN: You successfully proved that no foul play was involved. Case closed.';
-                    \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+                    LevelTransitioned::dispatch($room, $message, $stats);
 
-                    return \App\Support\Result::success([
+                    return Result::success([
                         'status' => 'success',
                         'message' => $message,
                         'room' => $room,
                         'stats' => $stats
                     ]);
                 } else {
-                    // Strike/Failure: They accused an innocent person of a crime that didn't happen
                     $room->increment('strikes');
                     $room->refresh();
+                    ItemsUnlocked::dispatch($room, null, null, null, null, $room->strikes);
+
                     $maxStrikes = $case->max_strikes;
 
                     if ($room->strikes >= $maxStrikes) {
@@ -3292,9 +3228,9 @@ class AssessmentService
                         $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedStrikes->value, 0);
 
                         $message = 'DEPARTMENT THRESHOLD EXCEEDED. You accused innocent people of a fabricated crime. The DA has pulled your mandate.' . $innocentMessage;
-                        \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+                        LevelTransitioned::dispatch($room, $message, $stats);
 
-                        return \App\Support\Result::success([
+                        return Result::success([
                             'status' => 'failed_final',
                             'message' => $message,
                             'stats' => $stats
@@ -3302,26 +3238,24 @@ class AssessmentService
                     }
 
                     $message = "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: You are chasing a ghost. Are you certain a murder was even committed?" . $innocentMessage;
+                    LevelTransitioned::dispatch($room, $message, null);
 
-                    \App\Events\LevelTransitioned::dispatch($room, $message, null);
-
-                    return \App\Support\Result::success([
+                    return Result::success([
                         'status' => 'failed',
                         'message' => $message
                     ]);
                 }
             }
 
-            // SCENARIO A: Perfect Win (Got everyone, no innocents)
             if (count($missedGuilty) === 0 && count($innocentsSubmitted) === 0) {
                 $stats = $this->generateFinalStats($room, $case->XP_on_solve, count($correctGuesses), $totalGuiltyCount, 0);
                 $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
                 $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
 
                 $message = 'PERFECT WIN: You successfully identified all perpetrators with irrefutable proof. Case closed.';
-                \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+                LevelTransitioned::dispatch($room, $message, $stats);
 
-                return \App\Support\Result::success([
+                return Result::success([
                     'status' => 'success',
                     'message' => $message,
                     'room' => $room,
@@ -3329,33 +3263,23 @@ class AssessmentService
                 ]);
             }
 
-            // SCENARIO B: Partial Win (Got all guilty, but included innocents)
             if (count($missedGuilty) === 0 && count($innocentsSubmitted) > 0) {
                 $innocentsAccusedCount = count($innocentsSubmitted);
-
-                // 1. Get the total number of innocent suspects existing in this specific case
-                $totalInnocentsInCase = \App\Models\Suspect::where('case_id', $case->id)
-                    ->where('is_guilty', false)
-                    ->count();
-
-                // 2. Calculate the deduction percentage per innocent (preventing division by zero)
+                $totalInnocentsInCase = \App\Models\Suspect::where('case_id', $case->id)->where('is_guilty', false)->count();
                 $deductionPerInnocent = $totalInnocentsInCase > 0 ? (int) ceil(100 / $totalInnocentsInCase) : 100;
-
-                // 3. Apply the deduction based on how many innocents they actually accused
                 $totalDeduction = min(100, $deductionPerInnocent * $innocentsAccusedCount);
                 $multiplier = max(0, 100 - $totalDeduction) / 100;
 
                 $xpPayload = (int) floor($case->XP_on_solve * $multiplier);
-
                 $stats = $this->generateFinalStats($room, $xpPayload, count($correctGuesses), $totalGuiltyCount, $innocentsAccusedCount);
 
                 $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
                 $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPartial->value, $xpPayload);
 
                 $message = 'PARTIAL WIN: You successfully caught all perpetrators, but collateral damage was done.' . $innocentMessage;
-                \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+                LevelTransitioned::dispatch($room, $message, $stats);
 
-                return \App\Support\Result::success([
+                return Result::success([
                     'status' => 'success',
                     'message' => $message,
                     'room' => $room,
@@ -3363,31 +3287,29 @@ class AssessmentService
                 ]);
             }
 
-            // SCENARIO C: Failure States (Missed one or more guilty suspects)
             $initialSuspectIds = \App\Models\Suspect::where('case_id', $case->id)->where('is_initial', true)->pluck('id')->toArray();
             $unlockedSuspectIds = $room->unlockedSuspects()->pluck('suspects.id')->toArray();
             $possessedSuspectIds = array_unique(array_merge($initialSuspectIds, $unlockedSuspectIds));
-
             $unpossessedMissedGuilty = array_diff($missedGuilty, $possessedSuspectIds);
 
             if (count($unpossessedMissedGuilty) > 0) {
-                // FAILURE 1: They never unlocked the required suspects in the campaign
                 $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
                 $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
                 $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedIncomplete->value, 0);
 
                 $message = 'INSTANT FAILURE: The true masterminds were never even on your radar. The remaining guilty people have escaped.' . $innocentMessage;
-                \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+                LevelTransitioned::dispatch($room, $message, $stats);
 
-                return \App\Support\Result::success([
+                return Result::success([
                     'status' => 'failed_final',
                     'message' => $message,
                     'stats' => $stats
                 ]);
             } else {
-                // FAILURE 2: They had the suspects on their board, but failed to accuse them (Strike)
                 $room->increment('strikes');
                 $room->refresh();
+                ItemsUnlocked::dispatch($room, null, null, null, null, $room->strikes);
+
                 $maxStrikes = $case->max_strikes;
 
                 if ($room->strikes >= $maxStrikes) {
@@ -3396,9 +3318,9 @@ class AssessmentService
                     $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedStrikes->value, 0);
 
                     $message = 'DEPARTMENT THRESHOLD EXCEEDED. You failed to indict the correct suspects. The DA has pulled your mandate.' . $innocentMessage;
-                    \App\Events\LevelTransitioned::dispatch($room, $message, $stats);
+                    LevelTransitioned::dispatch($room, $message, $stats);
 
-                    return \App\Support\Result::success([
+                    return Result::success([
                         'status' => 'failed_final',
                         'message' => $message,
                         'stats' => $stats
@@ -3406,11 +3328,9 @@ class AssessmentService
                 }
 
                 $message = "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: There are still guilty people on your board that you haven't accused." . $innocentMessage;
+                LevelTransitioned::dispatch($room, $message, null);
 
-                // We pass null for stats here because the room is still active
-                \App\Events\LevelTransitioned::dispatch($room, $message, null);
-
-                return \App\Support\Result::success([
+                return Result::success([
                     'status' => 'failed',
                     'message' => $message
                 ]);
@@ -3418,9 +3338,6 @@ class AssessmentService
         });
     }
 
-    /**
-     * Populate the case_user history and distribute XP dynamically based on player history.
-     */
     private function finalizeCaseForParticipants(GameRoom $room, string $finalStatus, int $xpGained): void
     {
         $userIds = $room->users()->pluck('user_id');
@@ -3433,25 +3350,19 @@ class AssessmentService
                 ->first();
 
             $previousStatus = $existingRecord->status ?? null;
-
-            // --- 1. XP DISTRIBUTION LOGIC ---
             $actualXpToAward = 0;
 
             if (!$existingRecord) {
-                // FIRST TIME PLAYING: They receive 100% of the XP earned in this session
                 $actualXpToAward = $xpGained;
             } else {
-                // CHECK PREVIOUS STATUS
                 $isPreviousWin = in_array($previousStatus, [
                     \App\Enums\CaseUserStatus::SolvedPerfect->value,
                     \App\Enums\CaseUserStatus::SolvedPartial->value
                 ]);
 
                 if ($isPreviousWin) {
-                    // RESTART AFTER A WIN: 0 XP (Prevent XP farming)
                     $actualXpToAward = 0;
                 } else {
-                    // RESTART AFTER A LOSE: Penalty applied (50% of the XP earned in this session)
                     $actualXpToAward = (int) floor($xpGained / 2);
                 }
             }
@@ -3460,7 +3371,6 @@ class AssessmentService
                 \App\Models\User::where('id', $userId)->increment('XP', $actualXpToAward);
             }
 
-            // --- 2. STATE PRESERVATION LOGIC ---
             if ($existingRecord) {
                 $protectFromDowngrade = false;
 
@@ -3470,18 +3380,14 @@ class AssessmentService
                     \App\Enums\CaseUserStatus::FailedStrikes->value
                 ]);
 
-                // Always protect a Perfect Win.
                 if ($previousStatus === \App\Enums\CaseUserStatus::SolvedPerfect->value) {
                     $protectFromDowngrade = true;
                 }
-                // Protect a Partial Win ONLY if the new result is a Failure.
-                // (This allows them to successfully upgrade a Partial Win into a Perfect Win).
                 elseif ($previousStatus === \App\Enums\CaseUserStatus::SolvedPartial->value && $isNewFail) {
                     $protectFromDowngrade = true;
                 }
 
                 if ($protectFromDowngrade) {
-                    // Just update the timestamp, do not overwrite the status.
                     \Illuminate\Support\Facades\DB::table('case_user')
                         ->where('id', $existingRecord->id)
                         ->update([
@@ -3489,7 +3395,6 @@ class AssessmentService
                             'updated_at' => now()
                         ]);
                 } else {
-                    // Overwrite with the new status (e.g., Upgrading to Perfect, or overwriting a previous Fail)
                     \Illuminate\Support\Facades\DB::table('case_user')
                         ->where('id', $existingRecord->id)
                         ->update([
@@ -3499,7 +3404,6 @@ class AssessmentService
                         ]);
                 }
             } else {
-                // Create a brand new record for first-time players
                 \Illuminate\Support\Facades\DB::table('case_user')->insert([
                     'user_id' => $userId,
                     'case_id' => $case->id,
@@ -3515,11 +3419,8 @@ class AssessmentService
     private function generateFinalStats(GameRoom $room, int $xpGained, int $caught, int $total, int $innocents): array
     {
         $case = $room->gameCase;
-
-        // Use Carbon's native DateInterval to guarantee clean integers
         $diff = $room->created_at->diff(now());
 
-        // Cascade downwards, appending the next smallest unit if it is greater than zero
         if ($diff->y > 0) {
             $timeTaken = "{$diff->y} years" . ($diff->m > 0 ? " {$diff->m} months" : "");
         } elseif ($diff->m > 0) {
@@ -3675,16 +3576,16 @@ use App\Models\GameRoom;
 use App\Models\InvestigationRequest;
 use Illuminate\Support\Facades\DB;
 use App\Support\Result;
-use App\Events\EvidenceDiscovered;
+use App\Events\ItemsUnlocked;
+use App\Events\RequestFiled;
 
 class InvestigationRequestService
 {
     public function processRequest(GameRoom $room, array $submittedIds): Result
     {
-        // 1. Establish the room's total known knowledge base
         $initialEvidences = $room->gameCase->evidences()->where('is_initial', true)->pluck('id')->toArray();
-        $unlockedEvidences = $room->unlockedEvidences()->pluck('evidences.id')->toArray();
-        $possessedEvidences = array_unique(array_merge($initialEvidences, $unlockedEvidences));
+        $unlockedEvidencesList = $room->unlockedEvidences()->pluck('evidences.id')->toArray();
+        $possessedEvidences = array_unique(array_merge($initialEvidences, $unlockedEvidencesList));
 
         if (array_diff($submittedIds, $possessedEvidences)) {
             return Result::failure("Unauthorized: You cannot file a request using evidence you have not yet discovered.");
@@ -3701,25 +3602,22 @@ class InvestigationRequestService
             sort($requiredIds);
 
             if ($requiredIds === $submittedIds) {
-                // Prevent duplicate submissions of the exact same request
                 if ($room->completedRequests()->where('request_id', $request->id)->exists()) {
                     return Result::failure("This {$request->request_type->label()} has already been executed.");
                 }
 
-                // 2. EXPLICITLY RECORD THE COMBO AS COMPLETE
                 $room->completedRequests()->syncWithoutDetaching([$request->id]);
 
-                $unlockedEvidence = [];
-                $unlockedLevels = [];
+                $unlockedEvidences = collect();
+                $unlockedLevels = collect();
 
-                // 3. Process Dynamic Unlocks
                 if ($request->unlocks_evidence_id) {
                     DB::table('room_evidences')->updateOrInsert([
                         'room_id' => $room->id,
                         'evidence_id' => $request->unlocks_evidence_id
                     ]);
-                    $unlockedEvidence[] = $request->unlocks_evidence_id;
-                    EvidenceDiscovered::dispatch($room, $unlockedEvidence);
+                    $evidence = \App\Models\Evidence::find($request->unlocks_evidence_id);
+                    if ($evidence) $unlockedEvidences->push($evidence);
                 }
 
                 if ($request->unlocks_level_id) {
@@ -3727,13 +3625,25 @@ class InvestigationRequestService
                         'room_id' => $room->id,
                         'level_id' => $request->unlocks_level_id
                     ]);
-                    $unlockedLevels[] = $request->unlocks_level_id;
+                    $level = \App\Models\Level::find($request->unlocks_level_id);
+                    if ($level) $unlockedLevels->push($level);
                 }
+
+                if ($unlockedEvidences->isNotEmpty() || $unlockedLevels->isNotEmpty()) {
+                    ItemsUnlocked::dispatch($room, $unlockedEvidences->isNotEmpty() ? $unlockedEvidences : null, $unlockedLevels->isNotEmpty() ? $unlockedLevels : null, null, null, null);
+                }
+
+                // NEW: LOG THE PERMANENT HISTORY & BROADCAST
+                $filedRecord = $room->filedRequests()->create([
+                    'request_type' => $request->request_type->value,
+                    'evidence_ids' => $submittedIds
+                ]);
+                RequestFiled::dispatch($room, $filedRecord);
 
                 return Result::success([
                     'message' => "{$request->request_type->label()} approved by the DA.",
-                    'unlocked_evidence' => $unlockedEvidence,
-                    'unlocked_levels' => $unlockedLevels,
+                    'unlocked_evidence' => $unlockedEvidences->toArray(),
+                    'unlocked_levels' => $unlockedLevels->toArray(),
                     'request_type' => $request->request_type->value
                 ]);
             }
@@ -3754,14 +3664,16 @@ use App\Models\Question;
 use App\Models\Choice;
 use App\Models\RoomVote;
 use App\Models\User;
+use App\Models\Evidence;
+use App\Models\Level;
+use App\Models\Suspect;
+use App\Models\Victim;
 use App\Support\Result;
 use App\Events\VoteLockedIn;
+use App\Events\ItemsUnlocked;
 
 class VotingService
 {
-    /**
-     * Lock in or update a user's vote for a specific verdict.
-     */
     public function lockInVote(GameRoom $room, User $user, Question $question, Choice $choice): Result
     {
         if ($question->level_id !== $room->current_level_id) {
@@ -3772,7 +3684,6 @@ class VotingService
             return Result::failure("Invalid choice for the given verdict.");
         }
 
-        // Upsert the vote
         $vote = RoomVote::updateOrCreate(
             [
                 'room_id' => $room->id,
@@ -3784,69 +3695,67 @@ class VotingService
             ]
         );
 
-        // --- DYNAMIC NARRATIVE UNLOCKS VIA JSON PAYLOAD ---
-        $unlocked = [
-            'evidence' => [],
-            'levels' => [],
-            'suspects' => [],
-            'victims' => []
-        ];
+        $unlockedEvidences = collect();
+        $unlockedLevels = collect();
+        $unlockedSuspects = collect();
+        $unlockedVictims = collect();
 
-        // Access the automatically casted JSON array
         $outcomes = $choice->outcomes ?? [];
 
-        // Evidence Unlocks
+        // Eager load models to pass exactly what the frontend cache needs (avoids N+1)
         if (!empty($outcomes['unlock_evidence']) && is_array($outcomes['unlock_evidence'])) {
-            // Check that the items exist to prevent ghost relations
-            $validEvidence = \App\Models\Evidence::whereIn('id', $outcomes['unlock_evidence'])->pluck('id')->toArray();
-            if (!empty($validEvidence)) {
-                $room->unlockedEvidences()->syncWithoutDetaching($validEvidence);
-                $unlocked['evidence'] = array_merge($unlocked['evidence'], $validEvidence);
-                \App\Events\EvidenceDiscovered::dispatch($room, $validEvidence);
+            $unlockedEvidences = Evidence::whereIn('id', $outcomes['unlock_evidence'])->get();
+            if ($unlockedEvidences->isNotEmpty()) {
+                $room->unlockedEvidences()->syncWithoutDetaching($unlockedEvidences->pluck('id')->toArray());
             }
         }
 
-        // Level Unlocks
         if (!empty($outcomes['unlock_levels']) && is_array($outcomes['unlock_levels'])) {
-            $validLevels = \App\Models\Level::whereIn('id', $outcomes['unlock_levels'])->pluck('id')->toArray();
-            if (!empty($validLevels)) {
-                $room->unlockedLevels()->syncWithoutDetaching($validLevels);
-                $unlocked['levels'] = array_merge($unlocked['levels'], $validLevels);
+            $unlockedLevels = Level::whereIn('id', $outcomes['unlock_levels'])->get();
+            if ($unlockedLevels->isNotEmpty()) {
+                $room->unlockedLevels()->syncWithoutDetaching($unlockedLevels->pluck('id')->toArray());
             }
         }
 
-        // Suspect Unlocks
         if (!empty($outcomes['unlock_suspects']) && is_array($outcomes['unlock_suspects'])) {
-            $validSuspects = \App\Models\Suspect::whereIn('id', $outcomes['unlock_suspects'])->pluck('id')->toArray();
-            if (!empty($validSuspects)) {
-                $room->unlockedSuspects()->syncWithoutDetaching($validSuspects);
-                $unlocked['suspects'] = array_merge($unlocked['suspects'], $validSuspects);
-                \App\Events\SuspectDiscovered::dispatch($room, $validSuspects);
+            $unlockedSuspects = Suspect::whereIn('id', $outcomes['unlock_suspects'])->get();
+            if ($unlockedSuspects->isNotEmpty()) {
+                $room->unlockedSuspects()->syncWithoutDetaching($unlockedSuspects->pluck('id')->toArray());
             }
         }
 
-        // Victim Unlocks
         if (!empty($outcomes['unlock_victims']) && is_array($outcomes['unlock_victims'])) {
-            $validVictims = \App\Models\Victim::whereIn('id', $outcomes['unlock_victims'])->pluck('id')->toArray();
-            if (!empty($validVictims)) {
-                $room->unlockedVictims()->syncWithoutDetaching($validVictims);
-                $unlocked['victims'] = array_merge($unlocked['victims'], $validVictims);
-                \App\Events\VictimDiscovered::dispatch($room, $validVictims);
+            $unlockedVictims = Victim::whereIn('id', $outcomes['unlock_victims'])->get();
+            if ($unlockedVictims->isNotEmpty()) {
+                $room->unlockedVictims()->syncWithoutDetaching($unlockedVictims->pluck('id')->toArray());
             }
         }
 
-        // Broadcast the real-time vote update
         VoteLockedIn::dispatch($room, $vote);
+
+        // Blanket Broadcast for the new ItemsUnlocked engine
+        if ($unlockedEvidences->isNotEmpty() || $unlockedLevels->isNotEmpty() || $unlockedSuspects->isNotEmpty() || $unlockedVictims->isNotEmpty()) {
+            ItemsUnlocked::dispatch(
+                $room,
+                $unlockedEvidences->isNotEmpty() ? $unlockedEvidences : null,
+                $unlockedLevels->isNotEmpty() ? $unlockedLevels : null,
+                $unlockedSuspects->isNotEmpty() ? $unlockedSuspects : null,
+                $unlockedVictims->isNotEmpty() ? $unlockedVictims : null,
+                null
+            );
+        }
 
         return Result::success([
             'vote' => $vote,
-            'unlocked' => $unlocked
+            'unlocked' => [
+                'evidence' => $unlockedEvidences->toArray(),
+                'levels' => $unlockedLevels->toArray(),
+                'suspects' => $unlockedSuspects->toArray(),
+                'victims' => $unlockedVictims->toArray()
+            ]
         ]);
     }
 
-    /**
-     * Calculate the current consensus of the room based on weighted votes.
-     */
     public function calculateLevelConsensus(GameRoom $room, int $levelId): array
     {
         $votes = RoomVote::where('room_id', $room->id)
@@ -6958,6 +6867,44 @@ return new class extends Migration {
             $table->dropColumn(['sub_type', 'metadata']);
             $table->text('paragraph')->nullable()->after('img_url');
         });
+    }
+};
+</file>
+
+<file path="database/migrations/2026_08_28_104024_create_room_state_tracking_tables.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        // Track visual point-and-click location sweeps
+        Schema::create('room_inspections', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('room_id')->constrained('game_rooms')->cascadeOnDelete();
+            $table->foreignId('choice_id')->constrained('choices')->cascadeOnDelete();
+            $table->boolean('is_dead_end')->default(false);
+            $table->timestamps();
+
+            // Prevent duplicate clicks on the same point from bloating the database
+            $table->unique(['room_id', 'choice_id']);
+        });
+
+        // Track the permanent history of procedural requests sent to the DA
+        Schema::create('room_filed_requests', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('room_id')->constrained('game_rooms')->cascadeOnDelete();
+            $table->string('request_type');
+            $table->json('evidence_ids');
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void {
+        Schema::dropIfExists('room_filed_requests');
+        Schema::dropIfExists('room_inspections');
     }
 };
 </file>

@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react';
 import { useAdminData } from '@/hooks/useAdminData';
 import type { GameCase, Phase, Level } from '@/types';
 
@@ -9,14 +9,14 @@ interface AdminContextState {
   setCaseId: (id: string) => void;
   setPhaseId: (id: string) => void;
   setLevelId: (id: string) => void;
-  
+
   cases: GameCase[];
   selectedCase: GameCase | undefined;
   availablePhases: Phase[];
   selectedPhase: Phase | undefined;
   availableLevels: Level[];
   selectedLevel: Level | undefined;
-  
+
   isLoading: boolean;
   error: Error | null;
 }
@@ -30,17 +30,17 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [phaseId, setPhaseId] = useState<string>('');
   const [levelId, setLevelId] = useState<string>('');
 
-  // Cascading state handlers
-  const handleSetCaseId = (id: string) => {
+  // Cascading state handlers memoized to maintain stable reference equality
+  const handleSetCaseId = useCallback((id: string) => {
     setCaseId(id);
     setPhaseId('');
     setLevelId('');
-  };
+  }, []);
 
-  const handleSetPhaseId = (id: string) => {
+  const handleSetPhaseId = useCallback((id: string) => {
     setPhaseId(id);
     setLevelId('');
-  };
+  }, []);
 
   // Derived Data (Memoized to prevent unnecessary recalculations)
   const selectedCase = useMemo(() => cases.find(c => c.id.toString() === caseId), [cases, caseId]);
@@ -49,7 +49,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const availableLevels = useMemo(() => selectedPhase?.levels || [], [selectedPhase]);
   const selectedLevel = useMemo(() => availableLevels.find(l => l.id.toString() === levelId), [availableLevels, levelId]);
 
-  const value = {
+  // The Provider value is strictly memoized. 
+  // It will ONLY trigger consumer re-renders when a dependency genuinely updates.
+  const value = useMemo(() => ({
     caseId,
     phaseId,
     levelId,
@@ -64,7 +66,21 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     selectedLevel,
     isLoading,
     error: error as Error | null
-  };
+  }), [
+    caseId,
+    phaseId,
+    levelId,
+    handleSetCaseId,
+    handleSetPhaseId,
+    cases,
+    selectedCase,
+    availablePhases,
+    selectedPhase,
+    availableLevels,
+    selectedLevel,
+    isLoading,
+    error
+  ]);
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
 }

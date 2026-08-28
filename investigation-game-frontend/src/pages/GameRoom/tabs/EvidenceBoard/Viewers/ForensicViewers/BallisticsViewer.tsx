@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { sanitizeHtml } from '@/utils/sanitize';
 import type { ForensicEvidence } from '@/types/evidence';
 import './BallisticsViewer.css';
 
@@ -30,7 +31,7 @@ const BallisticsViewer: React.FC<BallisticsViewerProps> = ({ evidence }) => {
         {(metadata.exhibits || []).map((ex: any, idx: number) => (
           <div key={idx} className="ballistics-specimen-row">
             <span className="ballistics-specimen-label">{ex.reference}:</span>
-            <span className="ballistics-specimen-desc" dangerouslySetInnerHTML={{ __html: ex.description }} />
+            <span className="ballistics-specimen-desc" dangerouslySetInnerHTML={{ __html: sanitizeHtml(ex.description || '') }} />
           </div>
         ))}
         {(!metadata.exhibits || metadata.exhibits.length === 0) && (
@@ -40,12 +41,12 @@ const BallisticsViewer: React.FC<BallisticsViewerProps> = ({ evidence }) => {
 
       <div className="ballistics-section">
         <div className="ballistics-section-title">{t('pages.gameRoom.evidence.viewers.ballistics.section1')}</div>
-        <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.firearm_specs }} />
+        <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(metadata.firearm_specs || '') }} />
       </div>
 
       <div className="ballistics-section">
         <div className="ballistics-section-title">{t('pages.gameRoom.evidence.viewers.ballistics.section2')}</div>
-        <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.microscopic_analysis }} />
+        <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(metadata.microscopic_analysis || '') }} />
       </div>
 
       {evidence.img_url && (
@@ -63,12 +64,12 @@ const BallisticsViewer: React.FC<BallisticsViewerProps> = ({ evidence }) => {
       {metadata.trajectory_range && (
         <div className="ballistics-section">
           <div className="ballistics-section-title">{t('pages.gameRoom.evidence.viewers.ballistics.section3')}</div>
-          <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: metadata.trajectory_range }} />
+          <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(metadata.trajectory_range || '') }} />
         </div>
       )}
 
       <div className="ballistics-conclusion-box">
-        <div className="ballistics-conclusion" dangerouslySetInnerHTML={{ __html: metadata.conclusion }} />
+        <div className="ballistics-conclusion" dangerouslySetInnerHTML={{ __html: sanitizeHtml(metadata.conclusion || '') }} />
       </div>
 
       <div className="ballistics-sign-off">

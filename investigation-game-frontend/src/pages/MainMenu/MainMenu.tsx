@@ -5,12 +5,15 @@ import { useTranslation } from 'react-i18next';
 import type { GameCase, User } from '@/types';
 import { fetchCases } from '@/services/api';
 import CaseCard from '@/components/CaseCard/CaseCard';
+import { useQueryClient } from '@tanstack/react-query';
+import { logout } from '@/services/auth';
 import CaseBriefingModal from '@/components/CaseBriefingModal/CaseBriefingModal';
 import './MainMenu.css';
 
 export default function MainMenu() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [selectedCase, setSelectedCase] = useState<GameCase | null>(null);
 
@@ -39,7 +42,8 @@ export default function MainMenu() {
   });
 
   const handleLogout = () => {
-    // Triggers the global force logout listener in App.tsx
+    logout();
+    queryClient.clear();
     window.dispatchEvent(new CustomEvent('auth:unauthorized'));
   };
 

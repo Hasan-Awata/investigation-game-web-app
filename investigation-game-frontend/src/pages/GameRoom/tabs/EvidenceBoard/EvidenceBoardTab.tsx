@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRoomState, useRoomActions } from '@/context/RoomContext';
+import { useRoomData, useRoomUI } from '@/context/RoomContext';
 import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
 import type { Evidence } from '@/types';
 import EvidenceCard from './EvidenceCard';
@@ -8,10 +8,36 @@ import EvidenceModal from './EvidenceModal';
 import ProceduralRequestTray from './ProceduralRequestTray';
 import './EvidenceBoardTab.css';
 
+// MEMOIZATION: This severs the render cascade entirely. The EvidenceGrid will only 
+// re-render if the core domain array or the explicitly passed viewed status changes.
+const EvidenceGrid = React.memo(({ 
+  evidences, 
+  viewedEvidences, 
+  onInspect 
+}: { 
+  evidences: Evidence[]; 
+  viewedEvidences: Set<number>; 
+  onInspect: (evidence: Evidence) => void;
+}) => {
+  return (
+    <div className="evidence-scatter-grid">
+      {evidences.map((evidence, index) => (
+        <EvidenceCard
+          key={evidence.id}
+          evidence={evidence}
+          index={index}
+          isNew={!viewedEvidences.has(evidence.id)}
+          onInspect={onInspect}
+        />
+      ))}
+    </div>
+  );
+});
+
 export default function EvidenceBoardTab() {
   const { t } = useTranslation();
-  const { room, accumulatedEvidences, viewedEvidences } = useRoomState();
-  const { markEvidenceAsViewed, refreshRoomData } = useRoomActions();
+  const { room, accumulatedEvidences, refreshRoomData } = useRoomData();
+  const { viewedEvidences, markEvidenceAsViewed } = useRoomUI();
 
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
 
@@ -29,10 +55,11 @@ export default function EvidenceBoardTab() {
     filedRequests
   } = useInvestigationRequest(room, refreshRoomData);
 
-  const handleInspect = (evidence: Evidence) => {
+  // Wrapped in useCallback to preserve strict equality for React.memo
+  const handleInspect = useCallback((evidence: Evidence) => {
     setInspectedEvidence(evidence);
     markEvidenceAsViewed(evidence.id);
-  };
+  }, [markEvidenceAsViewed]);
 
   const handleDragOverContainer = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -69,6 +96,7 @@ export default function EvidenceBoardTab() {
         </div>
       )}
 
+      {/* Local toasts renderer, kept isolated from global cascades */}
       <div className="toast-container">
         {toasts.map((toast) => (
           <div key={toast.id} className="system-toast-notification">
@@ -87,17 +115,11 @@ export default function EvidenceBoardTab() {
         {accumulatedEvidences.length === 0 ? (
           <div className="terminal-text">{t('pages.gameRoom.evidence.board.noEvidence')}</div>
         ) : (
-          <div className="evidence-scatter-grid">
-            {accumulatedEvidences.map((evidence: Evidence, index: number) => (
-              <EvidenceCard
-                key={evidence.id}
-                evidence={evidence}
-                index={index}
-                isNew={!viewedEvidences.has(evidence.id)}
-                onInspect={handleInspect}
-              />
-            ))}
-          </div>
+          <EvidenceGrid 
+            evidences={accumulatedEvidences} 
+            viewedEvidences={viewedEvidences} 
+            onInspect={handleInspect} 
+          />
         )}
       </div>
 

@@ -27,9 +27,10 @@
 │   │   ├── CaseBriefingModal
 │   │   │   ├── CaseBriefingModal.css
 │   │   │   └── CaseBriefingModal.tsx
-│   │   └── CaseCard
-│   │       ├── CaseCard.css
-│   │       └── CaseCard.tsx
+│   │   ├── CaseCard
+│   │   │   ├── CaseCard.css
+│   │   │   └── CaseCard.tsx
+│   │   └── ErrorBoundary.tsx
 │   ├── context
 │   │   ├── AdminContext.tsx
 │   │   └── RoomContext.tsx
@@ -377,7 +378,7 @@ export default defineConfig({
 <file path="src/App.tsx">
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 
 import MainMenu from '@/pages/MainMenu/MainMenu';
 import Auth from '@/pages/Auth/Auth';
@@ -385,74 +386,97 @@ import GameRoom from '@/pages/GameRoom/GameRoom';
 import AdminGuard from '@/components/AdminGuard';
 import AdminDashboard from '@/pages/Admin/AdminDashboard';
 import { getToken, logout } from '@/services/auth';
-import type { User } from '@/types';
+import { useAuthSession } from '@/hooks/useAuth';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
-// 1. Initialize the client outside the component so it doesn't recreate on re-renders
+// Initialize the client outside the component so it doesn't recreate on re-renders
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { refetchOnWindowFocus: false, retry: 1 },
   },
 });
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [isChecking, setIsChecking] = useState<boolean>(true);
+function AppRouter() {
+  const queryClient = useQueryClient();
+  const token = getToken();
+
+  // Rely strictly on the server evaluation
+  const { data: user, isLoading, isError } = useAuthSession();
+
+  // The kill-switch state to instantly sever the component tree on 401
+  const [isSessionRevoked, setIsSessionRevoked] = useState(false);
 
   useEffect(() => {
-    const token = getToken();
-
-    if (token) {
-      setIsAuthenticated(true);
-      const storedUser = localStorage.getItem('auth_user');
-      if (storedUser) setUser(JSON.parse(storedUser));
-    }
-    setIsChecking(false);
-
     const handleForceLogout = () => {
+      // 1. Nuke the token immediately
       logout();
       localStorage.removeItem('auth_user');
-      setIsAuthenticated(false);
-      setUser(null);
-      queryClient.clear();
+
+      // 2. Instantly sever the protected UI tree to prevent a refetch stampede
+      setIsSessionRevoked(true);
+
+      // 3. Defer the cache wipe to the next execution tick, ensuring the component tree is gone
+      setTimeout(() => {
+        queryClient.cancelQueries();
+        queryClient.clear();
+      }, 50);
     };
 
     window.addEventListener('auth:unauthorized', handleForceLogout);
     return () => window.removeEventListener('auth:unauthorized', handleForceLogout);
-  }, []);
+  }, [queryClient]);
 
-  if (isChecking) return <div className="terminal-text">Initializing Secure Connection...</div>;
+  // If the kill-switch is thrown, render the Auth module and wait for a new session
+  if (isSessionRevoked) {
+    return <Auth onSuccess={(userData) => {
+      setIsSessionRevoked(false);
+      queryClient.setQueryData(['authUser'], userData);
+    }} />;
+  }
+
+  // Secure connection state handling
+  if (token && isLoading) {
+    return <div className="terminal-text">Verifying Secure Connection...</div>;
+  }
+
+  // Determine authentication purely off the TanStack query resolution
+  const isAuthenticated = !!user && !isError;
 
   return (
-    // 2. The Provider now wraps everything, ensuring Auth has access to useMutation
-    <QueryClientProvider client={queryClient}>
+    <>
       {!isAuthenticated ? (
-        <Auth onSuccess={(userData: User) => {
-          setIsAuthenticated(true);
-          setUser(userData);
-          localStorage.setItem('auth_user', JSON.stringify(userData));
+        <Auth onSuccess={(userData) => {
+          queryClient.setQueryData(['authUser'], userData);
         }} />
       ) : (
-        <BrowserRouter>
-          <Routes>
-            {/* Standard Player Routes */}
-            <Route path="/" element={<MainMenu />} />
-            <Route path="/room/:inviteCode" element={<GameRoom />} />
+        <ErrorBoundary fallbackMessage="The routing engine encountered an unhandled exception. Interface offline.">
+          <BrowserRouter>
+            <Routes>
+              {/* Standard Player Routes */}
+              <Route path="/" element={<MainMenu />} />
+              <Route path="/room/:inviteCode" element={<GameRoom />} />
 
-            {/* Protected Admin Routes */}
-            <Route path="/admin" element={<AdminGuard user={user} />}>
-              <Route index element={<AdminDashboard />} />
-            </Route>
+              {/* Protected Admin Routes */}
+              <Route path="/admin" element={<AdminGuard />}>
+                <Route index element={<AdminDashboard />} />
+              </Route>
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </ErrorBoundary>
       )}
-    </QueryClientProvider>
+    </>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppRouter />
+    </QueryClientProvider>
+  );
+}
 </file>
 
 <file path="src/i18n.ts">
@@ -604,21 +628,33 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 <file path="src/components/AdminGuard.tsx">
 import { Navigate, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuthSession } from '@/hooks/useAuth';
 import '@/i18n';
 
-interface AdminGuardProps {
-  user: { is_admin?: boolean } | null;
-}
-
-export default function AdminGuard({ user }: AdminGuardProps) {
+export default function AdminGuard() {
   const { t } = useTranslation();
 
-  // If no user data or they lack the admin flag, bounce them to the main menu
-  if (!user || !user.is_admin) {
+  // Directly subscribe to the authoritative session verification
+  const { data: user, isLoading, isError } = useAuthSession();
+
+  // Secure Loading State ensuring no premature rendering of the admin layout
+  if (isLoading) {
+    return (
+      <div className="admin-layout" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'var(--bg-dark)' }}>
+         <div className="terminal-text" style={{ color: 'var(--accent-cyan)' }}>
+           {t('system.loading')}
+         </div>
+      </div>
+    );
+  }
+
+  // Strictly evaluate the server-provided flag.
+  // If the user attempts access without standard authentication, bounce them.
+  if (isError || !user || !user.is_admin) {
     return <Navigate to="/" replace />;
   }
 
-  // Otherwise, render the nested admin routes
+  // Verification passed - yield nested routes
   return (
     <div className="admin-layout">
       <header className="admin-header glass-panel" style={{ padding: '1rem 2rem', borderBottom: '1px solid rgba(255,51,102,0.3)' }}>
@@ -629,6 +665,129 @@ export default function AdminGuard({ user }: AdminGuardProps) {
       </main>
     </div>
   );
+}
+</file>
+
+<file path="src/components/ErrorBoundary.tsx">
+import { Component, type ErrorInfo, type ReactNode } from 'react';
+
+interface Props {
+  children: ReactNode;
+  fallbackMessage?: string;
+  isLocal?: boolean;
+}
+
+interface State {
+  hasError: boolean;
+  error: Error | null;
+}
+
+export default class ErrorBoundary extends Component<Props, State> {
+  public state: State = {
+    hasError: false,
+    error: null
+  };
+
+  public static getDerivedStateFromError(error: Error): State {
+    // Update state so the next render will show the fallback UI.
+    return { hasError: true, error };
+  }
+
+  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    // In a production environment, log this to an error reporting service (e.g., Sentry)
+    console.error('System Exception Caught by Boundary:', error, errorInfo);
+  }
+
+  private handleReset = () => {
+    this.setState({ hasError: false, error: null });
+  };
+
+  private handleReturnHome = () => {
+    // A hard redirect to flush the React tree and memory completely
+    window.location.href = '/';
+  };
+
+  public render() {
+    if (this.state.hasError) {
+      const { isLocal, fallbackMessage } = this.props;
+
+      // Localized Quarantine UI
+      if (isLocal) {
+        return (
+          <div style={{
+            padding: '2rem',
+            textAlign: 'center',
+            backgroundColor: 'rgba(163, 50, 50, 0.1)',
+            border: '1px dashed var(--accent-crimson)',
+            borderRadius: '8px',
+            fontFamily: 'var(--font-mono)'
+          }}>
+            <h4 style={{ color: 'var(--accent-crimson)', margin: '0 0 1rem 0' }}>[ CORRUPTED DATA FRAGMENT ]</h4>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+              {fallbackMessage || 'The requested payload could not be parsed. Render sequence aborted.'}
+            </p>
+            <button
+              onClick={this.handleReset}
+              style={{
+                background: 'transparent', border: '1px solid var(--accent-crimson)',
+                color: 'var(--accent-crimson)', padding: '0.5rem 1rem', cursor: 'pointer', fontFamily: 'var(--font-mono)'
+              }}
+            >
+              Retry Decryption
+            </button>
+          </div>
+        );
+      }
+
+      // Global Shield UI
+      return (
+        <div style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          minHeight: '100vh', backgroundColor: 'var(--bg-dark)', padding: '2rem', fontFamily: 'var(--font-mono)'
+        }}>
+          <div style={{ maxWidth: '600px', width: '100%' }}>
+            <div style={{ borderBottom: '2px solid var(--accent-crimson)', paddingBottom: '1rem', marginBottom: '2rem' }}>
+              <h1 style={{ color: 'var(--accent-crimson)', fontSize: '2.5rem', margin: 0, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                System Glitch
+              </h1>
+              <span style={{ color: 'var(--text-secondary)' }}>CRITICAL EXCEPTION: KERNEL PANIC</span>
+            </div>
+
+            <p style={{ color: 'var(--text-primary)', fontSize: '1.1rem', lineHeight: 1.6, marginBottom: '2rem' }}>
+              {fallbackMessage || 'An unrecoverable fault occurred within the UI rendering thread. The interface has been halted to prevent data corruption.'}
+            </p>
+
+            <div style={{ backgroundColor: 'rgba(0,0,0,0.5)', padding: '1rem', borderRadius: '4px', borderLeft: '4px solid var(--accent-crimson)', marginBottom: '3rem', color: 'var(--text-secondary)', fontSize: '0.85rem', overflowX: 'auto' }}>
+              <code>{this.state.error?.message || 'Unknown Error'}</code>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                onClick={this.handleReset}
+                style={{
+                  background: 'var(--accent-crimson)', border: 'none', color: 'var(--bg-dark)',
+                  padding: '1rem 2rem', fontWeight: 'bold', cursor: 'pointer', fontFamily: 'var(--font-mono)'
+                }}
+              >
+                Reinitialize UI
+              </button>
+              <button
+                onClick={this.handleReturnHome}
+                style={{
+                  background: 'transparent', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)',
+                  padding: '1rem 2rem', fontWeight: 'bold', cursor: 'pointer', fontFamily: 'var(--font-mono)'
+                }}
+              >
+                Return to Root Directory
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
 }
 </file>
 
@@ -647,12 +806,11 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
   const [notes, setNotes] = useState('');
   const [isSaved, setIsSaved] = useState(true);
 
-  // We use a ref for the timer to debounce the "Saved" UI indicator
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
   // We use a ref for the storage key so it's instantly available without triggering re-renders
   const storageKey = useRef(`notepad_fallback`);
+  const isInitialized = useRef(false);
 
+  // 1. Initialization and Cross-Tab Sync
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('auth_user');
@@ -661,16 +819,21 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
       if (currentUser) {
          storageKey.current = `room_${roomId}_user_${currentUser.id}_ledger`;
          const savedNotes = localStorage.getItem(storageKey.current);
-         if (savedNotes) setNotes(savedNotes);
+         if (savedNotes) {
+           setNotes(savedNotes);
+         }
       }
     } catch (e) {
       console.error("Failed to parse user data", e);
     }
 
+    isInitialized.current = true;
+
     // Sync notes instantly if the user types in a different tab
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === storageKey.current && e.newValue !== null) {
         setNotes(e.newValue);
+        setIsSaved(true); // Flag as saved to prevent a redundant write-back in this tab
       }
     };
 
@@ -678,17 +841,24 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
     return () => window.removeEventListener('storage', handleStorageChange);
   }, [roomId]);
 
+  // 2. Debounced Local Storage Write (The fix for Main Thread Blocking)
+  useEffect(() => {
+    // Guard clause: Don't trigger a write during initial mount or if state is already saved
+    if (!isInitialized.current || isSaved) return;
+
+    const timerId = setTimeout(() => {
+      localStorage.setItem(storageKey.current, notes);
+      setIsSaved(true);
+    }, 800);
+
+    // Cleanup: If notes or isSaved change before 800ms, clear the timeout to prevent a race condition
+    return () => clearTimeout(timerId);
+  }, [notes, isSaved]);
+
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const text = e.target.value;
-    setNotes(text);
+    // 3. UI updates instantly. The I/O side-effect is completely decoupled.
+    setNotes(e.target.value);
     setIsSaved(false);
-
-    // Save to local storage instantly on every keystroke
-    localStorage.setItem(storageKey.current, text);
-
-    // Debounce the UI update so it doesn't flicker wildly while typing
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setIsSaved(true), 800);
   };
 
   return (
@@ -923,7 +1093,7 @@ export default function CaseCard({ gameCase, imageUrl }: CaseCardProps) {
 </file>
 
 <file path="src/context/AdminContext.tsx">
-import { createContext, useContext, useState, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react';
 import { useAdminData } from '@/hooks/useAdminData';
 import type { GameCase, Phase, Level } from '@/types';
 
@@ -955,17 +1125,17 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const [phaseId, setPhaseId] = useState<string>('');
   const [levelId, setLevelId] = useState<string>('');
 
-  // Cascading state handlers
-  const handleSetCaseId = (id: string) => {
+  // Cascading state handlers memoized to maintain stable reference equality
+  const handleSetCaseId = useCallback((id: string) => {
     setCaseId(id);
     setPhaseId('');
     setLevelId('');
-  };
+  }, []);
 
-  const handleSetPhaseId = (id: string) => {
+  const handleSetPhaseId = useCallback((id: string) => {
     setPhaseId(id);
     setLevelId('');
-  };
+  }, []);
 
   // Derived Data (Memoized to prevent unnecessary recalculations)
   const selectedCase = useMemo(() => cases.find(c => c.id.toString() === caseId), [cases, caseId]);
@@ -974,7 +1144,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
   const availableLevels = useMemo(() => selectedPhase?.levels || [], [selectedPhase]);
   const selectedLevel = useMemo(() => availableLevels.find(l => l.id.toString() === levelId), [availableLevels, levelId]);
 
-  const value = {
+  // The Provider value is strictly memoized.
+  // It will ONLY trigger consumer re-renders when a dependency genuinely updates.
+  const value = useMemo(() => ({
     caseId,
     phaseId,
     levelId,
@@ -989,7 +1161,21 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     selectedLevel,
     isLoading,
     error: error as Error | null
-  };
+  }), [
+    caseId,
+    phaseId,
+    levelId,
+    handleSetCaseId,
+    handleSetPhaseId,
+    cases,
+    selectedCase,
+    availablePhases,
+    selectedPhase,
+    availableLevels,
+    selectedLevel,
+    isLoading,
+    error
+  ]);
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
 }
@@ -1004,7 +1190,6 @@ export function useAdminContext() {
 </file>
 
 <file path="src/context/RoomContext.tsx">
-// FILE: src/context/RoomContext.tsx
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 import type { GameRoom, Evidence, Suspect, Victim } from '../types';
 
@@ -1016,76 +1201,111 @@ export interface ToastNotification {
   icon: string;
 }
 
-// 1. Define the Global Feedback Type
 export interface GlobalFeedback {
   type: 'success' | 'error';
   title: string;
   message: string;
 }
 
-interface RoomState {
+// 1. DATA CONTEXT: Domain entities that change slowly
+export interface RoomDataState {
   room: GameRoom;
   accumulatedEvidences: Evidence[];
   accumulatedSuspects: Suspect[];
   accumulatedVictims: Victim[];
+  refreshRoomData: () => Promise<void>;
+}
+
+// 2. UI CONTEXT: Interface states that are highly volatile
+export interface RoomUIState {
   viewedEvidences: Set<number>;
   viewedSuspects: Set<number>;
   viewedVictims: Set<number>;
-  globalFeedback: GlobalFeedback | null; // Added
-}
-
-interface RoomActions {
-  refreshRoomData: () => Promise<void>;
+  globalFeedback: GlobalFeedback | null;
   markEvidenceAsViewed: (id: number) => void;
   markSuspectAsViewed: (id: number) => void;
   markVictimAsViewed: (id: number) => void;
   setGameOverData: (message: string, stats?: any) => void;
   addGlobalToast: (toast: Omit<ToastNotification, 'id'>) => void;
-  setGlobalFeedback: (feedback: GlobalFeedback | null) => void; // Added
+  setGlobalFeedback: (feedback: GlobalFeedback | null) => void;
 }
 
-const RoomStateContext = createContext<RoomState | undefined>(undefined);
-const RoomActionContext = createContext<RoomActions | undefined>(undefined);
+const RoomDataContext = createContext<RoomDataState | undefined>(undefined);
+const RoomUIContext = createContext<RoomUIState | undefined>(undefined);
 
-interface RoomProviderProps extends RoomState, RoomActions {
-  children: ReactNode;
+export function RoomDataProvider({
+  children, room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims, refreshRoomData
+}: RoomDataState & { children: ReactNode }) {
+  const value = useMemo(() => ({
+    room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims, refreshRoomData
+  }), [room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims, refreshRoomData]);
+
+  return <RoomDataContext.Provider value={value}>{children}</RoomDataContext.Provider>;
 }
 
-export function RoomProvider({
-  children, room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims,
-  viewedEvidences, viewedSuspects, viewedVictims, globalFeedback,
-  refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed,
+export function RoomUIProvider({
+  children, viewedEvidences, viewedSuspects, viewedVictims, globalFeedback,
+  markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed,
   setGameOverData, addGlobalToast, setGlobalFeedback
-}: RoomProviderProps) {
+}: RoomUIState & { children: ReactNode }) {
+  const value = useMemo(() => ({
+    viewedEvidences, viewedSuspects, viewedVictims, globalFeedback,
+    markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed,
+    setGameOverData, addGlobalToast, setGlobalFeedback
+  }), [viewedEvidences, viewedSuspects, viewedVictims, globalFeedback, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed, setGameOverData, addGlobalToast, setGlobalFeedback]);
 
-  const state = useMemo<RoomState>(() => ({
-    room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims,
-    viewedEvidences, viewedSuspects, viewedVictims, globalFeedback
-  }), [room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims, viewedEvidences, viewedSuspects, viewedVictims, globalFeedback]);
-
-  const actions = useMemo<RoomActions>(() => ({
-    refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed, setGameOverData, addGlobalToast, setGlobalFeedback
-  }), [refreshRoomData, markEvidenceAsViewed, markSuspectAsViewed, markVictimAsViewed, setGameOverData, addGlobalToast, setGlobalFeedback]);
-
-  return (
-    <RoomActionContext.Provider value={actions}>
-      <RoomStateContext.Provider value={state}>
-        {children}
-      </RoomStateContext.Provider>
-    </RoomActionContext.Provider>
-  );
+  return <RoomUIContext.Provider value={value}>{children}</RoomUIContext.Provider>;
 }
+
+// --- NEW ARCHITECTURE HOOKS ---
+
+export function useRoomData() {
+  const context = useContext(RoomDataContext);
+  if (context === undefined) throw new Error('useRoomData must be used within a RoomDataProvider');
+  return context;
+}
+
+export function useRoomUI() {
+  const context = useContext(RoomUIContext);
+  if (context === undefined) throw new Error('useRoomUI must be used within a RoomUIProvider');
+  return context;
+}
+
+// --- LEGACY ADAPTER HOOKS (Ensures un-refactored tabs don't break) ---
 
 export function useRoomState() {
-  const context = useContext(RoomStateContext);
-  if (context === undefined) throw new Error('useRoomState must be used within a RoomProvider');
-  return context;
+  const data = useContext(RoomDataContext);
+  const ui = useContext(RoomUIContext);
+
+  if (!data || !ui) throw new Error('useRoomState must be used within Room Providers');
+
+  return {
+    room: data.room,
+    accumulatedEvidences: data.accumulatedEvidences,
+    accumulatedSuspects: data.accumulatedSuspects,
+    accumulatedVictims: data.accumulatedVictims,
+    viewedEvidences: ui.viewedEvidences,
+    viewedSuspects: ui.viewedSuspects,
+    viewedVictims: ui.viewedVictims,
+    globalFeedback: ui.globalFeedback
+  };
 }
 
 export function useRoomActions() {
-  const context = useContext(RoomActionContext);
-  if (context === undefined) throw new Error('useRoomActions must be used within a RoomProvider');
-  return context;
+  const data = useContext(RoomDataContext);
+  const ui = useContext(RoomUIContext);
+
+  if (!data || !ui) throw new Error('useRoomActions must be used within Room Providers');
+
+  return {
+    refreshRoomData: data.refreshRoomData,
+    markEvidenceAsViewed: ui.markEvidenceAsViewed,
+    markSuspectAsViewed: ui.markSuspectAsViewed,
+    markVictimAsViewed: ui.markVictimAsViewed,
+    setGameOverData: ui.setGameOverData,
+    addGlobalToast: ui.addGlobalToast,
+    setGlobalFeedback: ui.setGlobalFeedback
+  };
 }
 </file>
 
@@ -1199,12 +1419,41 @@ export function useAdminMutations(entityType: AdminEntityType) {
 
 <file path="src/hooks/useAuth.ts">
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
-import { login, register } from '@/services/auth';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { login, register, getToken } from '@/services/auth';
 import type { User } from '@/types';
 
-// 1. Update the parameter signature to expect a User
+// Authoritative Session Verification Hook
+export function useAuthSession() {
+  return useQuery<User>({
+    queryKey: ['authUser'],
+    queryFn: async () => {
+      const token = getToken();
+      if (!token) throw new Error('No authentication token found.');
+
+      const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const response = await fetch(`${backendUrl}/api/user`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Session verification failed. Unauthorized access.');
+      }
+
+      return response.json();
+    },
+    retry: false,
+    staleTime: 1000 * 60 * 5, // Cache the authoritative user object for 5 minutes
+  });
+}
+
 export function useAuth(onSuccess: (user: User) => void) {
+  const queryClient = useQueryClient();
   const [isLogin, setIsLogin] = useState(true);
 
   const [email, setEmail] = useState('');
@@ -1222,7 +1471,8 @@ export function useAuth(onSuccess: (user: User) => void) {
       return result.value;
     },
     onSuccess: (data) => {
-      // 2. Pass the returned user object up to the parent component
+      // Seed the cache with the trusted server response directly
+      queryClient.setQueryData(['authUser'], data.user);
       onSuccess(data.user);
     }
   });
@@ -1252,13 +1502,14 @@ export function useAuth(onSuccess: (user: User) => void) {
 
 <file path="src/hooks/useGameRoom.ts">
 import { useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { joinRoom, fetchRoomState } from '@/services/api';
-import type { Evidence, Suspect, Victim } from '@/types';
+import type { GameRoom, Evidence, Suspect, Victim } from '@/types';
 
 export function useGameRoom(inviteCode: string | undefined) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
 
   const {
     data: room,
@@ -1295,6 +1546,16 @@ export function useGameRoom(inviteCode: string | undefined) {
     }
   }, [room?.id, inviteCode]);
 
+  // Expose a pure cache patching function to enforce the "Zero-Refetch" rule
+  const patchRoomData = (updater: (oldRoom: GameRoom) => GameRoom) => {
+    if (inviteCode) {
+      queryClient.setQueryData(['gameRoom', inviteCode], (oldData: GameRoom | undefined) => {
+        if (!oldData) return oldData;
+        return updater(oldData);
+      });
+    }
+  };
+
   const caseEvidences = room?.game_case?.evidences || [];
   const unlockedEvidenceIds = new Set(room?.unlocked_evidences?.map((e: Evidence) => e.id) || []);
   const accumulatedEvidences: Evidence[] = caseEvidences.filter(
@@ -1320,7 +1581,8 @@ export function useGameRoom(inviteCode: string | undefined) {
     accumulatedEvidences,
     accumulatedSuspects,
     accumulatedVictims,
-    refreshRoomData: async () => { await refetch(); }
+    refreshRoomData: async () => { await refetch(); },
+    patchRoomData
   };
 }
 </file>
@@ -1495,34 +1757,30 @@ export function useInvestigationPhase() {
 
 <file path="src/hooks/useInvestigationRequest.ts">
 import { useState } from 'react';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { submitInvestigationRequest } from '@/services/api';
 import type { GameRoom } from '@/types';
 import type { ToastNotification } from './useInvestigationPhase';
 
 export interface FiledRequest {
-  id: string;
-  type: string;
-  timestamp: string;
-  evidenceIds: number[];
+  id: number | string;
+  request_type: string;
+  created_at: string;
+  evidence_ids: number[];
 }
 
 export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => void) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
+
   const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
   const [requestType, setRequestType] = useState<string>('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
-  // Persistent history in sessionStorage for this room
-  const historyStorageKey = `room_${room.id}_filed_requests`;
-  const [filedRequests, setFiledRequests] = useState<FiledRequest[]>(() => {
-    try {
-      const saved = sessionStorage.getItem(historyStorageKey);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
+  // Derived directly from the authoritative room payload
+  const filedRequests: FiledRequest[] = room.filed_requests || [];
 
   const requestMutation = useMutation({
     mutationFn: async () => {
@@ -1530,21 +1788,34 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
-    onSuccess: (data) => {
-      setFeedback({ type: 'success', message: data.message });
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['gameRoom', room.invite_code] });
+      const previousRoom = queryClient.getQueryData(['gameRoom', room.invite_code]);
 
-      // Save to local filed requests history
-      const newRequest: FiledRequest = {
-        id: crypto.randomUUID(),
-        type: requestType,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        evidenceIds: [...trayEvidences]
+      const optimisticRequest: FiledRequest = {
+        id: `temp-${Date.now()}`,
+        request_type: requestType,
+        created_at: new Date().toISOString(),
+        evidence_ids: [...trayEvidences]
       };
 
-      const updatedHistory = [newRequest, ...filedRequests];
-      setFiledRequests(updatedHistory);
-      sessionStorage.setItem(historyStorageKey, JSON.stringify(updatedHistory));
+      queryClient.setQueryData(['gameRoom', room.invite_code], (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          filed_requests: [optimisticRequest, ...(old.filed_requests || [])]
+        };
+      });
 
+      return { previousRoom };
+    },
+    onError: (error: Error, _variables: void, context: any) => {
+      queryClient.setQueryData(['gameRoom', room.invite_code], context?.previousRoom);
+      setFeedback({ type: 'error', message: error.message });
+      setTrayEvidences([]);
+    },
+    onSuccess: (data) => {
+      setFeedback({ type: 'success', message: data.message });
       setTrayEvidences([]);
       setRequestType('');
       refreshRoomData();
@@ -1580,10 +1851,6 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
           }, 5000);
         }
       }, 500);
-    },
-    onError: (error: Error) => {
-      setFeedback({ type: 'error', message: error.message });
-      setTrayEvidences([]);
     }
   });
 
@@ -5530,17 +5797,55 @@ import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useViewedItems } from '@/hooks/useViewedItems';
-import { RoomProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
+import { RoomDataProvider, RoomUIProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
 import GameRoomLayout from './GameRoomLayout';
+import type { GameRoom, Evidence, Suspect, Victim, Level } from '@/types';
 import './GameRoom.css';
 
-interface LevelTransitionedPayload { message: string; status: string; stats?: any; }
-interface WiretapTriggeredPayload { question_id: number; audio_url: string | null; message?: string; }
+// --- ENRICHED PAYLOAD TYPINGS ---
+interface LevelTransitionedPayload {
+  message: string;
+  status: string;
+  stats?: any;
+  room_patch?: {
+    current_level_id?: number | null;
+    status?: string;
+    completed_levels?: Level[];
+  };
+}
+
+interface WiretapTriggeredPayload {
+  question_id: number;
+  audio_url: string | null;
+  message?: string;
+  played_wiretap?: any;
+}
+
+interface VoteLockedInPayload {
+  vote: any;
+}
+
+interface ItemsUnlockedPayload {
+  unlocked_evidences?: Evidence[];
+  unlocked_levels?: Level[];
+  unlocked_suspects?: Suspect[];
+  unlocked_victims?: Victim[];
+  strikes?: number;
+}
 
 export default function GameRoom() {
   const { t } = useTranslation();
   const { inviteCode } = useParams<{ inviteCode: string }>();
-  const { room, isLoading, error, accumulatedEvidences, accumulatedSuspects, accumulatedVictims, refreshRoomData } = useGameRoom(inviteCode);
+  const {
+    room,
+    isLoading,
+    error,
+    accumulatedEvidences,
+    accumulatedSuspects,
+    accumulatedVictims,
+    refreshRoomData,
+    patchRoomData
+  } = useGameRoom(inviteCode);
 
   const { viewedItems: viewedEvidences, markItemAsViewed: markEvidenceAsViewed } = useViewedItems(room?.invite_code, 'evidence');
   const { viewedItems: viewedSuspects, markItemAsViewed: markSuspectAsViewed } = useViewedItems(room?.invite_code, 'suspects');
@@ -5564,10 +5869,17 @@ export default function GameRoom() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== newToast.id)), 5000);
   }, []);
 
+  const patchArray = useCallback((oldArr: any[] = [], newItems: any[] = []) => {
+    const map = new Map(oldArr.map(item => [item.id, item]));
+    newItems.forEach(item => map.set(item.id, item));
+    return Array.from(map.values());
+  }, []);
+
   useEffect(() => {
     if (!room || !window.Echo) return;
     const channel = window.Echo.private(`room.${room.id}`);
 
+    // 1. Level Transitions & Game State
     channel.listen('LevelTransitioned', (e: LevelTransitionedPayload) => {
       if (e.message) {
         if (e.status === 'active') {
@@ -5581,11 +5893,39 @@ export default function GameRoom() {
           setGameOverData(e.message, e.stats);
         }
       }
-      refreshRoomData();
+
+      patchRoomData((oldRoom: GameRoom) => {
+        const updatedCompletedLevels = e.room_patch?.completed_levels
+          ? patchArray(oldRoom.completed_levels, e.room_patch.completed_levels)
+          : oldRoom.completed_levels;
+
+        return {
+          ...oldRoom,
+          status: e.room_patch?.status ?? oldRoom.status,
+          current_level_id: e.room_patch?.current_level_id ?? oldRoom.current_level_id,
+          completed_levels: updatedCompletedLevels
+        };
+      });
     });
 
-    channel.listen('VoteLockedIn', () => refreshRoomData());
+    // 2. Voting / Dialogue Tree Selection
+    channel.listen('VoteLockedIn', (e: VoteLockedInPayload) => {
+      if (!e.vote) return;
+      patchRoomData((oldRoom: GameRoom) => {
+        const newVotes = [...(oldRoom.votes || [])];
+        const existingVoteIndex = newVotes.findIndex(v => v.user_id === e.vote.user_id && v.question_id === e.vote.question_id);
 
+        if (existingVoteIndex >= 0) {
+          newVotes[existingVoteIndex] = e.vote;
+        } else {
+          newVotes.push(e.vote);
+        }
+
+        return { ...oldRoom, votes: newVotes };
+      });
+    });
+
+    // 3. Audio / Wiretap Playback
     channel.listen('WiretapTriggered', (e: WiretapTriggeredPayload) => {
       if (e.audio_url && !playedAudioTracker.current.has(e.question_id)) {
         playedAudioTracker.current.add(e.question_id);
@@ -5600,32 +5940,74 @@ export default function GameRoom() {
         icon: 'https://api.iconify.design/ph:waveform-duotone.svg?color=%23c48b36'
       });
 
-      refreshRoomData();
+      if (e.played_wiretap) {
+        patchRoomData((oldRoom: GameRoom) => {
+          const playedWiretaps = [...(oldRoom.played_wiretaps || [])];
+          if (!playedWiretaps.some(w => w.id === e.played_wiretap.id)) {
+            playedWiretaps.push(e.played_wiretap);
+          }
+          return { ...oldRoom, played_wiretaps: playedWiretaps };
+        });
+      }
+    });
+
+    // 4. Discovery Engine (ItemsUnlocked)
+    channel.listen('ItemsUnlocked', (e: ItemsUnlockedPayload) => {
+      patchRoomData((oldRoom: GameRoom) => {
+        return {
+          ...oldRoom,
+          unlocked_evidences: patchArray(oldRoom.unlocked_evidences, e.unlocked_evidences),
+          unlocked_levels: patchArray(oldRoom.unlocked_levels, e.unlocked_levels),
+          unlocked_suspects: patchArray(oldRoom.unlocked_suspects, e.unlocked_suspects),
+          unlocked_victims: patchArray(oldRoom.unlocked_victims, e.unlocked_victims),
+          strikes: e.strikes !== undefined ? e.strikes : oldRoom.strikes
+        };
+      });
+    });
+
+    channel.listen('LocationInspected', (e: any) => {
+      patchRoomData((oldRoom: GameRoom) => ({
+        ...oldRoom,
+        inspections: [...(oldRoom.inspections || []), e.inspection]
+      }));
+    });
+
+    channel.listen('RequestFiled', (e: any) => {
+      patchRoomData((oldRoom: GameRoom) => ({
+        ...oldRoom,
+        filed_requests: [e.filed_request, ...(oldRoom.filed_requests || [])]
+      }));
     });
 
     return () => {
       channel.stopListening('LevelTransitioned');
       channel.stopListening('VoteLockedIn');
       channel.stopListening('WiretapTriggered');
+      channel.stopListening('ItemsUnlocked');
     };
-  }, [room?.id, refreshRoomData, setGameOverData, addGlobalToast, t]);
+  }, [room?.id, patchRoomData, patchArray, setGameOverData, addGlobalToast, t]);
 
   if (isLoading) return <div className="terminal-text">{t('pages.gameRoom.synchronizing')}</div>;
   if (error || !room) return <div className="terminal-text error">{error || t('pages.gameRoom.sessionNotFound')}</div>;
 
   return (
-    <RoomProvider
-      room={room} accumulatedEvidences={accumulatedEvidences}
-      accumulatedSuspects={accumulatedSuspects} accumulatedVictims={accumulatedVictims}
+    <RoomDataProvider
+      room={room}
+      accumulatedEvidences={accumulatedEvidences}
+      accumulatedSuspects={accumulatedSuspects}
+      accumulatedVictims={accumulatedVictims}
       refreshRoomData={refreshRoomData}
-      viewedEvidences={viewedEvidences} markEvidenceAsViewed={markEvidenceAsViewed}
-      viewedSuspects={viewedSuspects} markSuspectAsViewed={markSuspectAsViewed}
-      viewedVictims={viewedVictims} markVictimAsViewed={markVictimAsViewed}
-      setGameOverData={setGameOverData} addGlobalToast={addGlobalToast}
-      globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback}
     >
-      <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={finalStats} toasts={toasts} />
-    </RoomProvider>
+      <RoomUIProvider
+        viewedEvidences={viewedEvidences} markEvidenceAsViewed={markEvidenceAsViewed}
+        viewedSuspects={viewedSuspects} markSuspectAsViewed={markSuspectAsViewed}
+        viewedVictims={viewedVictims} markVictimAsViewed={markVictimAsViewed}
+        setGameOverData={setGameOverData} addGlobalToast={addGlobalToast}
+        globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback}
+      >
+        <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={finalStats} toasts={toasts} />
+      </RoomUIProvider>
+    </RoomDataProvider>
   );
 }
 </file>
@@ -5634,7 +6016,7 @@ export default function GameRoom() {
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { useRoomState, useRoomActions } from '@/context/RoomContext';
+import { useRoomData, useRoomUI } from '@/context/RoomContext';
 import type { ToastNotification } from '@/context/RoomContext';
 import CaseDetailsTab from './tabs/CaseDetails/CaseDetailsTab';
 import EvidenceBoardTab from './tabs/EvidenceBoard/EvidenceBoardTab';
@@ -5653,17 +6035,8 @@ interface GameRoomLayoutProps {
 
 export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }: GameRoomLayoutProps) {
   const { t } = useTranslation();
-  const {
-    room,
-    accumulatedEvidences,
-    accumulatedSuspects,
-    accumulatedVictims,
-    viewedEvidences,
-    viewedSuspects,
-    viewedVictims,
-    globalFeedback
-  } = useRoomState();
-  const { setGlobalFeedback } = useRoomActions();
+  const { room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims } = useRoomData();
+  const { viewedEvidences, viewedSuspects, viewedVictims, globalFeedback, setGlobalFeedback } = useRoomUI();
 
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [isCopied, setIsCopied] = useState(false);
@@ -6582,9 +6955,12 @@ export default function InterrogationPhase({
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Level, Choice } from '@/types';
+// Assume api.inspectLocation is added mapping to POST /rooms/{room}/inspect
+import * as api from '@/services/api';
 import './LocationPhase.css';
 
 interface LocationPhaseProps {
@@ -6597,6 +6973,7 @@ interface LocationPhaseProps {
 
 export default function LocationPhase({ level, status, isHost, isSubmitting, handleSubmitTheory }: LocationPhaseProps) {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { room, accumulatedEvidences } = useRoomState();
   const { localVotes, handleSelectChoice, addToast } = useInvestigationPhase();
 
@@ -6627,7 +7004,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 
   const [inspectingQuestionId, setInspectingQuestionId] = useState<number | null>(null);
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
-
   const popupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -6636,82 +7012,46 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     };
   }, []);
 
-  const deadEndsStorageKey = `room_${room.id}_level_${level.id}_dead_ends`;
-  const foundPointsStorageKey = `room_${room.id}_level_${level.id}_found_points`;
+  // DERIVE STATE FROM AUTHORITATIVE BACKEND INSTEAD OF SESSION STORAGE
+  const foundPoints = new Set(room.inspections?.filter((i: any) => !i.is_dead_end).map((i: any) => i.choice_id) || []);
+  const clickedDeadEnds = new Set(room.inspections?.filter((i: any) => i.is_dead_end).map((i: any) => i.choice_id) || []);
 
-  const [clickedDeadEnds, setClickedDeadEnds] = useState<Set<number>>(() => {
-    try {
-      const saved = sessionStorage.getItem(deadEndsStorageKey);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
+  // OPTIMISTIC MUTATION
+  const inspectMutation = useMutation({
+    mutationFn: async (choiceId: number) => {
+      const result = await api.inspectLocation(room.id, choiceId);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onMutate: async (choiceId) => {
+      await queryClient.cancelQueries({ queryKey: ['gameRoom', room.invite_code] });
+      const previousRoom = queryClient.getQueryData(['gameRoom', room.invite_code]);
+
+      // Optimistically patch the cache
+      queryClient.setQueryData(['gameRoom', room.invite_code], (old: any) => {
+        if (!old) return old;
+
+        // Find choice to determine dead-end status locally for the instant UX snapshot
+        let isCorrectFind = false;
+        level.questions?.forEach(q => {
+          const c = q.choices?.find(x => x.id === choiceId);
+          if (c) {
+            isCorrectFind = !!(c.outcomes?.next_question_id || c.outcomes?.unlock_evidence?.length || c.outcomes?.unlock_levels?.length || c.outcomes?.unlock_suspects?.length || c.outcomes?.unlock_victims?.length);
+          }
+        });
+
+        return {
+          ...old,
+          inspections: [...(old.inspections || []), { choice_id: choiceId, is_dead_end: !isCorrectFind }]
+        };
+      });
+
+      return { previousRoom };
+    },
+    onError: (_error, _variables, context) => {
+      queryClient.setQueryData(['gameRoom', room.invite_code], context?.previousRoom);
+    }
   });
-
-  const [foundPoints, setFoundPoints] = useState<Set<number>>(() => {
-    try {
-      const saved = sessionStorage.getItem(foundPointsStorageKey);
-      return saved ? new Set(JSON.parse(saved)) : new Set();
-    } catch { return new Set(); }
-  });
-
-  // --- P2P State Synchronization ---
-  const stateRef = useRef({ deadEnds: clickedDeadEnds, found: foundPoints });
-  useEffect(() => {
-    stateRef.current = { deadEnds: clickedDeadEnds, found: foundPoints };
-  }, [clickedDeadEnds, foundPoints]);
-
-  useEffect(() => {
-    if (!window.Echo) return;
-    const channel = window.Echo.private(`room.${room.id}`);
-
-    channel.listenForWhisper('location-interacted', (e: { type: string, choiceId: number }) => {
-      if (e.type === 'deadEnd') {
-        setClickedDeadEnds(prev => {
-          const next = new Set(prev).add(e.choiceId);
-          sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(next)));
-          return next;
-        });
-      } else if (e.type === 'foundPoint') {
-        setFoundPoints(prev => {
-          const next = new Set(prev).add(e.choiceId);
-          sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(next)));
-          return next;
-        });
-      }
-    });
-
-    channel.listenForWhisper('request-location-sync', () => {
-      const { deadEnds, found } = stateRef.current;
-      if (deadEnds.size > 0 || found.size > 0) {
-        channel.whisper('location-sync-reply', {
-          deadEnds: Array.from(deadEnds),
-          foundPoints: Array.from(found)
-        });
-      }
-    });
-
-    channel.listenForWhisper('location-sync-reply', (e: { deadEnds: number[], foundPoints: number[] }) => {
-      if (e.deadEnds?.length) {
-        setClickedDeadEnds(prev => {
-          const next = new Set([...prev, ...e.deadEnds]);
-          sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(next)));
-          return next;
-        });
-      }
-      if (e.foundPoints?.length) {
-        setFoundPoints(prev => {
-          const next = new Set([...prev, ...e.foundPoints]);
-          sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(next)));
-          return next;
-        });
-      }
-    });
-
-    const syncTimer = setTimeout(() => {
-      channel.whisper('request-location-sync', {});
-    }, 1000);
-
-    return () => clearTimeout(syncTimer);
-  }, [room.id, deadEndsStorageKey, foundPointsStorageKey]);
 
   if (!level.questions) return null;
 
@@ -6772,6 +7112,11 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     const isCorrectFind = !!hasUnlocks;
     const isFirstTimeDiscovery = !foundPoints.has(choice.id);
 
+    // Fire the optimistic TanStack mutation to the server
+    if (isFirstTimeDiscovery && !clickedDeadEnds.has(choice.id)) {
+        inspectMutation.mutate(choice.id);
+    }
+
     if (isCorrectFind) {
       setPopup({
         title: t('pages.gameRoom.campaign.levels.location.leadDiscovered'),
@@ -6788,14 +7133,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
         });
       }
 
-      setFoundPoints(prev => {
-        const newSet = new Set(prev).add(choice.id);
-        sessionStorage.setItem(foundPointsStorageKey, JSON.stringify(Array.from(newSet)));
-        return newSet;
-      });
-
-      window.Echo?.private(`room.${room.id}`).whisper('location-interacted', { type: 'foundPoint', choiceId: choice.id });
-
       if (isFirstTimeDiscovery) {
         handleSelectChoice(e, qId, choice, status);
       }
@@ -6805,15 +7142,7 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
           message: choice.outcomes?.feedback || t('pages.gameRoom.campaign.levels.location.nothingFound'),
           isSuccess: false
         });
-
-        setClickedDeadEnds(prev => {
-          const newSet = new Set(prev).add(choice.id);
-          sessionStorage.setItem(deadEndsStorageKey, JSON.stringify(Array.from(newSet)));
-          return newSet;
-        });
-
-        window.Echo?.private(`room.${room.id}`).whisper('location-interacted', { type: 'deadEnd', choiceId: choice.id });
-      }
+    }
 
     popupTimeoutRef.current = setTimeout(() => {
       setPopup(null);
@@ -7366,9 +7695,9 @@ export default function VictimModal({ victim, onClose }: VictimModalProps) {
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/EvidenceBoardTab.tsx">
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRoomState, useRoomActions } from '@/context/RoomContext';
+import { useRoomData, useRoomUI } from '@/context/RoomContext';
 import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
 import type { Evidence } from '@/types';
 import EvidenceCard from './EvidenceCard';
@@ -7376,10 +7705,36 @@ import EvidenceModal from './EvidenceModal';
 import ProceduralRequestTray from './ProceduralRequestTray';
 import './EvidenceBoardTab.css';
 
+// MEMOIZATION: This severs the render cascade entirely. The EvidenceGrid will only
+// re-render if the core domain array or the explicitly passed viewed status changes.
+const EvidenceGrid = React.memo(({
+  evidences,
+  viewedEvidences,
+  onInspect
+}: {
+  evidences: Evidence[];
+  viewedEvidences: Set<number>;
+  onInspect: (evidence: Evidence) => void;
+}) => {
+  return (
+    <div className="evidence-scatter-grid">
+      {evidences.map((evidence, index) => (
+        <EvidenceCard
+          key={evidence.id}
+          evidence={evidence}
+          index={index}
+          isNew={!viewedEvidences.has(evidence.id)}
+          onInspect={onInspect}
+        />
+      ))}
+    </div>
+  );
+});
+
 export default function EvidenceBoardTab() {
   const { t } = useTranslation();
-  const { room, accumulatedEvidences, viewedEvidences } = useRoomState();
-  const { markEvidenceAsViewed, refreshRoomData } = useRoomActions();
+  const { room, accumulatedEvidences, refreshRoomData } = useRoomData();
+  const { viewedEvidences, markEvidenceAsViewed } = useRoomUI();
 
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
 
@@ -7397,10 +7752,11 @@ export default function EvidenceBoardTab() {
     filedRequests
   } = useInvestigationRequest(room, refreshRoomData);
 
-  const handleInspect = (evidence: Evidence) => {
+  // Wrapped in useCallback to preserve strict equality for React.memo
+  const handleInspect = useCallback((evidence: Evidence) => {
     setInspectedEvidence(evidence);
     markEvidenceAsViewed(evidence.id);
-  };
+  }, [markEvidenceAsViewed]);
 
   const handleDragOverContainer = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -7437,6 +7793,7 @@ export default function EvidenceBoardTab() {
         </div>
       )}
 
+      {/* Local toasts renderer, kept isolated from global cascades */}
       <div className="toast-container">
         {toasts.map((toast) => (
           <div key={toast.id} className="system-toast-notification">
@@ -7455,17 +7812,11 @@ export default function EvidenceBoardTab() {
         {accumulatedEvidences.length === 0 ? (
           <div className="terminal-text">{t('pages.gameRoom.evidence.board.noEvidence')}</div>
         ) : (
-          <div className="evidence-scatter-grid">
-            {accumulatedEvidences.map((evidence: Evidence, index: number) => (
-              <EvidenceCard
-                key={evidence.id}
-                evidence={evidence}
-                index={index}
-                isNew={!viewedEvidences.has(evidence.id)}
-                onInspect={handleInspect}
-              />
-            ))}
-          </div>
+          <EvidenceGrid
+            evidences={accumulatedEvidences}
+            viewedEvidences={viewedEvidences}
+            onInspect={handleInspect}
+          />
         )}
       </div>
 
@@ -7537,11 +7888,12 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/EvidenceModal.tsx">
-import type { Evidence, ForensicEvidence, DocumentEvidence, MediaEvidence } from '@/types/evidence';
+import type { Evidence } from '@/types/evidence';
 import ForensicViewer from './Viewers/ForensicViewer';
 import DocumentViewer from './Viewers/DocumentViewer';
 import TestimonyViewer from './Viewers/TestimonyViewer';
 import MediaViewer from './Viewers/MediaViewer';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import './EvidenceModal.css';
 
 interface EvidenceModalProps {
@@ -7553,27 +7905,23 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
   if (!evidence) return null;
 
   const renderEvidenceContent = () => {
-    switch (evidence.evidence_type) {
-      case 'forensic':
-        return <ForensicViewer evidence={evidence as ForensicEvidence} />;
+    // Component Map: O(1) lookup and adheres to the Open/Closed Principle
+    const ViewerComponents: Record<string, React.ElementType> = {
+      forensic: ForensicViewer,
+      document: DocumentViewer,
+      testimony: TestimonyViewer,
+      image: MediaViewer,
+      audio: MediaViewer,
+    };
 
-      case 'document':
-        return <DocumentViewer evidence={evidence as DocumentEvidence} />;
+    const Viewer = ViewerComponents[evidence.evidence_type];
 
-      case 'testimony':
-        return <TestimonyViewer evidence={evidence} />;
-
-      case 'image':
-      case 'audio':
-        return <MediaViewer evidence={evidence as MediaEvidence} />;
-
-      default:
-        return (
-          <div style={{ color: 'var(--accent-crimson)', fontFamily: 'var(--font-mono)' }}>
-            Error: Unrecognized evidence classification.
-          </div>
-        );
+    if (!Viewer) {
+      // Triggers our new localized ErrorBoundary if the payload type is garbage
+      throw new Error(`Unrecognized evidence classification type: ${evidence.evidence_type}`);
     }
+
+    return <Viewer evidence={evidence} />;
   };
 
   return (
@@ -7588,9 +7936,14 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
           <button className="modal-close-btn" onClick={onClose} title="Close File">×</button>
         </header>
 
-        {/* Dynamic Inner Viewer */}
+        {/* Dynamic Inner Viewer - Wrapped in a Localized Error Boundary */}
         <div className="modal-body">
-          {renderEvidenceContent()}
+          <ErrorBoundary
+            isLocal={true}
+            fallbackMessage={`Evidence metadata payload for EX-${evidence.id.toString().padStart(3, '0')} is corrupted or malformed. Asset viewing aborted.`}
+          >
+            {renderEvidenceContent()}
+          </ErrorBoundary>
         </div>
 
       </div>
@@ -7675,7 +8028,6 @@ export default function ProceduralRequestTray({
             <option value="" disabled>{t('pages.gameRoom.evidence.board.selectRequestType')}</option>
             {Object.values(InvestigationRequestType).map(type => (
               <option key={type} value={type}>
-                {/* Dynamically translate the raw enum value */}
                 {t(`pages.gameRoom.evidence.board.requestTypes.${type}`)}
               </option>
             ))}
@@ -7708,14 +8060,16 @@ export default function ProceduralRequestTray({
               <div key={req.id} className="filed-request-row">
                 <div className="filed-request-info">
                   <span className="filed-request-type">
-                    {t(`pages.gameRoom.evidence.board.requestTypes.${req.type}`)}
+                    {t(`pages.gameRoom.evidence.board.requestTypes.${req.request_type}`)}
                   </span>
                   <span className="filed-request-meta">
-                    {t('pages.gameRoom.evidence.board.crossReferenced')} {req.evidenceIds.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
+                    {t('pages.gameRoom.evidence.board.crossReferenced')} {req.evidence_ids.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
                   </span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>{req.timestamp}</span>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
+                    {new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
                   <span className="filed-request-status">{t('pages.gameRoom.evidence.board.approvedStatus')}</span>
                 </div>
               </div>
@@ -9628,12 +9982,15 @@ import { useTranslation } from 'react-i18next';
 import type { GameCase, User } from '@/types';
 import { fetchCases } from '@/services/api';
 import CaseCard from '@/components/CaseCard/CaseCard';
+import { useQueryClient } from '@tanstack/react-query';
+import { logout } from '@/services/auth';
 import CaseBriefingModal from '@/components/CaseBriefingModal/CaseBriefingModal';
 import './MainMenu.css';
 
 export default function MainMenu() {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [selectedCase, setSelectedCase] = useState<GameCase | null>(null);
 
@@ -9662,7 +10019,8 @@ export default function MainMenu() {
   });
 
   const handleLogout = () => {
-    // Triggers the global force logout listener in App.tsx
+    logout();
+    queryClient.clear();
     window.dispatchEvent(new CustomEvent('auth:unauthorized'));
   };
 
@@ -10102,6 +10460,34 @@ export const triggerWiretap = async (roomId: number, questionId: number): Promis
     return failure({ title: 'Network Error', message: error instanceof Error ? error.message : 'Unknown error' });
   }
 };
+
+export const inspectLocation = async (roomId: number, choiceId: number): Promise<Result<any>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/inspect`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+      body: JSON.stringify({ choice_id: choiceId }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        handleUnauthorized();
+        return failure('Session expired.');
+      }
+      const data = await response.json().catch(() => null);
+      return failure(data?.message || 'Failed to inspect location.');
+    }
+
+    const data = await response.json();
+    return success(data);
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
 </file>
 
 <file path="src/services/auth.ts">
@@ -10250,12 +10636,26 @@ export interface RoomVote {
   choice_id: number;
 }
 
+export interface RoomInspection {
+  id?: number;
+  room_id: number;
+  choice_id: number;
+  is_dead_end: boolean;
+}
+
+export interface FiledRequest {
+  id: number | string;
+  request_type: string;
+  created_at: string;
+  evidence_ids: number[];
+}
+
 export interface GameRoom {
   id: number;
   invite_code: string;
   case_id: number;
   host_user_id: number;
-  current_level_id: number;
+  current_level_id?: number | null;
   status: string;
   strikes: number;
   final_stats?: FinalStats | null;
@@ -10269,6 +10669,8 @@ export interface GameRoom {
   completed_levels?: Level[];
   votes?: RoomVote[];
   played_wiretaps?: Question[];
+  inspections?: RoomInspection[];
+  filed_requests?: FiledRequest[];
 }
 
 export interface FinalStats {

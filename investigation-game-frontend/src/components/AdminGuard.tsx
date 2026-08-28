@@ -1,20 +1,32 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useAuthSession } from '@/hooks/useAuth';
 import '@/i18n';
 
-interface AdminGuardProps {
-  user: { is_admin?: boolean } | null;
-}
-
-export default function AdminGuard({ user }: AdminGuardProps) {
+export default function AdminGuard() {
   const { t } = useTranslation();
+  
+  // Directly subscribe to the authoritative session verification
+  const { data: user, isLoading, isError } = useAuthSession();
 
-  // If no user data or they lack the admin flag, bounce them to the main menu
-  if (!user || !user.is_admin) {
+  // Secure Loading State ensuring no premature rendering of the admin layout
+  if (isLoading) {
+    return (
+      <div className="admin-layout" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'var(--bg-dark)' }}>
+         <div className="terminal-text" style={{ color: 'var(--accent-cyan)' }}>
+           {t('system.loading')}
+         </div>
+      </div>
+    );
+  }
+
+  // Strictly evaluate the server-provided flag. 
+  // If the user attempts access without standard authentication, bounce them.
+  if (isError || !user || !user.is_admin) {
     return <Navigate to="/" replace />;
   }
 
-  // Otherwise, render the nested admin routes
+  // Verification passed - yield nested routes
   return (
     <div className="admin-layout">
       <header className="admin-header glass-panel" style={{ padding: '1rem 2rem', borderBottom: '1px solid rgba(255,51,102,0.3)' }}>

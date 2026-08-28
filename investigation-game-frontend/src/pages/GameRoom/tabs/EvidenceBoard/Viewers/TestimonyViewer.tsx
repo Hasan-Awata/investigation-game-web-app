@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { sanitizeHtml } from '@/utils/sanitize';
 import type { TestimonyEvidence } from '@/types/evidence'; 
 import './TestimonyViewer.css';
 
@@ -10,7 +11,6 @@ interface TestimonyViewerProps {
 const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
   const { t } = useTranslation();
   
-  // NO MORE DUCT TAPE! TypeScript knows exactly what these properties are.
   const {
     agency = t('pages.gameRoom.evidence.viewers.testimony.policeDept'),
     title = t('pages.gameRoom.evidence.viewers.testimony.officialTranscript'),
@@ -22,10 +22,9 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
     transcript = []
   } = evidence.metadata || {};
 
-  // Deterministically fetch a signature image based on the evidence ID
   const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
   const getSignature = (seed: number) => {
-    const idx = (seed % 18) + 1; // Assuming you have 18 signatures available
+    const idx = (seed % 18) + 1; 
     const fileName = idx === 1 ? 'signature.svg' : `signature-${idx}.svg`;
     return `${backendUrl}/assets/signatures/${fileName}`;
   };
@@ -73,7 +72,6 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
           </div>
           
           <div className="transcript-content">
-            {/* If transcript is an array of Q/A objects */}
             {Array.isArray(transcript) ? (
               transcript.map((line: any, idx: number) => (
                 <div key={idx} className={`transcript-line ${line.type === 'q' ? 'transcript-q' : 'transcript-a'}`}>
@@ -82,8 +80,7 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
                 </div>
               ))
             ) : (
-              /* Fallback if transcript is just pre-formatted HTML text */
-              <div dangerouslySetInnerHTML={{ __html: transcript }} />
+              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(transcript) }} />
             )}
           </div>
         </div>

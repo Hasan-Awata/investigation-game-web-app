@@ -1,8 +1,9 @@
-import type { Evidence, ForensicEvidence, DocumentEvidence, MediaEvidence } from '@/types/evidence';
+import type { Evidence } from '@/types/evidence';
 import ForensicViewer from './Viewers/ForensicViewer';
 import DocumentViewer from './Viewers/DocumentViewer';
 import TestimonyViewer from './Viewers/TestimonyViewer';
 import MediaViewer from './Viewers/MediaViewer';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import './EvidenceModal.css';
 
 interface EvidenceModalProps {
@@ -14,27 +15,23 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
   if (!evidence) return null;
 
   const renderEvidenceContent = () => {
-    switch (evidence.evidence_type) {
-      case 'forensic':
-        return <ForensicViewer evidence={evidence as ForensicEvidence} />;
+    // Component Map: O(1) lookup and adheres to the Open/Closed Principle
+    const ViewerComponents: Record<string, React.ElementType> = {
+      forensic: ForensicViewer,
+      document: DocumentViewer,
+      testimony: TestimonyViewer,
+      image: MediaViewer,
+      audio: MediaViewer,
+    };
 
-      case 'document':
-        return <DocumentViewer evidence={evidence as DocumentEvidence} />;
+    const Viewer = ViewerComponents[evidence.evidence_type];
 
-      case 'testimony':
-        return <TestimonyViewer evidence={evidence} />;
-
-      case 'image':
-      case 'audio':
-        return <MediaViewer evidence={evidence as MediaEvidence} />;
-
-      default:
-        return (
-          <div style={{ color: 'var(--accent-crimson)', fontFamily: 'var(--font-mono)' }}>
-            Error: Unrecognized evidence classification.
-          </div>
-        );
+    if (!Viewer) {
+      // Triggers our new localized ErrorBoundary if the payload type is garbage
+      throw new Error(`Unrecognized evidence classification type: ${evidence.evidence_type}`);
     }
+
+    return <Viewer evidence={evidence} />;
   };
 
   return (
@@ -49,9 +46,14 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
           <button className="modal-close-btn" onClick={onClose} title="Close File">×</button>
         </header>
 
-        {/* Dynamic Inner Viewer */}
+        {/* Dynamic Inner Viewer - Wrapped in a Localized Error Boundary */}
         <div className="modal-body">
-          {renderEvidenceContent()}
+          <ErrorBoundary 
+            isLocal={true} 
+            fallbackMessage={`Evidence metadata payload for EX-${evidence.id.toString().padStart(3, '0')} is corrupted or malformed. Asset viewing aborted.`}
+          >
+            {renderEvidenceContent()}
+          </ErrorBoundary>
         </div>
 
       </div>

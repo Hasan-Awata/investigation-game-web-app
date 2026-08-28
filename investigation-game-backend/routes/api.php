@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CaseController;
@@ -30,6 +31,10 @@ Route::post('/login', [AuthController::class, 'login']);
 // Protected Gameplay Routes
 Route::middleware('auth:sanctum')->group(function () {
     
+    Route::get('/user', function (Request $request) {
+        return $request->user();
+    });
+
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // Case Discovery
@@ -48,8 +53,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rooms/{room}/investigate', [InvestigationRequestController::class, 'store']);
     Route::post('/rooms/{room}/questions/{question}/wiretap/play', [WiretapController::class, 'play']);    
 
-    // Admin Dashboard Routes
-    Route::middleware(['auth:sanctum', IsAdmin::class])->prefix('admin')->group(function () {
+    // Admin Dashboard Routes (Protected by auth:sanctum from outer group + IsAdmin middleware)
+    Route::middleware([IsAdmin::class])->prefix('admin')->group(function () {
         // GET (Fetch)
         Route::get('/cases', [AdminCaseController::class, 'index']); 
         

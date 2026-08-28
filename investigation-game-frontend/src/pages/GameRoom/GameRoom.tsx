@@ -3,16 +3,16 @@ import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useViewedItems } from '@/hooks/useViewedItems';
-import { RoomProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
+import { RoomDataProvider, RoomUIProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
 import GameRoomLayout from './GameRoomLayout';
 import type { GameRoom, Evidence, Suspect, Victim, Level } from '@/types';
 import './GameRoom.css';
 
 // --- ENRICHED PAYLOAD TYPINGS ---
-interface LevelTransitionedPayload { 
-  message: string; 
-  status: string; 
-  stats?: any; 
+interface LevelTransitionedPayload {
+  message: string;
+  status: string;
+  stats?: any;
   room_patch?: {
     current_level_id?: number | null;
     status?: string;
@@ -20,10 +20,10 @@ interface LevelTransitionedPayload {
   };
 }
 
-interface WiretapTriggeredPayload { 
-  question_id: number; 
-  audio_url: string | null; 
-  message?: string; 
+interface WiretapTriggeredPayload {
+  question_id: number;
+  audio_url: string | null;
+  message?: string;
   played_wiretap?: any;
 }
 
@@ -42,15 +42,15 @@ interface ItemsUnlockedPayload {
 export default function GameRoom() {
   const { t } = useTranslation();
   const { inviteCode } = useParams<{ inviteCode: string }>();
-  const { 
-    room, 
-    isLoading, 
-    error, 
-    accumulatedEvidences, 
-    accumulatedSuspects, 
-    accumulatedVictims, 
+  const {
+    room,
+    isLoading,
+    error,
+    accumulatedEvidences,
+    accumulatedSuspects,
+    accumulatedVictims,
     refreshRoomData,
-    patchRoomData 
+    patchRoomData
   } = useGameRoom(inviteCode);
 
   const { viewedItems: viewedEvidences, markItemAsViewed: markEvidenceAsViewed } = useViewedItems(room?.invite_code, 'evidence');
@@ -75,7 +75,6 @@ export default function GameRoom() {
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== newToast.id)), 5000);
   }, []);
 
-  // Utility to merge arrays of entities by ID without duplication
   const patchArray = useCallback((oldArr: any[] = [], newItems: any[] = []) => {
     const map = new Map(oldArr.map(item => [item.id, item]));
     newItems.forEach(item => map.set(item.id, item));
@@ -102,8 +101,8 @@ export default function GameRoom() {
       }
 
       patchRoomData((oldRoom: GameRoom) => {
-        const updatedCompletedLevels = e.room_patch?.completed_levels 
-          ? patchArray(oldRoom.completed_levels, e.room_patch.completed_levels) 
+        const updatedCompletedLevels = e.room_patch?.completed_levels
+          ? patchArray(oldRoom.completed_levels, e.room_patch.completed_levels)
           : oldRoom.completed_levels;
 
         return {
@@ -121,13 +120,13 @@ export default function GameRoom() {
       patchRoomData((oldRoom: GameRoom) => {
         const newVotes = [...(oldRoom.votes || [])];
         const existingVoteIndex = newVotes.findIndex(v => v.user_id === e.vote.user_id && v.question_id === e.vote.question_id);
-        
+
         if (existingVoteIndex >= 0) {
           newVotes[existingVoteIndex] = e.vote;
         } else {
           newVotes.push(e.vote);
         }
-        
+
         return { ...oldRoom, votes: newVotes };
       });
     });
@@ -158,7 +157,7 @@ export default function GameRoom() {
       }
     });
 
-    // 4. Discovery Engine (ItemsUnlocked) - Replaces backend GET stampede for narrative unlocks
+    // 4. Discovery Engine (ItemsUnlocked)
     channel.listen('ItemsUnlocked', (e: ItemsUnlockedPayload) => {
       patchRoomData((oldRoom: GameRoom) => {
         return {
@@ -185,7 +184,7 @@ export default function GameRoom() {
         filed_requests: [e.filed_request, ...(oldRoom.filed_requests || [])]
       }));
     });
-    
+
     return () => {
       channel.stopListening('LevelTransitioned');
       channel.stopListening('VoteLockedIn');
@@ -198,17 +197,22 @@ export default function GameRoom() {
   if (error || !room) return <div className="terminal-text error">{error || t('pages.gameRoom.sessionNotFound')}</div>;
 
   return (
-    <RoomProvider
-      room={room} accumulatedEvidences={accumulatedEvidences}
-      accumulatedSuspects={accumulatedSuspects} accumulatedVictims={accumulatedVictims}
+    <RoomDataProvider
+      room={room}
+      accumulatedEvidences={accumulatedEvidences}
+      accumulatedSuspects={accumulatedSuspects}
+      accumulatedVictims={accumulatedVictims}
       refreshRoomData={refreshRoomData}
-      viewedEvidences={viewedEvidences} markEvidenceAsViewed={markEvidenceAsViewed}
-      viewedSuspects={viewedSuspects} markSuspectAsViewed={markSuspectAsViewed}
-      viewedVictims={viewedVictims} markVictimAsViewed={markVictimAsViewed}
-      setGameOverData={setGameOverData} addGlobalToast={addGlobalToast}
-      globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback}
     >
-      <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={finalStats} toasts={toasts} />
-    </RoomProvider>
+      <RoomUIProvider
+        viewedEvidences={viewedEvidences} markEvidenceAsViewed={markEvidenceAsViewed}
+        viewedSuspects={viewedSuspects} markSuspectAsViewed={markSuspectAsViewed}
+        viewedVictims={viewedVictims} markVictimAsViewed={markVictimAsViewed}
+        setGameOverData={setGameOverData} addGlobalToast={addGlobalToast}
+        globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback}
+      >
+        <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={finalStats} toasts={toasts} />
+      </RoomUIProvider>
+    </RoomDataProvider>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 
 import MainMenu from '@/pages/MainMenu/MainMenu';
 import Auth from '@/pages/Auth/Auth';
@@ -8,71 +8,94 @@ import GameRoom from '@/pages/GameRoom/GameRoom';
 import AdminGuard from '@/components/AdminGuard';
 import AdminDashboard from '@/pages/Admin/AdminDashboard';
 import { getToken, logout } from '@/services/auth';
-import type { User } from '@/types';
+import { useAuthSession } from '@/hooks/useAuth';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
-// 1. Initialize the client outside the component so it doesn't recreate on re-renders
+// Initialize the client outside the component so it doesn't recreate on re-renders
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { refetchOnWindowFocus: false, retry: 1 },
   },
 });
 
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [user, setUser] = useState<User | null>(null);
-  const [isChecking, setIsChecking] = useState<boolean>(true);
+function AppRouter() {
+  const queryClient = useQueryClient();
+  const token = getToken();
+
+  // Rely strictly on the server evaluation
+  const { data: user, isLoading, isError } = useAuthSession();
+  
+  // The kill-switch state to instantly sever the component tree on 401
+  const [isSessionRevoked, setIsSessionRevoked] = useState(false);
 
   useEffect(() => {
-    const token = getToken();
-    
-    if (token) {
-      setIsAuthenticated(true);
-      const storedUser = localStorage.getItem('auth_user');
-      if (storedUser) setUser(JSON.parse(storedUser));
-    }
-    setIsChecking(false);
-
     const handleForceLogout = () => {
+      // 1. Nuke the token immediately
       logout();
-      localStorage.removeItem('auth_user');
-      setIsAuthenticated(false);
-      setUser(null);
-      queryClient.clear(); 
+      localStorage.removeItem('auth_user'); 
+      
+      // 2. Instantly sever the protected UI tree to prevent a refetch stampede
+      setIsSessionRevoked(true);
+      
+      // 3. Defer the cache wipe to the next execution tick, ensuring the component tree is gone
+      setTimeout(() => {
+        queryClient.cancelQueries();
+        queryClient.clear();
+      }, 50);
     };
 
     window.addEventListener('auth:unauthorized', handleForceLogout);
     return () => window.removeEventListener('auth:unauthorized', handleForceLogout);
-  }, []);
+  }, [queryClient]);
 
-  if (isChecking) return <div className="terminal-text">Initializing Secure Connection...</div>;
+  // If the kill-switch is thrown, render the Auth module and wait for a new session
+  if (isSessionRevoked) {
+    return <Auth onSuccess={(userData) => {
+      setIsSessionRevoked(false);
+      queryClient.setQueryData(['authUser'], userData);
+    }} />;
+  }
+
+  // Secure connection state handling
+  if (token && isLoading) {
+    return <div className="terminal-text">Verifying Secure Connection...</div>;
+  }
+
+  // Determine authentication purely off the TanStack query resolution
+  const isAuthenticated = !!user && !isError;
 
   return (
-    // 2. The Provider now wraps everything, ensuring Auth has access to useMutation
-    <QueryClientProvider client={queryClient}>
+    <>
       {!isAuthenticated ? (
-        <Auth onSuccess={(userData: User) => {
-          setIsAuthenticated(true);
-          setUser(userData);
-          localStorage.setItem('auth_user', JSON.stringify(userData));
+        <Auth onSuccess={(userData) => {
+          queryClient.setQueryData(['authUser'], userData);
         }} />
       ) : (
-        <BrowserRouter>
-          <Routes>
-            {/* Standard Player Routes */}
-            <Route path="/" element={<MainMenu />} />
-            <Route path="/room/:inviteCode" element={<GameRoom />} />
-            
-            {/* Protected Admin Routes */}
-            <Route path="/admin" element={<AdminGuard user={user} />}>
-              <Route index element={<AdminDashboard />} />
-            </Route>
+        <ErrorBoundary fallbackMessage="The routing engine encountered an unhandled exception. Interface offline.">
+          <BrowserRouter>
+            <Routes>
+              {/* Standard Player Routes */}
+              <Route path="/" element={<MainMenu />} />
+              <Route path="/room/:inviteCode" element={<GameRoom />} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
+              {/* Protected Admin Routes */}
+              <Route path="/admin" element={<AdminGuard />}>
+                <Route index element={<AdminDashboard />} />
+              </Route>
+
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </ErrorBoundary>
       )}
-    </QueryClientProvider>
+    </>
   );
 }
 
-export default App;
+export default function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AppRouter />
+    </QueryClientProvider>
+  );
+}

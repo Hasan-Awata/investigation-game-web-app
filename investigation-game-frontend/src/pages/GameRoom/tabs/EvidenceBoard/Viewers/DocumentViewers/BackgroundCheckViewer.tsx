@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { sanitizeHtml } from '@/utils/sanitize';
 import type { DocumentEvidence } from '@/types/evidence';
 import './BackgroundCheckViewer.css';
 
@@ -50,7 +51,7 @@ const BackgroundCheckViewer: React.FC<BackgroundCheckViewerProps> = ({ evidence 
           </div>
           <div className="bg-check-data-row" style={{ borderBottom: 'none' }}>
             <span className="bg-check-label">{t('pages.gameRoom.evidence.viewers.backgroundCheck.lastKnownAddress')}</span>
-            <span className="bg-check-value" dangerouslySetInnerHTML={{ __html: last_known_address }} />
+            <span className="bg-check-value" dangerouslySetInnerHTML={{ __html: sanitizeHtml(last_known_address) }} />
           </div>
         </div>
       </div>
@@ -58,21 +59,21 @@ const BackgroundCheckViewer: React.FC<BackgroundCheckViewerProps> = ({ evidence 
       {employment_financial && (
         <div className="bg-check-section">
           <div className="bg-check-section-title">{t('pages.gameRoom.evidence.viewers.backgroundCheck.employmentProfile')}</div>
-          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: employment_financial }} />
+          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(employment_financial) }} />
         </div>
       )}
 
       {criminal_history && (
         <div className="bg-check-section">
           <div className="bg-check-section-title">{t('pages.gameRoom.evidence.viewers.backgroundCheck.criminalHistory')}</div>
-          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: criminal_history }} />
+          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(criminal_history) }} />
         </div>
       )}
 
       {associates && (
         <div className="bg-check-section">
           <div className="bg-check-section-title">{t('pages.gameRoom.evidence.viewers.backgroundCheck.knownAssociates')}</div>
-          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: associates }} />
+          <div className="bg-check-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(associates) }} />
         </div>
       )}
 

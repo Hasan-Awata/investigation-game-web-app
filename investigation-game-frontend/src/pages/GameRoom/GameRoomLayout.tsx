@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
-import { useRoomState, useRoomActions } from '@/context/RoomContext';
+import { useRoomData, useRoomUI } from '@/context/RoomContext';
 import type { ToastNotification } from '@/context/RoomContext';
 import CaseDetailsTab from './tabs/CaseDetails/CaseDetailsTab';
 import EvidenceBoardTab from './tabs/EvidenceBoard/EvidenceBoardTab';
@@ -20,17 +20,8 @@ interface GameRoomLayoutProps {
 
 export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }: GameRoomLayoutProps) {
   const { t } = useTranslation();
-  const {
-    room,
-    accumulatedEvidences,
-    accumulatedSuspects,
-    accumulatedVictims,
-    viewedEvidences,
-    viewedSuspects,
-    viewedVictims,
-    globalFeedback
-  } = useRoomState();
-  const { setGlobalFeedback } = useRoomActions();
+  const { room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims } = useRoomData();
+  const { viewedEvidences, viewedSuspects, viewedVictims, globalFeedback, setGlobalFeedback } = useRoomUI();
 
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [isCopied, setIsCopied] = useState(false);

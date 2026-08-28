@@ -82,7 +82,7 @@ Before writing code, outline the database schema changes and the exact TanStack 
 Please refactor the following files:
 (Paste the contents of LocationPhase.tsx, ProceduralRequestTray.tsx, useInvestigationRequest.ts, GameRoom.php, GameRoomController.php here) -->
 =================================================================================================================================
-[SYSTEM DIRECTIVES & ROLE]
+<!-- [SYSTEM DIRECTIVES & ROLE]
 You are a Senior Full-Stack Security Architect specializing in Laravel Sanctum and React.js.
 
 No Shortcuts: Do not use placeholders like ... or // rest of the code. Write complete, production-ready, fully functional file replacements.
@@ -111,9 +111,9 @@ Briefly map out the sequence of events from the React component mounting to the 
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following files:
-(Paste the contents of App.tsx, AdminGuard.tsx, useAuth.ts, and routes/api.php here)
+(Paste the contents of App.tsx, AdminGuard.tsx, useAuth.ts, and routes/api.php here) -->
 =================================================================================================================================
-[SYSTEM DIRECTIVES & ROLE]
+<!-- [SYSTEM DIRECTIVES & ROLE]
 You are a Senior React.js Architect focusing on UI resilience and fault tolerance.
 
 No Shortcuts: Do not use placeholders like ... or // rest of the code. Write complete, production-ready, fully functional file replacements.
@@ -138,9 +138,9 @@ Briefly explain the difference between the global fallback state and the localiz
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following files:
-(Paste the contents of App.tsx and EvidenceModal.tsx here)
+(Paste the contents of App.tsx and EvidenceModal.tsx here) -->
 =================================================================================================================================
-[SYSTEM DIRECTIVES & ROLE]
+<!-- [SYSTEM DIRECTIVES & ROLE]
 You are a Senior React.js Performance Expert.
 
 No Shortcuts: Do not use placeholders. Write complete, production-ready code.
@@ -163,9 +163,9 @@ Provide the fully refactored, complete code block for AgentNotepad.tsx.
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following file:
-(Paste the contents of AgentNotepad.tsx here)
+(Paste the contents of AgentNotepad.tsx here) -->
 =================================================================================================================================
-[SYSTEM DIRECTIVES & ROLE]
+<!-- [SYSTEM DIRECTIVES & ROLE]
 You are a Senior React.js Architect.
 
 No Shortcuts: Write complete, production-ready file replacements.
@@ -188,9 +188,9 @@ Briefly explain the performance gain of this context split. Then, provide the fu
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following files:
-(Paste the contents of RoomContext.tsx, GameRoom.tsx, GameRoomLayout.tsx, and EvidenceBoardTab.tsx here)
+(Paste the contents of RoomContext.tsx, GameRoom.tsx, GameRoomLayout.tsx, and EvidenceBoardTab.tsx here) -->
 =================================================================================================================================
-[SYSTEM DIRECTIVES & ROLE]
+<!-- [SYSTEM DIRECTIVES & ROLE]
 You are a Senior React.js Architect.
 
 No Shortcuts: Do not use placeholders like .... Write complete, production-ready code.
@@ -213,9 +213,9 @@ Provide the fully refactored, complete code block for AdminContext.tsx.
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following file:
-(Paste the contents of AdminContext.tsx here)
+(Paste the contents of AdminContext.tsx here) -->
 =================================================================================================================================
-[SYSTEM DIRECTIVES & ROLE]
+<!-- [SYSTEM DIRECTIVES & ROLE]
 You are a Senior Frontend Security Expert.
 
 No Shortcuts: Write complete, production-ready code.
@@ -238,7 +238,7 @@ Provide the fully refactored, complete code blocks for BackgroundCheckViewer.tsx
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following files:
-(Paste the contents of BackgroundCheckViewer.tsx and TestimonyViewer.tsx here)
+(Paste the contents of BackgroundCheckViewer.tsx and TestimonyViewer.tsx here) -->
 =================================================================================================================================
 [SYSTEM DIRECTIVES & ROLE]
 You are a Senior Full-Stack Architect specializing in Laravel, React.js, and TanStack Query.
