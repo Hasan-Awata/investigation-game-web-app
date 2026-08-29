@@ -35,44 +35,46 @@ export default function CampaignTab() {
   const sortedPhases = [...phases].sort((a: Phase, b: Phase) => a.order_index - b.order_index);
   const phaseStorageKey = `room_${room.id}_active_phase`;
 
-  // Auto-detect if there is an active phase in progress
   const hasActiveLevel = currentLevelId !== null && currentLevelId !== undefined;
+  
   const activePhaseFromRoom = hasActiveLevel 
     ? sortedPhases.find(p => p.levels?.some(l => l.id === currentLevelId))
     : null;
 
-  const [activePhaseId, setActivePhaseId] = useState<number | null>(() => {
-    if (activePhaseFromRoom) return activePhaseFromRoom.id;
+  // 1. Single Source of Truth: What phase did the user explicitly open? (Null = Map Mode)
+  const [userSelectedPhaseId, setUserSelectedPhaseId] = useState<number | null>(() => {
     try {
-      const saved = sessionStorage.getItem(phaseStorageKey);
+      const saved = localStorage.getItem(phaseStorageKey);
       if (saved) {
         const parsedId = parseInt(saved, 10);
         if (sortedPhases.some(p => p.id === parsedId)) return parsedId;
       }
     } catch { }
-    return sortedPhases.length > 0 ? sortedPhases[0].id : null;
+    return null;
   });
 
-  // Default to map ONLY if there is no active level and no session-saved phase
-  const [isMapMode, setIsMapMode] = useState<boolean>(() => {
-    if (hasActiveLevel) return false;
-    return !sessionStorage.getItem(phaseStorageKey);
-  });
+  // 2. Purely Derived State: Instantly reacts to the server data without side-effects or lifecycles
+  const isMapMode = !hasActiveLevel && userSelectedPhaseId === null;
+  
+  const activePhaseId = hasActiveLevel && activePhaseFromRoom
+    ? activePhaseFromRoom.id 
+    : userSelectedPhaseId ?? (sortedPhases.length > 0 ? sortedPhases[0].id : null);
+
+  const handleEnterPhase = (phaseId: number) => {
+    setUserSelectedPhaseId(phaseId);
+    setExpandedId(null);
+    localStorage.setItem(phaseStorageKey, phaseId.toString());
+  };
+
+  const handleReturnToMap = () => {
+    if (hasActiveLevel) return;
+    setUserSelectedPhaseId(null);
+    localStorage.removeItem(phaseStorageKey);
+  };
 
   const toggleExpand = (levelId: number, status: string) => {
     if (status === 'locked') return;
     setExpandedId(expandedId === levelId ? null : levelId);
-  };
-
-  const handleEnterPhase = (phaseId: number) => {
-    setActivePhaseId(phaseId);
-    setExpandedId(null);
-    setIsMapMode(false);
-    sessionStorage.setItem(phaseStorageKey, phaseId.toString());
-  };
-
-  const handleReturnToMap = () => {
-    setIsMapMode(true);
   };
 
   const totalPlayers = room.users?.length || 1;
@@ -110,7 +112,7 @@ export default function CampaignTab() {
   const sortedLevels = activePhaseData?.levels ? [...activePhaseData.levels].sort((a: Level, b: Level) => a.order_index - b.order_index) : [];
 
   return (
-    <div className="campaign-roadmap-container">
+    <div className="campaign-tab-wrapper">
       {isMapMode ? (
         <CampaignMap 
           onEnterPhase={handleEnterPhase} 
@@ -118,20 +120,25 @@ export default function CampaignTab() {
           unlockedLevelIds={unlockedLevelIds}
         />
       ) : (
-        <>
-          <div className="phase-subnav" style={{ justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <button className="btn-secondary" onClick={handleReturnToMap} style={{ width: 'auto', padding: '0.5rem 1rem' }}>
+        <div className="campaign-roadmap-container">
+          <div className="phase-subnav phase-header-subnav">
+            <button 
+              className="btn-secondary return-to-map-btn" 
+              onClick={handleReturnToMap}
+              disabled={hasActiveLevel}
+              title={hasActiveLevel ? t('pages.gameRoom.campaign.map.finishLevelFirst') : ''}
+            >
               &larr; {t('pages.gameRoom.campaign.map.backToMap')}
             </button>
-            <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>
+            <div className="phase-index-display">
               {t('pages.gameRoom.campaign.map.phaseIndex')} {activePhaseData?.order_index}
             </div>
           </div>
 
-          <div style={{ marginBottom: '2rem', marginTop: '1.5rem' }}>
+          <div className="phase-header-container">
             <h2 className="section-title">{activePhaseData?.title || t('pages.gameRoom.campaign.unknownPhase')}</h2>
             {activePhaseData?.description && (
-              <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+              <p className="phase-description">
                 {activePhaseData.description}
               </p>
             )}
@@ -139,7 +146,7 @@ export default function CampaignTab() {
 
           <div className="roadmap-timeline">
             {sortedLevels.length === 0 && (
-              <div className="terminal-text" style={{ padding: 0, textAlign: 'start' }}>
+              <div className="terminal-text empty-leads">
                 {t('pages.gameRoom.campaign.noLeads')}
               </div>
             )}
@@ -157,11 +164,8 @@ export default function CampaignTab() {
               else if (isAnotherPhaseRunning) status = 'locked';
 
               const isExpanded = expandedId === level.id;
-
               const displayTitle = isDiscovered ? level.title : t('pages.gameRoom.campaign.undiscoveredEncounter');
-              const displayDesc = isDiscovered
-                ? level.details
-                : t('pages.gameRoom.campaign.hiddenPathDesc');
+              const displayDesc = isDiscovered ? level.details : t('pages.gameRoom.campaign.hiddenPathDesc');
 
               return (
                 <div key={level.id} className={`roadmap-node ${status}`}>
@@ -191,13 +195,10 @@ export default function CampaignTab() {
 
                     {isExpanded && isDiscovered && (
                       <div className="node-questions-drawer" onClick={(e) => e.stopPropagation()}>
-
                         {status === 'available' && (
-                          <div style={{ textAlign: 'center', padding: '1rem' }}>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontFamily: 'var(--font-mono)' }}>
-                              {isHost
-                                ? t('pages.gameRoom.campaign.hostInitiateWarning')
-                                : t('pages.gameRoom.campaign.awaitingHost')}
+                          <div className="host-warning-container">
+                            <p className="host-warning-text">
+                              {isHost ? t('pages.gameRoom.campaign.hostInitiateWarning') : t('pages.gameRoom.campaign.awaitingHost')}
                             </p>
                             {isHost && (
                               <button className="btn-primary" onClick={() => initiatePhase(level.id)} disabled={isInitiating}>
@@ -210,33 +211,11 @@ export default function CampaignTab() {
                         {(status === 'active' || status === 'completed') && level.questions && (
                           <>
                             {level.presentation_type === 'interrogation' ? (
-                              <InterrogationPhase 
-                                getQuestionConsensus={getQuestionConsensus} 
-                                handleSubmitTheory={handleSubmitTheory} 
-                                isHost={isHost} 
-                                isSubmitting={isSubmitting} 
-                                level={level} 
-                                status={status} 
-                                totalPlayers={totalPlayers} 
-                              />
+                              <InterrogationPhase getQuestionConsensus={getQuestionConsensus} handleSubmitTheory={handleSubmitTheory} isHost={isHost} isSubmitting={isSubmitting} level={level} status={status} totalPlayers={totalPlayers} />
                             ) : level.presentation_type === 'location' ? (
-                              <LocationPhase 
-                                handleSubmitTheory={handleSubmitTheory} 
-                                isHost={isHost} 
-                                isSubmitting={isSubmitting} 
-                                level={level} 
-                                status={status} 
-                              />
+                              <LocationPhase handleSubmitTheory={handleSubmitTheory} isHost={isHost} isSubmitting={isSubmitting} level={level} status={status} />
                             ) : level.presentation_type === 'wiretap' ? (
-                              <WiretapPhase 
-                                getQuestionConsensus={getQuestionConsensus} 
-                                handleSubmitTheory={handleSubmitTheory} 
-                                isHost={isHost} 
-                                isSubmitting={isSubmitting} 
-                                level={level} 
-                                status={status} 
-                                totalPlayers={totalPlayers} 
-                              />
+                              <WiretapPhase getQuestionConsensus={getQuestionConsensus} handleSubmitTheory={handleSubmitTheory} isHost={isHost} isSubmitting={isSubmitting} level={level} status={status} totalPlayers={totalPlayers} />
                             ) : null}
                           </>
                         )}
@@ -247,7 +226,7 @@ export default function CampaignTab() {
               );
             })}
           </div>
-        </>
+        </div>
       )}
     </div>
   );

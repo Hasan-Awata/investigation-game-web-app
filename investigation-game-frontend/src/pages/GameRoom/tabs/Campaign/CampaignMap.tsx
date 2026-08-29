@@ -28,14 +28,15 @@ export default function CampaignMap({ phases, unlockedLevelIds, onEnterPhase, ma
   return (
     <div className="campaign-map-container">
       <TransformWrapper
-        initialScale={1}
-        minScale={1}
-        maxScale={1}
+        initialScale={1.03} /* 1. THE TRICK: 3% zoom creates exactly ~15px of panning room */
+        minScale={1.03}     /* 2. Locks it so they can't zoom out to see the void */
+        maxScale={1.03}
         limitToBounds={true}
         centerOnInit={true}
         wheel={{ disabled: true }}
         pinch={{ disabled: true }}
         doubleClick={{ disabled: true }}
+        panning={{ velocityDisabled: true }} /* 3. Stops the slippery momentum glide */
       >
         {({ resetTransform }) => (
           <TransformComponent wrapperClass="map-transform-wrapper" contentClass="map-transform-content">

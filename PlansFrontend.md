@@ -386,7 +386,7 @@ Outline the installation command for @dnd-kit/core. Then, provide the fully refa
 Please refactor the following files:
 (Paste the contents of EvidenceBoardTab.tsx, EvidenceCard.tsx, and ProceduralRequestTray.tsx here) -->
 =================================================================================================================================
-[SYSTEM DIRECTIVES & ROLE]
+<!-- [SYSTEM DIRECTIVES & ROLE]
 You are a Senior React.js Architect enforcing the DRY (Don't Repeat Yourself) principle.
 
 No Shortcuts: Write complete, production-ready code.
@@ -409,7 +409,7 @@ Provide the code for the new atomic components and the useDynamicList hook first
 
 [ATTACHED FILES FOR CONTEXT]
 Please refactor the following files:
-(Paste the contents of CaseForm.tsx and EvidenceMetadataFields.tsx here)
+(Paste the contents of CaseForm.tsx and EvidenceMetadataFields.tsx here) -->
 =================================================================================================================================
 [SYSTEM DIRECTIVES & ROLE]
 You are a Senior Frontend Engineer focusing on internationalization (i18n).

@@ -4,6 +4,7 @@ import { useAdminMutations } from '@/hooks/useAdminMutations';
 import { getInvestigationRequestLabel } from '@/types';
 import EntityList from '../Shared/EntityList';
 import type { Level, Phase } from '@/types';
+import { AdminRow, AdminInput, AdminSelect, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/components/AdminUI';
 
 interface InvRequest {
   id: number;
@@ -23,7 +24,6 @@ export default function LevelForm() {
   const [requiredRequestId, setRequiredRequestId] = useState<string>('');   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // setPhaseId is kept because editing a level updates the active phase in Context
   const { caseId, phaseId, setPhaseId, selectedCase, selectedPhase, availablePhases } = useAdminContext();
 
   const { 
@@ -50,6 +50,20 @@ export default function LevelForm() {
   };
 
   const availableRequests = (selectedCase as any)?.investigation_requests as InvRequest[] || [];
+
+  const presentationOptions = [
+    { value: 'interrogation', label: 'Suspect Interrogation' },
+    { value: 'location', label: 'Location' },
+    { value: 'wiretap', label: 'Communications Wiretap' }
+  ];
+
+  const requestOptions = [
+    { value: '', label: '-- No Requirement --' },
+    ...availableRequests.map((req) => ({
+      value: req.id.toString(),
+      label: `REQ-${req.id}: ${getInvestigationRequestLabel(req.request_type)}`
+    }))
+  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,7 +113,6 @@ export default function LevelForm() {
 
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-      
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div>
@@ -120,65 +133,39 @@ export default function LevelForm() {
         {feedback && <div className={`status-message ${feedback.type}`}>{feedback.message}</div>}
 
         <form onSubmit={handleSubmit} className="admin-form">
-          <div className="admin-form-row">
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Phase Order Index</label>
-              <input type="number" className="admin-input" min="1" required value={orderIndex} onChange={(e) => setOrderIndex(e.target.value)} />
-            </div>
-
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Presentation Format</label>
-              <select className="admin-input" value={presentationType} onChange={(e) => setPresentationType(e.target.value)}>
-                <option value="interrogation">Suspect Interrogation</option>
-                <option value="location">Location</option>
-                <option value="wiretap">Communications Wiretap</option> 
-              </select>
-            </div>
-
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Required Combo (Gatekeeper)</label>
-              <select className="admin-input" value={requiredRequestId} onChange={(e) => setRequiredRequestId(e.target.value)}>
-                <option value="">-- No Requirement --</option>
-                {availableRequests.map((req) => (
-                  <option key={req.id} value={req.id}>
-                    REQ-{req.id}: {getInvestigationRequestLabel(req.request_type)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <AdminRow>
+            <AdminInput label="Phase Order Index" type="number" min="1" required value={orderIndex} onChange={(e) => setOrderIndex(e.target.value)} />
+            <AdminSelect label="Presentation Format" value={presentationType} onChange={(e) => setPresentationType(e.target.value)} options={presentationOptions} />
+            <AdminSelect label="Required Combo (Gatekeeper)" value={requiredRequestId} onChange={(e) => setRequiredRequestId(e.target.value)} options={requestOptions} />
+          </AdminRow>
           
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-            <input type="checkbox" id="initial-level-toggle" checked={isInitial} onChange={(e) => setIsInitial(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }} />
-            <label htmlFor="initial-level-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
-              <strong>Initial Phase:</strong> This phase is visible on the roadmap immediately. (Uncheck if it must be unlocked via a specific player choice).
-            </label>
-          </div>
+          <AdminCheckbox 
+            checked={isInitial} 
+            onChange={(e) => setIsInitial(e.target.checked)}
+            labelTitle="Initial Phase"
+            description="This phase is visible on the roadmap immediately. (Uncheck if it must be unlocked via a specific player choice)."
+            accentColor="var(--accent-cyan)"
+            bgColor="rgba(0,0,0,0.2)"
+          />
 
-          <div className="form-group">
-            <label>Level Title</label>
-            <input type="text" className="admin-input" required value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
+          <AdminInput label="Level Title" type="text" required value={title} onChange={(e) => setTitle(e.target.value)} />
+          <AdminTextarea label="Level Details (Objectives)" required value={details} onChange={(e) => setDetails(e.target.value)} />
 
-          <div className="form-group">
-            <label>Level Details (Objectives)</label>
-            <textarea className="admin-textarea" required value={details} onChange={(e) => setDetails(e.target.value)} />
-          </div>
+          <AdminFileInput 
+            label={`Location / Background Image ${editingId ? '(Leave blank to keep existing)' : ''}`}
+            hint="Optimal: 16:9 ratio (e.g., 1920x1080) for full-screen location sweeps. High contrast recommended. Max 4MB."
+            accept="image/*"
+            ref={fileInputRef} 
+            onChange={(e) => setImage(e.target.files?.[0] || null)}
+          />
 
-          <div className="form-group">
-            <label>Location / Background Image {editingId && '(Leave blank to keep existing)'}</label>
-            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-              <strong>Optimal:</strong> 16:9 ratio (e.g., 1920x1080) for full-screen location sweeps. High contrast recommended. Max 4MB.
-            </p>
-            <input type="file" className="admin-file-input" accept="image/*" ref={fileInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
-            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
-              <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
-            </label>
-          </div>
+          <AdminCheckbox 
+            checked={storeLocally} 
+            onChange={(e) => setStoreLocally(e.target.checked)}
+            labelTitle="Store Locally on Server"
+            description="Save assets directly to public server folders instead of Cloudinary."
+            accentColor="var(--accent-amber)"
+          />
 
           <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>
             {isProcessing ? 'Processing Data...' : editingId ? 'Update Level' : 'Commit Level to Database'}

@@ -10,15 +10,31 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   border: var(--border-thin);
+  position: relative;
+  width: 100%;
   display: flex;
-  flex-direction: column;
   align-items: center;
+  justify-content: center;
+}
+
+/* Skeleton Loader Style (Added to prevent collapse) */
+.media-skeleton-loader {
+  position: absolute;
+  inset: 0;
+  background-color: var(--bg-skeleton, #e0e0e0);
+  animation: pulse 1.5s infinite ease-in-out;
+  z-index: 1;
 }
 
 .media-full-image {
   width: 100%;
-  height: auto;
+  height: 100%;
+  object-fit: contain;
   display: block;
+  transition: opacity 0.4s ease-in-out;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
 }
 
 /* --- AUDIO STYLES --- */

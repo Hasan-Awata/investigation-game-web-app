@@ -32,6 +32,47 @@ export default function AdminWiretapForm({
   removeChoice, handleSubmit, handleCancelEdit, isProcessing, statusMessage, contextHeader,
   previewUrl, audioPreviewUrl
 }: AdminWiretapFormProps) {
+
+  // Architecture Mandate: Strict client-side validation (10MB threshold for audio)
+  const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`SECURITY WARNING: File size exceeds the 10MB limit (Current size: ${sizeInMB}MB). Please compress the audio before uploading to prevent UI freezing and HTTP 413 errors.`);
+        
+        setAudio(null);
+        if (audioInputRef.current) audioInputRef.current.value = '';
+        return;
+      }
+      setAudio(file);
+    } else {
+      setAudio(null);
+    }
+  };
+
+  // Architecture Mandate: Strict client-side validation (4MB threshold for images)
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB in bytes
+
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`SECURITY WARNING: File size exceeds the 4MB limit (Current size: ${sizeInMB}MB). Please compress the image before uploading to prevent UI freezing and HTTP 413 errors.`);
+        
+        setImage(null);
+        if (imageInputRef.current) imageInputRef.current.value = '';
+        return;
+      }
+      setImage(file);
+    } else {
+      setImage(null);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -57,7 +98,7 @@ export default function AdminWiretapForm({
         <div className="admin-form-row">
           <div className="form-group" style={{ flex: 1 }}>
             <label>Wiretap Audio Feed (MP3/WAV) {editingId && '(Leave blank to keep existing)'}</label>
-            <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
+            <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={handleAudioChange} />
             {audioPreviewUrl && (
               <div style={{ marginTop: '0.5rem' }}>
                 <audio controls src={audioPreviewUrl} style={{ height: '32px', width: '100%' }} />
@@ -67,7 +108,7 @@ export default function AdminWiretapForm({
           
           <div className="form-group" style={{ flex: 1 }}>
             <label>Associated Image / Dossier (Optional)</label>
-            <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+            <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={handleImageChange} />
             {previewUrl && (
               <div style={{ marginTop: '0.5rem' }}>
                 <img src={previewUrl} alt="Preview" style={{ maxHeight: '100px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }} />

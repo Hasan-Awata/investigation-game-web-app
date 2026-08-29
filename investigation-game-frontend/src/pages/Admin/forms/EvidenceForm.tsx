@@ -62,6 +62,46 @@ export default function EvidenceForm() {
     setMetadata(prev => ({ ...prev, [key]: value }));
   };
 
+  // Architecture Mandate: Strict client-side validation (4MB threshold for images)
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB in bytes
+
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`SECURITY WARNING: File size exceeds the 4MB limit (Current size: ${sizeInMB}MB). Please compress the image before uploading to prevent UI freezing and HTTP 413 errors.`);
+        
+        setImage(null);
+        if (imageInputRef.current) imageInputRef.current.value = '';
+        return;
+      }
+      setImage(file);
+    } else {
+      setImage(null);
+    }
+  };
+
+  // Architecture Mandate: Strict client-side validation (10MB threshold for audio)
+  const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`SECURITY WARNING: File size exceeds the 10MB limit (Current size: ${sizeInMB}MB). Please compress the audio before uploading to prevent UI freezing and HTTP 413 errors.`);
+        
+        setAudio(null);
+        if (audioInputRef.current) audioInputRef.current.value = '';
+        return;
+      }
+      setAudio(file);
+    } else {
+      setAudio(null);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearFeedback();
@@ -81,9 +121,9 @@ export default function EvidenceForm() {
       formData.append('metadata', JSON.stringify(metadata));
     }
     
-  if ((evidenceType === 'image' || subType === 'background_check') && image) {
-    formData.append('image', image);
-  }
+    if ((evidenceType === 'image' || subType === 'background_check') && image) {
+      formData.append('image', image);
+    }
     if (evidenceType === 'audio' && audio) formData.append('audio', audio);
 
     if (editingId) {
@@ -173,7 +213,7 @@ export default function EvidenceForm() {
               <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                 <strong>Optimal:</strong> 1:1 or 3:4 portrait. WEBP or JPG. Max 4MB.
               </p>
-              <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+              <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={handleImageChange} />
             </div>
           )}
           
@@ -181,7 +221,7 @@ export default function EvidenceForm() {
             <div className="form-group" style={{ marginTop: '1.5rem' }}>
               <label>Audio Recording</label>
               <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}><strong>Optimal:</strong> MP3 or WAV format. Compressed for web streaming. Max 10MB.</p>
-              <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
+              <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={handleAudioChange} />
             </div>
           )}
 

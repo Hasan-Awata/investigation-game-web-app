@@ -25,8 +25,8 @@
 /* 1. THE 3D RED PUSH-PIN */
 .red-push-pin {
   position: absolute;
-  top: -14px; /* Shifted up from -8px to pin the white frame */
-  left: 50%; /* Centered, RTL safe */
+  top: -14px; 
+  left: 50%; 
   transform: translateX(-50%);
   width: 16px; 
   height: 16px;
@@ -38,12 +38,10 @@
     2px 4px 6px rgba(0,0,0,0.6);
 }
 
-/* The metal needle of the pin stabbing into the paper */
 .red-push-pin::after {
   content: '';
   position: absolute;
   top: 12px; 
-  /* Swapped to logical property */
   inset-inline-start: 7px;
   width: 2px; height: 8px;
   background: linear-gradient(to right, #999, #eee, #999);
@@ -51,26 +49,43 @@
   box-shadow: 1px 1px 2px rgba(0,0,0,0.4);
 }
 
-/* 2. THE PHOTO FRAME & GLARE */
+/* 2. THE PHOTO FRAME */
 .photo-frame {
   width: 100%;
-  height: auto; /* Removed fixed height so the image dictates the shape */
   background: #111;
   position: relative;
   overflow: hidden;
   box-shadow: inset 0 0 4px rgba(0,0,0,0.5);
+  /* Ensures fallback state has a predictable box model for absolute children */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Skeleton Loader Style */
+.image-skeleton-loader {
+  position: absolute;
+  inset: 0;
+  background-color: var(--bg-skeleton, #e0e0e0);
+  animation: pulse 1.5s infinite ease-in-out;
+  z-index: 1;
 }
 
 .actual-photo {
   width: 100%;
-  height: auto; /* Lets the full image display without cropping edges */
-  display: block; /* Removes weird spacing under the image */
+  height: 100%;
+  object-fit: contain; 
+  display: block;
+  transition: opacity 0.4s ease-in-out;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   filter: contrast(110%) saturate(85%); 
 }
 
 .photo-placeholder {
   width: 100%;
-  height: 150px; /* Kept a fixed height just for the placeholder */
+  height: 150px; 
   display: flex;
   align-items: center;
   justify-content: center;
@@ -99,9 +114,10 @@
     transparent 100%
   );
   mix-blend-mode: overlay;
+  z-index: 3;
 }
 
-/* 4. CAPTION (Reverted to standard font for Arabic support) */
+/* 4. CAPTION */
 .photo-caption {
   margin-top: 12px;
   text-align: center;
@@ -109,7 +125,7 @@
 
 .polaroid-style .evidence-title {
   color: var(--marker-ink);
-  font-family: var(--font-primary); /* Restored Arabic compatibility */
+  font-family: var(--font-primary); 
   font-size: 1.1rem;
   font-weight: 800;
   margin: 0;

@@ -32,6 +32,27 @@ export default function AdminLocationForm({
   handleSubmit, handleCancelEdit, isProcessing, statusMessage, contextHeader,
   previewUrl
 }: AdminLocationFormProps) {
+
+  // Architecture Mandate: Strict client-side validation (10MB threshold for Scene Images)
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`SECURITY WARNING: File size exceeds the 10MB limit (Current size: ${sizeInMB}MB). Please compress the image before uploading to prevent UI freezing and HTTP 413 errors.`);
+        
+        setImage(null);
+        if (imageInputRef.current) imageInputRef.current.value = '';
+        return;
+      }
+      setImage(file);
+    } else {
+      setImage(null);
+    }
+  };
+
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', marginTop: '1rem' }}>
       <div>
@@ -40,7 +61,6 @@ export default function AdminLocationForm({
             <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', margin: '0 0 0.5rem 0' }}>
               {editingId ? `// Editing Scene ID: ${editingId}` : '// Compile New Scene'}
             </h3>
-            {/* ADDED MISSING CONTEXT HEADER HERE */}
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
               {contextHeader}
             </span>
@@ -61,7 +81,8 @@ export default function AdminLocationForm({
           <div className="admin-form-row" style={{ marginTop: '1rem' }}>
             <div className="form-group" style={{ flex: 1 }}>
               <label>Environment Map (Image)</label>
-              <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+              {/* Image Input intercepted with the 10MB validation check */}
+              <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={handleImageChange} />
             </div>
           </div>
 

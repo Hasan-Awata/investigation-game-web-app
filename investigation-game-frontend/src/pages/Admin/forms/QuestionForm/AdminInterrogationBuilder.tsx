@@ -1,73 +1,44 @@
 import { useState } from 'react';
 import { useAdminContext } from '@/context/AdminContext';
 import { useAdminMutations } from '@/hooks/useAdminMutations';
-import type { Evidence } from '@/types/evidence';
-import type { Question, Choice, Level, Suspect, Victim } from '@/types';
-import { type DraftChoice } from '../Shared/ChoiceEditorCard';
+import type { Question, Choice } from '@/types';
+import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
 import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '../Shared/questionUtils';
-import AdminInterrogationForm from './AdminInterrogationForm';
 import './AdminInterrogationBuilder.css';
 
 interface DialogueNodeContainerProps {
   nodeData: Question | any; 
   levelId: string;
-  allSavedNodes: Question[];
-  availableEvidences: Evidence[];
-  availableLevels: Level[];
-  availableSuspects: Suspect[];
-  availableVictims: Victim[];
   onSaved: () => void;
   onDeleted: () => void;
 }
 
 const DialogueNodeContainer = ({ 
-  nodeData, levelId, allSavedNodes, availableEvidences, availableLevels, availableSuspects, availableVictims, onSaved, onDeleted 
+  nodeData, levelId, onSaved, onDeleted 
 }: DialogueNodeContainerProps) => {
   
-  // SECURE MAPPER: Forces all ID arrays to be Number[] to satisfy TS
-  const safeChoices: DraftChoice[] = (nodeData.choices || []).map((c: Choice | any) => ({
-    id: c.id || crypto.randomUUID(),
-    text: c.text || '',
-    outcomes: {
-      feedback: c.outcomes?.feedback || '',
-      next_question_id: c.outcomes?.next_question_id ? Number(c.outcomes.next_question_id) : null,
-      gives_strike: !!c.outcomes?.gives_strike,
-      unlock_evidence: c.outcomes?.unlock_evidence?.map(Number) || [],
-      unlock_levels: c.outcomes?.unlock_levels?.map(Number) || [],
-      unlock_suspects: c.outcomes?.unlock_suspects?.map(Number) || [],
-      unlock_victims: c.outcomes?.unlock_victims?.map(Number) || []
-    },
-    requirements: {
-      required_evidence: c.requirements?.required_evidence?.map(Number) || [],
-      required_choices: c.requirements?.required_choices?.map(Number) || []
-    }
-  }));
-
   const [text, setText] = useState(nodeData.text || '');
-  const [choices, setChoices] = useState<DraftChoice[]>(safeChoices.length > 0 ? safeChoices : [
-    { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }
-  ]);
-  const [showAdvanced, setShowAdvanced] = useState<Record<string, boolean>>({});
-  
   const isSaved = typeof nodeData.id === 'number';
 
-  const { 
-    createEntity, updateEntity, deleteEntity, isProcessing, 
-    feedback, setFeedback, clearFeedback 
-  } = useAdminMutations('question');
+  const initialChoices: DraftChoice[] = (nodeData.choices || []).map((c: any) => ({
+    id: c.id || crypto.randomUUID(),
+    text: c.text || '',
+    outcomes: { ...defaultOutcomes(), ...(c.outcomes || {}) },
+    requirements: { ...defaultRequirements(), ...(c.requirements || {}) }
+  }));
+
+  const [choicesState, setChoicesState] = useState<DraftChoice[]>(
+    initialChoices.length > 0 ? initialChoices : [{ id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }]
+  );
+
+  const { createEntity, updateEntity, deleteEntity, isProcessing, feedback, setFeedback, clearFeedback } = useAdminMutations('question');
 
   const handleSave = () => {
     clearFeedback();
-
     if (!text.trim()) return setFeedback({ type: 'error', message: 'Suspect dialogue text cannot be empty.' });
-    if (choices.some(c => !c.text.trim())) return setFeedback({ type: 'error', message: 'All response branches must have text.' });
+    if (choicesState.some(c => !c.text.trim())) return setFeedback({ type: 'error', message: 'All response branches must have text.' });
 
-    const formData = buildNodeFormData({
-      level_id: levelId,
-      text,
-      store_locally: false,
-      choices
-    });
+    const formData = buildNodeFormData({ level_id: levelId, text, store_locally: false, choices: choicesState });
     
     if (isSaved) {
       updateEntity({ id: nodeData.id, formData }, { onSuccess: onSaved });
@@ -77,44 +48,55 @@ const DialogueNodeContainer = ({
   };
 
   const handleDelete = () => {
-    if(window.confirm('Delete node?')) {
+    if (window.confirm('Delete node?')) {
       deleteEntity(nodeData.id, { onSuccess: onDeleted });
     }
   };
 
-  const updateChoice = (id: string, field: keyof DraftChoice | string, value: any, category?: 'outcomes' | 'requirements') => {
-    setChoices(choices.map(c => {
-      if (c.id !== id) return c;
-      if (category) {
-        return { 
-          ...c, 
-          [category]: { 
-            ...(c[category] || {}), 
-            [field]: value 
-          } 
-        };
-      }
-      return { ...c, [field]: value };
-    }));
-  };
-
-  const addChoice = () => {
-    setChoices([...choices, { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }]);
-  };
-
-  const removeChoice = (id: string) => {
-    setChoices(choices.filter(c => c.id !== id));
-  };
-
   return (
-    <AdminInterrogationForm 
-      isSaved={isSaved} nodeId={nodeData.id} text={text} setText={setText}
-      choices={choices} updateChoice={updateChoice} addChoice={addChoice} removeChoice={removeChoice}
-      showAdvanced={showAdvanced} setShowAdvanced={setShowAdvanced} handleSave={handleSave}
-      handleDelete={handleDelete} isProcessing={isProcessing} feedback={feedback}
-      allSavedNodes={allSavedNodes} availableEvidences={availableEvidences}
-      availableLevels={availableLevels} availableSuspects={availableSuspects} availableVictims={availableVictims}
-    />
+    <div className={`dialogue-node-card ${isSaved ? '' : 'unsaved'}`}>
+      <div className="node-header">
+        <span className="node-id-badge">{isSaved ? `NODE ID: ${nodeData.id}` : 'UNSAVED DRAFT NODE'}</span>
+        {feedback && <span style={{ fontSize: '0.75rem', color: feedback.type === 'success' ? 'var(--accent-success)' : 'var(--accent-crimson)' }}>{feedback.message}</span>}
+      </div>
+
+      <div className="node-body">
+        <div className="node-suspect-block">
+          <label>Suspect Dialogue</label>
+          <textarea className="admin-textarea" dir="auto" value={text} onChange={(e) => setText(e.target.value)} style={{ minHeight: '80px' }} placeholder="Suspect says..." />
+        </div>
+
+        <div className="node-responses-block">
+          <label>Player Responses & Branches</label>
+          {choicesState.map((choice, index) => (
+            <ChoiceEditorCard 
+              key={choice.id}
+              index={index}
+              choice={choice}
+              updateChoice={(updated) => {
+                const updatedList = choicesState.map(c => c.id === choice.id ? updated : c);
+                setChoicesState(updatedList);
+              }}
+              removeChoice={() => setChoicesState(choicesState.filter(c => c.id !== choice.id))}
+            />
+          ))}
+          <button type="button" className="btn-secondary" style={{ padding: '0.5rem', marginTop: '0.5rem' }} onClick={() => setChoicesState([...choicesState, { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }])}>
+            + Add Response Branch
+          </button>
+        </div>
+      </div>
+
+      <div className="node-footer">
+        <button className="btn-primary" onClick={handleSave} disabled={isProcessing}>
+          {isProcessing ? 'Syncing...' : isSaved ? 'Update Node' : 'Commit New Node'}
+        </button>
+        {isSaved && (
+          <button className="btn-secondary" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }} onClick={handleDelete} disabled={isProcessing}>
+            Delete
+          </button>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -143,27 +125,16 @@ export default function AdminInterrogationBuilder() {
 
   const savedNodes: Question[] = selectedLevel.questions || [];
   
-  // Accepts zero-choice nodes OR player-terminal branches
   const hasTerminalNode = savedNodes.some((n: Question) => {
-    // Scenario A: Suspect-ends scenario (Zero choices)
     if (!n.choices || n.choices.length === 0) return true;
-    
-    // Scenario B: Investigator-ends scenario (At least one choice points to null/empty)
     return n.choices.some((c: Choice | any) => !c.outcomes?.next_question_id);
   });
-
-  const availableEvidences = selectedCase.evidences || [];
-  const availableSuspects = selectedCase.suspects || [];
-  const availableVictims = selectedCase.victims || [];
-  const availableLevels = selectedCase.phases?.flatMap(p => p.levels || []) || [];
 
   const addDraftNode = () => {
     setDraftNodes([...draftNodes, { id: `draft_${Date.now()}`, text: '', choices: [] }]);
   };
 
-  const handleChildSaved = () => {
-    // Data hook caches automatically; invalidation is handled in the custom hook
-  };
+  const handleChildSaved = () => {};
 
   return (
     <div className="interrogation-canvas-container">
@@ -195,11 +166,6 @@ export default function AdminInterrogationBuilder() {
             key={node.id} 
             nodeData={node} 
             levelId={levelId} 
-            allSavedNodes={savedNodes}
-            availableEvidences={availableEvidences}
-            availableLevels={availableLevels}
-            availableSuspects={availableSuspects}
-            availableVictims={availableVictims}
             onSaved={handleChildSaved} 
             onDeleted={handleChildSaved}
           />
@@ -210,11 +176,6 @@ export default function AdminInterrogationBuilder() {
             key={node.id} 
             nodeData={node} 
             levelId={levelId} 
-            allSavedNodes={savedNodes}
-            availableEvidences={availableEvidences}
-            availableLevels={availableLevels}
-            availableSuspects={availableSuspects}
-            availableVictims={availableVictims}
             onSaved={() => { setDraftNodes(draftNodes.filter(d => d.id !== node.id)); }} 
             onDeleted={() => setDraftNodes(draftNodes.filter(d => d.id !== node.id))}
           />

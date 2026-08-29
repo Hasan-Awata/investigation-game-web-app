@@ -21,6 +21,8 @@
 │   ├── App.tsx
 │   ├── components
 │   │   ├── AdminGuard.tsx
+│   │   ├── AdminUI
+│   │   │   └── index.tsx
 │   │   ├── AgentNotepad
 │   │   │   ├── AgentNotepad.css
 │   │   │   └── AgentNotepad.tsx
@@ -38,6 +40,7 @@
 │   │   ├── useAdminData.ts
 │   │   ├── useAdminMutations.ts
 │   │   ├── useAuth.ts
+│   │   ├── useDynamicList.ts
 │   │   ├── useGameRoom.ts
 │   │   ├── useInvestigationPhase.ts
 │   │   ├── useInvestigationRequest.ts
@@ -254,6 +257,8 @@ export default defineConfig([
     "preview": "vite preview"
   },
   "dependencies": {
+    "@dnd-kit/core": "^6.3.1",
+    "@dnd-kit/utilities": "^3.2.2",
     "@tanstack/react-query": "^5.101.4",
     "dompurify": "^3.4.14",
     "i18next": "^26.4.0",
@@ -415,7 +420,13 @@ function AppRouter() {
     const handleForceLogout = () => {
       // 1. Nuke the token immediately
       logout();
-      localStorage.removeItem('auth_user');
+
+      // Safe execution context to prevent unhandled storage exceptions
+      try {
+        localStorage.removeItem('auth_user');
+      } catch (e) {
+        console.warn('Storage operation restricted by browser:', e);
+      }
 
       // 2. Instantly sever the protected UI tree to prevent a refetch stampede
       setIsSessionRevoked(true);
@@ -796,6 +807,120 @@ export default class ErrorBoundary extends Component<Props, State> {
 }
 </file>
 
+<file path="src/components/AdminUI/index.tsx">
+import React, { forwardRef } from 'react';
+
+export const AdminRow = ({ children }: { children: React.ReactNode }) => (
+  <div className="admin-form-row">
+    {React.Children.map(children, (child) => (
+      <div style={{ flex: 1 }}>{child}</div>
+    ))}
+  </div>
+);
+
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> { label?: string; }
+export const AdminInput = ({ label, ...props }: InputProps) => (
+  <div className="form-group">
+    {label && <label>{label}</label>}
+    <input className="admin-input" {...props} />
+  </div>
+);
+
+interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> { label?: string; minHeight?: string; }
+export const AdminTextarea = ({ label, minHeight = '80px', style, ...props }: TextareaProps) => (
+  <div className="form-group">
+    {label && <label>{label}</label>}
+    <textarea className="admin-textarea" style={{ minHeight, ...style }} {...props} />
+  </div>
+);
+
+interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> { label?: string; options: { label: string; value: string }[]; placeholder?: string; }
+export const AdminSelect = ({ label, options, placeholder, ...props }: SelectProps) => (
+  <div className="form-group">
+    {label && <label>{label}</label>}
+    <select className="admin-input" {...props}>
+      {placeholder && <option value="" disabled>{placeholder}</option>}
+      {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+    </select>
+  </div>
+);
+
+interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
+  labelTitle: string;
+  description?: string;
+  accentColor: string;
+  bgColor?: string;
+}
+export const AdminCheckbox = ({ labelTitle, description, accentColor, bgColor = 'rgba(255,255,255,0.02)', ...props }: CheckboxProps) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: bgColor, border: `1px solid ${accentColor}`, padding: '1rem', borderRadius: '8px', marginBottom: '1rem', transition: 'all 0.3s ease' }}>
+    <input type="checkbox" style={{ transform: 'scale(1.5)', accentColor, cursor: 'pointer' }} {...props} />
+    <label style={{ fontFamily: 'var(--font-mono)', color: accentColor, cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+      <strong>{labelTitle}</strong> {description ? `: ${description}` : ''}
+    </label>
+  </div>
+);
+
+interface FileInputProps extends React.InputHTMLAttributes<HTMLInputElement> { label: string; hint?: string; }
+export const AdminFileInput = forwardRef<HTMLInputElement, FileInputProps>(({ label, hint, ...props }, ref) => (
+  <div className="form-group">
+    <label>{label}</label>
+    {hint && <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{hint}</p>}
+    <input type="file" className="admin-file-input" ref={ref} {...props} />
+  </div>
+));
+AdminFileInput.displayName = 'AdminFileInput';
+
+export const FormattingGuide = () => (
+  <div style={{ background: 'rgba(0, 0, 0, 0.4)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', border: '1px dashed var(--accent-cyan)' }}>
+    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+      <strong>[ FORMATTING GUIDE ]</strong> Immersive HTML effects:
+    </p>
+    <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+      <li><code>&lt;span className="redacted"&gt;Text&lt;/span&gt;</code> : Black redaction bar.</li>
+      <li><code>&lt;span className="highlighted"&gt;Text&lt;/span&gt;</code> : Yellow highlighter marker.</li>
+    </ul>
+  </div>
+);
+
+export const DynamicListHeader = ({ title, onAdd, addLabel }: { title: string; onAdd: () => void; addLabel: string }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', marginTop: '1.5rem', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+    <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)', margin: 0 }}>{title}</label>
+    <button type="button" className="btn-secondary" onClick={onAdd} style={{ padding: '0.25rem 0.75rem', width: 'auto', fontSize: '0.75rem' }}>{addLabel}</button>
+  </div>
+);
+
+export const RemoveButton = ({ onClick, title = "Remove Item", style }: { onClick: () => void, title?: string, style?: React.CSSProperties }) => (
+  <button type="button" onClick={onClick} title={title} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem', ...style }}>×</button>
+);
+
+interface ResourceSelectorProps {
+  label: string;
+  items: { id: number | string; name?: string; title?: string; order_index?: number }[];
+  selectedValues: string[];
+  onChange: (values: number[]) => void;
+  getName?: (item: any) => string;
+}
+
+export const ResourceSelectorGrid = ({ label, items, selectedValues, onChange, getName }: ResourceSelectorProps) => (
+  <div className="form-group" style={{ flex: 1, margin: 0 }}>
+    <label style={{ fontSize: '0.7rem' }}>{label}</label>
+    <select
+      multiple
+      className="admin-input"
+      style={{ height: '80px', padding: '0.25rem' }}
+      value={selectedValues}
+      onChange={(e) => onChange(Array.from(e.target.selectedOptions, opt => Number(opt.value)))}
+    >
+      {items.map((item) => (
+        <option key={item.id} value={item.id.toString()}>
+          {getName ? getName(item) : (item.name || item.title)}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+</file>
+
 <file path="src/components/AgentNotepad/AgentNotepad.tsx">
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -815,7 +940,7 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
   const storageKey = useRef(`notepad_fallback`);
   const isInitialized = useRef(false);
 
-  // 1. Initialization and Cross-Tab Sync
+  // 1. Initialization, Safe Hydration, and Cross-Tab Sync
   useEffect(() => {
     try {
       const storedUser = localStorage.getItem('auth_user');
@@ -829,7 +954,16 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
          }
       }
     } catch (e) {
-      console.error("Failed to parse user data", e);
+      // Self-Healing Architecture: Intercept fatal parse error and purge corruption
+      console.error("Corrupted JSON state detected in localStorage. Executing automatic purge.", e);
+      setNotes(''); // Safely default local state
+
+      try {
+        localStorage.removeItem('auth_user');
+        localStorage.removeItem(storageKey.current);
+      } catch (purgeError) {
+        console.warn('Failed to purge corrupted storage keys. Browser may be in strict mode.', purgeError);
+      }
     }
 
     isInitialized.current = true;
@@ -852,8 +986,12 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
     if (!isInitialized.current || isSaved) return;
 
     const timerId = setTimeout(() => {
-      localStorage.setItem(storageKey.current, notes);
-      setIsSaved(true);
+      try {
+        localStorage.setItem(storageKey.current, notes);
+        setIsSaved(true);
+      } catch (e) {
+        console.warn('Failed to write notepad to storage. Quota exceeded or restricted mode.', e);
+      }
     }, 800);
 
     // Cleanup: If notes or isSaved change before 800ms, clear the timeout to prevent a race condition
@@ -1099,7 +1237,7 @@ export default function CaseCard({ gameCase, imageUrl }: CaseCardProps) {
 
 <file path="src/context/AdminContext.tsx">
 import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react';
-import { useAdminData } from '@/hooks/useAdminData';
+import { useAdminCases, useAdminPhases, useAdminLevels } from '@/hooks/useAdminData';
 import type { GameCase, Phase, Level } from '@/types';
 
 interface AdminContextState {
@@ -1124,30 +1262,36 @@ interface AdminContextState {
 const AdminContext = createContext<AdminContextState | undefined>(undefined);
 
 export function AdminProvider({ children }: { children: ReactNode }) {
-  const { data: cases = [], isLoading, error } = useAdminData();
-
+  // Local state for dropdown selections
   const [caseId, setCaseId] = useState<string>('');
   const [phaseId, setPhaseId] = useState<string>('');
   const [levelId, setLevelId] = useState<string>('');
 
+  // Granular Data Fetching
+  const { data: cases = [], isLoading: isCasesLoading, error: casesError } = useAdminCases();
+  const { data: availablePhases = [], isLoading: isPhasesLoading, error: phasesError } = useAdminPhases(caseId);
+  const { data: availableLevels = [], isLoading: isLevelsLoading, error: levelsError } = useAdminLevels(phaseId);
+
   // Cascading state handlers memoized to maintain stable reference equality
   const handleSetCaseId = useCallback((id: string) => {
     setCaseId(id);
-    setPhaseId('');
+    setPhaseId(''); // Reset child selections when parent changes
     setLevelId('');
   }, []);
 
   const handleSetPhaseId = useCallback((id: string) => {
     setPhaseId(id);
-    setLevelId('');
+    setLevelId(''); // Reset child selections when parent changes
   }, []);
 
   // Derived Data (Memoized to prevent unnecessary recalculations)
   const selectedCase = useMemo(() => cases.find(c => c.id.toString() === caseId), [cases, caseId]);
-  const availablePhases = useMemo(() => selectedCase?.phases || [], [selectedCase]);
   const selectedPhase = useMemo(() => availablePhases.find(p => p.id.toString() === phaseId), [availablePhases, phaseId]);
-  const availableLevels = useMemo(() => selectedPhase?.levels || [], [selectedPhase]);
   const selectedLevel = useMemo(() => availableLevels.find(l => l.id.toString() === levelId), [availableLevels, levelId]);
+
+  // Aggregate loading and error states
+  const isLoading = isCasesLoading || isPhasesLoading || isLevelsLoading;
+  const error = (casesError || phasesError || levelsError) as Error | null;
 
   // The Provider value is strictly memoized.
   // It will ONLY trigger consumer re-renders when a dependency genuinely updates.
@@ -1165,7 +1309,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     availableLevels,
     selectedLevel,
     isLoading,
-    error: error as Error | null
+    error
   }), [
     caseId,
     phaseId,
@@ -1316,10 +1460,11 @@ export function useRoomActions() {
 
 <file path="src/hooks/useAdminData.ts">
 import { useQuery } from '@tanstack/react-query';
-import { fetchAdminCases } from '@/services/adminApi';
-import type { GameCase } from '@/types';
+import { fetchAdminCases, fetchAdminPhases, fetchAdminLevels } from '@/services/adminApi';
+import type { GameCase, Phase, Level } from '@/types';
 
-export function useAdminData() {
+// 1. Fetch Top-Level Cases
+export function useAdminCases() {
   return useQuery<GameCase[]>({
     queryKey: ['adminCases'],
     queryFn: async () => {
@@ -1327,8 +1472,32 @@ export function useAdminData() {
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
-    // The data is cached automatically. Any mutation that invalidates
-    // 'adminCases' will trigger a background refetch seamlessly.
+  });
+}
+
+// 2. Fetch Phases (Only triggers when a Case is selected)
+export function useAdminPhases(caseId: string) {
+  return useQuery<Phase[]>({
+    queryKey: ['adminPhases', caseId],
+    queryFn: async () => {
+      const result = await fetchAdminPhases(caseId);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    enabled: !!caseId, // TanStack Query Guard: Prevents execution until caseId exists
+  });
+}
+
+// 3. Fetch Levels & Nodes (Only triggers when a Phase is selected)
+export function useAdminLevels(phaseId: string) {
+  return useQuery<Level[]>({
+    queryKey: ['adminLevels', phaseId],
+    queryFn: async () => {
+      const result = await fetchAdminLevels(phaseId);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    enabled: !!phaseId, // TanStack Query Guard: Prevents execution until phaseId exists
   });
 }
 </file>
@@ -1505,6 +1674,42 @@ export function useAuth(onSuccess: (user: User) => void) {
 }
 </file>
 
+<file path="src/hooks/useDynamicList.ts">
+import { useCallback } from 'react';
+
+export function useDynamicList<T>(
+  list: T[] = [],
+  onChange: (newList: T[]) => void
+) {
+  const add = useCallback((newItem: T) => {
+    onChange([...list, newItem]);
+  }, [list, onChange]);
+
+  const update = useCallback((index: number, field: keyof T, value: any) => {
+    const newList = [...list];
+    newList[index] = { ...newList[index], [field]: value };
+    onChange(newList);
+  }, [list, onChange]);
+
+  const updatePrimitive = useCallback((index: number, value: T) => {
+    const newList = [...list];
+    newList[index] = value;
+    onChange(newList);
+  }, [list, onChange]);
+
+  const remove = useCallback((index: number, resequenceField?: keyof T) => {
+    let newList = list.filter((_, i) => i !== index);
+    if (resequenceField) {
+      // Safely map and re-assign the sequence field (e.g., page_number)
+      newList = newList.map((item, i) => ({ ...item, [resequenceField]: i + 1 }));
+    }
+    onChange(newList);
+  }, [list, onChange]);
+
+  return { items: list, add, update, updatePrimitive, remove };
+}
+</file>
+
 <file path="src/hooks/useGameRoom.ts">
 import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -1556,28 +1761,37 @@ export function useGameRoom(inviteCode: string | undefined) {
     if (inviteCode) {
       queryClient.setQueryData(['gameRoom', inviteCode], (oldData: GameRoom | undefined) => {
         if (!oldData) return oldData;
-        return updater(oldData);
+
+        const updatedRoom = updater(oldData);
+
+        // AUTO-SYNC PRE-COMPILED ARRAYS
+        // Syncs WebSocket payload data into the server's pre-compiled arrays to prevent UI desync,
+        // eliminating the need for expensive `.filter()` operations on every React render cycle.
+
+        if (updatedRoom.unlocked_evidences) {
+            const newEvidences = updatedRoom.unlocked_evidences.filter(ue => !updatedRoom.accumulated_evidences?.some(ae => ae.id === ue.id));
+            if (newEvidences.length) updatedRoom.accumulated_evidences = [...(updatedRoom.accumulated_evidences || []), ...newEvidences];
+        }
+
+        if (updatedRoom.unlocked_suspects) {
+            const newSuspects = updatedRoom.unlocked_suspects.filter(us => !updatedRoom.accumulated_suspects?.some(as => as.id === us.id));
+            if (newSuspects.length) updatedRoom.accumulated_suspects = [...(updatedRoom.accumulated_suspects || []), ...newSuspects];
+        }
+
+        if (updatedRoom.unlocked_victims) {
+            const newVictims = updatedRoom.unlocked_victims.filter(uv => !updatedRoom.accumulated_victims?.some(av => av.id === uv.id));
+            if (newVictims.length) updatedRoom.accumulated_victims = [...(updatedRoom.accumulated_victims || []), ...newVictims];
+        }
+
+        return updatedRoom;
       });
     }
   };
 
-  const caseEvidences = room?.game_case?.evidences || [];
-  const unlockedEvidenceIds = new Set(room?.unlocked_evidences?.map((e: Evidence) => e.id) || []);
-  const accumulatedEvidences: Evidence[] = caseEvidences.filter(
-    (evidence: Evidence) => evidence.is_initial || unlockedEvidenceIds.has(evidence.id)
-  );
-
-  const caseSuspects = room?.game_case?.suspects || [];
-  const unlockedSuspectIds = new Set(room?.unlocked_suspects?.map((s: Suspect) => s.id) || []);
-  const accumulatedSuspects: Suspect[] = caseSuspects.filter(
-    (suspect: Suspect) => suspect.is_initial || unlockedSuspectIds.has(suspect.id)
-  );
-
-  const caseVictims = room?.game_case?.victims || [];
-  const unlockedVictimIds = new Set(room?.unlocked_victims?.map((v: Victim) => v.id) || []);
-  const accumulatedVictims: Victim[] = caseVictims.filter(
-    (victim: Victim) => victim.is_initial || unlockedVictimIds.has(victim.id)
-  );
+  // 🚀 SERVER IS AUTHORITATIVE: Render constraints stripped. Arrays assigned directly.
+  const accumulatedEvidences: Evidence[] = room?.accumulated_evidences || [];
+  const accumulatedSuspects: Suspect[] = room?.accumulated_suspects || [];
+  const accumulatedVictims: Victim[] = room?.accumulated_victims || [];
 
   return {
     room,
@@ -2546,14 +2760,14 @@ export default function AdminDashboard() {
 
 <file path="src/pages/Admin/forms/CaseForm.tsx">
 import { useState, useRef } from 'react';
-import { useAdminData } from '@/hooks/useAdminData';
+import { useAdminCases } from '@/hooks/useAdminData';
 import { useAdminMutations } from '@/hooks/useAdminMutations';
 import EntityList from './Shared/EntityList';
 import type { GameCase } from '@/types';
+import { AdminRow, AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/components/AdminUI';
 
 export default function CaseForm() {
   const [editingCaseId, setEditingCaseId] = useState<number | null>(null);
-
   const [title, setTitle] = useState('');
   const [story, setStory] = useState('');
   const [minPlayerXP, setMinPlayerXP] = useState('0');
@@ -2570,12 +2784,8 @@ export default function CaseForm() {
   const [storeLocally, setStoreLocally] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: cases = [], isLoading: isFetchingCases } = useAdminData();
-
-  const {
-    createEntity, updateEntity, deleteEntity, isProcessing,
-    feedback, clearFeedback
-  } = useAdminMutations('case');
+  const { data: cases = [], isLoading: isFetchingCases } = useAdminCases();
+  const { createEntity, updateEntity, deleteEntity, isProcessing, feedback, clearFeedback } = useAdminMutations('case');
 
   const clearForm = () => {
     setEditingCaseId(null);
@@ -2585,6 +2795,33 @@ export default function CaseForm() {
     setAuthorName('System'); setIsPublished(false); setStoreLocally(false);
     setImage(null); clearFeedback();
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+
+    if (file) {
+      // Architecture Mandate: Strict client-side validation (4MB threshold for images)
+      const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB in bytes
+
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+
+        // Alert the user and immediately halt payload attachment
+        alert(`SECURITY WARNING: File size exceeds the 4MB limit (Current size: ${sizeInMB}MB). Please compress the image before uploading to prevent UI freezing and HTTP 413 errors.`);
+
+        // Reset state and DOM element to prevent accidental submission
+        setImage(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+
+      setImage(file);
+    } else {
+      setImage(null);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -2601,11 +2838,8 @@ export default function CaseForm() {
     formData.append('store_locally', storeLocally ? '1' : '0');
     if (image) formData.append('image', image);
 
-    if (editingCaseId) {
-      updateEntity({ id: editingCaseId, formData }, { onSuccess: clearForm });
-    } else {
-      createEntity(formData, { onSuccess: clearForm });
-    }
+    if (editingCaseId) updateEntity({ id: editingCaseId, formData }, { onSuccess: clearForm });
+    else createEntity(formData, { onSuccess: clearForm });
   };
 
   const handleEditInit = (caseObj: GameCase) => {
@@ -2629,7 +2863,7 @@ export default function CaseForm() {
   };
 
   const handleDelete = (c: GameCase) => {
-    if (window.confirm(`Are you absolutely sure you want to delete "${c.title}"? All nested levels, evidence, and media will be wiped permanently.`)) {
+    if (window.confirm(`Delete "${c.title}"? All nested data will be wiped permanently.`)) {
       if (editingCaseId === c.id) clearForm();
       deleteEntity(c.id);
     }
@@ -2637,59 +2871,65 @@ export default function CaseForm() {
 
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h3 style={{ fontFamily: 'var(--font-mono)', color: editingCaseId ? 'var(--accent-amber)' : 'var(--accent-crimson)', margin: 0 }}>
             {editingCaseId ? `// Editing Case ID: ${editingCaseId}` : '// Initialize New Case'}
           </h3>
           {editingCaseId && (
-            <button type="button" className="btn-secondary" onClick={clearForm} style={{ padding: '0.5rem 1rem', width: 'auto', flex: 'none' }}>Cancel Edit</button>
+            <button type="button" className="btn-secondary" onClick={clearForm} style={{ padding: '0.5rem 1rem', width: 'auto' }}>Cancel Edit</button>
           )}
         </div>
 
         {feedback && <div className={`status-message ${feedback.type}`}>{feedback.message}</div>}
 
         <form onSubmit={handleSubmit} className="admin-form">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: isPublished ? 'rgba(0, 229, 255, 0.1)' : 'rgba(163, 50, 50, 0.1)', border: `1px solid ${isPublished ? 'rgba(0, 229, 255, 0.3)' : 'rgba(163, 50, 50, 0.3)'}`, padding: '1rem', borderRadius: '8px', marginBottom: '1rem', transition: 'all 0.3s ease' }}>
-            <input type="checkbox" id="published-toggle" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: isPublished ? 'var(--accent-cyan)' : 'var(--accent-crimson)' }} />
-            <label htmlFor="published-toggle" style={{ fontFamily: 'var(--font-mono)', color: isPublished ? 'var(--accent-cyan)' : 'var(--accent-crimson)', cursor: 'pointer' }}>
-              <strong>{isPublished ? 'LIVE / PUBLISHED' : 'DRAFT / CLASSIFIED'} :</strong> {isPublished ? 'This case is visible to all agents on the main board.' : 'This case is hidden from the public. Only visible in Admin Oversight.'}
-            </label>
-          </div>
+          <AdminCheckbox
+            checked={isPublished}
+            onChange={(e) => setIsPublished(e.target.checked)}
+            labelTitle={isPublished ? 'LIVE / PUBLISHED' : 'DRAFT / CLASSIFIED'}
+            description={isPublished ? 'Case is visible to all agents on main board.' : 'Hidden from public. Only visible in Admin Oversight.'}
+            accentColor={isPublished ? 'var(--accent-cyan)' : 'var(--accent-crimson)'}
+            bgColor={isPublished ? 'rgba(0, 229, 255, 0.1)' : 'rgba(163, 50, 50, 0.1)'}
+          />
 
-          <div className="form-group"><label>Case Title</label><input type="text" className="admin-input" required value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <div className="form-group"><label>Official Briefing (Story)</label><textarea className="admin-textarea" required value={story} onChange={(e) => setStory(e.target.value)} /></div>
+          <AdminInput label="Case Title" type="text" required value={title} onChange={(e) => setTitle(e.target.value)} />
+          <AdminTextarea label="Official Briefing (Story)" required value={story} onChange={(e) => setStory(e.target.value)} />
 
-          <div className="admin-form-row">
-            <div className="form-group" style={{ flex: 1 }}><label>Minimum XP Required</label><input type="number" className="admin-input" min="0" required value={minPlayerXP} onChange={(e) => setMinPlayerXP(e.target.value)} /></div>
-            <div className="form-group" style={{ flex: 1 }}><label>XP Reward on Solve</label><input type="number" className="admin-input" min="0" required value={xpOnSolve} onChange={(e) => setXpOnSolve(e.target.value)} /></div>
-            <div className="form-group" style={{ flex: 1 }}><label>Allowed Strikes (Difficulty)</label><input type="number" className="admin-input" min="1" required value={maxStrikes} onChange={(e) => setMaxStrikes(e.target.value)} /></div>
-          </div>
+          <AdminRow>
+            <AdminInput label="Minimum XP Required" type="number" min="0" required value={minPlayerXP} onChange={(e) => setMinPlayerXP(e.target.value)} />
+            <AdminInput label="XP Reward on Solve" type="number" min="0" required value={xpOnSolve} onChange={(e) => setXpOnSolve(e.target.value)} />
+            <AdminInput label="Allowed Strikes (Difficulty)" type="number" min="1" required value={maxStrikes} onChange={(e) => setMaxStrikes(e.target.value)} />
+          </AdminRow>
 
-          <div className="admin-form-row">
-            <div className="form-group" style={{ flex: 1 }}><label>Difficulty</label><input type="text" className="admin-input" required value={difficulty} onChange={(e) => setDifficulty(e.target.value)} /></div>
-            <div className="form-group" style={{ flex: 1 }}><label>Est. Playtime</label><input type="text" className="admin-input" required value={estimatedPlaytime} onChange={(e) => setEstimatedPlaytime(e.target.value)} /></div>
-            <div className="form-group" style={{ flex: 1 }}><label>Content Rating</label><input type="text" className="admin-input" required value={ageRating} onChange={(e) => setAgeRating(e.target.value)} /></div>
-          </div>
+          <AdminRow>
+            <AdminInput label="Difficulty" type="text" required value={difficulty} onChange={(e) => setDifficulty(e.target.value)} />
+            <AdminInput label="Est. Playtime" type="text" required value={estimatedPlaytime} onChange={(e) => setEstimatedPlaytime(e.target.value)} />
+            <AdminInput label="Content Rating" type="text" required value={ageRating} onChange={(e) => setAgeRating(e.target.value)} />
+          </AdminRow>
 
-          <div className="admin-form-row">
-            <div className="form-group" style={{ flex: 1 }}><label>User Rating (0.0 to 5.0)</label><input type="number" step="0.1" max="5" min="0" className="admin-input" required value={ratingStars} onChange={(e) => setRatingStars(e.target.value)} /></div>
-            <div className="form-group" style={{ flex: 1 }}><label>Author / Creator</label><input type="text" className="admin-input" required value={authorName} onChange={(e) => setAuthorName(e.target.value)} /></div>
-          </div>
+          <AdminRow>
+            <AdminInput label="User Rating (0.0 to 5.0)" type="number" step="0.1" max="5" min="0" required value={ratingStars} onChange={(e) => setRatingStars(e.target.value)} />
+            <AdminInput label="Author / Creator" type="text" required value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+          </AdminRow>
 
-          <div className="form-group"><label>Genre Tags (Comma Separated)</label><input type="text" className="admin-input" placeholder="Tactical, Puzzle, Espionage" value={tags} onChange={(e) => setTags(e.target.value)} /></div>
+          <AdminInput label="Genre Tags (Comma Separated)" type="text" placeholder="Tactical, Puzzle, Espionage" value={tags} onChange={(e) => setTags(e.target.value)} />
 
-          <div className="form-group">
-            <label>Cover Image {editingCaseId && '(Leave blank to keep existing image)'}</label>
-            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}><strong>Optimal:</strong> 1:1 (Square) or 16:9 ratio. Min 800x800px. WEBP or JPG format. Max 4MB.</p>
-            <input type="file" className="admin-file-input" accept="image/*" ref={fileInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
-          </div>
+          <AdminFileInput
+            label={`Cover Image ${editingCaseId ? '(Leave blank to keep existing)' : ''}`}
+            hint="Optimal: 1:1 (Square) or 16:9 ratio. Min 800x800px. WEBP or JPG format. Max 4MB."
+            accept="image/*"
+            ref={fileInputRef}
+            onChange={handleImageChange}
+          />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
-            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}><strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.</label>
-          </div>
+          <AdminCheckbox
+            checked={storeLocally}
+            onChange={(e) => setStoreLocally(e.target.checked)}
+            labelTitle="Store Locally on Server"
+            description="Save assets directly to public server folders instead of Cloudinary."
+            accentColor="var(--accent-amber)"
+          />
 
           <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingCaseId ? 'var(--accent-amber)' : 'var(--accent-crimson)', marginTop: '1rem', color: 'var(--bg-dark)' }}>
             {isProcessing ? 'Processing Data...' : editingCaseId ? 'Update Existing Case' : 'Commit Case to Database'}
@@ -2785,6 +3025,46 @@ export default function EvidenceForm() {
     setMetadata(prev => ({ ...prev, [key]: value }));
   };
 
+  // Architecture Mandate: Strict client-side validation (4MB threshold for images)
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB in bytes
+
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`SECURITY WARNING: File size exceeds the 4MB limit (Current size: ${sizeInMB}MB). Please compress the image before uploading to prevent UI freezing and HTTP 413 errors.`);
+
+        setImage(null);
+        if (imageInputRef.current) imageInputRef.current.value = '';
+        return;
+      }
+      setImage(file);
+    } else {
+      setImage(null);
+    }
+  };
+
+  // Architecture Mandate: Strict client-side validation (10MB threshold for audio)
+  const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`SECURITY WARNING: File size exceeds the 10MB limit (Current size: ${sizeInMB}MB). Please compress the audio before uploading to prevent UI freezing and HTTP 413 errors.`);
+
+        setAudio(null);
+        if (audioInputRef.current) audioInputRef.current.value = '';
+        return;
+      }
+      setAudio(file);
+    } else {
+      setAudio(null);
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     clearFeedback();
@@ -2804,9 +3084,9 @@ export default function EvidenceForm() {
       formData.append('metadata', JSON.stringify(metadata));
     }
 
-  if ((evidenceType === 'image' || subType === 'background_check') && image) {
-    formData.append('image', image);
-  }
+    if ((evidenceType === 'image' || subType === 'background_check') && image) {
+      formData.append('image', image);
+    }
     if (evidenceType === 'audio' && audio) formData.append('audio', audio);
 
     if (editingId) {
@@ -2896,7 +3176,7 @@ export default function EvidenceForm() {
               <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                 <strong>Optimal:</strong> 1:1 or 3:4 portrait. WEBP or JPG. Max 4MB.
               </p>
-              <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+              <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={handleImageChange} />
             </div>
           )}
 
@@ -2904,7 +3184,7 @@ export default function EvidenceForm() {
             <div className="form-group" style={{ marginTop: '1.5rem' }}>
               <label>Audio Recording</label>
               <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}><strong>Optimal:</strong> MP3 or WAV format. Compressed for web streaming. Max 10MB.</p>
-              <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
+              <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={handleAudioChange} />
             </div>
           )}
 
@@ -3549,6 +3829,7 @@ import { useAdminMutations } from '@/hooks/useAdminMutations';
 import { getInvestigationRequestLabel } from '@/types';
 import EntityList from '../Shared/EntityList';
 import type { Level, Phase } from '@/types';
+import { AdminRow, AdminInput, AdminSelect, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/components/AdminUI';
 
 interface InvRequest {
   id: number;
@@ -3568,7 +3849,6 @@ export default function LevelForm() {
   const [requiredRequestId, setRequiredRequestId] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // setPhaseId is kept because editing a level updates the active phase in Context
   const { caseId, phaseId, setPhaseId, selectedCase, selectedPhase, availablePhases } = useAdminContext();
 
   const {
@@ -3595,6 +3875,20 @@ export default function LevelForm() {
   };
 
   const availableRequests = (selectedCase as any)?.investigation_requests as InvRequest[] || [];
+
+  const presentationOptions = [
+    { value: 'interrogation', label: 'Suspect Interrogation' },
+    { value: 'location', label: 'Location' },
+    { value: 'wiretap', label: 'Communications Wiretap' }
+  ];
+
+  const requestOptions = [
+    { value: '', label: '-- No Requirement --' },
+    ...availableRequests.map((req) => ({
+      value: req.id.toString(),
+      label: `REQ-${req.id}: ${getInvestigationRequestLabel(req.request_type)}`
+    }))
+  ];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -3644,7 +3938,6 @@ export default function LevelForm() {
 
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div>
@@ -3665,65 +3958,39 @@ export default function LevelForm() {
         {feedback && <div className={`status-message ${feedback.type}`}>{feedback.message}</div>}
 
         <form onSubmit={handleSubmit} className="admin-form">
-          <div className="admin-form-row">
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Phase Order Index</label>
-              <input type="number" className="admin-input" min="1" required value={orderIndex} onChange={(e) => setOrderIndex(e.target.value)} />
-            </div>
+          <AdminRow>
+            <AdminInput label="Phase Order Index" type="number" min="1" required value={orderIndex} onChange={(e) => setOrderIndex(e.target.value)} />
+            <AdminSelect label="Presentation Format" value={presentationType} onChange={(e) => setPresentationType(e.target.value)} options={presentationOptions} />
+            <AdminSelect label="Required Combo (Gatekeeper)" value={requiredRequestId} onChange={(e) => setRequiredRequestId(e.target.value)} options={requestOptions} />
+          </AdminRow>
 
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Presentation Format</label>
-              <select className="admin-input" value={presentationType} onChange={(e) => setPresentationType(e.target.value)}>
-                <option value="interrogation">Suspect Interrogation</option>
-                <option value="location">Location</option>
-                <option value="wiretap">Communications Wiretap</option>
-              </select>
-            </div>
+          <AdminCheckbox
+            checked={isInitial}
+            onChange={(e) => setIsInitial(e.target.checked)}
+            labelTitle="Initial Phase"
+            description="This phase is visible on the roadmap immediately. (Uncheck if it must be unlocked via a specific player choice)."
+            accentColor="var(--accent-cyan)"
+            bgColor="rgba(0,0,0,0.2)"
+          />
 
-            <div className="form-group" style={{ flex: 1 }}>
-              <label>Required Combo (Gatekeeper)</label>
-              <select className="admin-input" value={requiredRequestId} onChange={(e) => setRequiredRequestId(e.target.value)}>
-                <option value="">-- No Requirement --</option>
-                {availableRequests.map((req) => (
-                  <option key={req.id} value={req.id}>
-                    REQ-{req.id}: {getInvestigationRequestLabel(req.request_type)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+          <AdminInput label="Level Title" type="text" required value={title} onChange={(e) => setTitle(e.target.value)} />
+          <AdminTextarea label="Level Details (Objectives)" required value={details} onChange={(e) => setDetails(e.target.value)} />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-            <input type="checkbox" id="initial-level-toggle" checked={isInitial} onChange={(e) => setIsInitial(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }} />
-            <label htmlFor="initial-level-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
-              <strong>Initial Phase:</strong> This phase is visible on the roadmap immediately. (Uncheck if it must be unlocked via a specific player choice).
-            </label>
-          </div>
+          <AdminFileInput
+            label={`Location / Background Image ${editingId ? '(Leave blank to keep existing)' : ''}`}
+            hint="Optimal: 16:9 ratio (e.g., 1920x1080) for full-screen location sweeps. High contrast recommended. Max 4MB."
+            accept="image/*"
+            ref={fileInputRef}
+            onChange={(e) => setImage(e.target.files?.[0] || null)}
+          />
 
-          <div className="form-group">
-            <label>Level Title</label>
-            <input type="text" className="admin-input" required value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-
-          <div className="form-group">
-            <label>Level Details (Objectives)</label>
-            <textarea className="admin-textarea" required value={details} onChange={(e) => setDetails(e.target.value)} />
-          </div>
-
-          <div className="form-group">
-            <label>Location / Background Image {editingId && '(Leave blank to keep existing)'}</label>
-            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-              <strong>Optimal:</strong> 16:9 ratio (e.g., 1920x1080) for full-screen location sweeps. High contrast recommended. Max 4MB.
-            </p>
-            <input type="file" className="admin-file-input" accept="image/*" ref={fileInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
-            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
-              <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
-            </label>
-          </div>
+          <AdminCheckbox
+            checked={storeLocally}
+            onChange={(e) => setStoreLocally(e.target.checked)}
+            labelTitle="Store Locally on Server"
+            description="Save assets directly to public server folders instead of Cloudinary."
+            accentColor="var(--accent-amber)"
+          />
 
           <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>
             {isProcessing ? 'Processing Data...' : editingId ? 'Update Level' : 'Commit Level to Database'}
@@ -3763,73 +4030,44 @@ export default function LevelForm() {
 import { useState } from 'react';
 import { useAdminContext } from '@/context/AdminContext';
 import { useAdminMutations } from '@/hooks/useAdminMutations';
-import type { Evidence } from '@/types/evidence';
-import type { Question, Choice, Level, Suspect, Victim } from '@/types';
-import { type DraftChoice } from '../Shared/ChoiceEditorCard';
+import type { Question, Choice } from '@/types';
+import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
 import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '../Shared/questionUtils';
-import AdminInterrogationForm from './AdminInterrogationForm';
 import './AdminInterrogationBuilder.css';
 
 interface DialogueNodeContainerProps {
   nodeData: Question | any;
   levelId: string;
-  allSavedNodes: Question[];
-  availableEvidences: Evidence[];
-  availableLevels: Level[];
-  availableSuspects: Suspect[];
-  availableVictims: Victim[];
   onSaved: () => void;
   onDeleted: () => void;
 }
 
 const DialogueNodeContainer = ({
-  nodeData, levelId, allSavedNodes, availableEvidences, availableLevels, availableSuspects, availableVictims, onSaved, onDeleted
+  nodeData, levelId, onSaved, onDeleted
 }: DialogueNodeContainerProps) => {
 
-  // SECURE MAPPER: Forces all ID arrays to be Number[] to satisfy TS
-  const safeChoices: DraftChoice[] = (nodeData.choices || []).map((c: Choice | any) => ({
-    id: c.id || crypto.randomUUID(),
-    text: c.text || '',
-    outcomes: {
-      feedback: c.outcomes?.feedback || '',
-      next_question_id: c.outcomes?.next_question_id ? Number(c.outcomes.next_question_id) : null,
-      gives_strike: !!c.outcomes?.gives_strike,
-      unlock_evidence: c.outcomes?.unlock_evidence?.map(Number) || [],
-      unlock_levels: c.outcomes?.unlock_levels?.map(Number) || [],
-      unlock_suspects: c.outcomes?.unlock_suspects?.map(Number) || [],
-      unlock_victims: c.outcomes?.unlock_victims?.map(Number) || []
-    },
-    requirements: {
-      required_evidence: c.requirements?.required_evidence?.map(Number) || [],
-      required_choices: c.requirements?.required_choices?.map(Number) || []
-    }
-  }));
-
   const [text, setText] = useState(nodeData.text || '');
-  const [choices, setChoices] = useState<DraftChoice[]>(safeChoices.length > 0 ? safeChoices : [
-    { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }
-  ]);
-  const [showAdvanced, setShowAdvanced] = useState<Record<string, boolean>>({});
-
   const isSaved = typeof nodeData.id === 'number';
 
-  const {
-    createEntity, updateEntity, deleteEntity, isProcessing,
-    feedback, setFeedback, clearFeedback
-  } = useAdminMutations('question');
+  const initialChoices: DraftChoice[] = (nodeData.choices || []).map((c: any) => ({
+    id: c.id || crypto.randomUUID(),
+    text: c.text || '',
+    outcomes: { ...defaultOutcomes(), ...(c.outcomes || {}) },
+    requirements: { ...defaultRequirements(), ...(c.requirements || {}) }
+  }));
+
+  const [choicesState, setChoicesState] = useState<DraftChoice[]>(
+    initialChoices.length > 0 ? initialChoices : [{ id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }]
+  );
+
+  const { createEntity, updateEntity, deleteEntity, isProcessing, feedback, setFeedback, clearFeedback } = useAdminMutations('question');
 
   const handleSave = () => {
     clearFeedback();
-
     if (!text.trim()) return setFeedback({ type: 'error', message: 'Suspect dialogue text cannot be empty.' });
-    if (choices.some(c => !c.text.trim())) return setFeedback({ type: 'error', message: 'All response branches must have text.' });
+    if (choicesState.some(c => !c.text.trim())) return setFeedback({ type: 'error', message: 'All response branches must have text.' });
 
-    const formData = buildNodeFormData({
-      level_id: levelId,
-      text,
-      store_locally: false,
-      choices
-    });
+    const formData = buildNodeFormData({ level_id: levelId, text, store_locally: false, choices: choicesState });
 
     if (isSaved) {
       updateEntity({ id: nodeData.id, formData }, { onSuccess: onSaved });
@@ -3839,44 +4077,55 @@ const DialogueNodeContainer = ({
   };
 
   const handleDelete = () => {
-    if(window.confirm('Delete node?')) {
+    if (window.confirm('Delete node?')) {
       deleteEntity(nodeData.id, { onSuccess: onDeleted });
     }
   };
 
-  const updateChoice = (id: string, field: keyof DraftChoice | string, value: any, category?: 'outcomes' | 'requirements') => {
-    setChoices(choices.map(c => {
-      if (c.id !== id) return c;
-      if (category) {
-        return {
-          ...c,
-          [category]: {
-            ...(c[category] || {}),
-            [field]: value
-          }
-        };
-      }
-      return { ...c, [field]: value };
-    }));
-  };
-
-  const addChoice = () => {
-    setChoices([...choices, { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }]);
-  };
-
-  const removeChoice = (id: string) => {
-    setChoices(choices.filter(c => c.id !== id));
-  };
-
   return (
-    <AdminInterrogationForm
-      isSaved={isSaved} nodeId={nodeData.id} text={text} setText={setText}
-      choices={choices} updateChoice={updateChoice} addChoice={addChoice} removeChoice={removeChoice}
-      showAdvanced={showAdvanced} setShowAdvanced={setShowAdvanced} handleSave={handleSave}
-      handleDelete={handleDelete} isProcessing={isProcessing} feedback={feedback}
-      allSavedNodes={allSavedNodes} availableEvidences={availableEvidences}
-      availableLevels={availableLevels} availableSuspects={availableSuspects} availableVictims={availableVictims}
-    />
+    <div className={`dialogue-node-card ${isSaved ? '' : 'unsaved'}`}>
+      <div className="node-header">
+        <span className="node-id-badge">{isSaved ? `NODE ID: ${nodeData.id}` : 'UNSAVED DRAFT NODE'}</span>
+        {feedback && <span style={{ fontSize: '0.75rem', color: feedback.type === 'success' ? 'var(--accent-success)' : 'var(--accent-crimson)' }}>{feedback.message}</span>}
+      </div>
+
+      <div className="node-body">
+        <div className="node-suspect-block">
+          <label>Suspect Dialogue</label>
+          <textarea className="admin-textarea" dir="auto" value={text} onChange={(e) => setText(e.target.value)} style={{ minHeight: '80px' }} placeholder="Suspect says..." />
+        </div>
+
+        <div className="node-responses-block">
+          <label>Player Responses & Branches</label>
+          {choicesState.map((choice, index) => (
+            <ChoiceEditorCard
+              key={choice.id}
+              index={index}
+              choice={choice}
+              updateChoice={(updated) => {
+                const updatedList = choicesState.map(c => c.id === choice.id ? updated : c);
+                setChoicesState(updatedList);
+              }}
+              removeChoice={() => setChoicesState(choicesState.filter(c => c.id !== choice.id))}
+            />
+          ))}
+          <button type="button" className="btn-secondary" style={{ padding: '0.5rem', marginTop: '0.5rem' }} onClick={() => setChoicesState([...choicesState, { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }])}>
+            + Add Response Branch
+          </button>
+        </div>
+      </div>
+
+      <div className="node-footer">
+        <button className="btn-primary" onClick={handleSave} disabled={isProcessing}>
+          {isProcessing ? 'Syncing...' : isSaved ? 'Update Node' : 'Commit New Node'}
+        </button>
+        {isSaved && (
+          <button className="btn-secondary" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }} onClick={handleDelete} disabled={isProcessing}>
+            Delete
+          </button>
+        )}
+      </div>
+    </div>
   );
 };
 
@@ -3905,27 +4154,16 @@ export default function AdminInterrogationBuilder() {
 
   const savedNodes: Question[] = selectedLevel.questions || [];
 
-  // Accepts zero-choice nodes OR player-terminal branches
   const hasTerminalNode = savedNodes.some((n: Question) => {
-    // Scenario A: Suspect-ends scenario (Zero choices)
     if (!n.choices || n.choices.length === 0) return true;
-
-    // Scenario B: Investigator-ends scenario (At least one choice points to null/empty)
     return n.choices.some((c: Choice | any) => !c.outcomes?.next_question_id);
   });
-
-  const availableEvidences = selectedCase.evidences || [];
-  const availableSuspects = selectedCase.suspects || [];
-  const availableVictims = selectedCase.victims || [];
-  const availableLevels = selectedCase.phases?.flatMap(p => p.levels || []) || [];
 
   const addDraftNode = () => {
     setDraftNodes([...draftNodes, { id: `draft_${Date.now()}`, text: '', choices: [] }]);
   };
 
-  const handleChildSaved = () => {
-    // Data hook caches automatically; invalidation is handled in the custom hook
-  };
+  const handleChildSaved = () => {};
 
   return (
     <div className="interrogation-canvas-container">
@@ -3957,11 +4195,6 @@ export default function AdminInterrogationBuilder() {
             key={node.id}
             nodeData={node}
             levelId={levelId}
-            allSavedNodes={savedNodes}
-            availableEvidences={availableEvidences}
-            availableLevels={availableLevels}
-            availableSuspects={availableSuspects}
-            availableVictims={availableVictims}
             onSaved={handleChildSaved}
             onDeleted={handleChildSaved}
           />
@@ -3972,11 +4205,6 @@ export default function AdminInterrogationBuilder() {
             key={node.id}
             nodeData={node}
             levelId={levelId}
-            allSavedNodes={savedNodes}
-            availableEvidences={availableEvidences}
-            availableLevels={availableLevels}
-            availableSuspects={availableSuspects}
-            availableVictims={availableVictims}
             onSaved={() => { setDraftNodes(draftNodes.filter(d => d.id !== node.id)); }}
             onDeleted={() => setDraftNodes(draftNodes.filter(d => d.id !== node.id))}
           />
@@ -3992,7 +4220,7 @@ export default function AdminInterrogationBuilder() {
 </file>
 
 <file path="src/pages/Admin/forms/QuestionForm/AdminInterrogationForm.tsx">
-import type { Question, Evidence, Level, Suspect, Victim } from '@/types';
+import type { Question } from '@/types';
 import { type DraftChoice } from '../Shared/ChoiceEditorCard';
 
 interface AdminInterrogationFormProps {
@@ -4011,21 +4239,16 @@ interface AdminInterrogationFormProps {
   isProcessing: boolean;
   feedback: { type: 'success' | 'error'; message: string } | null;
 
-  // The global asset directories
+  // Global assets
   allSavedNodes: Question[];
-  availableEvidences: Evidence[];
-  availableLevels: Level[];
-  availableSuspects: Suspect[];
-  availableVictims: Victim[];
 }
 
 export default function AdminInterrogationForm({
   isSaved, nodeId, text, setText, choices, updateChoice, addChoice, removeChoice,
   showAdvanced, setShowAdvanced, handleSave, handleDelete, isProcessing, feedback,
-  allSavedNodes, availableEvidences, availableLevels, availableSuspects, availableVictims
+  allSavedNodes
 }: AdminInterrogationFormProps) {
 
-  // Map out all choices from all OTHER saved nodes to use as prerequisites
   const allAvailablePriorChoices = allSavedNodes
     .filter(n => n.id !== nodeId)
     .flatMap(node =>
@@ -4076,66 +4299,15 @@ export default function AdminInterrogationForm({
                 <button type="button" onClick={() => removeChoice(choice.id as string)} style={{ background: 'none', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer' }}>✕</button>
               </div>
 
-              {/* ADVANCED MATRIX PANEL */}
               {showAdvanced[choice.id as string] && (
                 <div className="advanced-intel-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.75rem' }}>
-
-                  {/* GATEKEEPERS (REQUIREMENTS) */}
                   <div style={{ border: '1px dashed var(--accent-amber)', padding: '0.75rem', borderRadius: '6px', background: 'rgba(196, 139, 54, 0.05)' }}>
-                    <h6 style={{ color: 'var(--accent-amber)', margin: '0 0 0.75rem 0', fontFamily: 'var(--font-mono)' }}>[ GATEKEEPERS ] (Hold Ctrl/Cmd to select multiple)</h6>
-                    <div className="admin-form-row">
-                      <div className="form-group" style={{ flex: 1, margin: 0 }}>
-                        <label style={{ fontSize: '0.7rem' }}>Requires Evidence to Say</label>
-                        <select multiple className="admin-input" style={{ height: '80px', padding: '0.25rem' }} value={choice.requirements?.required_evidence?.map(String) || []} onChange={(e) => updateChoice(choice.id as string, 'required_evidence', Array.from(e.target.selectedOptions, opt => Number(opt.value)), 'requirements')}>
-                          {availableEvidences.map((ev) => <option key={ev.id} value={ev.id.toString()}>EX-{ev.id.toString().padStart(3, '0')} {ev.title}</option>)}
-                        </select>
-                      </div>
-                      <div className="form-group" style={{ flex: 1, margin: 0 }}>
-                        <label style={{ fontSize: '0.7rem' }}>Requires Prior Dialogue Choice</label>
-                        <select multiple className="admin-input" style={{ height: '80px', padding: '0.25rem' }} value={choice.requirements?.required_choices?.map(String) || []} onChange={(e) => updateChoice(choice.id as string, 'required_choices', Array.from(e.target.selectedOptions, opt => Number(opt.value)), 'requirements')}>
-                          {allAvailablePriorChoices.map((c) => <option key={c.id} value={c.id?.toString()}>{c.label}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* REWARDS (OUTCOMES) */}
-                  <div style={{ border: '1px dashed var(--accent-cyan)', padding: '0.75rem', borderRadius: '6px', background: 'rgba(0, 229, 255, 0.05)' }}>
-                    <h6 style={{ color: 'var(--accent-cyan)', margin: '0 0 0.75rem 0', fontFamily: 'var(--font-mono)' }}>[ REWARDS & PENALTIES ]</h6>
-
-                    <div className="admin-form-row" style={{ marginBottom: '0.75rem' }}>
-                      <div className="form-group" style={{ flex: 1, margin: 0 }}>
-                        <label style={{ fontSize: '0.7rem' }}>Unlocks Evidence</label>
-                        <select multiple className="admin-input" style={{ height: '80px', padding: '0.25rem' }} value={choice.outcomes?.unlock_evidence?.map(String) || []} onChange={(e) => updateChoice(choice.id as string, 'unlock_evidence', Array.from(e.target.selectedOptions, opt => Number(opt.value)), 'outcomes')}>
-                          {availableEvidences.map((ev) => <option key={ev.id} value={ev.id.toString()}>EX-{ev.id.toString().padStart(3, '0')} {ev.title}</option>)}
-                        </select>
-                      </div>
-                      <div className="form-group" style={{ flex: 1, margin: 0 }}>
-                        <label style={{ fontSize: '0.7rem' }}>Unlocks Levels</label>
-                        <select multiple className="admin-input" style={{ height: '80px', padding: '0.25rem' }} value={choice.outcomes?.unlock_levels?.map(String) || []} onChange={(e) => updateChoice(choice.id as string, 'unlock_levels', Array.from(e.target.selectedOptions, opt => Number(opt.value)), 'outcomes')}>
-                          {availableLevels.map((lv) => <option key={lv.id} value={lv.id.toString()}>Level {lv.order_index}: {lv.title}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="admin-form-row" style={{ marginBottom: '0.75rem' }}>
-                      <div className="form-group" style={{ flex: 1, margin: 0 }}>
-                        <label style={{ fontSize: '0.7rem' }}>Unlocks Suspects</label>
-                        <select multiple className="admin-input" style={{ height: '80px', padding: '0.25rem' }} value={choice.outcomes?.unlock_suspects?.map(String) || []} onChange={(e) => updateChoice(choice.id as string, 'unlock_suspects', Array.from(e.target.selectedOptions, opt => Number(opt.value)), 'outcomes')}>
-                          {availableSuspects.map((su) => <option key={su.id} value={su.id.toString()}>{su.name}</option>)}
-                        </select>
-                      </div>
-                      <div className="form-group" style={{ flex: 1, margin: 0 }}>
-                        <label style={{ fontSize: '0.7rem' }}>Unlocks Victims</label>
-                        <select multiple className="admin-input" style={{ height: '80px', padding: '0.25rem' }} value={choice.outcomes?.unlock_victims?.map(String) || []} onChange={(e) => updateChoice(choice.id as string, 'unlock_victims', Array.from(e.target.selectedOptions, opt => Number(opt.value)), 'outcomes')}>
-                          {availableVictims.map((vi) => <option key={vi.id} value={vi.id.toString()}>{vi.name}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', background: 'rgba(255, 75, 75, 0.1)', padding: '0.5rem', borderRadius: '4px', border: '1px solid rgba(255, 75, 75, 0.3)' }}>
-                      <input type="checkbox" checked={!!choice.outcomes?.gives_strike} onChange={(e) => updateChoice(choice.id as string, 'gives_strike', e.target.checked, 'outcomes')} style={{ transform: 'scale(1.2)' }} />
-                      <span style={{ fontSize: '0.75rem', color: 'var(--accent-crimson)', fontFamily: 'var(--font-mono)' }}>Triggers Team Strike (Penalty)</span>
+                    <h6 style={{ color: 'var(--accent-amber)', margin: '0 0 0.75rem 0', fontFamily: 'var(--font-mono)' }}>[ GATEKEEPERS ]</h6>
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <label style={{ fontSize: '0.7rem' }}>Requires Prior Dialogue Choice</label>
+                      <select multiple className="admin-input" style={{ height: '80px', padding: '0.25rem' }} value={choice.requirements?.required_choices?.map(String) || []} onChange={(e) => updateChoice(choice.id as string, 'required_choices', Array.from(e.target.selectedOptions, opt => Number(opt.value)), 'requirements')}>
+                        {allAvailablePriorChoices.map((c) => <option key={c.id} value={c.id?.toString()}>{c.label}</option>)}
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -4392,6 +4564,27 @@ export default function AdminLocationForm({
   handleSubmit, handleCancelEdit, isProcessing, statusMessage, contextHeader,
   previewUrl
 }: AdminLocationFormProps) {
+
+  // Architecture Mandate: Strict client-side validation (10MB threshold for Scene Images)
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`SECURITY WARNING: File size exceeds the 10MB limit (Current size: ${sizeInMB}MB). Please compress the image before uploading to prevent UI freezing and HTTP 413 errors.`);
+
+        setImage(null);
+        if (imageInputRef.current) imageInputRef.current.value = '';
+        return;
+      }
+      setImage(file);
+    } else {
+      setImage(null);
+    }
+  };
+
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', marginTop: '1rem' }}>
       <div>
@@ -4400,7 +4593,6 @@ export default function AdminLocationForm({
             <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', margin: '0 0 0.5rem 0' }}>
               {editingId ? `// Editing Scene ID: ${editingId}` : '// Compile New Scene'}
             </h3>
-            {/* ADDED MISSING CONTEXT HEADER HERE */}
             <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
               {contextHeader}
             </span>
@@ -4421,7 +4613,8 @@ export default function AdminLocationForm({
           <div className="admin-form-row" style={{ marginTop: '1rem' }}>
             <div className="form-group" style={{ flex: 1 }}>
               <label>Environment Map (Image)</label>
-              <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+              {/* Image Input intercepted with the 10MB validation check */}
+              <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={handleImageChange} />
             </div>
           </div>
 
@@ -4683,6 +4876,47 @@ export default function AdminWiretapForm({
   removeChoice, handleSubmit, handleCancelEdit, isProcessing, statusMessage, contextHeader,
   previewUrl, audioPreviewUrl
 }: AdminWiretapFormProps) {
+
+  // Architecture Mandate: Strict client-side validation (10MB threshold for audio)
+  const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
+
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`SECURITY WARNING: File size exceeds the 10MB limit (Current size: ${sizeInMB}MB). Please compress the audio before uploading to prevent UI freezing and HTTP 413 errors.`);
+
+        setAudio(null);
+        if (audioInputRef.current) audioInputRef.current.value = '';
+        return;
+      }
+      setAudio(file);
+    } else {
+      setAudio(null);
+    }
+  };
+
+  // Architecture Mandate: Strict client-side validation (4MB threshold for images)
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB in bytes
+
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        alert(`SECURITY WARNING: File size exceeds the 4MB limit (Current size: ${sizeInMB}MB). Please compress the image before uploading to prevent UI freezing and HTTP 413 errors.`);
+
+        setImage(null);
+        if (imageInputRef.current) imageInputRef.current.value = '';
+        return;
+      }
+      setImage(file);
+    } else {
+      setImage(null);
+    }
+  };
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -4708,7 +4942,7 @@ export default function AdminWiretapForm({
         <div className="admin-form-row">
           <div className="form-group" style={{ flex: 1 }}>
             <label>Wiretap Audio Feed (MP3/WAV) {editingId && '(Leave blank to keep existing)'}</label>
-            <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={(e) => setAudio(e.target.files?.[0] || null)} />
+            <input type="file" className="admin-file-input" accept="audio/*" ref={audioInputRef} onChange={handleAudioChange} />
             {audioPreviewUrl && (
               <div style={{ marginTop: '0.5rem' }}>
                 <audio controls src={audioPreviewUrl} style={{ height: '32px', width: '100%' }} />
@@ -4718,7 +4952,7 @@ export default function AdminWiretapForm({
 
           <div className="form-group" style={{ flex: 1 }}>
             <label>Associated Image / Dossier (Optional)</label>
-            <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+            <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={handleImageChange} />
             {previewUrl && (
               <div style={{ marginTop: '0.5rem' }}>
                 <img src={previewUrl} alt="Preview" style={{ maxHeight: '100px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)' }} />
@@ -5105,6 +5339,12 @@ export default function EntityList<T>({
 </file>
 
 <file path="src/pages/Admin/forms/Shared/EvidenceMetadataFields.tsx">
+import { useDynamicList } from '@/hooks/useDynamicList';
+import {
+  AdminRow, AdminInput, AdminTextarea, AdminSelect,
+  AdminCheckbox, FormattingGuide, DynamicListHeader, RemoveButton
+} from '@/components/AdminUI';
+
 interface EvidenceMetadataFieldsProps {
   evidenceType: string;
   subType: string;
@@ -5113,716 +5353,343 @@ interface EvidenceMetadataFieldsProps {
   updateMeta: (key: string, value: any) => void;
 }
 
-export default function EvidenceMetadataFields({
-  evidenceType,
-  subType,
-  setSubType,
-  metadata,
-  updateMeta
-}: EvidenceMetadataFieldsProps) {
+// --- MODULAR SUB-TYPE COMPONENTS ---
 
-  // Renders the specific sub-type dropdown based on the main category
+const AutopsyFields = ({ metadata, updateMeta }: { metadata: any, updateMeta: any }) => {
+  const { items, add, updatePrimitive, remove } = useDynamicList<string>(
+    metadata.evidence_collected || [],
+    (newList) => updateMeta('evidence_collected', newList)
+  );
+
+  return (
+    <>
+      <AdminRow>
+        <AdminInput label="Victim Name" value={metadata.victim_name || ''} onChange={e => updateMeta('victim_name', e.target.value)} placeholder="e.g., John Doe" />
+        <AdminInput label="Gender" value={metadata.gender || ''} onChange={e => updateMeta('gender', e.target.value)} placeholder="e.g., Male / Female" />
+        <AdminInput label="Estimated Age" value={metadata.victim_age || ''} onChange={e => updateMeta('victim_age', e.target.value)} placeholder="e.g., 30-35" />
+      </AdminRow>
+      <AdminRow>
+        <AdminInput label="Chief Medical Examiner" required value={metadata.examiner || ''} onChange={e => updateMeta('examiner', e.target.value)} />
+        <AdminInput label="Est. Time of Death" required value={metadata.time_of_death || ''} onChange={e => updateMeta('time_of_death', e.target.value)} />
+      </AdminRow>
+      <AdminInput label="Primary Cause of Death" required value={metadata.cause_of_death || ''} onChange={e => updateMeta('cause_of_death', e.target.value)} />
+      <AdminTextarea label="External Examination & Anomalies" value={metadata.anomalies || ''} onChange={e => updateMeta('anomalies', e.target.value)} />
+      <AdminTextarea label="Internal Examination & Organs" value={metadata.internal_exam || ''} onChange={e => updateMeta('internal_exam', e.target.value)} placeholder="Findings from internal cavities and organs..." />
+      <AdminTextarea label="Toxicology Report / Lab Analysis" minHeight="60px" value={metadata.toxicology_report || ''} onChange={e => updateMeta('toxicology_report', e.target.value)} placeholder="Blood alcohol, poisons, or chemical substances detected..." />
+
+      <DynamicListHeader title="COLLECTED EVIDENCE / SAMPLES" onAdd={() => add('')} addLabel="+ Add Sample" />
+      {items.map((item, idx) => (
+        <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+          <AdminInput value={item} onChange={e => updatePrimitive(idx, e.target.value)} placeholder="e.g. 9mm bullet fragment extracted from chest" required />
+          <RemoveButton onClick={() => remove(idx)} />
+        </div>
+      ))}
+      {items.length === 0 && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>No evidence items logged. Add a row above.</div>}
+    </>
+  );
+};
+
+const BallisticsFields = ({ metadata, updateMeta }: { metadata: any, updateMeta: any }) => {
+  const { items, add, update, remove } = useDynamicList<{reference: string, description: string}>(
+    metadata.exhibits || [],
+    (newList) => updateMeta('exhibits', newList)
+  );
+
+  return (
+    <>
+      <FormattingGuide />
+      <AdminRow>
+        <AdminInput label="Lab Case Number" required value={metadata.case_number || ''} onChange={e => updateMeta('case_number', e.target.value)} placeholder="e.g., 2026-BL-8842" />
+        <AdminInput label="Examiner Name" required value={metadata.examiner_name || ''} onChange={e => updateMeta('examiner_name', e.target.value)} />
+      </AdminRow>
+
+      <DynamicListHeader title="EVIDENCE INTAKE LOG (EXHIBITS)" onAdd={() => add({ reference: '', description: '' })} addLabel="+ Add Exhibit" />
+      {items.map((ex, idx) => (
+        <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+          <div style={{ width: '160px' }}><AdminInput value={ex.reference} onChange={e => update(idx, 'reference', e.target.value)} placeholder="Ref (e.g. EXHIBIT A)" required /></div>
+          <div style={{ flex: 1 }}><AdminInput value={ex.description} onChange={e => update(idx, 'description', e.target.value)} placeholder="Description (e.g. Recovered 9mm Slug)" required /></div>
+          <RemoveButton onClick={() => remove(idx)} />
+        </div>
+      ))}
+      {items.length === 0 && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>No exhibits logged. Add a row above.</div>}
+
+      <h5 style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>TECHNICAL FINDINGS</h5>
+      <AdminTextarea label="Firearm Specification Data" minHeight="60px" value={metadata.firearm_specs || ''} onChange={e => updateMeta('firearm_specs', e.target.value)} />
+      <AdminTextarea label="Microscopic & Toolmark Analysis" value={metadata.microscopic_analysis || ''} onChange={e => updateMeta('microscopic_analysis', e.target.value)} />
+      <AdminTextarea label="Trajectory & Range Findings (If Applicable)" minHeight="60px" value={metadata.trajectory_range || ''} onChange={e => updateMeta('trajectory_range', e.target.value)} />
+      <AdminTextarea label="Official Conclusion / Match Determination" required style={{ borderLeft: '3px solid var(--accent-crimson)' }} minHeight="60px" value={metadata.conclusion || ''} onChange={e => updateMeta('conclusion', e.target.value)} placeholder="e.g., MATCH CONFIRMED: Striation patterns on Exhibit A match..." />
+
+      <div className="form-group" style={{ marginTop: '1.5rem', borderLeft: '3px solid var(--accent-crimson)', paddingLeft: '1rem' }}>
+        <label style={{ color: 'var(--accent-crimson)' }}>Investigator Handwritten Scrawls</label>
+        <textarea className="admin-textarea" value={metadata.investigator_notes || ''} onChange={e => updateMeta('investigator_notes', e.target.value)} placeholder="Will render in a red cursive marker font..." style={{ minHeight: '80px' }} />
+      </div>
+    </>
+  );
+};
+
+const DNAFields = ({ metadata, updateMeta }: { metadata: any, updateMeta: any }) => (
+  <>
+    <AdminRow>
+      <AdminInput label="Sample Type (e.g., Blood, Hair)" required value={metadata.sample_type || ''} onChange={e => updateMeta('sample_type', e.target.value)} />
+      <AdminInput label="Match Probability" required value={metadata.match_probability || ''} onChange={e => updateMeta('match_probability', e.target.value)} />
+    </AdminRow>
+    <AdminRow>
+      <AdminInput label="Lab Technician" value={metadata.lab_technician || ''} onChange={e => updateMeta('lab_technician', e.target.value)} placeholder="e.g., Dr. Jane Doe" />
+      <AdminInput label="Extraction Method" value={metadata.extraction_method || ''} onChange={e => updateMeta('extraction_method', e.target.value)} placeholder="e.g., FTA Card / Phenol-Chloroform" />
+    </AdminRow>
+    <AdminInput label="Identified Subject (Leave blank if inconclusive)" value={metadata.identified_person || ''} onChange={e => updateMeta('identified_person', e.target.value)} />
+    <AdminTextarea label="STR Loci Profile Summary" value={metadata.loci_profile_summary || ''} onChange={e => updateMeta('loci_profile_summary', e.target.value)} placeholder="Details on allele frequencies and genetic markers..." />
+    <AdminTextarea label="Laboratory Notes & Observations" minHeight="60px" value={metadata.lab_notes || ''} onChange={e => updateMeta('lab_notes', e.target.value)} placeholder="Additional analytical insights or chain of custody notes..." />
+  </>
+);
+
+const DigitalForensicsFields = ({ metadata, updateMeta }: { metadata: any, updateMeta: any }) => (
+  <>
+    <AdminRow>
+      <AdminInput label="Device Classification" required value={metadata.device_type || ''} onChange={e => updateMeta('device_type', e.target.value)} />
+      <AdminInput label="Extraction Method" required value={metadata.extraction_method || ''} onChange={e => updateMeta('extraction_method', e.target.value)} />
+    </AdminRow>
+    <AdminTextarea label="Decrypted Data / Payload" required value={metadata.recovered_data || ''} onChange={e => updateMeta('recovered_data', e.target.value)} />
+  </>
+);
+
+const TraceAnalysisFields = ({ metadata, updateMeta }: { metadata: any, updateMeta: any }) => (
+  <AdminRow>
+    <AdminInput label="Material Composition" required value={metadata.material_type || ''} onChange={e => updateMeta('material_type', e.target.value)} />
+    <AdminInput label="Identified Origin Source" required value={metadata.origin_source || ''} onChange={e => updateMeta('origin_source', e.target.value)} />
+  </AdminRow>
+);
+
+const CorrespondenceFields = ({ metadata, updateMeta }: { metadata: any, updateMeta: any }) => (
+  <>
+    <AdminRow>
+      <AdminInput label="Sender (FROM)" required value={metadata.sender || ''} onChange={e => updateMeta('sender', e.target.value)} />
+      <AdminInput label="Recipient (TO)" required value={metadata.recipient || ''} onChange={e => updateMeta('recipient', e.target.value)} />
+    </AdminRow>
+    <AdminInput label="Subject Line" required value={metadata.subject || ''} onChange={e => updateMeta('subject', e.target.value)} />
+    <AdminTextarea label="Message Body" required value={metadata.body || ''} onChange={e => updateMeta('body', e.target.value)} />
+  </>
+);
+
+const FinancialFields = ({ metadata, updateMeta }: { metadata: any, updateMeta: any }) => {
+  const { items: pages, add: addPage, update: updatePage, remove: removePage } = useDynamicList<{page_number: number, statement_period: string, transactions: any[]}>(
+    metadata.pages || [],
+    (newList) => updateMeta('pages', newList)
+  );
+
+  return (
+    <>
+      <AdminRow>
+        <AdminInput label="Banking Institution" required value={metadata.institution_name || ''} onChange={e => updateMeta('institution_name', e.target.value)} />
+        <AdminInput label="Account Holder" required value={metadata.account_holder || ''} onChange={e => updateMeta('account_holder', e.target.value)} />
+        <AdminInput label="Account Number" required value={metadata.account_number || ''} onChange={e => updateMeta('account_number', e.target.value)} />
+      </AdminRow>
+
+      <DynamicListHeader title="STATEMENT PAGES" onAdd={() => addPage({ page_number: pages.length + 1, statement_period: '', transactions: [] })} addLabel="+ Add Statement Page" />
+      {pages.map((page: any, pageIdx: number) => (
+        <FinancialStatementPage key={pageIdx} page={page} pageIdx={pageIdx} updatePage={updatePage} removePage={removePage} />
+      ))}
+    </>
+  );
+};
+
+const FinancialStatementPage = ({ page, pageIdx, updatePage, removePage }: { page: any, pageIdx: number, updatePage: any, removePage: any }) => {
+  const { items: txs, add, update, remove } = useDynamicList<{date: string, description: string, amount: number}>(
+    page.transactions || [],
+    (newTxs) => updatePage(pageIdx, 'transactions', newTxs)
+  );
+
+  return (
+    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', borderLeft: '3px solid var(--accent-amber)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ flex: 1, marginRight: '1rem' }}>
+          <AdminInput label="Statement Period" required value={page.statement_period || ''} onChange={e => updatePage(pageIdx, 'statement_period', e.target.value)} placeholder="e.g., Q3 2023" />
+        </div>
+        <button type="button" onClick={() => removePage(pageIdx, 'page_number')} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>REMOVE PAGE {page.page_number}</button>
+      </div>
+      <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <span style={{ fontSize: '0.8rem', color: '#aaa', fontFamily: 'var(--font-mono)' }}>TRANSACTIONS</span>
+          <button type="button" onClick={() => add({ date: '', description: '', amount: 0 })} style={{ background: 'transparent', border: '1px solid #aaa', color: '#aaa', padding: '2px 8px', borderRadius: '2px', cursor: 'pointer', fontSize: '0.7rem' }}>+ Add Row</button>
+        </div>
+        {txs.map((tx: any, txIdx: number) => (
+          <div key={txIdx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+            <div style={{ width: '100px' }}><AdminInput value={tx.date} onChange={e => update(txIdx, 'date', e.target.value)} placeholder="Date" required /></div>
+            <div style={{ flex: 1 }}><AdminInput value={tx.description} onChange={e => update(txIdx, 'description', e.target.value)} placeholder="Description (e.g. Wire Transfer)" required /></div>
+            <div style={{ width: '120px' }}><AdminInput type="number" step="0.01" value={tx.amount} onChange={e => update(txIdx, 'amount', parseFloat(e.target.value))} placeholder="Amount" required /></div>
+            <RemoveButton onClick={() => remove(txIdx)} />
+          </div>
+        ))}
+        {txs.length === 0 && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', marginTop: '0.5rem' }}>No transactions recorded on this page.</div>}
+      </div>
+    </div>
+  );
+};
+
+const JournalFields = ({ metadata, updateMeta }: { metadata: any, updateMeta: any }) => {
+  const { items: pages, add: addPage, update: updatePage, remove: removePage } = useDynamicList<{page_number: number, date_entry: string, content: string, is_torn: boolean}>(
+    metadata.pages || [],
+    (newList) => updateMeta('pages', newList)
+  );
+
+  return (
+    <>
+      <AdminRow>
+        <AdminInput label="Owner / Author" required value={metadata.owner || ''} onChange={e => updateMeta('owner', e.target.value)} />
+        <AdminInput label="Cover Title (Optional)" value={metadata.cover_title || ''} onChange={e => updateMeta('cover_title', e.target.value)} placeholder="e.g., Personal Diary" />
+      </AdminRow>
+
+      <DynamicListHeader title="JOURNAL PAGES" onAdd={() => addPage({ page_number: pages.length + 1, date_entry: '', content: '', is_torn: false })} addLabel="+ Add Page" />
+
+      {pages.map((page: any, idx: number) => (
+        <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', position: 'relative' }}>
+          <span style={{ position: 'absolute', top: '10px', right: '10px', color: '#888', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>PAGE {page.page_number}</span>
+          <RemoveButton onClick={() => removePage(idx, 'page_number')} style={{ position: 'absolute', top: '8px', right: '60px' }} />
+
+          <AdminInput label="Date Entry (Optional)" value={page.date_entry || ''} onChange={e => updatePage(idx, 'date_entry', e.target.value)} disabled={page.is_torn} placeholder="e.g., October 14th, 11:00 PM" />
+          <AdminTextarea label="Journal Content" value={page.content || ''} onChange={e => updatePage(idx, 'content', e.target.value)} disabled={page.is_torn} required={!page.is_torn} />
+
+          <AdminCheckbox
+            checked={!!page.is_torn}
+            onChange={e => updatePage(idx, 'is_torn', e.target.checked)}
+            labelTitle="MARK AS TORN OUT"
+            description="Hides content for gameplay effect"
+            accentColor="var(--accent-crimson)"
+            bgColor="transparent"
+            style={{ marginBottom: 0, padding: 0, border: 'none' }}
+          />
+        </div>
+      ))}
+    </>
+  );
+};
+
+const ContractFields = ({ metadata, updateMeta }: { metadata: any, updateMeta: any }) => {
+  const { items: pages, add: addPage, update: updatePage, remove: removePage } = useDynamicList<{page_number: number, terms_text: string, key_clause: string}>(
+    metadata.pages || [],
+    (newList) => updateMeta('pages', newList)
+  );
+
+  return (
+    <>
+      <AdminRow>
+        <AdminInput label="Parties Involved (Comma Separated)" required value={metadata.parties_involved ? metadata.parties_involved.join(', ') : ''} onChange={e => updateMeta('parties_involved', e.target.value.split(',').map((s: string) => s.trim()))} placeholder="e.g., Vance Corp, Thorne LLC" />
+        <AdminInput label="Execution Date (Optional)" value={metadata.execution_date || ''} onChange={e => updateMeta('execution_date', e.target.value)} placeholder="e.g., 14-OCT-2023" />
+      </AdminRow>
+
+      <DynamicListHeader title="CONTRACT PAGES" onAdd={() => addPage({ page_number: pages.length + 1, terms_text: '', key_clause: '' })} addLabel="+ Add Page" />
+
+      {pages.map((page: any, idx: number) => (
+        <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', position: 'relative' }}>
+          <span style={{ position: 'absolute', top: '10px', right: '10px', color: '#888', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>PAGE {page.page_number}</span>
+          <RemoveButton onClick={() => removePage(idx, 'page_number')} style={{ position: 'absolute', top: '8px', right: '60px' }} />
+
+          <AdminTextarea label="Terms and Conditions" minHeight="100px" required value={page.terms_text || ''} onChange={e => updatePage(idx, 'terms_text', e.target.value)} />
+          <AdminInput label="Critical Clause (Gameplay Clue - Optional)" value={page.key_clause || ''} onChange={e => updatePage(idx, 'key_clause', e.target.value)} placeholder="Highlight a specific suspicious term" />
+        </div>
+      ))}
+
+      <div style={{ marginTop: '1rem' }}>
+        <AdminCheckbox
+          checked={!!metadata.signatures_valid}
+          onChange={e => updateMeta('signatures_valid', e.target.checked)}
+          labelTitle="SIGNATURES VALID"
+          description="Uncheck to mark as Forged"
+          accentColor="var(--accent-crimson)"
+          bgColor="rgba(163, 50, 50, 0.1)"
+        />
+      </div>
+    </>
+  );
+};
+
+const MemoFields = ({ metadata, updateMeta }: { metadata: any, updateMeta: any }) => (
+  <>
+    <AdminRow>
+      <AdminInput label="Written By" required value={metadata.written_by || ''} onChange={e => updateMeta('written_by', e.target.value)} />
+      <AdminSelect
+        label="Presentation Style"
+        value={metadata.style || 'notebook'}
+        onChange={e => updateMeta('style', e.target.value)}
+        options={[{ value: 'notebook', label: 'Notebook Page' }, { value: 'sticky', label: 'Sticky Note' }]}
+      />
+    </AdminRow>
+    <AdminTextarea label="Memo Context" required value={metadata.context || ''} onChange={e => updateMeta('context', e.target.value)} />
+  </>
+);
+
+const BackgroundCheckFields = ({ metadata, updateMeta }: { metadata: any, updateMeta: any }) => (
+  <>
+    <FormattingGuide />
+    <AdminRow>
+      <AdminInput label="Subject Name" required value={metadata.subject_name || ''} onChange={e => updateMeta('subject_name', e.target.value)} />
+      <AdminInput label="DOB (e.g., 10/24/1985)" required value={metadata.dob || ''} onChange={e => updateMeta('dob', e.target.value)} />
+      <AdminInput label="Sex/Age (e.g., M / 41)" required value={metadata.sex_age || ''} onChange={e => updateMeta('sex_age', e.target.value)} />
+    </AdminRow>
+    <AdminRow>
+      <AdminInput label="Aliases / Monikers" value={metadata.aliases || ''} onChange={e => updateMeta('aliases', e.target.value)} />
+      <AdminInput label="Last Known Address" value={metadata.last_known_address || ''} onChange={e => updateMeta('last_known_address', e.target.value)} />
+    </AdminRow>
+
+    <AdminTextarea label="Employment & Financial Flags" value={metadata.employment_financial || ''} onChange={e => updateMeta('employment_financial', e.target.value)} />
+    <AdminTextarea label="Criminal History (Docket Format)" minHeight="100px" value={metadata.criminal_history || ''} onChange={e => updateMeta('criminal_history', e.target.value)} />
+    <AdminTextarea label="Known Associates" value={metadata.associates || ''} onChange={e => updateMeta('associates', e.target.value)} />
+
+    <div className="form-group" style={{ marginTop: '1rem', borderLeft: '3px solid var(--accent-crimson)', paddingLeft: '1rem' }}>
+      <label style={{ color: 'var(--accent-crimson)' }}>Investigator Handwritten Scrawls</label>
+      <textarea className="admin-textarea" value={metadata.investigator_notes || ''} onChange={e => updateMeta('investigator_notes', e.target.value)} placeholder="Will render in a red cursive marker font across the bottom of the page..." style={{ minHeight: '80px' }} />
+    </div>
+  </>
+);
+
+// --- MAIN EXPORT COMPONENT ---
+
+export default function EvidenceMetadataFields({ evidenceType, subType, setSubType, metadata, updateMeta }: EvidenceMetadataFieldsProps) {
+
+  const FORENSIC_OPTIONS = [
+    { value: "autopsy", label: "Autopsy Report" },
+    { value: "ballistics", label: "Ballistics Analysis" },
+    { value: "dna", label: "DNA / Serology Profile" },
+    { value: "digital_forensics", label: "Digital Forensics" },
+    { value: "trace_analysis", label: "Trace / Material Analysis" }
+  ];
+
+  const DOCUMENT_OPTIONS = [
+    { value: "correspondence", label: "Correspondence (Email/Letter)" },
+    { value: "financial", label: "Financial Record" },
+    { value: "journal", label: "Personal Diary / Journal" },
+    { value: "contract", label: "Official Contract / Deed" },
+    { value: "memo", label: "Corporate Memo / Note" },
+    { value: "background_check", label: "Background Check / Dossier" }
+  ];
+
   const renderSubTypeSelector = () => {
-    if (evidenceType === 'forensic') {
-      return (
-        <select className="admin-input" required value={subType} onChange={(e) => setSubType(e.target.value)}>
-          <option value="" disabled>-- Select Forensic Classification --</option>
-          <option value="autopsy">Autopsy Report</option>
-          <option value="ballistics">Ballistics Analysis</option>
-          <option value="dna">DNA / Serology Profile</option>
-          <option value="digital_forensics">Digital Forensics</option>
-          <option value="trace_analysis">Trace / Material Analysis</option>
-        </select>
-      );
-    }
-
-    if (evidenceType === 'document') {
-      return (
-        <select className="admin-input" required value={subType} onChange={(e) => setSubType(e.target.value)}>
-          <option value="" disabled>-- Select Document Classification --</option>
-          <option value="correspondence">Correspondence (Email/Letter)</option>
-          <option value="financial">Financial Record</option>
-          <option value="journal">Personal Diary / Journal</option>
-          <option value="contract">Official Contract / Deed</option>
-          <option value="memo">Corporate Memo / Note</option>
-          <option value="background_check">Background Check / Dossier</option>
-        </select>
-      );
-    }
+    if (evidenceType === 'forensic') return <AdminSelect required value={subType} onChange={e => setSubType(e.target.value)} options={FORENSIC_OPTIONS} placeholder="-- Select Forensic Classification --" />;
+    if (evidenceType === 'document') return <AdminSelect required value={subType} onChange={e => setSubType(e.target.value)} options={DOCUMENT_OPTIONS} placeholder="-- Select Document Classification --" />;
     return null;
   };
 
-  // Renders the precise form inputs required for the selected sub-type
   const renderDynamicInputs = () => {
     switch (subType) {
-      // --- FORENSIC SUB-TYPES ---
-      case 'autopsy': {
-        const collectedEvidence = metadata.evidence_collected || [];
-
-        const addEvidenceItem = () => {
-          updateMeta('evidence_collected', [...collectedEvidence, '']);
-        };
-
-        const updateEvidenceItem = (index: number, value: string) => {
-          const newEv = [...collectedEvidence];
-          newEv[index] = value;
-          updateMeta('evidence_collected', newEv);
-        };
-
-        const removeEvidenceItem = (index: number) => {
-          const newEv = collectedEvidence.filter((_: any, i: number) => i !== index);
-          updateMeta('evidence_collected', newEv);
-        };
-
-        return (
-          <>
-            <div className="admin-form-row">
-              <div className="form-group">
-                <label>Victim Name</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  value={metadata.victim_name || ''}
-                  onChange={e => updateMeta('victim_name', e.target.value)}
-                  placeholder="e.g., John Doe"
-                />
-              </div>
-              <div className="form-group">
-                <label>Gender</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  value={metadata.gender || ''}
-                  onChange={e => updateMeta('gender', e.target.value)}
-                  placeholder="e.g., Male / Female"
-                />
-              </div>
-              <div className="form-group">
-                <label>Estimated Age</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  value={metadata.victim_age || ''}
-                  onChange={e => updateMeta('victim_age', e.target.value)}
-                  placeholder="e.g., 30-35"
-                />
-              </div>
-            </div>
-
-            <div className="admin-form-row">
-              <div className="form-group">
-                <label>Chief Medical Examiner</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  value={metadata.examiner || ''}
-                  onChange={e => updateMeta('examiner', e.target.value)}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Est. Time of Death</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  value={metadata.time_of_death || ''}
-                  onChange={e => updateMeta('time_of_death', e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Primary Cause of Death</label>
-              <input
-                type="text"
-                className="admin-input"
-                value={metadata.cause_of_death || ''}
-                onChange={e => updateMeta('cause_of_death', e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>External Examination & Anomalies</label>
-              <textarea
-                className="admin-textarea"
-                value={metadata.anomalies || ''}
-                onChange={e => updateMeta('anomalies', e.target.value)}
-                style={{ minHeight: '80px' }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Internal Examination & Organs</label>
-              <textarea
-                className="admin-textarea"
-                value={metadata.internal_exam || ''}
-                onChange={e => updateMeta('internal_exam', e.target.value)}
-                style={{ minHeight: '80px' }}
-                placeholder="Findings from internal cavities and organs..."
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Toxicology Report / Lab Analysis</label>
-              <textarea
-                className="admin-textarea"
-                value={metadata.toxicology_report || ''}
-                onChange={e => updateMeta('toxicology_report', e.target.value)}
-                style={{ minHeight: '60px' }}
-                placeholder="Blood alcohol, poisons, or chemical substances detected..."
-              />
-            </div>
-
-            <div style={{ marginTop: '1.5rem', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '1rem', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>COLLECTED EVIDENCE / SAMPLES</label>
-                <button type="button" className="btn-secondary" onClick={addEvidenceItem} style={{ padding: '0.25rem 0.75rem', width: 'auto', fontSize: '0.75rem' }}>+ Add Sample</button>
-              </div>
-
-              {collectedEvidence.map((item: string, idx: number) => (
-                <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                  <input
-                    type="text"
-                    className="admin-input"
-                    placeholder="e.g. 9mm bullet fragment extracted from chest"
-                    value={item || ''}
-                    onChange={e => updateEvidenceItem(idx, e.target.value)}
-                    style={{ flex: 1 }}
-                    required
-                  />
-                  <button type="button" onClick={() => removeEvidenceItem(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem' }} title="Remove Item">×</button>
-                </div>
-              ))}
-
-              {collectedEvidence.length === 0 && (
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>
-                  No evidence items logged. Add a row above.
-                </div>
-              )}
-            </div>
-          </>
-        );
-      }
-
-      case 'ballistics': {
-        const exhibits = metadata.exhibits || [];
-
-        const addExhibit = () => {
-          updateMeta('exhibits', [...exhibits, { reference: '', description: '' }]);
-        };
-
-        const updateExhibit = (index: number, field: string, value: string) => {
-          const newEx = [...exhibits];
-          newEx[index] = { ...newEx[index], [field]: value };
-          updateMeta('exhibits', newEx);
-        };
-
-        const removeExhibit = (index: number) => {
-          const newEx = exhibits.filter((_: any, i: number) => i !== index);
-          updateMeta('exhibits', newEx);
-        };
-
-        return (
-          <>
-            <div style={{ background: 'rgba(0, 0, 0, 0.4)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', border: '1px dashed var(--accent-cyan)' }}>
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
-                <strong>[ FORMATTING GUIDE ]</strong> Use HTML tags to trigger immersive effects:
-              </p>
-              <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                <li><code>&lt;span className="redacted"&gt;Text&lt;/span&gt;</code> : Black redaction bar.</li>
-                <li><code>&lt;span className="highlighted"&gt;Text&lt;/span&gt;</code> : Yellow highlighter marker.</li>
-              </ul>
-            </div>
-
-            <div className="admin-form-row">
-              <div className="form-group"><label>Lab Case Number</label><input type="text" className="admin-input" value={metadata.case_number || ''} onChange={e => updateMeta('case_number', e.target.value)} required placeholder="e.g., 2026-BL-8842" /></div>
-              <div className="form-group"><label>Examiner Name</label><input type="text" className="admin-input" value={metadata.examiner_name || ''} onChange={e => updateMeta('examiner_name', e.target.value)} required /></div>
-            </div>
-
-            <div style={{ marginTop: '1.5rem', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '1rem', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>EVIDENCE INTAKE LOG (EXHIBITS)</label>
-                <button type="button" className="btn-secondary" onClick={addExhibit} style={{ padding: '0.25rem 0.75rem', width: 'auto', fontSize: '0.75rem' }}>+ Add Exhibit</button>
-              </div>
-
-              {exhibits.map((ex: any, idx: number) => (
-                <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                  <input type="text" className="admin-input" placeholder="Ref (e.g. EXHIBIT A)" value={ex.reference || ''} onChange={e => updateExhibit(idx, 'reference', e.target.value)} style={{ width: '160px' }} required />
-                  <input type="text" className="admin-input" placeholder="Description (e.g. Recovered 9mm Slug)" value={ex.description || ''} onChange={e => updateExhibit(idx, 'description', e.target.value)} style={{ flex: 1 }} required />
-                  <button type="button" onClick={() => removeExhibit(idx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem' }} title="Remove Exhibit">×</button>
-                </div>
-              ))}
-
-              {exhibits.length === 0 && (
-                <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>
-                  No exhibits logged. Add a row above.
-                </div>
-              )}
-            </div>
-
-            <h5 style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>TECHNICAL FINDINGS</h5>
-            <div className="form-group"><label>Firearm Specification Data</label><textarea className="admin-textarea" value={metadata.firearm_specs || ''} onChange={e => updateMeta('firearm_specs', e.target.value)} style={{ minHeight: '60px' }} /></div>
-            <div className="form-group"><label>Microscopic & Toolmark Analysis</label><textarea className="admin-textarea" value={metadata.microscopic_analysis || ''} onChange={e => updateMeta('microscopic_analysis', e.target.value)} style={{ minHeight: '80px' }} /></div>
-            <div className="form-group"><label>Trajectory & Range Findings (If Applicable)</label><textarea className="admin-textarea" value={metadata.trajectory_range || ''} onChange={e => updateMeta('trajectory_range', e.target.value)} style={{ minHeight: '60px' }} /></div>
-
-            <div className="form-group" style={{ marginTop: '1rem' }}><label>Official Conclusion / Match Determination</label><textarea className="admin-textarea" value={metadata.conclusion || ''} onChange={e => updateMeta('conclusion', e.target.value)} required style={{ minHeight: '60px', borderLeft: '3px solid var(--accent-crimson)' }} placeholder="e.g., MATCH CONFIRMED: Striation patterns on Exhibit A match..." /></div>
-
-            <div className="form-group" style={{ marginTop: '1.5rem', borderLeft: '3px solid var(--accent-crimson)', paddingLeft: '1rem' }}>
-              <label style={{ color: 'var(--accent-crimson)' }}>Investigator Handwritten Scrawls</label>
-              <textarea className="admin-textarea" value={metadata.investigator_notes || ''} onChange={e => updateMeta('investigator_notes', e.target.value)} placeholder="Will render in a red cursive marker font..." style={{ minHeight: '80px' }} />
-            </div>
-          </>
-        );
-      }
-
-      case 'dna':
-        return (
-          <>
-            <div className="admin-form-row">
-              <div className="form-group">
-                <label>Sample Type (e.g., Blood, Hair)</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  value={metadata.sample_type || ''}
-                  onChange={e => updateMeta('sample_type', e.target.value)}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label>Match Probability</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  value={metadata.match_probability || ''}
-                  onChange={e => updateMeta('match_probability', e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="admin-form-row">
-              <div className="form-group">
-                <label>Lab Technician</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  value={metadata.lab_technician || ''}
-                  onChange={e => updateMeta('lab_technician', e.target.value)}
-                  placeholder="e.g., Dr. Jane Doe"
-                />
-              </div>
-              <div className="form-group">
-                <label>Extraction Method</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  value={metadata.extraction_method || ''}
-                  onChange={e => updateMeta('extraction_method', e.target.value)}
-                  placeholder="e.g., FTA Card / Phenol-Chloroform"
-                />
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Identified Subject (Leave blank if inconclusive)</label>
-              <input
-                type="text"
-                className="admin-input"
-                value={metadata.identified_person || ''}
-                onChange={e => updateMeta('identified_person', e.target.value)}
-              />
-            </div>
-
-            <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label>STR Loci Profile Summary</label>
-              <textarea
-                className="admin-textarea"
-                value={metadata.loci_profile_summary || ''}
-                onChange={e => updateMeta('loci_profile_summary', e.target.value)}
-                style={{ minHeight: '80px' }}
-                placeholder="Details on allele frequencies and genetic markers..."
-              />
-            </div>
-
-            <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label>Laboratory Notes & Observations</label>
-              <textarea
-                className="admin-textarea"
-                value={metadata.lab_notes || ''}
-                onChange={e => updateMeta('lab_notes', e.target.value)}
-                style={{ minHeight: '60px' }}
-                placeholder="Additional analytical insights or chain of custody notes..."
-              />
-            </div>
-          </>
-        );
-
-      case 'digital_forensics':
-        return (
-          <>
-            <div className="admin-form-row">
-              <div className="form-group"><label>Device Classification</label><input type="text" className="admin-input" value={metadata.device_type || ''} onChange={e => updateMeta('device_type', e.target.value)} required /></div>
-              <div className="form-group"><label>Extraction Method</label><input type="text" className="admin-input" value={metadata.extraction_method || ''} onChange={e => updateMeta('extraction_method', e.target.value)} required /></div>
-            </div>
-            <div className="form-group"><label>Decrypted Data / Payload</label><textarea className="admin-textarea" value={metadata.recovered_data || ''} onChange={e => updateMeta('recovered_data', e.target.value)} required /></div>
-          </>
-        );
-
-      case 'trace_analysis':
-        return (
-          <>
-            <div className="admin-form-row">
-              <div className="form-group"><label>Material Composition</label><input type="text" className="admin-input" value={metadata.material_type || ''} onChange={e => updateMeta('material_type', e.target.value)} required /></div>
-              <div className="form-group"><label>Identified Origin Source</label><input type="text" className="admin-input" value={metadata.origin_source || ''} onChange={e => updateMeta('origin_source', e.target.value)} required /></div>
-            </div>
-          </>
-        );
-
-      // --- DOCUMENT SUB-TYPES ---
-      case 'correspondence':
-        return (
-          <>
-            <div className="admin-form-row">
-              <div className="form-group"><label>Sender (FROM)</label><input type="text" className="admin-input" value={metadata.sender || ''} onChange={e => updateMeta('sender', e.target.value)} required /></div>
-              <div className="form-group"><label>Recipient (TO)</label><input type="text" className="admin-input" value={metadata.recipient || ''} onChange={e => updateMeta('recipient', e.target.value)} required /></div>
-            </div>
-            <div className="form-group"><label>Subject Line</label><input type="text" className="admin-input" value={metadata.subject || ''} onChange={e => updateMeta('subject', e.target.value)} required /></div>
-            <div className="form-group"><label>Message Body</label><textarea className="admin-textarea" value={metadata.body || ''} onChange={e => updateMeta('body', e.target.value)} required /></div>
-          </>
-        );
-
-      case 'financial': {
-        const pages = metadata.pages || [];
-
-        const addPage = () => {
-          updateMeta('pages', [...pages, { page_number: pages.length + 1, statement_period: '', transactions: [] }]);
-        };
-
-        const updatePage = (pageIdx: number, field: string, value: string) => {
-          const newPages = [...pages];
-          newPages[pageIdx] = { ...newPages[pageIdx], [field]: value };
-          updateMeta('pages', newPages);
-        };
-
-        const removePage = (pageIdx: number) => {
-          const newPages = pages.filter((_: any, i: number) => i !== pageIdx)
-                                .map((p: any, i: number) => ({ ...p, page_number: i + 1 }));
-          updateMeta('pages', newPages);
-        };
-
-        const addTransaction = (pageIdx: number) => {
-          const newPages = [...pages];
-          const txs = newPages[pageIdx].transactions || [];
-          newPages[pageIdx].transactions = [...txs, { date: '', description: '', amount: 0 }];
-          updateMeta('pages', newPages);
-        };
-
-        const updateTransaction = (pageIdx: number, txIdx: number, field: string, value: string | number) => {
-          const newPages = [...pages];
-          newPages[pageIdx].transactions[txIdx] = { ...newPages[pageIdx].transactions[txIdx], [field]: value };
-          updateMeta('pages', newPages);
-        };
-
-        const removeTransaction = (pageIdx: number, txIdx: number) => {
-          const newPages = [...pages];
-          newPages[pageIdx].transactions = newPages[pageIdx].transactions.filter((_: any, i: number) => i !== txIdx);
-          updateMeta('pages', newPages);
-        };
-
-        return (
-          <>
-            <div className="admin-form-row">
-              <div className="form-group">
-                <label>Banking Institution</label>
-                <input type="text" className="admin-input" value={metadata.institution_name || ''} onChange={e => updateMeta('institution_name', e.target.value)} required />
-              </div>
-              <div className="form-group">
-                <label>Account Holder</label>
-                <input type="text" className="admin-input" value={metadata.account_holder || ''} onChange={e => updateMeta('account_holder', e.target.value)} required />
-              </div>
-              <div className="form-group">
-                <label>Account Number</label>
-                <input type="text" className="admin-input" value={metadata.account_number || ''} onChange={e => updateMeta('account_number', e.target.value)} required />
-              </div>
-            </div>
-
-            <div style={{ marginTop: '1.5rem', borderTop: '2px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>STATEMENT PAGES</label>
-                <button type="button" className="btn-secondary" onClick={addPage} style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>+ Add Statement Page</button>
-              </div>
-
-              {pages.map((page: any, pageIdx: number) => (
-                <div key={pageIdx} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', borderLeft: '3px solid var(--accent-amber)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <div className="form-group" style={{ flex: 1, marginRight: '1rem', marginBottom: 0 }}>
-                      <label>Statement Period</label>
-                      <input type="text" className="admin-input" placeholder="e.g., Q3 2023" value={page.statement_period || ''} onChange={e => updatePage(pageIdx, 'statement_period', e.target.value)} required />
-                    </div>
-                    <button type="button" onClick={() => removePage(pageIdx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>REMOVE PAGE {page.page_number}</button>
-                  </div>
-
-                  <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '4px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <span style={{ fontSize: '0.8rem', color: '#aaa', fontFamily: 'var(--font-mono)' }}>TRANSACTIONS</span>
-                      <button type="button" onClick={() => addTransaction(pageIdx)} style={{ background: 'transparent', border: '1px solid #aaa', color: '#aaa', padding: '2px 8px', borderRadius: '2px', cursor: 'pointer', fontSize: '0.7rem' }}>+ Add Row</button>
-                    </div>
-
-                    {(page.transactions || []).map((tx: any, txIdx: number) => (
-                      <div key={txIdx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
-                        <input type="text" className="admin-input" placeholder="Date" value={tx.date || ''} onChange={e => updateTransaction(pageIdx, txIdx, 'date', e.target.value)} style={{ width: '100px' }} required />
-                        <input type="text" className="admin-input" placeholder="Description (e.g. Wire Transfer)" value={tx.description || ''} onChange={e => updateTransaction(pageIdx, txIdx, 'description', e.target.value)} style={{ flex: 1 }} required />
-                        <input type="number" step="0.01" className="admin-input" placeholder="Amount" value={tx.amount || ''} onChange={e => updateTransaction(pageIdx, txIdx, 'amount', parseFloat(e.target.value))} style={{ width: '120px' }} required />
-                        <button type="button" onClick={() => removeTransaction(pageIdx, txIdx)} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem' }} title="Remove Row">×</button>
-                      </div>
-                    ))}
-
-                    {(!page.transactions || page.transactions.length === 0) && (
-                      <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', marginTop: '0.5rem' }}>
-                        No transactions recorded on this page.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        );
-      }
-
-      case 'journal': {
-        const pages = metadata.pages || [];
-
-        const addPage = () => {
-          updateMeta('pages', [...pages, { page_number: pages.length + 1, date_entry: '', content: '', is_torn: false }]);
-        };
-
-        const updatePage = (idx: number, field: string, value: any) => {
-          const newPages = [...pages];
-          newPages[idx] = { ...newPages[idx], [field]: value };
-          updateMeta('pages', newPages);
-        };
-
-        const removePage = (idx: number) => {
-          const newPages = pages.filter((_: any, i: number) => i !== idx)
-                                .map((p: any, i: number) => ({ ...p, page_number: i + 1 }));
-          updateMeta('pages', newPages);
-        };
-
-        return (
-          <>
-            <div className="admin-form-row">
-              <div className="form-group">
-                <label>Owner / Author</label>
-                <input type="text" className="admin-input" value={metadata.owner || ''} onChange={e => updateMeta('owner', e.target.value)} required />
-              </div>
-              <div className="form-group">
-                <label>Cover Title (Optional)</label>
-                <input type="text" className="admin-input" value={metadata.cover_title || ''} onChange={e => updateMeta('cover_title', e.target.value)} placeholder="e.g., Personal Diary" />
-              </div>
-            </div>
-
-            <div style={{ marginTop: '1.5rem', borderTop: '2px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>JOURNAL PAGES</label>
-                <button type="button" className="btn-secondary" onClick={addPage} style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>+ Add Page</button>
-              </div>
-
-              {pages.map((page: any, idx: number) => (
-                <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', position: 'relative' }}>
-                  <span style={{ position: 'absolute', top: '10px', right: '10px', color: '#888', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>PAGE {page.page_number}</span>
-                  <button type="button" onClick={() => removePage(idx)} style={{ position: 'absolute', top: '8px', right: '60px', background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem' }}>×</button>
-
-                  <div className="form-group">
-                    <label>Date Entry (Optional)</label>
-                    <input type="text" className="admin-input" placeholder="e.g., October 14th, 11:00 PM" value={page.date_entry || ''} onChange={e => updatePage(idx, 'date_entry', e.target.value)} disabled={page.is_torn} />
-                  </div>
-
-                  <div className="form-group">
-                    <label>Journal Content</label>
-                    <textarea className="admin-textarea" value={page.content || ''} onChange={e => updatePage(idx, 'content', e.target.value)} disabled={page.is_torn} required={!page.is_torn} />
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <input type="checkbox" checked={!!page.is_torn} onChange={e => updatePage(idx, 'is_torn', e.target.checked)} />
-                    <label style={{ color: 'var(--accent-crimson)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>MARK AS TORN OUT (Hides content)</label>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </>
-        );
-      }
-
-      case 'contract': {
-        const pages = metadata.pages || [];
-
-        const addPage = () => {
-          updateMeta('pages', [...pages, { page_number: pages.length + 1, terms_text: '', key_clause: '' }]);
-        };
-
-        const updatePage = (idx: number, field: string, value: string) => {
-          const newPages = [...pages];
-          newPages[idx] = { ...newPages[idx], [field]: value };
-          updateMeta('pages', newPages);
-        };
-
-        const removePage = (idx: number) => {
-          // Re-calculate page_number so they stay sequential
-          const newPages = pages.filter((_: any, i: number) => i !== idx)
-                                .map((p: any, i: number) => ({ ...p, page_number: i + 1 }));
-          updateMeta('pages', newPages);
-        };
-
-        return (
-          <>
-            <div className="admin-form-row">
-              <div className="form-group">
-                <label>Parties Involved (Comma Separated)</label>
-                <input
-                  type="text" className="admin-input"
-                  value={metadata.parties_involved ? metadata.parties_involved.join(', ') : ''}
-                  onChange={e => updateMeta('parties_involved', e.target.value.split(',').map(s => s.trim()))}
-                  placeholder="e.g., Vance Corp, Thorne LLC" required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Execution Date (Optional)</label>
-                <input
-                  type="text" className="admin-input"
-                  value={metadata.execution_date || ''}
-                  onChange={e => updateMeta('execution_date', e.target.value)}
-                  placeholder="e.g., 14-OCT-2023"
-                />
-              </div>
-            </div>
-
-            <div style={{ marginTop: '1.5rem', borderTop: '2px solid rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)' }}>CONTRACT PAGES</label>
-                <button type="button" className="btn-secondary" onClick={addPage} style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem' }}>+ Add Page</button>
-              </div>
-
-              {pages.map((page: any, idx: number) => (
-                <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', position: 'relative' }}>
-                  <span style={{ position: 'absolute', top: '10px', right: '10px', color: '#888', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>PAGE {page.page_number}</span>
-                  <button type="button" onClick={() => removePage(idx)} style={{ position: 'absolute', top: '8px', right: '60px', background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem' }}>×</button>
-
-                  <div className="form-group">
-                    <label>Terms and Conditions</label>
-                    <textarea className="admin-textarea" value={page.terms_text || ''} onChange={e => updatePage(idx, 'terms_text', e.target.value)} style={{ minHeight: '100px' }} required />
-                  </div>
-
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label>Critical Clause (Gameplay Clue - Optional)</label>
-                    <input type="text" className="admin-input" placeholder="Highlight a specific suspicious term" value={page.key_clause || ''} onChange={e => updatePage(idx, 'key_clause', e.target.value)} />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(163, 50, 50, 0.1)', padding: '1rem', borderRadius: '4px', border: '1px solid rgba(163, 50, 50, 0.3)', marginTop: '1rem' }}>
-              <input
-                type="checkbox"
-                checked={!!metadata.signatures_valid}
-                onChange={e => updateMeta('signatures_valid', e.target.checked)}
-                style={{ transform: 'scale(1.5)' }}
-              />
-              <label style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)' }}>
-                <strong>SIGNATURES VALID (Uncheck to mark as Forged)</strong>
-              </label>
-            </div>
-          </>
-        );
-      }
-
-      case 'memo':
-        return (
-          <>
-            <div className="admin-form-row">
-              <div className="form-group">
-                <label>Written By</label>
-                <input
-                  type="text"
-                  className="admin-input"
-                  value={metadata.written_by || ''}
-                  onChange={e => updateMeta('written_by', e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label>Presentation Style</label>
-                <select
-                  className="admin-input"
-                  value={metadata.style || 'notebook'}
-                  onChange={e => updateMeta('style', e.target.value)}
-                >
-                  <option value="notebook">Notebook Page</option>
-                  <option value="sticky">Sticky Note</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="form-group">
-              <label>Memo Context</label>
-              <textarea
-                className="admin-textarea"
-                value={metadata.context || ''}
-                onChange={e => updateMeta('context', e.target.value)}
-                required
-              />
-            </div>
-          </>
-        );
-
-      case 'background_check':
-        return (
-          <>
-            <div style={{ background: 'rgba(0, 0, 0, 0.4)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', border: '1px dashed var(--accent-cyan)' }}>
-              <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
-                <strong>[ FORMATTING GUIDE ]</strong> You can use these HTML tags inside any of the text boxes below to trigger immersive investigative effects:
-              </p>
-              <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                <li><code>&lt;span className="redacted"&gt;Text&lt;/span&gt;</code> : Renders a black redaction bar over the text.</li>
-                <li><code>&lt;span className="highlighted"&gt;Text&lt;/span&gt;</code> : Applies a yellow highlighter marker effect.</li>
-              </ul>
-            </div>
-
-            <div className="admin-form-row">
-              <div className="form-group"><label>Subject Name</label><input type="text" className="admin-input" value={metadata.subject_name || ''} onChange={e => updateMeta('subject_name', e.target.value)} required /></div>
-              <div className="form-group"><label>DOB (e.g., 10/24/1985)</label><input type="text" className="admin-input" value={metadata.dob || ''} onChange={e => updateMeta('dob', e.target.value)} required /></div>
-              <div className="form-group"><label>Sex/Age (e.g., M / 41)</label><input type="text" className="admin-input" value={metadata.sex_age || ''} onChange={e => updateMeta('sex_age', e.target.value)} required /></div>
-            </div>
-            <div className="admin-form-row">
-              <div className="form-group"><label>Aliases / Monikers</label><input type="text" className="admin-input" value={metadata.aliases || ''} onChange={e => updateMeta('aliases', e.target.value)} /></div>
-              <div className="form-group"><label>Last Known Address</label><input type="text" className="admin-input" value={metadata.last_known_address || ''} onChange={e => updateMeta('last_known_address', e.target.value)} /></div>
-            </div>
-
-            <div className="form-group" style={{ marginTop: '1rem' }}><label>Employment & Financial Flags</label><textarea className="admin-textarea" value={metadata.employment_financial || ''} onChange={e => updateMeta('employment_financial', e.target.value)} style={{ minHeight: '80px' }} /></div>
-            <div className="form-group"><label>Criminal History (Docket Format)</label><textarea className="admin-textarea" value={metadata.criminal_history || ''} onChange={e => updateMeta('criminal_history', e.target.value)} style={{ minHeight: '100px' }} /></div>
-            <div className="form-group"><label>Known Associates</label><textarea className="admin-textarea" value={metadata.associates || ''} onChange={e => updateMeta('associates', e.target.value)} style={{ minHeight: '80px' }} /></div>
-
-            <div className="form-group" style={{ marginTop: '1rem', borderLeft: '3px solid var(--accent-crimson)', paddingLeft: '1rem' }}>
-              <label style={{ color: 'var(--accent-crimson)' }}>Investigator Handwritten Scrawls</label>
-              <textarea className="admin-textarea" value={metadata.investigator_notes || ''} onChange={e => updateMeta('investigator_notes', e.target.value)} placeholder="Will render in a red cursive marker font across the bottom of the page..." style={{ minHeight: '80px' }} />
-            </div>
-          </>
-        );
-
+      // FORENSICS
+      case 'autopsy': return <AutopsyFields metadata={metadata} updateMeta={updateMeta} />;
+      case 'ballistics': return <BallisticsFields metadata={metadata} updateMeta={updateMeta} />;
+      case 'dna': return <DNAFields metadata={metadata} updateMeta={updateMeta} />;
+      case 'digital_forensics': return <DigitalForensicsFields metadata={metadata} updateMeta={updateMeta} />;
+      case 'trace_analysis': return <TraceAnalysisFields metadata={metadata} updateMeta={updateMeta} />;
+
+      // DOCUMENTS
+      case 'correspondence': return <CorrespondenceFields metadata={metadata} updateMeta={updateMeta} />;
+      case 'financial': return <FinancialFields metadata={metadata} updateMeta={updateMeta} />;
+      case 'journal': return <JournalFields metadata={metadata} updateMeta={updateMeta} />;
+      case 'contract': return <ContractFields metadata={metadata} updateMeta={updateMeta} />;
+      case 'memo': return <MemoFields metadata={metadata} updateMeta={updateMeta} />;
+      case 'background_check': return <BackgroundCheckFields metadata={metadata} updateMeta={updateMeta} />;
+
+      // FALLBACK
       default:
-        // Legacy or un-typed fallback
         if (evidenceType === 'testimony') {
-          return (
-            <div className="form-group">
-              <label>Official Transcript</label>
-              <textarea className="admin-textarea" value={metadata.transcript || ''} onChange={e => updateMeta('transcript', e.target.value)} />
-            </div>
-          );
+          return <AdminTextarea label="Official Transcript" value={metadata.transcript || ''} onChange={e => updateMeta('transcript', e.target.value)} />;
         }
         return null;
     }
@@ -5835,9 +5702,7 @@ export default function EvidenceMetadataFields({
       <h4 style={{ margin: '0 0 1rem 0', fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', fontSize: '0.85rem', textTransform: 'uppercase' }}>
         [ Structured Metadata Injection ]
       </h4>
-
       {renderSubTypeSelector()}
-
       {(subType || evidenceType === 'testimony') && (
         <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {renderDynamicInputs()}
@@ -6205,10 +6070,14 @@ export default function GameRoom() {
     });
 
     return () => {
+      // Unbind specific event listeners
       channel.stopListening('LevelTransitioned');
       channel.stopListening('VoteLockedIn');
       channel.stopListening('WiretapTriggered');
       channel.stopListening('ItemsUnlocked');
+
+      // EXPLICITLY SEVER THE CONNECTION to prevent WebSocket zombie leaks
+      window.Echo.leave(`room.${room.id}`);
     };
   }, [room?.id, patchRoomData, patchArray, setGameOverData, addGlobalToast, t]);
 
@@ -6623,7 +6492,6 @@ export default function CampaignTab() {
   const sortedPhases = [...phases].sort((a: Phase, b: Phase) => a.order_index - b.order_index);
   const phaseStorageKey = `room_${room.id}_active_phase`;
 
-  // Auto-detect if there is an active phase in progress
   const hasActiveLevel = currentLevelId !== null && currentLevelId !== undefined;
   const activePhaseFromRoom = hasActiveLevel
     ? sortedPhases.find(p => p.levels?.some(l => l.id === currentLevelId))
@@ -6641,7 +6509,6 @@ export default function CampaignTab() {
     return sortedPhases.length > 0 ? sortedPhases[0].id : null;
   });
 
-  // Default to map ONLY if there is no active level and no session-saved phase
   const [isMapMode, setIsMapMode] = useState<boolean>(() => {
     if (hasActiveLevel) return false;
     return !sessionStorage.getItem(phaseStorageKey);
@@ -6656,11 +6523,13 @@ export default function CampaignTab() {
     setActivePhaseId(phaseId);
     setExpandedId(null);
     setIsMapMode(false);
-    sessionStorage.setItem(phaseStorageKey, phaseId.toString());
+    localStorage.setItem(phaseStorageKey, phaseId.toString());
   };
 
   const handleReturnToMap = () => {
+    if (hasActiveLevel) return;
     setIsMapMode(true);
+    localStorage.removeItem(phaseStorageKey);
   };
 
   const totalPlayers = room.users?.length || 1;
@@ -6698,7 +6567,7 @@ export default function CampaignTab() {
   const sortedLevels = activePhaseData?.levels ? [...activePhaseData.levels].sort((a: Level, b: Level) => a.order_index - b.order_index) : [];
 
   return (
-    <div className="campaign-roadmap-container">
+    <div className="campaign-tab-wrapper">
       {isMapMode ? (
         <CampaignMap
           onEnterPhase={handleEnterPhase}
@@ -6706,20 +6575,25 @@ export default function CampaignTab() {
           unlockedLevelIds={unlockedLevelIds}
         />
       ) : (
-        <>
-          <div className="phase-subnav" style={{ justifyContent: 'space-between', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-            <button className="btn-secondary" onClick={handleReturnToMap} style={{ width: 'auto', padding: '0.5rem 1rem' }}>
+        <div className="campaign-roadmap-container">
+          <div className="phase-subnav phase-header-subnav">
+            <button
+              className="btn-secondary return-to-map-btn"
+              onClick={handleReturnToMap}
+              disabled={hasActiveLevel}
+              title={hasActiveLevel ? t('pages.gameRoom.campaign.map.finishLevelFirst') : ''}
+            >
               &larr; {t('pages.gameRoom.campaign.map.backToMap')}
             </button>
-            <div style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)' }}>
+            <div className="phase-index-display">
               {t('pages.gameRoom.campaign.map.phaseIndex')} {activePhaseData?.order_index}
             </div>
           </div>
 
-          <div style={{ marginBottom: '2rem', marginTop: '1.5rem' }}>
+          <div className="phase-header-container">
             <h2 className="section-title">{activePhaseData?.title || t('pages.gameRoom.campaign.unknownPhase')}</h2>
             {activePhaseData?.description && (
-              <p style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem' }}>
+              <p className="phase-description">
                 {activePhaseData.description}
               </p>
             )}
@@ -6727,7 +6601,7 @@ export default function CampaignTab() {
 
           <div className="roadmap-timeline">
             {sortedLevels.length === 0 && (
-              <div className="terminal-text" style={{ padding: 0, textAlign: 'start' }}>
+              <div className="terminal-text empty-leads">
                 {t('pages.gameRoom.campaign.noLeads')}
               </div>
             )}
@@ -6745,11 +6619,8 @@ export default function CampaignTab() {
               else if (isAnotherPhaseRunning) status = 'locked';
 
               const isExpanded = expandedId === level.id;
-
               const displayTitle = isDiscovered ? level.title : t('pages.gameRoom.campaign.undiscoveredEncounter');
-              const displayDesc = isDiscovered
-                ? level.details
-                : t('pages.gameRoom.campaign.hiddenPathDesc');
+              const displayDesc = isDiscovered ? level.details : t('pages.gameRoom.campaign.hiddenPathDesc');
 
               return (
                 <div key={level.id} className={`roadmap-node ${status}`}>
@@ -6779,13 +6650,10 @@ export default function CampaignTab() {
 
                     {isExpanded && isDiscovered && (
                       <div className="node-questions-drawer" onClick={(e) => e.stopPropagation()}>
-
                         {status === 'available' && (
-                          <div style={{ textAlign: 'center', padding: '1rem' }}>
-                            <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontFamily: 'var(--font-mono)' }}>
-                              {isHost
-                                ? t('pages.gameRoom.campaign.hostInitiateWarning')
-                                : t('pages.gameRoom.campaign.awaitingHost')}
+                          <div className="host-warning-container">
+                            <p className="host-warning-text">
+                              {isHost ? t('pages.gameRoom.campaign.hostInitiateWarning') : t('pages.gameRoom.campaign.awaitingHost')}
                             </p>
                             {isHost && (
                               <button className="btn-primary" onClick={() => initiatePhase(level.id)} disabled={isInitiating}>
@@ -6798,33 +6666,11 @@ export default function CampaignTab() {
                         {(status === 'active' || status === 'completed') && level.questions && (
                           <>
                             {level.presentation_type === 'interrogation' ? (
-                              <InterrogationPhase
-                                getQuestionConsensus={getQuestionConsensus}
-                                handleSubmitTheory={handleSubmitTheory}
-                                isHost={isHost}
-                                isSubmitting={isSubmitting}
-                                level={level}
-                                status={status}
-                                totalPlayers={totalPlayers}
-                              />
+                              <InterrogationPhase getQuestionConsensus={getQuestionConsensus} handleSubmitTheory={handleSubmitTheory} isHost={isHost} isSubmitting={isSubmitting} level={level} status={status} totalPlayers={totalPlayers} />
                             ) : level.presentation_type === 'location' ? (
-                              <LocationPhase
-                                handleSubmitTheory={handleSubmitTheory}
-                                isHost={isHost}
-                                isSubmitting={isSubmitting}
-                                level={level}
-                                status={status}
-                              />
+                              <LocationPhase handleSubmitTheory={handleSubmitTheory} isHost={isHost} isSubmitting={isSubmitting} level={level} status={status} />
                             ) : level.presentation_type === 'wiretap' ? (
-                              <WiretapPhase
-                                getQuestionConsensus={getQuestionConsensus}
-                                handleSubmitTheory={handleSubmitTheory}
-                                isHost={isHost}
-                                isSubmitting={isSubmitting}
-                                level={level}
-                                status={status}
-                                totalPlayers={totalPlayers}
-                              />
+                              <WiretapPhase getQuestionConsensus={getQuestionConsensus} handleSubmitTheory={handleSubmitTheory} isHost={isHost} isSubmitting={isSubmitting} level={level} status={status} totalPlayers={totalPlayers} />
                             ) : null}
                           </>
                         )}
@@ -6835,7 +6681,7 @@ export default function CampaignTab() {
               );
             })}
           </div>
-        </>
+        </div>
       )}
     </div>
   );
@@ -7920,18 +7766,28 @@ export default function VictimModal({ victim, onClose }: VictimModalProps) {
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/EvidenceBoardTab.tsx">
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  defaultDropAnimationSideEffects
+} from '@dnd-kit/core';
+import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
+
 import { useRoomData, useRoomUI } from '@/context/RoomContext';
 import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
 import type { Evidence } from '@/types';
-import EvidenceCard from './EvidenceCard';
+import EvidenceCard, { EvidenceCardOverlay } from './EvidenceCard';
 import EvidenceModal from './EvidenceModal';
 import ProceduralRequestTray from './ProceduralRequestTray';
 import './EvidenceBoardTab.css';
 
-// MEMOIZATION: This severs the render cascade entirely. The EvidenceGrid will only
-// re-render if the core domain array or the explicitly passed viewed status changes.
+// MEMOIZATION: This severs the render cascade entirely.
 const EvidenceGrid = React.memo(({
   evidences,
   viewedEvidences,
@@ -7963,6 +7819,9 @@ export default function EvidenceBoardTab() {
 
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
 
+  // Track dragging state for the DragOverlay
+  const [activeDragId, setActiveDragId] = useState<number | null>(null);
+
   const {
     trayEvidences,
     requestType,
@@ -7983,87 +7842,116 @@ export default function EvidenceBoardTab() {
     markEvidenceAsViewed(evidence.id);
   }, [markEvidenceAsViewed]);
 
-  const handleDragOverContainer = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const scrollContainer = e.currentTarget.closest('.tab-content-area');
-    if (!scrollContainer) return;
+  // Configure Sensors for hybrid touch/mouse support without overriding clicks
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 5 }, // Allows standard clicks to pass through
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 150, tolerance: 5 }, // Optimizes for mobile tapping vs swiping
+    })
+  );
 
-    const rect = scrollContainer.getBoundingClientRect();
-    const threshold = 80;
-    const speed = 15;
-
-    if (e.clientY - rect.top < threshold) {
-      scrollContainer.scrollTop -= speed;
-    } else if (rect.bottom - e.clientY < threshold) {
-      scrollContainer.scrollTop += speed;
-    }
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(event.active.id as number);
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    // If the evidence was dropped over the 'procedural-tray' droppable area
+    if (over && over.id === 'procedural-tray') {
+      addToTray(active.id as number);
+    }
+
+    setActiveDragId(null);
+  };
+
+  const activeEvidence = useMemo(() =>
+    accumulatedEvidences.find((ev) => ev.id === activeDragId),
+  [accumulatedEvidences, activeDragId]);
+
   return (
-    <div className="evidence-board-container" onDragOver={handleDragOverContainer}>
-      <header className="board-header">
-        <h2 className="section-title">{t('pages.gameRoom.evidence.board.title')}</h2>
-        <span className="board-meta">{t('pages.gameRoom.evidence.board.subtitle')}</span>
-      </header>
+    <DndContext
+      sensors={sensors}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+    >
+      <div className="evidence-board-container">
+        <header className="board-header">
+          <h2 className="section-title">{t('pages.gameRoom.evidence.board.title')}</h2>
+          <span className="board-meta">{t('pages.gameRoom.evidence.board.subtitle')}</span>
+        </header>
 
-      {feedback && (
-        <div className="feedback-modal-overlay" style={{ zIndex: 1000 }}>
-          <div className={`feedback-modal-content ${feedback.type}`}>
-            <h3 className="feedback-title">
-              {feedback.type === 'success' ? t('pages.gameRoom.evidence.board.requestApproved') : t('pages.gameRoom.evidence.board.requestDenied')}
-            </h3>
-            <p className="feedback-message">{feedback.message}</p>
-            <button className="btn-secondary mt-1" onClick={clearFeedback}>{t('pages.gameRoom.evidence.board.acknowledge')}</button>
-          </div>
-        </div>
-      )}
-
-      {/* Local toasts renderer, kept isolated from global cascades */}
-      <div className="toast-container">
-        {toasts.map((toast) => (
-          <div key={toast.id} className="system-toast-notification">
-            <div className="toast-icon pulse-icon">
-              <img src={toast.icon} alt={toast.type} className="toast-svg-graphic" />
-            </div>
-            <div className="toast-text-block">
-              <span className="toast-header">{toast.title}</span>
-              <p className="toast-message">{toast.message}</p>
+        {feedback && (
+          <div className="feedback-modal-overlay" style={{ zIndex: 1000 }}>
+            <div className={`feedback-modal-content ${feedback.type}`}>
+              <h3 className="feedback-title">
+                {feedback.type === 'success' ? t('pages.gameRoom.evidence.board.requestApproved') : t('pages.gameRoom.evidence.board.requestDenied')}
+              </h3>
+              <p className="feedback-message">{feedback.message}</p>
+              <button className="btn-secondary mt-1" onClick={clearFeedback}>{t('pages.gameRoom.evidence.board.acknowledge')}</button>
             </div>
           </div>
-        ))}
-      </div>
-
-      <div className="acrylic-workspace">
-        {accumulatedEvidences.length === 0 ? (
-          <div className="terminal-text">{t('pages.gameRoom.evidence.board.noEvidence')}</div>
-        ) : (
-          <EvidenceGrid
-            evidences={accumulatedEvidences}
-            viewedEvidences={viewedEvidences}
-            onInspect={handleInspect}
-          />
         )}
+
+        <div className="toast-container">
+          {toasts.map((toast) => (
+            <div key={toast.id} className="system-toast-notification">
+              <div className="toast-icon pulse-icon">
+                <img src={toast.icon} alt={toast.type} className="toast-svg-graphic" />
+              </div>
+              <div className="toast-text-block">
+                <span className="toast-header">{toast.title}</span>
+                <p className="toast-message">{toast.message}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="acrylic-workspace">
+          {accumulatedEvidences.length === 0 ? (
+            <div className="terminal-text">{t('pages.gameRoom.evidence.board.noEvidence')}</div>
+          ) : (
+            <EvidenceGrid
+              evidences={accumulatedEvidences}
+              viewedEvidences={viewedEvidences}
+              onInspect={handleInspect}
+            />
+          )}
+        </div>
+
+        <ProceduralRequestTray
+          accumulatedEvidences={accumulatedEvidences}
+          trayEvidences={trayEvidences}
+          requestType={requestType}
+          setRequestType={setRequestType}
+          addToTray={addToTray}
+          removeFromTray={removeFromTray}
+          isSubmitting={isSubmitting}
+          submitRequest={submitRequest}
+          filedRequests={filedRequests}
+        />
+
+        <EvidenceModal evidence={inspectedEvidence} onClose={() => setInspectedEvidence(null)} />
       </div>
 
-      <ProceduralRequestTray
-        accumulatedEvidences={accumulatedEvidences}
-        trayEvidences={trayEvidences}
-        requestType={requestType}
-        setRequestType={setRequestType}
-        addToTray={addToTray}
-        removeFromTray={removeFromTray}
-        isSubmitting={isSubmitting}
-        submitRequest={submitRequest}
-        filedRequests={filedRequests}
-      />
-
-      <EvidenceModal evidence={inspectedEvidence} onClose={() => setInspectedEvidence(null)} />
-    </div>
+      {/* Renders the dragged clone seamlessly mapped to the user's cursor */}
+      <DragOverlay dropAnimation={{
+        sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
+        duration: 250,
+        easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
+      }}>
+        {activeEvidence ? <EvidenceCardOverlay evidence={activeEvidence} /> : null}
+      </DragOverlay>
+    </DndContext>
   );
 }
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/EvidenceCard.tsx">
+import React from 'react';
+import { useDraggable } from '@dnd-kit/core';
 import type { Evidence } from '@/types';
 import DocumentEvidence from './EvidenceVariants/DocumentEvidence';
 import TestimonyEvidence from './EvidenceVariants/TestimonyEvidence';
@@ -8091,6 +7979,11 @@ interface EvidenceCardProps {
 export default function EvidenceCard({ evidence, index, isNew, onInspect }: EvidenceCardProps) {
   const SpecificEvidenceComponent = EvidenceComponents[evidence.evidence_type];
 
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: evidence.id,
+    data: { evidence },
+  });
+
   if (!SpecificEvidenceComponent) {
     console.warn(`System Error: Unknown evidence type encountered -> ${evidence.evidence_type}`);
     return null;
@@ -8098,14 +7991,29 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
 
   return (
     <div
-      className={`evidence-card-wrapper item-${index % 5}`}
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
+      className={`evidence-card-wrapper item-${index % 5} ${isDragging ? 'is-dragging' : ''}`}
       onClick={() => onInspect(evidence)}
-      draggable
-      onDragStart={(e) => {
-        e.dataTransfer.setData('evidenceId', evidence.id.toString());
-      }}
+      style={{ opacity: isDragging ? 0.3 : 1, touchAction: 'none' }}
     >
       {isNew && <div className="unread-indicator" title="Unread Intel"></div>}
+      <SpecificEvidenceComponent evidence={evidence} />
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------
+// OVERLAY CLONE: Used exclusively by <DragOverlay> to provide visual feedback.
+// Keeps the component pure and prevents hook-duplication errors in dnd-kit.
+// ----------------------------------------------------------------------
+export function EvidenceCardOverlay({ evidence }: { evidence: Evidence }) {
+  const SpecificEvidenceComponent = EvidenceComponents[evidence.evidence_type];
+  if (!SpecificEvidenceComponent) return null;
+
+  return (
+    <div className="evidence-card-wrapper overlay-clone" style={{ cursor: 'grabbing', transform: 'scale(1.05)', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}>
       <SpecificEvidenceComponent evidence={evidence} />
     </div>
   );
@@ -8178,8 +8086,9 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/ProceduralRequestTray.tsx">
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDroppable } from '@dnd-kit/core';
 import { InvestigationRequestType } from '@/types';
 import type { Evidence } from '@/types';
 import type { FiledRequest } from '@/hooks/useInvestigationRequest';
@@ -8202,7 +8111,6 @@ export default function ProceduralRequestTray({
   trayEvidences,
   requestType,
   setRequestType,
-  addToTray,
   removeFromTray,
   isSubmitting,
   submitRequest,
@@ -8211,21 +8119,25 @@ export default function ProceduralRequestTray({
   const { t } = useTranslation();
   const [showArchive, setShowArchive] = useState(false);
 
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    const evidenceId = parseInt(e.dataTransfer.getData('evidenceId'), 10);
-    if (!isNaN(evidenceId)) addToTray(evidenceId);
-  };
+  // Register the dropzone with dnd-kit
+  const { isOver, setNodeRef } = useDroppable({
+    id: 'procedural-tray'
+  });
 
   return (
-    <div className="filing-tray glass-panel" onDragOver={(e) => e.preventDefault()} onDrop={handleDrop}>
+    <div className="filing-tray glass-panel">
       <div className="tray-header">
         <span className="forensic-icon">⚖️</span>
         <h3>{t('pages.gameRoom.evidence.board.proceduralTrayTitle')}</h3>
       </div>
 
       <div className="tray-layout">
-        <div className="tray-dropzone">
+        {/* Bind the droppable ref to the dropzone area */}
+        <div
+          ref={setNodeRef}
+          className={`tray-dropzone ${isOver ? 'is-drag-over' : ''}`}
+          style={{ backgroundColor: isOver ? 'rgba(255, 255, 255, 0.15)' : 'transparent', transition: 'background-color 0.2s ease' }}
+        >
           {trayEvidences.length === 0 ? (
             <span className="tray-placeholder">{t('pages.gameRoom.evidence.board.dragAndDrop')}</span>
           ) : (
@@ -8662,33 +8574,111 @@ export default function ForensicEvidence({ evidence }: { evidence: Evidence }) {
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/EvidenceVariants/ImageEvidence.tsx">
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types';
 import './ImageEvidence.css';
 
 export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
   const { t } = useTranslation();
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const [shouldLoad, setShouldLoad] = useState<boolean>(false);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 1. Intersection Observer: Detects when the card approaches the viewport
+  useEffect(() => {
+    if (!containerRef.current || shouldLoad) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setShouldLoad(true); // Triggers loading sequence
+            observer.disconnect(); // Stop observing once triggered
+          }
+        });
+      },
+      {
+        root: null, // Uses the browser viewport
+        rootMargin: '200px' // Starts preloading 200px before it enters the screen
+      }
+    );
+
+    observer.observe(containerRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [shouldLoad]);
+
+  // 2. Preload image metadata only AFTER the component is near the viewport
+  useEffect(() => {
+    if (!shouldLoad || !evidence.img_url) return;
+
+    let isMounted = true;
+    const img = new Image();
+    img.src = evidence.img_url;
+
+    img.onload = () => {
+      if (isMounted) {
+        setDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+      }
+    };
+
+    img.onerror = () => {
+      if (isMounted) {
+        setDimensions({ width: 4, height: 3 }); // Fallback ratio
+      }
+    };
+
+    return () => {
+      isMounted = false;
+    };
+  }, [shouldLoad, evidence.img_url]);
+
+  // Dynamically compute aspect ratio once known, otherwise use a stable placeholder min-height
+  const containerStyle = dimensions
+    ? { aspectRatio: `${dimensions.width} / ${dimensions.height}` }
+    : { minHeight: '220px' };
 
   return (
-    <div className="image-variant polaroid-style">
+    <div className="image-variant polaroid-style" ref={containerRef}>
       {/* 3D red push-pin anchoring the photo */}
-      <div className="red-push-pin"></div>
+      <div className="red-push-pin" aria-hidden="true"></div>
 
-      {/* The photo area with realistic lighting */}
-      <div className="photo-frame">
+      {/* The photo frame */}
+      <div className="photo-frame" style={containerStyle}>
         {evidence.img_url ? (
-          <img src={evidence.img_url} alt={evidence.title} className="actual-photo" />
+          <>
+            {/* Skeleton Loader: Active only after the component enters viewport threshold */}
+            {shouldLoad && !isLoaded && <div className="image-skeleton-loader" />}
+
+            {/* Only mount the actual image source once allowed by the observer */}
+            {shouldLoad && (
+              <img
+                src={evidence.img_url}
+                alt={evidence.title}
+                className="actual-photo"
+                onLoad={() => setIsLoaded(true)}
+                style={{
+                  opacity: isLoaded ? 1 : 0,
+                }}
+              />
+            )}
+          </>
         ) : (
           <div className="photo-placeholder">
             <span>{t('pages.gameRoom.evidence.variants.image.noImage')}</span>
           </div>
         )}
 
-        {/* Glossy reflection overlay to make it look like photo paper */}
-        <div className="photo-glare"></div>
+        {/* Glossy reflection overlay */}
+        <div className="photo-glare" aria-hidden="true"></div>
       </div>
 
-      {/* Sharpie marker handwritten caption */}
+      {/* Caption */}
       <div className="photo-caption">
         <h4 className="evidence-title">{evidence.title}</h4>
         {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
@@ -8720,7 +8710,9 @@ export default function TestimonyEvidence({ evidence }: { evidence: Evidence }) 
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/DocumentViewer.tsx">
+import React from 'react';
 import type { DocumentEvidence } from '@/types/evidence';
+import ViewersContainer from './ViewersContainer';
 import FinancialRecordViewer from './DocumentViewers/FinancialRecordViewer';
 import ContractViewer from './DocumentViewers/ContractViewer';
 import JournalViewer from './DocumentViewers/JournalViewer';
@@ -8732,41 +8724,40 @@ interface DocumentViewerProps {
   evidence: DocumentEvidence;
 }
 
-export default function DocumentViewer({ evidence }: DocumentViewerProps) {
-  const { sub_type } = evidence;
+type DocumentRegistryMap = {
+  [K in DocumentEvidence['sub_type']]: React.FC<{
+    evidence: Extract<DocumentEvidence, { sub_type: K }>;
+  }>;
+};
 
-  const renderDocumentContent = () => {
-    switch (sub_type) {
-      case 'correspondence':
-        return <CorrespondenceViewer evidence={evidence} />;
-      case 'financial':
-        return <FinancialRecordViewer evidence={evidence} />;
-      case 'journal':
-        return <JournalViewer evidence={evidence} />;
-      case 'contract':
-        return <ContractViewer evidence={evidence} />;
-      case 'memo':
-        return <MemoViewer evidence={evidence} />;
-      case 'background_check':
-        return <BackgroundCheckViewer evidence={evidence} />;
-      default:
-        return (
-          <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
-            Document contents illegible or corrupted.
-          </div>
-        );
-    }
-  };
+const DocumentViewerRegistry: DocumentRegistryMap = {
+  correspondence: CorrespondenceViewer,
+  financial: FinancialRecordViewer,
+  journal: JournalViewer,
+  contract: ContractViewer,
+  memo: MemoViewer,
+  background_check: BackgroundCheckViewer,
+};
+
+export default function DocumentViewer({ evidence }: DocumentViewerProps) {
+  const ViewerComponent = DocumentViewerRegistry[evidence.sub_type] as React.FC<{ evidence: DocumentEvidence }> | undefined;
 
   return (
-    <div className="document-report-container">
-      {renderDocumentContent()}
-    </div>
+    <ViewersContainer evidence={evidence}>
+      {ViewerComponent ? (
+        <ViewerComponent evidence={evidence} />
+      ) : (
+        <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+          Document contents illegible or corrupted.
+        </div>
+      )}
+    </ViewersContainer>
   );
 }
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/ForensicViewer.tsx">
+import React from 'react';
 import type { ForensicEvidence } from '@/types/evidence';
 import ViewersContainer from './ViewersContainer';
 import AutopsyViewer from './ForensicViewers/AutopsyViewer';
@@ -8779,49 +8770,43 @@ interface ForensicViewerProps {
   evidence: ForensicEvidence;
 }
 
-export default function ForensicViewer({ evidence }: ForensicViewerProps) {
-  const { sub_type } = evidence;
+type ForensicRegistryMap = {
+  [K in ForensicEvidence['sub_type']]: React.FC<{
+    evidence: Extract<ForensicEvidence, { sub_type: K }>;
+  }>;
+};
 
-  let content;
-  switch (sub_type) {
-    case 'autopsy':
-      content = <AutopsyViewer evidence={evidence} />;
-      break;
-    case 'ballistics':
-      content = <BallisticsViewer evidence={evidence} />;
-      break;
-    case 'dna':
-      content = <DnaViewer evidence={evidence} />;
-      break;
-    case 'digital_forensics':
-      content = <DigitalForensicsViewer evidence={evidence} />;
-      break;
-    case 'trace_analysis':
-      content = <TraceAnalysisViewer evidence={evidence} />;
-      break;
-    default:
-      content = (
-        <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
-          Forensic report corrupted or unreadable.
-        </div>
-      );
-  }
+const ForensicViewerRegistry: ForensicRegistryMap = {
+  autopsy: AutopsyViewer,
+  ballistics: BallisticsViewer,
+  dna: DnaViewer,
+  digital_forensics: DigitalForensicsViewer,
+  trace_analysis: TraceAnalysisViewer,
+};
+
+export default function ForensicViewer({ evidence }: ForensicViewerProps) {
+  const ViewerComponent = ForensicViewerRegistry[evidence.sub_type] as React.FC<{ evidence: ForensicEvidence }> | undefined;
 
   return (
     <ViewersContainer evidence={evidence}>
-      {content}
+      {ViewerComponent ? (
+        <ViewerComponent evidence={evidence} />
+      ) : (
+        <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+          Forensic report corrupted or unreadable.
+        </div>
+      )}
     </ViewersContainer>
   );
 }
 </file>
 
 <file path="src/pages/GameRoom/tabs/EvidenceBoard/Viewers/MediaViewer.tsx">
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types/evidence';
 import './MediaViewer.css';
 
-// Extract strict Media type (only Image and Audio)
 type MediaEvidence = Extract<Evidence, { evidence_type: 'image' | 'audio' }>;
 
 interface MediaViewerProps {
@@ -8830,10 +8815,36 @@ interface MediaViewerProps {
 
 const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
   const { t } = useTranslation();
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const [isImageLoaded, setIsImageLoaded] = useState<boolean>(false);
 
-  // We assume the asset path is stored in img_url for both images and audio,
-  // or inside metadata.url if your backend splits them up.
-  const mediaUrl = evidence.img_url || (evidence.metadata as any)?.url;
+  const mediaUrl = evidence.img_url || (evidence.metadata as Record<string, any>)?.url;
+
+  useEffect(() => {
+    if (evidence.evidence_type !== 'image' || !mediaUrl) return;
+
+    let isMounted = true;
+    setIsImageLoaded(false);
+    setDimensions(null);
+
+    const img = new Image();
+    img.src = mediaUrl;
+
+    img.onload = () => {
+      if (isMounted) {
+        setDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+      }
+    };
+    img.onerror = () => {
+      if (isMounted) {
+        setDimensions({ width: 16, height: 9 });
+      }
+    };
+
+    return () => {
+      isMounted = false;
+    };
+  }, [mediaUrl, evidence.evidence_type]);
 
   if (!mediaUrl) {
     return (
@@ -8843,16 +8854,24 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
     );
   }
 
+  const containerStyle = dimensions
+    ? { aspectRatio: `${dimensions.width} / ${dimensions.height}` }
+    : { minHeight: '300px' };
+
   return (
     <div className="media-viewer-wrapper">
-
-      {/* CONDITIONAL RENDER: IMAGE OR AUDIO */}
       {evidence.evidence_type === 'image' ? (
-        <div className="media-image-container">
+        <div className="media-image-container" style={containerStyle}>
+          {!isImageLoaded && <div className="media-skeleton-loader" />}
+
           <img
             src={mediaUrl}
             alt={evidence.title || t('pages.gameRoom.evidence.viewers.media.imageAltFallback')}
             className="media-full-image"
+            onLoad={() => setIsImageLoaded(true)}
+            style={{
+              opacity: isImageLoaded ? 1 : 0,
+            }}
           />
         </div>
       ) : (
@@ -8865,14 +8884,12 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
         </div>
       )}
 
-      {/* SHARED PLAQUE FOR TITLE & DESCRIPTION */}
       <div className="media-meta-plaque">
         <h3 className="media-plaque-title">{evidence.title}</h3>
         {evidence.description && (
           <p className="media-plaque-desc">{evidence.description}</p>
         )}
       </div>
-
     </div>
   );
 };
@@ -10450,8 +10467,6 @@ export default function MainMenu() {
 </file>
 
 <file path="src/services/adminApi.ts">
-// FILE: src/services/adminApi.ts
-
 import { type Result, success, failure } from '@/utils/Result';
 import { getToken } from './auth';
 
@@ -10504,6 +10519,11 @@ export const deleteAdminCase = (id: number) => adminRequest(`/cases/${id}`, { me
 // ==========================================
 // PHASES
 // ==========================================
+export const fetchAdminPhases = async (caseId: string | number): Promise<Result<any[]>> => {
+  if (!caseId) return success([]);
+  return await adminRequest(`/cases/${caseId}/phases`, { method: 'GET' });
+};
+
 export const createAdminPhase = (fd: FormData) => adminRequest('/phases', { method: 'POST', body: fd });
 export const updateAdminPhase = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/phases/${id}`, { method: 'POST', body: fd }); };
 export const deleteAdminPhase = (id: number) => adminRequest(`/phases/${id}`, { method: 'DELETE' });
@@ -10511,10 +10531,14 @@ export const deleteAdminPhase = (id: number) => adminRequest(`/phases/${id}`, { 
 // ==========================================
 // LEVELS
 // ==========================================
+export const fetchAdminLevels = async (phaseId: string | number): Promise<Result<any[]>> => {
+  if (!phaseId) return success([]);
+  return await adminRequest(`/phases/${phaseId}/levels`, { method: 'GET' });
+};
+
 export const createAdminLevel = (fd: FormData) => adminRequest('/levels', { method: 'POST', body: fd });
 export const updateAdminLevel = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/levels/${id}`, { method: 'POST', body: fd }); };
 export const deleteAdminLevel = (id: number) => adminRequest(`/levels/${id}`, { method: 'DELETE' });
-
 // ==========================================
 // QUESTIONS (Nodes, Intercepts, Locations)
 // ==========================================
@@ -11030,6 +11054,9 @@ export interface GameRoom {
   played_wiretaps?: Question[];
   inspections?: RoomInspection[];
   filed_requests?: FiledRequest[];
+  accumulated_evidences?: Evidence[];
+  accumulated_suspects?: Suspect[];
+  accumulated_victims?: Victim[];
 }
 
 export interface FinalStats {

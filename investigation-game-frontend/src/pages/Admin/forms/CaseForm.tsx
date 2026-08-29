@@ -3,10 +3,10 @@ import { useAdminCases } from '@/hooks/useAdminData';
 import { useAdminMutations } from '@/hooks/useAdminMutations';
 import EntityList from './Shared/EntityList';
 import type { GameCase } from '@/types';
+import { AdminRow, AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/components/AdminUI';
 
 export default function CaseForm() {
   const [editingCaseId, setEditingCaseId] = useState<number | null>(null);
-
   const [title, setTitle] = useState('');
   const [story, setStory] = useState('');
   const [minPlayerXP, setMinPlayerXP] = useState('0');
@@ -24,11 +24,7 @@ export default function CaseForm() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: cases = [], isLoading: isFetchingCases } = useAdminCases();
-
-  const { 
-    createEntity, updateEntity, deleteEntity, isProcessing, 
-    feedback, clearFeedback 
-  } = useAdminMutations('case');
+  const { createEntity, updateEntity, deleteEntity, isProcessing, feedback, clearFeedback } = useAdminMutations('case');
 
   const clearForm = () => {
     setEditingCaseId(null);
@@ -38,6 +34,33 @@ export default function CaseForm() {
     setAuthorName('System'); setIsPublished(false); setStoreLocally(false);
     setImage(null); clearFeedback();
     if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    
+    if (file) {
+      // Architecture Mandate: Strict client-side validation (4MB threshold for images)
+      const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB in bytes
+
+      if (file.size > MAX_FILE_SIZE) {
+        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+        
+        // Alert the user and immediately halt payload attachment
+        alert(`SECURITY WARNING: File size exceeds the 4MB limit (Current size: ${sizeInMB}MB). Please compress the image before uploading to prevent UI freezing and HTTP 413 errors.`);
+        
+        // Reset state and DOM element to prevent accidental submission
+        setImage(null);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+        return;
+      }
+
+      setImage(file);
+    } else {
+      setImage(null);
+    }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -54,11 +77,8 @@ export default function CaseForm() {
     formData.append('store_locally', storeLocally ? '1' : '0');
     if (image) formData.append('image', image);
 
-    if (editingCaseId) {
-      updateEntity({ id: editingCaseId, formData }, { onSuccess: clearForm });
-    } else {
-      createEntity(formData, { onSuccess: clearForm });
-    }
+    if (editingCaseId) updateEntity({ id: editingCaseId, formData }, { onSuccess: clearForm });
+    else createEntity(formData, { onSuccess: clearForm });
   };
 
   const handleEditInit = (caseObj: GameCase) => {
@@ -82,7 +102,7 @@ export default function CaseForm() {
   };
 
   const handleDelete = (c: GameCase) => {
-    if (window.confirm(`Are you absolutely sure you want to delete "${c.title}"? All nested levels, evidence, and media will be wiped permanently.`)) {
+    if (window.confirm(`Delete "${c.title}"? All nested data will be wiped permanently.`)) {
       if (editingCaseId === c.id) clearForm();
       deleteEntity(c.id);
     }
@@ -90,59 +110,65 @@ export default function CaseForm() {
 
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-      
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h3 style={{ fontFamily: 'var(--font-mono)', color: editingCaseId ? 'var(--accent-amber)' : 'var(--accent-crimson)', margin: 0 }}>
             {editingCaseId ? `// Editing Case ID: ${editingCaseId}` : '// Initialize New Case'}
           </h3>
           {editingCaseId && (
-            <button type="button" className="btn-secondary" onClick={clearForm} style={{ padding: '0.5rem 1rem', width: 'auto', flex: 'none' }}>Cancel Edit</button>
+            <button type="button" className="btn-secondary" onClick={clearForm} style={{ padding: '0.5rem 1rem', width: 'auto' }}>Cancel Edit</button>
           )}
         </div>
         
         {feedback && <div className={`status-message ${feedback.type}`}>{feedback.message}</div>}
 
         <form onSubmit={handleSubmit} className="admin-form">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: isPublished ? 'rgba(0, 229, 255, 0.1)' : 'rgba(163, 50, 50, 0.1)', border: `1px solid ${isPublished ? 'rgba(0, 229, 255, 0.3)' : 'rgba(163, 50, 50, 0.3)'}`, padding: '1rem', borderRadius: '8px', marginBottom: '1rem', transition: 'all 0.3s ease' }}>
-            <input type="checkbox" id="published-toggle" checked={isPublished} onChange={(e) => setIsPublished(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: isPublished ? 'var(--accent-cyan)' : 'var(--accent-crimson)' }} />
-            <label htmlFor="published-toggle" style={{ fontFamily: 'var(--font-mono)', color: isPublished ? 'var(--accent-cyan)' : 'var(--accent-crimson)', cursor: 'pointer' }}>
-              <strong>{isPublished ? 'LIVE / PUBLISHED' : 'DRAFT / CLASSIFIED'} :</strong> {isPublished ? 'This case is visible to all agents on the main board.' : 'This case is hidden from the public. Only visible in Admin Oversight.'}
-            </label>
-          </div>
+          <AdminCheckbox 
+            checked={isPublished} 
+            onChange={(e) => setIsPublished(e.target.checked)}
+            labelTitle={isPublished ? 'LIVE / PUBLISHED' : 'DRAFT / CLASSIFIED'}
+            description={isPublished ? 'Case is visible to all agents on main board.' : 'Hidden from public. Only visible in Admin Oversight.'}
+            accentColor={isPublished ? 'var(--accent-cyan)' : 'var(--accent-crimson)'}
+            bgColor={isPublished ? 'rgba(0, 229, 255, 0.1)' : 'rgba(163, 50, 50, 0.1)'}
+          />
 
-          <div className="form-group"><label>Case Title</label><input type="text" className="admin-input" required value={title} onChange={(e) => setTitle(e.target.value)} /></div>
-          <div className="form-group"><label>Official Briefing (Story)</label><textarea className="admin-textarea" required value={story} onChange={(e) => setStory(e.target.value)} /></div>
+          <AdminInput label="Case Title" type="text" required value={title} onChange={(e) => setTitle(e.target.value)} />
+          <AdminTextarea label="Official Briefing (Story)" required value={story} onChange={(e) => setStory(e.target.value)} />
 
-          <div className="admin-form-row">
-            <div className="form-group" style={{ flex: 1 }}><label>Minimum XP Required</label><input type="number" className="admin-input" min="0" required value={minPlayerXP} onChange={(e) => setMinPlayerXP(e.target.value)} /></div>
-            <div className="form-group" style={{ flex: 1 }}><label>XP Reward on Solve</label><input type="number" className="admin-input" min="0" required value={xpOnSolve} onChange={(e) => setXpOnSolve(e.target.value)} /></div>
-            <div className="form-group" style={{ flex: 1 }}><label>Allowed Strikes (Difficulty)</label><input type="number" className="admin-input" min="1" required value={maxStrikes} onChange={(e) => setMaxStrikes(e.target.value)} /></div>
-          </div>
+          <AdminRow>
+            <AdminInput label="Minimum XP Required" type="number" min="0" required value={minPlayerXP} onChange={(e) => setMinPlayerXP(e.target.value)} />
+            <AdminInput label="XP Reward on Solve" type="number" min="0" required value={xpOnSolve} onChange={(e) => setXpOnSolve(e.target.value)} />
+            <AdminInput label="Allowed Strikes (Difficulty)" type="number" min="1" required value={maxStrikes} onChange={(e) => setMaxStrikes(e.target.value)} />
+          </AdminRow>
           
-          <div className="admin-form-row">
-            <div className="form-group" style={{ flex: 1 }}><label>Difficulty</label><input type="text" className="admin-input" required value={difficulty} onChange={(e) => setDifficulty(e.target.value)} /></div>
-            <div className="form-group" style={{ flex: 1 }}><label>Est. Playtime</label><input type="text" className="admin-input" required value={estimatedPlaytime} onChange={(e) => setEstimatedPlaytime(e.target.value)} /></div>
-            <div className="form-group" style={{ flex: 1 }}><label>Content Rating</label><input type="text" className="admin-input" required value={ageRating} onChange={(e) => setAgeRating(e.target.value)} /></div>
-          </div>
+          <AdminRow>
+            <AdminInput label="Difficulty" type="text" required value={difficulty} onChange={(e) => setDifficulty(e.target.value)} />
+            <AdminInput label="Est. Playtime" type="text" required value={estimatedPlaytime} onChange={(e) => setEstimatedPlaytime(e.target.value)} />
+            <AdminInput label="Content Rating" type="text" required value={ageRating} onChange={(e) => setAgeRating(e.target.value)} />
+          </AdminRow>
 
-          <div className="admin-form-row">
-            <div className="form-group" style={{ flex: 1 }}><label>User Rating (0.0 to 5.0)</label><input type="number" step="0.1" max="5" min="0" className="admin-input" required value={ratingStars} onChange={(e) => setRatingStars(e.target.value)} /></div>
-            <div className="form-group" style={{ flex: 1 }}><label>Author / Creator</label><input type="text" className="admin-input" required value={authorName} onChange={(e) => setAuthorName(e.target.value)} /></div>
-          </div>
+          <AdminRow>
+            <AdminInput label="User Rating (0.0 to 5.0)" type="number" step="0.1" max="5" min="0" required value={ratingStars} onChange={(e) => setRatingStars(e.target.value)} />
+            <AdminInput label="Author / Creator" type="text" required value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+          </AdminRow>
 
-          <div className="form-group"><label>Genre Tags (Comma Separated)</label><input type="text" className="admin-input" placeholder="Tactical, Puzzle, Espionage" value={tags} onChange={(e) => setTags(e.target.value)} /></div>
+          <AdminInput label="Genre Tags (Comma Separated)" type="text" placeholder="Tactical, Puzzle, Espionage" value={tags} onChange={(e) => setTags(e.target.value)} />
           
-          <div className="form-group">
-            <label>Cover Image {editingCaseId && '(Leave blank to keep existing image)'}</label>
-            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}><strong>Optimal:</strong> 1:1 (Square) or 16:9 ratio. Min 800x800px. WEBP or JPG format. Max 4MB.</p>
-            <input type="file" className="admin-file-input" accept="image/*" ref={fileInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
-          </div>
+          <AdminFileInput 
+            label={`Cover Image ${editingCaseId ? '(Leave blank to keep existing)' : ''}`}
+            hint="Optimal: 1:1 (Square) or 16:9 ratio. Min 800x800px. WEBP or JPG format. Max 4MB."
+            accept="image/*"
+            ref={fileInputRef} 
+            onChange={handleImageChange}
+          />
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
-            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}><strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.</label>
-          </div>
+          <AdminCheckbox 
+            checked={storeLocally} 
+            onChange={(e) => setStoreLocally(e.target.checked)}
+            labelTitle="Store Locally on Server"
+            description="Save assets directly to public server folders instead of Cloudinary."
+            accentColor="var(--accent-amber)"
+          />
 
           <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingCaseId ? 'var(--accent-amber)' : 'var(--accent-crimson)', marginTop: '1rem', color: 'var(--bg-dark)' }}>
             {isProcessing ? 'Processing Data...' : editingCaseId ? 'Update Existing Case' : 'Commit Case to Database'}

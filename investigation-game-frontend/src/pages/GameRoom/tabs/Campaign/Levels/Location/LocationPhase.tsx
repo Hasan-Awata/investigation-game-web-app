@@ -5,7 +5,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Level, Choice } from '@/types';
-// Assume api.inspectLocation is added mapping to POST /rooms/{room}/inspect
 import * as api from '@/services/api'; 
 import './LocationPhase.css';
 
@@ -52,15 +51,25 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
   const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
   const popupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 1. ADD LOCAL STATE TO PREVENT TANSTACK REFETCHES FROM WIPING THE UI ANIMATIONS
+  const [localFound, setLocalFound] = useState<Set<number>>(new Set());
+  const [localDeadEnds, setLocalDeadEnds] = useState<Set<number>>(new Set());
+
   useEffect(() => {
     return () => {
       if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
     };
   }, []);
 
-  // DERIVE STATE FROM AUTHORITATIVE BACKEND INSTEAD OF SESSION STORAGE
-  const foundPoints = new Set(room.inspections?.filter((i: any) => !i.is_dead_end).map((i: any) => i.choice_id) || []);
-  const clickedDeadEnds = new Set(room.inspections?.filter((i: any) => i.is_dead_end).map((i: any) => i.choice_id) || []);
+  // DERIVE STATE FROM AUTHORITATIVE BACKEND + LOCAL STATE
+  const foundPoints = new Set([
+    ...(room.inspections?.filter((i: any) => !i.is_dead_end).map((i: any) => i.choice_id) || []),
+    ...localFound
+  ]);
+  const clickedDeadEnds = new Set([
+    ...(room.inspections?.filter((i: any) => i.is_dead_end).map((i: any) => i.choice_id) || []),
+    ...localDeadEnds
+  ]);
 
   // OPTIMISTIC MUTATION
   const inspectMutation = useMutation({
@@ -145,6 +154,9 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     e.stopPropagation();
     if (status !== 'active') return;
 
+    // 2. PREVENT SPAMMING NOTIFICATIONS: If already clicked, abort immediately
+    if (foundPoints.has(choice.id) || clickedDeadEnds.has(choice.id)) return;
+
     if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
 
     const hasUnlocks = choice.outcomes && (
@@ -156,12 +168,16 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     );
 
     const isCorrectFind = !!hasUnlocks;
-    const isFirstTimeDiscovery = !foundPoints.has(choice.id);
+
+    // Update local state instantly to stabilize UI animations
+    if (isCorrectFind) {
+      setLocalFound(prev => new Set(prev).add(choice.id));
+    } else {
+      setLocalDeadEnds(prev => new Set(prev).add(choice.id));
+    }
 
     // Fire the optimistic TanStack mutation to the server
-    if (isFirstTimeDiscovery && !clickedDeadEnds.has(choice.id)) {
-        inspectMutation.mutate(choice.id);
-    }
+    inspectMutation.mutate(choice.id);
 
     if (isCorrectFind) {
       setPopup({
@@ -170,7 +186,7 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
         isSuccess: true
       });
 
-      if (isFirstTimeDiscovery && choice.outcomes?.next_question_id) {
+      if (choice.outcomes?.next_question_id) {
         addToast({
           type: 'level',
           title: t('pages.gameRoom.campaign.levels.location.newSceneUnlocked'),
@@ -179,9 +195,9 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
         });
       }
 
-      if (isFirstTimeDiscovery) {
-        handleSelectChoice(e, qId, choice, status);
-      }
+      // Lock in the vote/discovery globally
+      handleSelectChoice(e, qId, choice, status);
+      
     } else {
         setPopup({
           title: t('pages.gameRoom.campaign.levels.location.deadEnd'),
