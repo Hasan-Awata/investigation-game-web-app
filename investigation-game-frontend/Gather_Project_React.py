@@ -138,6 +138,7 @@ def gather_project_code(root_dir, output_file, include_styles=False):
 
 if __name__ == "__main__":
     project_root = r"D:\Laravel\investigation-game\investigation-game-frontend" 
+    admin_files = r"D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin" 
     output_filename = "ai_project_context.xml"
     
     gather_project_code(project_root, output_filename, include_styles=False)

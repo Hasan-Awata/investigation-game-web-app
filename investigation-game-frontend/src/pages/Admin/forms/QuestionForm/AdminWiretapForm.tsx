@@ -1,5 +1,7 @@
 import { type RefObject } from 'react';
 import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
+import AdminFormHeader from '../Shared/AdminFormHeader';
+import { validateImageSize, validateAudioSize } from '@/utils/fileValidation';
 
 interface AdminWiretapFormProps {
   editingId: number | null;
@@ -33,59 +35,34 @@ export default function AdminWiretapForm({
   previewUrl, audioPreviewUrl
 }: AdminWiretapFormProps) {
 
-  // Architecture Mandate: Strict client-side validation (10MB threshold for audio)
   const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
-
-      if (file.size > MAX_FILE_SIZE) {
-        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-        alert(`SECURITY WARNING: File size exceeds the 10MB limit (Current size: ${sizeInMB}MB). Please compress the audio before uploading to prevent UI freezing and HTTP 413 errors.`);
-        
-        setAudio(null);
-        if (audioInputRef.current) audioInputRef.current.value = '';
-        return;
-      }
+    if (file && validateAudioSize(file)) {
       setAudio(file);
     } else {
       setAudio(null);
+      if (audioInputRef.current) audioInputRef.current.value = '';
     }
   };
 
-  // Architecture Mandate: Strict client-side validation (4MB threshold for images)
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4MB in bytes
-
-      if (file.size > MAX_FILE_SIZE) {
-        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-        alert(`SECURITY WARNING: File size exceeds the 4MB limit (Current size: ${sizeInMB}MB). Please compress the image before uploading to prevent UI freezing and HTTP 413 errors.`);
-        
-        setImage(null);
-        if (imageInputRef.current) imageInputRef.current.value = '';
-        return;
-      }
+    if (file && validateImageSize(file)) {
       setImage(file);
     } else {
       setImage(null);
+      if (imageInputRef.current) imageInputRef.current.value = '';
     }
   };
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-        <div>
-          <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', margin: '0 0 0.5rem 0' }}>
-            {editingId ? `// Editing Wiretap Intercept ID: ${editingId}` : '// Compile Wiretap Intercept'}
-          </h3>
-          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-            {contextHeader}
-          </span>
-        </div>
-        {editingId && <button type="button" className="btn-secondary" onClick={handleCancelEdit} style={{ padding: '0.5rem 1rem', width: 'auto' }}>Cancel Edit</button>}
-      </div>
+      <AdminFormHeader 
+        editingId={editingId} 
+        entityName="Wiretap Intercept" 
+        contextHeader={contextHeader} 
+        onCancel={handleCancelEdit} 
+      />
 
       {statusMessage && <div className={`status-message ${statusMessage.type}`}>{statusMessage.message}</div>}
 
@@ -105,7 +82,7 @@ export default function AdminWiretapForm({
               </div>
             )}
           </div>
-          
+
           <div className="form-group" style={{ flex: 1 }}>
             <label>Associated Image / Dossier (Optional)</label>
             <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={handleImageChange} />
@@ -131,7 +108,7 @@ export default function AdminWiretapForm({
               + Add Option
             </button>
           </div>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {choices.map((choice, index) => (
               <ChoiceEditorCard

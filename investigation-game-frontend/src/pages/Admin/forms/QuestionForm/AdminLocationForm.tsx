@@ -1,5 +1,7 @@
 import { type RefObject } from 'react';
 import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
+import AdminFormHeader from '../Shared/AdminFormHeader';
+import { validateImageSize } from '@/utils/fileValidation';
 
 interface AdminLocationFormProps {
   editingId: number | null;
@@ -27,48 +29,31 @@ interface AdminLocationFormProps {
 
 export default function AdminLocationForm({
   editingId, text, setText, storeLocally, setStoreLocally,
-  imageInputRef, setImage, choices, setChoices, 
+  imageInputRef, setImage, choices, setChoices,
   activeCoordinateTarget, setActiveCoordinateTarget, handleImageClick,
   handleSubmit, handleCancelEdit, isProcessing, statusMessage, contextHeader,
   previewUrl
 }: AdminLocationFormProps) {
 
-  // Architecture Mandate: Strict client-side validation (10MB threshold for Scene Images)
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB in bytes
-
-      if (file.size > MAX_FILE_SIZE) {
-        const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
-        alert(`SECURITY WARNING: File size exceeds the 10MB limit (Current size: ${sizeInMB}MB). Please compress the image before uploading to prevent UI freezing and HTTP 413 errors.`);
-        
-        setImage(null);
-        if (imageInputRef.current) imageInputRef.current.value = '';
-        return;
-      }
+    if (file && validateImageSize(file)) {
       setImage(file);
     } else {
       setImage(null);
+      if (imageInputRef.current) imageInputRef.current.value = '';
     }
   };
 
   return (
     <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem', marginTop: '1rem' }}>
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <div>
-            <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', margin: '0 0 0.5rem 0' }}>
-              {editingId ? `// Editing Scene ID: ${editingId}` : '// Compile New Scene'}
-            </h3>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-              {contextHeader}
-            </span>
-          </div>
-          <button type="button" className="btn-secondary" onClick={handleCancelEdit} style={{ padding: '0.5rem 1rem', width: 'auto' }}>
-            Return to Overview
-          </button>
-        </div>
+        <AdminFormHeader 
+          editingId={editingId} 
+          entityName="Scene" 
+          contextHeader={contextHeader} 
+          onCancel={handleCancelEdit} 
+        />
 
         {statusMessage && <div className={`status-message ${statusMessage.type}`}>{statusMessage.message}</div>}
 
@@ -81,7 +66,6 @@ export default function AdminLocationForm({
           <div className="admin-form-row" style={{ marginTop: '1rem' }}>
             <div className="form-group" style={{ flex: 1 }}>
               <label>Environment Map (Image)</label>
-              {/* Image Input intercepted with the 10MB validation check */}
               <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={handleImageChange} />
             </div>
           </div>
@@ -120,16 +104,13 @@ export default function AdminLocationForm({
           )}
 
           <div className="qf-choices-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
-            {choices.map((choice) => (
-              <ChoiceEditorCard 
+            {choices.map((choice, index) => (
+              <ChoiceEditorCard
                 key={choice.id}
-                index={choices.findIndex(c => c.id === choice.id)}
+                index={index}
                 choice={choice}
                 updateChoice={(updated) => setChoices(choices.map(c => c.id === choice.id ? updated : c))}
                 removeChoice={() => setChoices(choices.filter(c => c.id !== choice.id))}
-                isLocationMode={true}
-                isTargeting={activeCoordinateTarget === choice.id}
-                onToggleTarget={() => setActiveCoordinateTarget(activeCoordinateTarget === choice.id ? null : (choice.id ?? null))}
               />
             ))}
             {choices.length === 0 && <div style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', padding: '1rem', background: 'rgba(0,0,0,0.1)', borderRadius: '6px' }}>No points mapped. Add a point to allow spatial inspection.</div>}
