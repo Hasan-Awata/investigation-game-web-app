@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { useNodeSubmit } from '@/hooks/useNodeSubmit';
 import { useAdminMutations } from '@/hooks/useAdminMutations';
 import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
-import { defaultRequirements, defaultOutcomes } from '../Shared/questionUtils';
+import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '@/utils/questionUtils';
 import StatusMessage from '../Shared/StatusMessage';
 import type { Question } from '@/types';
 
@@ -27,24 +26,36 @@ export default function AdminInterrogationForm({
   }));
 
   const [choicesState, setChoicesState] = useState<DraftChoice[]>(
-    initialChoices.length > 0 
-      ? initialChoices 
+    initialChoices.length > 0
+      ? initialChoices
       : [{ id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }]
   );
 
-  // Use the abstracted submit hook for saving
-  const { submitNode, isProcessing, feedback } = useNodeSubmit(onSaved);
-  
-  // We only need useAdminMutations here specifically for the delete action
-  const { deleteEntity, isProcessing: isDeleting } = useAdminMutations('question');
+  // Directly utilize the unified mutations
+  const { createEntity, updateEntity, deleteEntity, isProcessing, feedback, setFeedback, clearFeedback } = useAdminMutations('question');
 
   const handleSave = () => {
-    submitNode({
-      nodeId: isSaved ? nodeData.id : undefined,
-      levelId,
+    clearFeedback();
+    
+    if (!text.trim()) {
+      return setFeedback({ type: 'error', message: 'Suspect dialogue cannot be empty.' });
+    }
+    if (choicesState.some(c => !c.text.trim())) {
+      return setFeedback({ type: 'error', message: 'All response branches must have text.' });
+    }
+
+    const formData = buildNodeFormData({
+      level_id: levelId,
       text,
-      choices: choicesState
+      store_locally: false, // Not typically used for text nodes, but required by the builder contract
+      choices: choicesState,
     });
+
+    if (isSaved) {
+      updateEntity({ id: nodeData.id, formData }, { onSuccess: onSaved });
+    } else {
+      createEntity(formData, { onSuccess: onSaved });
+    }
   };
 
   const handleDelete = () => {
@@ -63,13 +74,13 @@ export default function AdminInterrogationForm({
       <div className="node-body">
         <div className="node-suspect-block">
           <label>Suspect Dialogue</label>
-          <textarea 
-            className="admin-textarea" 
-            dir="auto" 
-            value={text} 
-            onChange={(e) => setText(e.target.value)} 
-            style={{ minHeight: '80px' }} 
-            placeholder="Suspect says..." 
+          <textarea
+            className="admin-textarea"
+            dir="auto"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            style={{ minHeight: '80px' }}
+            placeholder="Suspect says..."
           />
         </div>
 
@@ -87,10 +98,10 @@ export default function AdminInterrogationForm({
               removeChoice={() => setChoicesState(choicesState.filter(c => c.id !== choice.id))}
             />
           ))}
-          <button 
-            type="button" 
-            className="btn-secondary" 
-            style={{ padding: '0.5rem', marginTop: '0.5rem' }} 
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '0.5rem', marginTop: '0.5rem' }}
             onClick={() => setChoicesState([...choicesState, { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }])}
           >
             + Add Response Branch
@@ -99,11 +110,11 @@ export default function AdminInterrogationForm({
       </div>
 
       <div className="node-footer">
-        <button className="btn-primary" onClick={handleSave} disabled={isProcessing || isDeleting}>
+        <button className="btn-primary" onClick={handleSave} disabled={isProcessing}>
           {isProcessing ? 'Syncing...' : isSaved ? 'Update Node' : 'Commit New Node'}
         </button>
         {isSaved && (
-          <button className="btn-secondary delete-btn" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }} onClick={handleDelete} disabled={isProcessing || isDeleting}>
+          <button className="btn-secondary delete-btn" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }} onClick={handleDelete} disabled={isProcessing}>
             Delete
           </button>
         )}

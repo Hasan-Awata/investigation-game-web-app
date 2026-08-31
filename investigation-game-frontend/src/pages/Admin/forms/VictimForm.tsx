@@ -1,25 +1,24 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useAdminContext } from '@/context/AdminContext';
-import { useAdminMutations } from '@/hooks/useAdminMutations';
+import { useAdminForm } from '@/hooks/useAdminForm';
+import AdminFormLayout from '@/components/AdminFormLayout';
 import EntityList from './Shared/EntityList';
+import { AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/components/AdminUI';
 import type { Victim } from '@/types';
 
+const initialFormState = { name: '', background: '', is_initial: true, store_locally: false };
+
 export default function VictimForm() {
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [name, setName] = useState('');
-  const [background, setBackground] = useState('');
-  const [isInitial, setIsInitial] = useState(true);
-  const [storeLocally, setStoreLocally] = useState(false);
-  const [image, setImage] = useState<File | null>(null);
-  
-  const imageInputRef = useRef<HTMLInputElement>(null);
-
   const { caseId, selectedCase } = useAdminContext();
+  const [image, setImage] = useState<File | null>(null);
 
-  const { 
-    createEntity, updateEntity, deleteEntity, isProcessing, 
-    feedback, clearFeedback 
-  } = useAdminMutations('victim');
+  const {
+    formData, updateField, editingId, clearForm, handleSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing, feedback
+  } = useAdminForm({
+    entityType: 'victim',
+    initialState: initialFormState,
+    basePayload: { caseId }
+  });
 
   if (!caseId || !selectedCase) {
     return (
@@ -30,101 +29,34 @@ export default function VictimForm() {
     );
   }
 
-  const clearForm = () => {
-    setEditingId(null);
-    setName(''); setBackground(''); setIsInitial(true); setStoreLocally(false); setImage(null);
-    clearFeedback();
-    if (imageInputRef.current) imageInputRef.current.value = '';
-  };
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => handleSubmit(e, { image });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    clearFeedback();
-
-    const formData = new FormData();
-    formData.append('case_id', caseId); formData.append('name', name);
-    formData.append('background', background); formData.append('is_initial', isInitial ? '1' : '0');
-    formData.append('store_locally', storeLocally ? '1' : '0');
-    if (image) formData.append('image', image);
-
-    if (editingId) {
-      updateEntity({ id: editingId, formData }, { onSuccess: clearForm });
-    } else {
-      createEntity(formData, { onSuccess: clearForm });
-    }
-  };
-
-  const handleEdit = (victim: Victim) => {
-    setEditingId(victim.id);
-    setName(victim.name); setBackground(victim.background || ''); setIsInitial(!!victim.is_initial);
+  const onEdit = (victim: Victim) => {
+    handleEditInit(victim, (v) => ({ name: v.name, background: v.background || '', is_initial: !!v.is_initial, store_locally: false }));
     setImage(null);
-    clearFeedback();
-    if (imageInputRef.current) imageInputRef.current.value = '';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDelete = (victim: Victim) => {
-    if (window.confirm(`Are you absolutely sure you want to delete ${victim.name}?`)) {
-      if (editingId === victim.id) clearForm();
-      deleteEntity(victim.id);
-    }
   };
 
   return (
-    <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <div>
-            <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', margin: '0 0 0.5rem 0' }}>
-              {editingId ? `// Editing Victim ID: ${editingId}` : '// Initialize New Casualty'}
-            </h3>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>Targeting Case: {selectedCase.title}</span>
-          </div>
-          {editingId && <button type="button" className="btn-secondary" onClick={clearForm} style={{ padding: '0.5rem 1rem', width: 'auto' }}>Cancel Edit</button>}
-        </div>
-
-        {feedback && <div className={`status-message ${feedback.type}`}>{feedback.message}</div>}
-
-        <form onSubmit={handleSubmit} className="admin-form">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-            <input type="checkbox" id="victim-initial-toggle" checked={isInitial} onChange={(e) => setIsInitial(e.target.checked)} style={{ transform: 'scale(1.5)', accentColor: 'var(--accent-cyan)' }} />
-            <label htmlFor="victim-initial-toggle" style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', cursor: 'pointer' }}>
-              <strong>Initial Victim:</strong> Details available on the board immediately when the case starts.
-            </label>
-          </div>
-
-          <div className="form-group"><label>Full Name / Alias</label><input type="text" className="admin-input" required value={name} onChange={(e) => setName(e.target.value)} /></div>
-          <div className="form-group"><label>Background Intel / Autopsy Notes</label><textarea className="admin-textarea" value={background} onChange={(e) => setBackground(e.target.value)} /></div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+      <AdminFormLayout editingId={editingId} entityName="Casualty" contextHeader={`Targeting Case: ${selectedCase.title}`} feedback={feedback} onCancel={clearForm}>
+        <form onSubmit={onSubmit} className="admin-form">
+          <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle="Initial Victim" description="Details available immediately when the case starts." accentColor="var(--accent-cyan)" bgColor="rgba(0,0,0,0.2)" />
           
-          <div className="form-group">
-            <label>Victim Image {editingId && '(Leave blank to keep existing)'}</label>
-            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-              <strong>Optimal:</strong> 1:1 (Square) ratio. Min 400x400px. WEBP or JPG. Max 4MB.
-            </p>
-            <input type="file" className="admin-file-input" accept="image/*" ref={imageInputRef} onChange={(e) => setImage(e.target.files?.[0] || null)} />
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginTop: '1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
-            <input type="checkbox" id="store-locally-toggle" checked={storeLocally} onChange={(e) => setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
-            <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}>
-              <strong>Store Locally on Server:</strong> Save assets directly to public server folders instead of Cloudinary.
-            </label>
-          </div>
+          <AdminInput label="Full Name / Alias" required value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
+          <AdminTextarea label="Background Intel / Autopsy Notes" value={formData.background} onChange={(e) => updateField('background', e.target.value)} />
+          
+          <AdminFileInput label={`Victim Image ${editingId ? '(Leave blank to keep existing)' : ''}`} hint="Optimal: 1:1 ratio. Min 400x400px. WEBP or JPG. Max 4MB." accept="image/*" ref={registerFileRef('image')} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+          <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle="Store Locally on Server" accentColor="var(--accent-amber)" />
 
           <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>
             {isProcessing ? 'Processing Data...' : editingId ? 'Update Victim' : 'Commit Victim to Database'}
           </button>
         </form>
-      </div>
+      </AdminFormLayout>
 
       <EntityList<Victim>
-        title="Identified Casualties"
-        items={selectedCase.victims || []}
-        emptyMessage="No casualties identified for this case."
-        keyExtractor={(v) => v.id}
-        isProcessing={isProcessing}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+        title="Identified Casualties" items={selectedCase.victims || []} emptyMessage="No casualties identified for this case."
+        keyExtractor={(v) => v.id} isProcessing={isProcessing} onEdit={onEdit} onDelete={(v) => handleDelete(v.id, `Delete ${v.name}?`)}
         renderItemContent={(v) => (
           <>
             <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>VIC-{v.id.toString().padStart(4, '0')}</span>

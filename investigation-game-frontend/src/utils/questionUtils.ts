@@ -1,3 +1,5 @@
+import type { DraftChoice } from '@/pages/Admin/forms/Shared/ChoiceEditorCard';
+
 export interface ChoiceOutcomes {
   feedback: string;
   next_question_id: number | null;
@@ -75,3 +77,11 @@ export const buildNodeFormData = (payload: NodePayload): FormData => {
 
   return formData;
 };
+
+export interface BaseNodeFormProps {
+  state: { editingId: number | null; text: string; storeLocally: boolean; choices: DraftChoice[] };
+  setters: { setText: (t: string) => void; setStoreLocally: (v: boolean) => void; setChoices: (c: DraftChoice[]) => void };
+  actions: { registerFileRef: (key: string) => any; handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void; handleCancel: () => void };
+  status: { isProcessing: boolean; feedback: any };
+  previews: { image?: string | null; audio?: string | null };
+}

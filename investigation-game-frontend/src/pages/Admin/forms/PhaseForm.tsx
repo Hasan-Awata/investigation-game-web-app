@@ -1,21 +1,28 @@
-import { useState } from 'react';
+import React from 'react';
 import { useAdminContext } from '@/context/AdminContext';
-import { useAdminMutations } from '@/hooks/useAdminMutations';
+import { useAdminForm } from '@/hooks/useAdminForm';
+import AdminFormLayout from '@/components/AdminFormLayout';
 import EntityList from './Shared/EntityList';
+import { AdminInput, AdminTextarea } from '@/components/AdminUI';
 import type { Phase } from '@/types';
 
-export default function PhaseForm() {
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [orderIndex, setOrderIndex] = useState('1');
+const initialFormState = {
+  title: '',
+  description: '',
+  order_index: '1'
+};
 
+export default function PhaseForm() {
   const { caseId, selectedCase } = useAdminContext();
 
-  const { 
-    createEntity, updateEntity, deleteEntity, isProcessing, 
-    feedback, clearFeedback
-  } = useAdminMutations('phase');
+  const {
+    formData, updateField, editingId, clearForm, handleSubmit,
+    handleEditInit, handleDelete, isProcessing, feedback
+  } = useAdminForm({
+    entityType: 'phase',
+    initialState: initialFormState,
+    basePayload: { case_id: caseId }
+  });
 
   if (!caseId || !selectedCase) {
     return (
@@ -26,81 +33,49 @@ export default function PhaseForm() {
     );
   }
 
-  const clearForm = () => {
-    setEditingId(null);
-    setTitle(''); setDescription(''); setOrderIndex('1');
-    clearFeedback();
-  };
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => handleSubmit(e);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    clearFeedback();
-    
-    const formData = new FormData();
-    formData.append('case_id', caseId);
-    formData.append('title', title);
-    if (description) formData.append('description', description);
-    formData.append('order_index', orderIndex);
-
-    if (editingId) {
-      updateEntity({ id: editingId, formData }, { onSuccess: clearForm });
-    } else {
-      createEntity(formData, { onSuccess: clearForm });
-    }
-  };
-
-  const handleEdit = (phase: Phase) => {
-    setEditingId(phase.id);
-    setTitle(phase.title);
-    setDescription(phase.description || '');
-    setOrderIndex(phase.order_index.toString());
-    clearFeedback();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const handleDelete = (phase: Phase) => {
-    if (window.confirm(`Are you absolutely sure you want to delete the "${phase.title}" phase? All levels and questions inside it will be orphaned or deleted.`)) {
-      if (editingId === phase.id) clearForm();
-      deleteEntity(phase.id);
-    }
+  const onEdit = (phase: Phase) => {
+    handleEditInit(phase, (p) => ({
+      title: p.title,
+      description: p.description || '',
+      order_index: p.order_index.toString()
+    }));
   };
 
   return (
-    <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-      <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-          <div>
-            <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', margin: '0 0 0.5rem 0' }}>
-              {editingId ? `// Editing Phase ID: ${editingId}` : '// Initialize New Phase'}
-            </h3>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>Targeting Case: {selectedCase.title}</span>
-          </div>
-          {editingId && <button type="button" className="btn-secondary" onClick={clearForm} style={{ padding: '0.5rem 1rem', width: 'auto' }}>Cancel Edit</button>}
-        </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+      <AdminFormLayout editingId={editingId} entityName="Phase" contextHeader={`Targeting Case: ${selectedCase.title}`} feedback={feedback} onCancel={clearForm}>
+        <form onSubmit={onSubmit} className="admin-form">
+          <AdminInput
+            label="Chronological Order Index"
+            type="number"
+            min="1"
+            required
+            value={formData.order_index}
+            onChange={(e) => updateField('order_index', e.target.value)}
+          />
 
-        {feedback && <div className={`status-message ${feedback.type}`}>{feedback.message}</div>}
+          <AdminInput
+            label="Phase Title (e.g. 'The Setup', 'The Alibi')"
+            type="text"
+            required
+            value={formData.title}
+            onChange={(e) => updateField('title', e.target.value)}
+          />
 
-        <form onSubmit={handleSubmit} className="admin-form">
-          <div className="form-group">
-            <label>Chronological Order Index</label>
-            <input type="number" className="admin-input" min="1" required value={orderIndex} onChange={(e) => setOrderIndex(e.target.value)} />
-          </div>
-
-          <div className="form-group">
-            <label>Phase Title (e.g. "The Setup", "The Alibi")</label>
-            <input type="text" className="admin-input" required value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-
-          <div className="form-group">
-            <label>Description (Optional Narrative Fluff)</label>
-            <textarea className="admin-textarea" style={{ minHeight: '100px' }} value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
+          <AdminTextarea
+            label="Description (Optional Narrative Fluff)"
+            style={{ minHeight: '100px' }}
+            value={formData.description}
+            onChange={(e) => updateField('description', e.target.value)}
+          />
 
           <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>
             {isProcessing ? 'Processing Data...' : editingId ? 'Update Phase' : 'Commit Phase'}
           </button>
         </form>
-      </div>
+      </AdminFormLayout>
 
       <EntityList<Phase>
         title={`Active Phases in ${selectedCase.title}`}
@@ -108,8 +83,8 @@ export default function PhaseForm() {
         emptyMessage="No phases assigned to this case."
         keyExtractor={(p) => p.id}
         isProcessing={isProcessing}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
+        onEdit={onEdit}
+        onDelete={(p) => handleDelete(p.id, `Are you absolutely sure you want to delete the "${p.title}" phase? All levels and questions inside it will be orphaned or deleted.`)}
         renderItemContent={(p) => (
           <>
             <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', marginRight: '1rem' }}>IDX: {p.order_index}</span>
