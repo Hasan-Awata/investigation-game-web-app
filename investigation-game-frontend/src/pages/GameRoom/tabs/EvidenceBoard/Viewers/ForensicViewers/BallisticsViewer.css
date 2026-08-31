@@ -1,17 +1,22 @@
 /* ==============================================================
-   BALLISTICS REPORT (Physical Document & Microscope Overlay)
+   BALLISTICS REPORT - FIXED STYLES
    ============================================================== */
 .ballistics-modal-viewer {
+  --ballistics-font: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   background: #fdfbf7; 
   color: #1a1a1a;
   padding: 4rem 4.5rem;
   border-radius: 2px;
   box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.04), 2px 4px 20px rgba(0, 0, 0, 0.25);
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--ballistics-font);
   position: relative;
   max-width: 850px;
   margin: 0 auto;
-  text-align: start; /* Ensures left/right alignment adheres to language */
+  text-align: start;
+}
+
+.ballistics-modal-viewer *:not(.ballistics-barcode):not(.signature-ink):not(.handwritten-note-overlay) {
+  font-family: var(--ballistics-font) !important;
 }
 
 .ballistics-modal-viewer .ballistics-header {
@@ -20,6 +25,17 @@
   margin-bottom: 2rem;
   display: flex;
   justify-content: space-between;
+  align-items: flex-start;
+  position: relative;
+}
+
+.ballistics-modal-viewer .ballistics-agency-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+[dir="rtl"] .ballistics-modal-viewer .ballistics-agency-block {
   align-items: flex-start;
 }
 
@@ -55,21 +71,50 @@
   font-size: 0.9rem;
   transform: rotate(-3deg);
   opacity: 0.85;
+  width: fit-content;
+  align-self: flex-start;
 }
 
 [dir="rtl"] .ballistics-modal-viewer .ballistics-lab-stamp {
   transform: rotate(3deg);
+  align-self: flex-start;
 }
 
 .ballistics-modal-viewer .ballistics-barcode {
-  font-family: 'Libre Barcode 39', monospace;
-  font-size: 4.5rem;
-  line-height: 0.6;
-  opacity: 0.8;
-  margin-top: 1rem;
+  font-family: 'Libre Barcode 39', monospace !important;
+  font-size: 3rem;
+  line-height: 1;
+  opacity: 0.85;
+  margin-top: 0;
+  flex-shrink: 0;
 }
 
-/* --- INTAKE LOG --- */
+.ballistics-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.ballistics-modal-viewer .ballistics-mini-box {
+  border: 2px solid #1a1a1a;
+  background: #f4f4f4;
+  padding: 1.25rem;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.ballistics-modal-viewer .ballistics-mini-title {
+  font-weight: 900;
+  font-size: 1.1rem;
+  border-bottom: 2px solid #1a1a1a;
+  padding-bottom: 0.3rem;
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.05em;
+  color: #1a1a1a;
+  text-transform: uppercase;
+}
+
 .ballistics-modal-viewer .ballistics-specimen-box {
   border: 2px solid #1a1a1a;
   background: #f4f4f4;
@@ -111,7 +156,6 @@
   line-height: 1.5;
 }
 
-/* --- TEXT SECTIONS --- */
 .ballistics-modal-viewer .ballistics-section {
   margin-bottom: 2rem;
 }
@@ -131,22 +175,6 @@
   white-space: pre-wrap;
 }
 
-/* --- IMMERSIVE ADMIN TEXT FORMATTING --- */
-.ballistics-modal-viewer .redacted {
-  background-color: #1a1a1a;
-  color: #1a1a1a; 
-  /* Swapped to logical property */
-  padding-inline: 4px;
-  user-select: none; 
-}
-
-.ballistics-modal-viewer .highlighted {
-  background-color: rgba(255, 235, 59, 0.5); 
-  /* Swapped to logical property */
-  padding-inline: 2px;
-}
-
-/* --- MICROSCOPE COMPARISON ATTACHMENT --- */
 .ballistics-modal-viewer .microscope-photo-attachment {
   position: relative;
   background: #fbfbfb;
@@ -165,7 +193,6 @@
 .ballistics-modal-viewer .microscope-tape {
   position: absolute;
   top: -15px;
-  /* Swapped to logical property */
   inset-inline-start: 50%;
   transform: translateX(-50%) rotate(-4deg);
   width: 100px;
@@ -173,10 +200,6 @@
   background: rgba(244, 236, 216, 0.85); 
   box-shadow: 1px 1px 3px rgba(0,0,0,0.2);
   z-index: 20;
-}
-
-[dir="rtl"] .ballistics-modal-viewer .microscope-tape {
-  transform: translateX(50%) rotate(4deg);
 }
 
 .ballistics-modal-viewer .microscope-comparison {
@@ -200,7 +223,6 @@
 .ballistics-modal-viewer .microscope-crosshair-v {
   position: absolute;
   top: 0; bottom: 0; 
-  /* Swapped to logical property */
   inset-inline-start: 50%;
   width: 2px;
   background: rgba(0, 229, 255, 0.8);
@@ -208,14 +230,9 @@
   transform: translateX(-50%);
 }
 
-[dir="rtl"] .ballistics-modal-viewer .microscope-crosshair-v {
-  transform: translateX(50%);
-}
-
 .ballistics-modal-viewer .microscope-crosshair-h {
   position: absolute;
   top: 50%; 
-  /* Swapped to logical properties */
   inset-inline: 0;
   height: 1px;
   background: rgba(0, 229, 255, 0.4);
@@ -225,24 +242,17 @@
 .ballistics-modal-viewer .microscope-overlay-text {
   position: absolute;
   bottom: 25px;
-  /* Swapped to logical property */
   inset-inline-start: 50%;
   transform: translateX(-50%);
   background: rgba(17, 17, 17, 0.85);
   color: #00e5ff;
   padding: 0.35rem 1rem;
-  font-family: var(--font-mono);
   font-size: 0.75rem;
   border: 1px solid #00e5ff;
   letter-spacing: 0.15em;
   white-space: nowrap;
 }
 
-[dir="rtl"] .ballistics-modal-viewer .microscope-overlay-text {
-  transform: translateX(50%);
-}
-
-/* --- CONCLUSION & SIGNATURE --- */
 .ballistics-modal-viewer .ballistics-conclusion-box {
   border: 4px solid #1a1a1a;
   padding: 1.5rem;
@@ -264,13 +274,12 @@
 }
 
 .ballistics-modal-viewer .ballistics-sign-content {
-  /* Swapped to logical property */
   text-align: end;
   min-width: 300px;
 }
 
 .ballistics-modal-viewer .signature-ink {
-  font-family: 'Caveat', cursive, sans-serif;
+  font-family: 'Caveat', cursive, sans-serif !important;
   font-size: 3rem;
   color: #1a4f8b; 
   transform: rotate(-4deg);
@@ -295,21 +304,67 @@
   margin-top: 0.25rem;
 }
 
-/* --- INVESTIGATOR NOTES --- */
 .ballistics-modal-viewer .handwritten-note-overlay {
   position: absolute;
   bottom: 3rem;
-  /* Swapped to logical property */
   inset-inline-start: 3rem;
   max-width: 300px;
-  font-family: 'Caveat', cursive, sans-serif;
+  font-family: 'Caveat', cursive, sans-serif !important;
   font-size: 1.6rem;
   color: #a33232; 
   transform: rotate(-2deg);
   line-height: 1.2;
-  text-shadow: 0 0 1px rgba(163, 50, 50, 0.3);
 }
 
 [dir="rtl"] .ballistics-modal-viewer .handwritten-note-overlay {
   transform: rotate(2deg);
+}
+
+.ballistics-modal-viewer .ballistics-sign-off {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4rem;
+}
+
+.ballistics-modal-viewer .ballistics-sign-content {
+  text-align: end;
+  min-width: 300px;
+}
+
+.ballistics-modal-viewer .signature-area {
+  position: relative;
+  height: 30px;
+  margin-bottom: 2px;
+  z-index: 5;
+  width: 280px;
+  margin-inline-start: auto;
+}
+
+.ballistics-modal-viewer .steno-signature-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform: rotate(-3deg) scale(1.3);
+  transform-origin: bottom center;
+  pointer-events: none;
+  filter: contrast(150%);
+}
+
+[dir="rtl"] .ballistics-modal-viewer .steno-signature-img {
+  transform: rotate(3deg) scale(3);
+}
+
+.ballistics-modal-viewer .ballistics-signature-line {
+  border-top: 1px solid #1a1a1a;
+  padding-top: 0.5rem;
+  font-weight: 900;
+  font-size: 0.95rem;
+  position: relative;
+  z-index: 1;
+}
+
+.ballistics-modal-viewer .ballistics-verified-id {
+  font-size: 0.8rem;
+  color: #555;
+  margin-top: 0.25rem;
 }

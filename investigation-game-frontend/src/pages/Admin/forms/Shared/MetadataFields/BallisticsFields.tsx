@@ -15,12 +15,28 @@ export default function BallisticsFields({ metadata, updateMeta }: BallisticsFie
     (newList) => updateMeta('exhibits', newList)
   );
 
+  const updateChainOfCustody = (field: string, value: string) => {
+    const current = metadata.chain_of_custody || { submitted_by: '', received_date: '' };
+    updateMeta('chain_of_custody', { ...current, [field]: value });
+  };
+
   return (
     <>
       <FormattingGuide />
       <AdminRow>
         <AdminInput label="Lab Case Number" required value={metadata.case_number || ''} onChange={e => updateMeta('case_number', e.target.value)} placeholder="e.g., 2026-BL-8842" />
-        <AdminInput label="Examiner Name" required value={metadata.examiner_name || ''} onChange={e => updateMeta('examiner_name', e.target.value)} />
+      </AdminRow>
+
+      <h5 style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>CHAIN OF CUSTODY</h5>
+      <AdminRow>
+        <AdminInput label="Submitted By" value={metadata.chain_of_custody?.submitted_by || ''} onChange={e => updateChainOfCustody('submitted_by', e.target.value)} placeholder="e.g., Det. Miller" />
+        <AdminInput label="Received Date" value={metadata.chain_of_custody?.received_date || ''} onChange={e => updateChainOfCustody('received_date', e.target.value)} placeholder="e.g., 2026-06-12" />
+      </AdminRow>
+
+      <h5 style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>BALLISTIC PARAMETERS</h5>
+      <AdminRow>
+        <AdminInput label="Caliber & Manufacturer" value={metadata.caliber || ''} onChange={e => updateMeta('caliber', e.target.value)} placeholder="e.g., 9mm Luger (Winchester)" />
+        <AdminInput label="Rifling Pattern" value={metadata.rifling_pattern || ''} onChange={e => updateMeta('rifling_pattern', e.target.value)} placeholder="e.g., 6 Lands & Grooves, Right Twist" />
       </AdminRow>
 
       <DynamicListHeader title="EVIDENCE INTAKE LOG (EXHIBITS)" onAdd={() => add({ reference: '', description: '' })} addLabel="+ Add Exhibit" />
@@ -41,6 +57,7 @@ export default function BallisticsFields({ metadata, updateMeta }: BallisticsFie
       <AdminTextarea label="Firearm Specification Data" minHeight="60px" value={metadata.firearm_specs || ''} onChange={e => updateMeta('firearm_specs', e.target.value)} />
       <AdminTextarea label="Microscopic & Toolmark Analysis" value={metadata.microscopic_analysis || ''} onChange={e => updateMeta('microscopic_analysis', e.target.value)} />
       <AdminTextarea label="Trajectory & Range Findings (If Applicable)" minHeight="60px" value={metadata.trajectory_range || ''} onChange={e => updateMeta('trajectory_range', e.target.value)} />
+      <AdminTextarea label="Estimated Firing Distance & Dynamics" minHeight="60px" value={metadata.firing_distance || ''} onChange={e => updateMeta('firing_distance', e.target.value)} placeholder="e.g., Contact to close range (0-30cm)..." />
       <AdminTextarea label="Official Conclusion / Match Determination" required style={{ borderLeft: '3px solid var(--accent-crimson)' }} minHeight="60px" value={metadata.conclusion || ''} onChange={e => updateMeta('conclusion', e.target.value)} placeholder="e.g., MATCH CONFIRMED: Striation patterns on Exhibit A match..." />
 
       <div className="form-group" style={{ marginTop: '1.5rem', borderLeft: '3px solid var(--accent-crimson)', paddingLeft: '1rem' }}>

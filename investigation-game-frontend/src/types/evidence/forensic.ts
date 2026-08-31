@@ -18,15 +18,24 @@ export interface BallisticsExhibit {
   description: string;
 }
 
+export interface ChainOfCustodyInfo {
+  submitted_by: string;
+  received_date: string;
+}
+
 export interface BallisticsMetadata {
   case_number: string;
   exhibits: BallisticsExhibit[];
   firearm_specs: string;
   microscopic_analysis: string;
-  trajectory_range: string;
+  trajectory_range?: string;
   conclusion: string;
   examiner_name: string;
-  investigator_notes: string;
+  investigator_notes?: string;
+  caliber?: string;
+  rifling_pattern?: string;
+  firing_distance?: string;
+  chain_of_custody?: ChainOfCustodyInfo;
 }
 
 export interface DnaMetadata {

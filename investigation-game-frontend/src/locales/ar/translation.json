@@ -308,7 +308,14 @@
             "lensOverlay": "عدسة محاذاة التخطيط",
             "section3": "3. نتائج المسار والمدى",
             "seniorExpert": "خبير أسلحة نارية أول",
-            "verifiedLabId": "معرف المختبر المعتمد:"
+            "verifiedLabId": "معرف المختبر المعتمد:",
+            "chainOfCustody": "سلسلة الحيازة والأدلة",
+            "submittedBy": "مُقدم الدليل:",
+            "receivedDate": "تاريخ الاستلام:",
+            "ballisticParameters": "المعايير البليستيكية",
+            "caliberMfg": "العيار / الشركة المصنعة:",
+            "riflingPattern": "نمط الحلزنة والخطوط:",
+            "sectionFiringDistance": "4. تقدير مسافة إطلاق النار وديناميكياتها"
           },
           "dna": {
             "geneticLab": "مختبر الأدلة الجنائية الجينية",

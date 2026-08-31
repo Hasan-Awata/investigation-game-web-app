@@ -14,6 +14,14 @@ const BallisticsViewer: React.FC<BallisticsViewerProps> = ({ evidence }) => {
   const { t } = useTranslation();
   const { metadata } = evidence;
 
+  const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+  
+  const getSignature = (seed: number) => {
+    const idx = (seed % 18) + 1; 
+    const fileName = idx === 1 ? 'signature.svg' : `signature-${idx}.svg`;
+    return `${backendUrl}/assets/signatures/${fileName}`;
+  };
+
   return (
     <div className="forensic-preview ballistics-modal-viewer">
       <div className="ballistics-header">
@@ -25,6 +33,25 @@ const BallisticsViewer: React.FC<BallisticsViewerProps> = ({ evidence }) => {
         </div>
         <div className="ballistics-barcode">*{metadata.case_number}*</div>
       </div>
+
+      {(metadata.chain_of_custody || metadata.caliber || metadata.rifling_pattern) && (
+        <div className="ballistics-meta-grid">
+          {metadata.chain_of_custody && (
+            <div className="ballistics-mini-box">
+              <div className="ballistics-mini-title">{t('pages.gameRoom.evidence.viewers.ballistics.chainOfCustody')}</div>
+              <div><strong>{t('pages.gameRoom.evidence.viewers.ballistics.submittedBy')}</strong> {metadata.chain_of_custody.submitted_by}</div>
+              <div><strong>{t('pages.gameRoom.evidence.viewers.ballistics.receivedDate')}</strong> {metadata.chain_of_custody.received_date}</div>
+            </div>
+          )}
+          {(metadata.caliber || metadata.rifling_pattern) && (
+            <div className="ballistics-mini-box">
+              <div className="ballistics-mini-title">{t('pages.gameRoom.evidence.viewers.ballistics.ballisticParameters')}</div>
+              {metadata.caliber && <div><strong>{t('pages.gameRoom.evidence.viewers.ballistics.caliberMfg')}</strong> {metadata.caliber}</div>}
+              {metadata.rifling_pattern && <div><strong>{t('pages.gameRoom.evidence.viewers.ballistics.riflingPattern')}</strong> {metadata.rifling_pattern}</div>}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="ballistics-specimen-box">
         <div className="ballistics-specimen-title">{t('pages.gameRoom.evidence.viewers.ballistics.intakeLog')}</div>
@@ -68,13 +95,27 @@ const BallisticsViewer: React.FC<BallisticsViewerProps> = ({ evidence }) => {
         </div>
       )}
 
+      {metadata.firing_distance && (
+        <div className="ballistics-section">
+          <div className="ballistics-section-title">{t('pages.gameRoom.evidence.viewers.ballistics.sectionFiringDistance')}</div>
+          <div className="ballistics-text" dangerouslySetInnerHTML={{ __html: sanitizeHtml(metadata.firing_distance) }} />
+        </div>
+      )}
+
       <div className="ballistics-conclusion-box">
         <div className="ballistics-conclusion" dangerouslySetInnerHTML={{ __html: sanitizeHtml(metadata.conclusion || '') }} />
       </div>
 
       <div className="ballistics-sign-off">
         <div className="ballistics-sign-content">
-          <div className="signature-ink">{metadata.examiner_name}</div>
+          <div className="signature-area">
+            <img 
+              src={getSignature(evidence.id)} 
+              alt="Examiner Signature" 
+              className="steno-signature-img"
+              style={{ maxHeight: '50px', objectFit: 'contain' }}
+            />
+          </div>
           <div className="ballistics-signature-line">{t('pages.gameRoom.evidence.viewers.ballistics.seniorExpert')}</div>
           <div className="ballistics-verified-id">{t('pages.gameRoom.evidence.viewers.ballistics.verifiedLabId')} {metadata.case_number}</div>
         </div>
