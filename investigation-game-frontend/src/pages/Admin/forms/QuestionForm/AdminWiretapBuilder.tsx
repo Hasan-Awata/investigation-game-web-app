@@ -6,10 +6,13 @@ import EntityList from '../Shared/EntityList';
 import { useNodeBuilder } from '@/pages/Admin/hooks/useNodeBuilder';
 import type { Question } from '@/types';
 import { type DraftChoice } from '../Shared/ChoiceEditorCard';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 
 export default function AdminWiretapBuilder() {
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.wiretapBuilder;
 
   const { state, setters, actions, status } = useNodeBuilder([
     { id: crypto.randomUUID(), text: '', outcomes: {}, requirements: {} },
@@ -19,7 +22,7 @@ export default function AdminWiretapBuilder() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (state.choices.length < 2) {
-      toast.error('An intercept node requires at least two choices.');
+      toast.error(t.minChoicesError);
       return;
     }
     actions.handleSubmit(e, { image, audio });
@@ -34,7 +37,7 @@ export default function AdminWiretapBuilder() {
   const removeChoice = (index: number) => setters.setChoices(state.choices.filter((_, i) => i !== index));
 
   return (
-    <NodeBuilderCanvas requiredType="wiretap" title="Wiretap Intercept Builder">
+    <NodeBuilderCanvas requiredType="wiretap" title={t.canvasTitle}>
       {({ savedNodes }) => {
         const activeNode = savedNodes.find((q: Question) => q.id === state.editingId);
         const previewUrl = image ? URL.createObjectURL(image) : (activeNode?.img_url || null);
@@ -49,12 +52,12 @@ export default function AdminWiretapBuilder() {
             />
 
             <EntityList<Question>
-              title="Active Wiretap Intercepts" items={savedNodes} emptyMessage="No wiretap intercepts built."
+              title={t.listTitle} items={savedNodes} emptyMessage={t.emptyListMsg}
               keyExtractor={(q) => q.id} isProcessing={status.isProcessing} onEdit={actions.handleEdit} onDelete={actions.handleDelete}
               renderItemContent={(q) => (
                 <>
                   <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', marginRight: '1rem', fontSize: '0.85rem' }}>
-                    [AUDIO FEED: {q.audio_url ? 'CONNECTED' : 'MISSING'}]
+                    {t.audioFeedStatus(!!q.audio_url)}
                   </span>
                   <strong style={{ display: 'block', marginTop: '0.5rem' }}>{q.text}</strong>
                 </>

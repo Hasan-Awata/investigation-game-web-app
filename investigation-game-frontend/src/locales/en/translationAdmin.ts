@@ -1,10 +1,45 @@
 export const translations = {
+  adminDashboard: {
+    unsavedChangesConfirm: "You have unsaved changes. Discard and switch tabs?",
+    loadingConnection: "Establishing Secure Connection to Database...",
+    systemError: (msg: string) => `System Error: ${msg}`,
+    activeCaseLabel: "[ ACTIVE CASE DIRECTORY ]",
+    globalDatabaseOption: "-- Global Database --",
+    activePhaseLabel: "[ ACTIVE PHASE ]",
+    allPhasesOption: "-- All Phases --",
+    activeLevelLabel: "[ ACTIVE LEVEL ]",
+    allLevelsOption: "-- All Levels --",
+    narrativeHierarchyGroup: "Narrative Hierarchy",
+    nodeBuildersGroup: "Node Builders",
+    databaseAssetsGroup: "Database Assets",
+    casesTab: "📁 Cases (Root)",
+    phasesTab: "📑 Phases (Chapters)",
+    levelsTab: "📌 Levels (Encounters)",
+    interrogationTab: "💬 Interrogation Tree",
+    locationTab: "🎯 Location Sweeps",
+    wiretapTab: "🎙️ Wiretap Intercepts",
+    evidencesTab: "🔍 Evidence Locker",
+    suspectsTab: "👤 Suspect Profiles",
+    victimsTab: "💀 Identified Casualties",
+    requestsTab: "⚖️ Procedural Combos"
+  },
   component: {
     adminFormLayout: {
       editingPrefix: "// Editing",
       initializingPrefix: "// Initialize New",
       idLabel: "ID",
       cancelEdit: "Cancel Edit",
+    },
+    adminGuard: {
+      loading: "Establishing Secure Clearance...",
+      dashboardTitle: "// RESTRICTED ACCESS: INVESTIGATION ADMIN COMMAND"
+    }
+  },
+  context: {
+    adminContext: {
+    switchCaseConfirm: "You have unsaved changes. Discard and switch cases?",
+    switchPhaseConfirm: "You have unsaved changes. Discard and switch phases?",
+    switchLevelConfirm: "You have unsaved changes. Discard and switch levels?"
     }
   },
   forms: {
@@ -223,13 +258,212 @@ export const translations = {
       docBackground: "Background Check / Dossier",
       selectForensicPlaceholder: "-- Select Forensic Classification --",
       selectDocPlaceholder: "-- Select Document Classification --",
-      officialTranscriptLabel: "Official Transcript"
+      officialTranscriptLabel: "Official Transcript",
+      autopsy: {
+        victimNameLabel: "Victim Name",
+        victimNamePlaceholder: "e.g., John Doe",
+        genderLabel: "Gender",
+        genderPlaceholder: "e.g., Male / Female",
+        ageLabel: "Estimated Age",
+        agePlaceholder: "e.g., 30-35",
+        examinerLabel: "Chief Medical Examiner",
+        timeOfDeathLabel: "Est. Time of Death",
+        causeOfDeathLabel: "Primary Cause of Death",
+        anomaliesLabel: "External Examination & Anomalies",
+        internalExamLabel: "Internal Examination & Organs",
+        internalExamPlaceholder: "Findings from internal cavities and organs...",
+        toxicologyLabel: "Toxicology Report / Lab Analysis",
+        toxicologyPlaceholder: "Blood alcohol, poisons, or chemical substances detected...",
+        evidenceHeader: "COLLECTED EVIDENCE / SAMPLES",
+        addSampleBtn: "+ Add Sample",
+        samplePlaceholder: "e.g. 9mm bullet fragment extracted from chest",
+        emptyMessage: "No evidence items logged. Add a row above."
+      },
+      backgroundCheck: {
+        subjectNameLabel: "Subject Name",
+        dobLabel: "DOB (e.g., 10/24/1985)",
+        sexAgeLabel: "Sex/Age (e.g., M / 41)",
+        aliasesLabel: "Aliases / Monikers",
+        addressLabel: "Last Known Address",
+        employmentLabel: "Employment & Financial Flags",
+        criminalHistoryLabel: "Criminal History (Docket Format)",
+        associatesLabel: "Known Associates",
+        notesLabel: "Investigator Handwritten Scrawls",
+        notesPlaceholder: "Will render in a red cursive marker font across the bottom of the page..."
+      },
+      ballistics: {
+    caseNumberLabel: "Lab Case Number",
+    caseNumberPlaceholder: "e.g., 2026-BL-8842",
+    chainOfCustodyHeader: "CHAIN OF CUSTODY",
+    submittedByLabel: "Submitted By",
+    submittedByPlaceholder: "e.g., Det. Miller",
+    receivedDateLabel: "Received Date",
+    receivedDatePlaceholder: "e.g., 2026-06-12",
+    ballisticParamsHeader: "BALLISTIC PARAMETERS",
+    caliberLabel: "Caliber & Manufacturer",
+    caliberPlaceholder: "e.g., 9mm Luger (Winchester)",
+    riflingLabel: "Rifling Pattern",
+    riflingPlaceholder: "e.g., 6 Lands & Grooves, Right Twist",
+    exhibitsHeader: "EVIDENCE INTAKE LOG (EXHIBITS)",
+    addExhibitBtn: "+ Add Exhibit",
+    refPlaceholder: "Ref (e.g. EXHIBIT A)",
+    descPlaceholder: "Description (e.g. Recovered 9mm Slug)",
+    emptyExhibitsMsg: "No exhibits logged. Add a row above.",
+    technicalFindingsHeader: "TECHNICAL FINDINGS",
+    firearmSpecsLabel: "Firearm Specification Data",
+    microscopicLabel: "Microscopic & Toolmark Analysis",
+    trajectoryLabel: "Trajectory & Range Findings (If Applicable)",
+    firingDistanceLabel: "Estimated Firing Distance & Dynamics",
+    firingDistancePlaceholder: "e.g., Contact to close range (0-30cm)...",
+    conclusionLabel: "Official Conclusion / Match Determination",
+    conclusionPlaceholder: "e.g., MATCH CONFIRMED: Striation patterns on Exhibit A match...",
+    notesLabel: "Investigator Handwritten Scrawls",
+    notesPlaceholder: "Will render in a red cursive marker font..."
+  },
+  contract: {
+    partiesLabel: "Parties Involved (Comma Separated)",
+    partiesPlaceholder: "e.g., Vance Corp, Thorne LLC",
+    executionDateLabel: "Execution Date (Optional)",
+    executionDatePlaceholder: "e.g., 14-OCT-2023",
+    pagesHeader: "CONTRACT PAGES",
+    addPageBtn: "+ Add Page",
+    pageNumberLabel: (num: number) => `PAGE ${num}`,
+    termsTextLabel: "Terms and Conditions",
+    signaturesValidLabel: "SIGNATURES VALID",
+    signaturesValidDesc: "Uncheck to mark as Forged"
+  },
+  correspondence: {
+    senderLabel: "Sender (FROM)",
+    recipientLabel: "Recipient (TO)",
+    subjectLabel: "Subject Line",
+    bodyLabel: "Message Body"
+  },
+  digitalForensics: {
+    deviceTypeLabel: "Device Classification",
+    extractionMethodLabel: "Extraction Method",
+    recoveredDataLabel: "Decrypted Data / Payload"
+  },
+  dna: {
+    sampleTypeLabel: "Sample Type (e.g., Blood, Hair)",
+    sampleTypePlaceholder: "e.g., Blood, Hair",
+    matchProbabilityLabel: "Match Probability",
+    technicianLabel: "Lab Technician",
+    technicianPlaceholder: "e.g., Dr. Jane Doe",
+    extractionMethodLabel: "Extraction Method",
+    extractionMethodPlaceholder: "e.g., FTA Card / Phenol-Chloroform",
+    identifiedPersonLabel: "Identified Subject (Leave blank if inconclusive)",
+    lociSummaryLabel: "STR Loci Profile Summary",
+    lociSummaryPlaceholder: "Details on allele frequencies and genetic markers...",
+    labNotesLabel: "Laboratory Notes & Observations",
+    labNotesPlaceholder: "Additional analytical insights or chain of custody notes..."
+  },
+  financial: {
+    institutionLabel: "Banking Institution",
+    holderLabel: "Account Holder",
+    accountNumberLabel: "Account Number",
+    pagesHeader: "STATEMENT PAGES",
+    addPageBtn: "+ Add Statement Page",
+    statementPeriodLabel: "Statement Period",
+    statementPeriodPlaceholder: "e.g., Q3 2023",
+    removePageBtn: (num: number) => `REMOVE PAGE ${num}`,
+    transactionsHeader: "TRANSACTIONS",
+    addRowBtn: "+ Add Row",
+    datePlaceholder: "Date",
+    descPlaceholder: "Description (e.g. Wire Transfer)",
+    amountPlaceholder: "Amount",
+    emptyTransactionsMsg: "No transactions recorded on this page."
+  },
+  journal: {
+    ownerLabel: "Owner / Author",
+    coverTitleLabel: "Cover Title (Optional)",
+    coverTitlePlaceholder: "e.g., Personal Diary",
+    pagesHeader: "JOURNAL PAGES",
+    addPageBtn: "+ Add Page",
+    pageNumberLabel: (num: number) => `PAGE ${num}`,
+    dateEntryLabel: "Date Entry (Optional)",
+    dateEntryPlaceholder: "e.g., October 14th, 11:00 PM",
+    contentLabel: "Journal Content",
+    tornLabel: "MARK AS TORN OUT",
+    tornDesc: "Hides content for gameplay effect"
+  },
+  memo: {
+    writtenByLabel: "Written By",
+    styleLabel: "Presentation Style",
+    notebookOption: "Notebook Page",
+    stickyOption: "Sticky Note",
+    contextLabel: "Memo Context"
+  },
+  trace: {
+    materialLabel: "Material Composition",
+    originLabel: "Identified Origin Source"
+  }
     },
     levelBuilderGuard: {
       missingContextTitle: "[ MISSING CONTEXT: TARGET LEVEL REQUIRED ]",
-      missingContextDesc: (type: string) => `Please select a Case, Phase, and Level from the sidebar to map ${type} data.`,
+      missingContextDesc: (type: string = "") => `Please select a Case, Phase, and Level from the sidebar to map ${type} data.`,
       mismatchTitle: "[ INVALID CONTEXT: LEVEL TYPE MISMATCH ]",
-      mismatchDesc: (currentType: string, requiredType: string) => `The currently selected level is configured for '${currentType}'. You cannot build ${requiredType} layouts here. Please select a '${requiredType}' level from the sidebar.`
-    }
+      mismatchDesc: (currentType: string = "", requiredType: string = "") => `The currently selected level is configured for '${currentType}'. You cannot build ${requiredType} layouts here. Please select a '${requiredType}' level from the sidebar.`
+    },
+    interrogationBuilder: {
+    canvasTitle: "Interrogation Tree Builder",
+    criticalWarning: "⚠️ CRITICAL WARNING: This interrogation tree lacks a terminal state. The team will be soft-locked during gameplay. Please ensure at least one node has zero choices OR a player response is set to [ END CONVERSATION / RETURN TO HUB ].",
+    nodeStats: (saved: number, drafts: number) => `Total Nodes: ${saved} (Saved) + ${drafts} (Drafts)`,
+    appendNodeBtn: "+ Append New Node",
+    emptyWorkspace: "Workspace empty. Append a new node to begin the interrogation sequence."
+  },
+  interrogationForm: {
+    emptyDialogueError: "Suspect dialogue cannot be empty.",
+    emptyBranchError: "All response branches must have text.",
+    deleteConfirm: "Delete node?",
+    nodeIdBadge: (id: number | string) => `NODE ID: ${id}`,
+    unsavedBadge: "UNSAVED DRAFT NODE",
+    suspectDialogueLabel: "Suspect Dialogue",
+    suspectDialoguePlaceholder: "Suspect says...",
+    playerResponsesLabel: "Player Responses & Branches",
+    addBranchBtn: "+ Add Response Branch",
+    syncingBtn: "Syncing...",
+    updateBtn: "Update Node",
+    commitBtn: "Commit New Node",
+    deleteBtn: "Delete"
+  },
+  locationBuilder: {
+    canvasTitle: "Visual Location Editor",
+    mappingError: "All points must have coordinate mapping text.",
+    appendSceneBtn: "+ Append New Scene",
+    scenesTitle: "Location Scenes",
+    emptyScenesMsg: "No scenes configured.",
+    sceneIdBadge: (id: number | string) => `SCENE ID: ${id}`,
+    unnamedScene: "Unnamed Scene"
+  },
+  locationForm: {
+    sceneTitleLabel: "Scene Title / Hint Text",
+    envMapLabel: "Environment Map (Image - 10MB Max)",
+    targetingBanner: "⚠️ TARGETING MATRIX ENGAGED: Click map to lock.",
+    cancelTargetBtn: "Cancel",
+    mapCoordinateBtn: "+ Map New Coordinate Point",
+    processingBtn: "Processing...",
+    commitSceneBtn: "Commit Scene Layout"
+  },
+  wiretapBuilder: {
+    canvasTitle: "Wiretap Intercept Builder",
+    minChoicesError: "An intercept node requires at least two choices.",
+    listTitle: "Active Wiretap Intercepts",
+    emptyListMsg: "No wiretap intercepts built.",
+    audioFeedStatus: (isConnected: boolean) => `[AUDIO FEED: ${isConnected ? 'CONNECTED' : 'MISSING'}]`
+  },
+  wiretapForm: {
+    transcriptLabel: "Intercept Transcript / Prompt Text",
+    audioFeedLabel: (isEditing: boolean) => `Wiretap Audio Feed (MP3/WAV) ${isEditing ? '(Leave blank to keep existing)' : ''}`,
+    imageDossierLabel: "Associated Image / Dossier (Optional)",
+    storeLocallyLabel: "Store Locally on Server",
+    choicesHeader: "Intercept Analysis Choices",
+    addOptionBtn: "+ Add Option",
+    transmittingBtn: "Transmitting...",
+    updateInterceptBtn: "Update Intercept",
+    commitInterceptBtn: "Commit Intercept"
+  },
+  nodeBuilderCanvas: {
+    targetingHeader: (caseTitle: string = '', phaseTitle: string = '', levelTitle: string = '') => `Targeting: ${caseTitle} > ${phaseTitle} > ${levelTitle}`
+  }
   }
 };

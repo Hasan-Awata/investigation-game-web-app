@@ -1,10 +1,45 @@
 export const translations = {
+  adminDashboard: {
+    unsavedChangesConfirm: "لديك تغييرات غير محفوظة. هل تريد التخلص منها وتبديل علامات التبويب؟",
+    loadingConnection: "جاري إنشاء اتصال آمن بقاعدة البيانات...",
+    systemError: (msg: string) => `خطأ في النظام: ${msg}`,
+    activeCaseLabel: "[ دليل القضايا النشطة ]",
+    globalDatabaseOption: "-- قاعدة البيانات العامة --",
+    activePhaseLabel: "[ المرحلة النشطة ]",
+    allPhasesOption: "-- جميع المراحل --",
+    activeLevelLabel: "[ المستوى النشط ]",
+    allLevelsOption: "-- جميع المستويات --",
+    narrativeHierarchyGroup: "التسلسل الهرمي السردي",
+    nodeBuildersGroup: "منشئو العقد",
+    databaseAssetsGroup: "أصول قاعدة البيانات",
+    casesTab: "📁 القضايا (الجذر)",
+    phasesTab: "📑 المراحل (الفصول)",
+    levelsTab: "📌 المستويات (المواجهات)",
+    interrogationTab: "💬 شجرة الاستجواب",
+    locationTab: "🎯 مسح الموقع",
+    wiretapTab: "🎙️ تنصت على الاتصالات",
+    evidencesTab: "🔍 خزانة الأدلة",
+    suspectsTab: "👤 ملفات المشتبه بهم",
+    victimsTab: "💀 الضحايا المحددون",
+    requestsTab: "⚖️ التجميعات الإجرائية"
+  },
   component: {
     adminFormLayout: {
       editingPrefix: "// تعديل",
       initializingPrefix: "// تهيئة جديدة",
       idLabel: "المعرف",
       cancelEdit: "إلغاء التعديل",
+    },
+    adminGuard: {
+      loading: "جاري إنشاء التصريح الأمني...",
+      dashboardTitle: "// وصول مقيد: قيادة مسؤولي التحقيق"
+    }
+  },
+  context: {
+    adminContext: {
+    switchCaseConfirm: "لديك تغييرات غير محفوظة. هل تريد التخلص منها وتبديل القضايا؟",
+    switchPhaseConfirm: "لديك تغييرات غير محفوظة. هل تريد التخلص منها وتبديل المراحل؟",
+    switchLevelConfirm: "لديك تغييرات غير محفوظة. هل تريد التخلص منها وتبديل المستويات؟"
     }
   },
   forms: {
@@ -223,13 +258,212 @@ export const translations = {
       docBackground: "تحقيق خلفية / ملف",
       selectForensicPlaceholder: "-- اختر تصنيف الطب الشرعي --",
       selectDocPlaceholder: "-- اختر تصنيف المستند --",
-      officialTranscriptLabel: "النص الرسمي"
+      officialTranscriptLabel: "النص الرسمي",
+      autopsy: {
+        victimNameLabel: "اسم الضحية",
+        victimNamePlaceholder: "مثال: جون دو",
+        genderLabel: "الجنس",
+        genderPlaceholder: "مثال: ذكر / أنثى",
+        ageLabel: "العمر المقدر",
+        agePlaceholder: "مثال: 30-35",
+        examinerLabel: "الطبيب الشرعي المسؤول",
+        timeOfDeathLabel: "وقت الوفاة المقدر",
+        causeOfDeathLabel: "سبب الوفاة الأساسي",
+        anomaliesLabel: "الفحص الخارجي والتشوهات",
+        internalExamLabel: "الفحص الداخلي والأعضاء",
+        internalExamPlaceholder: "نتائج تجويف الأعضاء الداخلية...",
+        toxicologyLabel: "تقرير السموم / التحليل المخبري",
+        toxicologyPlaceholder: "الكحول في الدم، السموم، أو المواد الكيميائية المكتشفة...",
+        evidenceHeader: "الأدلة / العينات التي تم جمعها",
+        addSampleBtn: "+ إضافة عينة",
+        samplePlaceholder: "مثال: شظية رصاصة 9 مم مستخرجة من الصدر",
+        emptyMessage: "لم يتم تسجيل أي أدلة. أضف صفاً أعلاه."
+      },
+      backgroundCheck: {
+        subjectNameLabel: "اسم الشخص موضوع التحقيق",
+        dobLabel: "تاريخ الميلاد (مثال: 10/24/1985)",
+        sexAgeLabel: "الجنس / العمر (مثال: ذكر / 41)",
+        aliasesLabel: "الأسماء المستعارة / الألقاب",
+        addressLabel: "آخر عنوان معروف",
+        employmentLabel: "مؤشرات التوظيف والوضع المالي",
+        criminalHistoryLabel: "السجل الجنائي (بتنسيق القضايا)",
+        associatesLabel: "المعارف والأقارب المعروفون",
+        notesLabel: "خربشات بخط يد المحقق",
+        notesPlaceholder: "سيتم عرضها بخط نصي أحمر مميز أسفل الصفحة..."
+      },
+      ballistics: {
+    caseNumberLabel: "رقم قضية المختبر",
+    caseNumberPlaceholder: "مثال: 2026-BL-8842",
+    chainOfCustodyHeader: "سلسلة الحضانة والتحفظ",
+    submittedByLabel: "مُقَدِّم الطلب",
+    submittedByPlaceholder: "مثال: المحقق ميلر",
+    receivedDateLabel: "تاريخ الاستلام",
+    receivedDatePlaceholder: "مثال: 2026-06-12",
+    ballisticParamsHeader: "المعاملات البליستيكية",
+    caliberLabel: "عيار السلاح والشركة المصنعة",
+    caliberPlaceholder: "مثال: 9 ملم لوغر (وينشستر)",
+    riflingLabel: "نمط الحلزنة",
+    riflingPlaceholder: "مثال: 6 خطوط وأخاديد، لف يمين",
+    exhibitsHeader: "سجل استلام الأدلة (المعروضات)",
+    addExhibitBtn: "+ إضافة معروض",
+    refPlaceholder: "المرجع (مثال: المعروض أ)",
+    descPlaceholder: "الوصف (مثال: مقذوف 9 ملم مستخرج)",
+    emptyExhibitsMsg: "لم يتم تسجيل أي معروضات. أضف صفاً أعلاه.",
+    technicalFindingsHeader: "النتائج التقنية",
+    firearmSpecsLabel: "بيانات مواصفات السلاح الناري",
+    microscopicLabel: "التحليل المجهري وعلامات الأدوات",
+    trajectoryLabel: "نتائج المسار والمدى (إن وجدت)",
+    firingDistanceLabel: "مسافة إطلاق النار المقدرة والديناميكيات",
+    firingDistancePlaceholder: "مثال: من مسافة قريبة جداً إلى ملتصقة (0-30 سم)...",
+    conclusionLabel: "الخلاصة الرسمية / تحديد التطابق",
+    conclusionPlaceholder: "مثال: تم تأكيد التطابق: أنماط الحفر على المعروض أ تتطابق...",
+    notesLabel: "خربشات بخط يد المحقق",
+    notesPlaceholder: "سيتم عرضها بخط نصي أحمر مميز..."
+  },
+  contract: {
+    partiesLabel: "الأطراف المعنية (تفصل بينها فواصل)",
+    partiesPlaceholder: "مثال: شركة فانس، ثورن ذ.م.م",
+    executionDateLabel: "تاريخ التنفيذ (اختياري)",
+    executionDatePlaceholder: "مثال: 14-أكتوبر-2023",
+    pagesHeader: "صفحات العقد",
+    addPageBtn: "+ إضافة صفحة",
+    pageNumberLabel: (num: number) => `الصفحة ${num}`,
+    termsTextLabel: "الشروط والأحكام",
+    signaturesValidLabel: "التواقيع سارية",
+    signaturesValidDesc: "قم بإلغاء التحديد للإشارة إلى أنها مزورة"
+  },
+  correspondence: {
+    senderLabel: "المرسل (من)",
+    recipientLabel: "المستلم (إلى)",
+    subjectLabel: "عنوان الرسالة",
+    bodyLabel: "نص الرسالة"
+  },
+  digitalForensics: {
+    deviceTypeLabel: "تصنيف الجهاز",
+    extractionMethodLabel: "طريقة استخراج البيانات",
+    recoveredDataLabel: "البيانات المستعادة / الحمولة المفكوكة"
+  },
+  dna: {
+    sampleTypeLabel: "نوع العينة (مثل: دم، شعر)",
+    sampleTypePlaceholder: "مثال: دم، شعر",
+    matchProbabilityLabel: "احتمالية التطابق",
+    technicianLabel: "فني المختبر",
+    technicianPlaceholder: "مثال: د. جين دو",
+    extractionMethodLabel: "طريقة الاستخراج",
+    extractionMethodPlaceholder: "مثال: بطاقة FTA / الفينول الكلوروفورم",
+    identifiedPersonLabel: "الشخص المحدد (اتركه فارغاً إذا لم يكن حاسماً)",
+    lociSummaryLabel: "ملخص ملف مواقع STR الوراثية",
+    lociSummaryPlaceholder: "تفاصيل حول ترددات الأليلات والعلامات الجينية...",
+    labNotesLabel: "ملاحظات وملاحظات المختبر",
+    labNotesPlaceholder: "رؤى تحليلية إضافية أو ملاحظات سلسلة الحضانة..."
+  },
+  financial: {
+    institutionLabel: "المؤسسة المصرفية",
+    holderLabel: "صاحب الحساب",
+    accountNumberLabel: "رقم الحساب",
+    pagesHeader: "صفحات كشف الحساب",
+    addPageBtn: "+ إضافة صفحة كشف حساب",
+    statementPeriodLabel: "فترة كشف الحساب",
+    statementPeriodPlaceholder: "مثال: الربع الثالث 2023",
+    removePageBtn: (num: number) => `إزالة الصفحة ${num}`,
+    transactionsHeader: "المعاملات المالية",
+    addRowBtn: "+ إضافة صف",
+    datePlaceholder: "التاريخ",
+    descPlaceholder: "الوصف (مثال: تحويل مصرفي)",
+    amountPlaceholder: "المبلغ",
+    emptyTransactionsMsg: "لا توجد معاملات مسجلة على هذه الصفحة."
+  },
+  journal: {
+    ownerLabel: "المالك / المؤلف",
+    coverTitleLabel: "عنوان الغلاف (اختياري)",
+    coverTitlePlaceholder: "مثال: يوميات شخصية",
+    pagesHeader: "صفحات المذكرات",
+    addPageBtn: "+ إضافة صفحة",
+    pageNumberLabel: (num: number) => `الصفحة ${num}`,
+    dateEntryLabel: "إدخال التاريخ (اختياري)",
+    dateEntryPlaceholder: "مثال: 14 أكتوبر، 11:00 مساءً",
+    contentLabel: "محتوى المذكرات",
+    tornLabel: "تمييز كـ ممزقة",
+    tornDesc: "يخفي المحتوى لتأثير اللعب"
+  },
+  memo: {
+    writtenByLabel: "كتب بواسطة",
+    styleLabel: "تنسيق العرض",
+    notebookOption: "صفحة دفتر ملاحظات",
+    stickyOption: "ملاحظة لاصقة",
+    contextLabel: "سياق المذكرة"
+  },
+  trace: {
+    materialLabel: "التركيب المادي",
+    originLabel: "مصدر المنشأ المحدد"
+  }
     },
     levelBuilderGuard: {
       missingContextTitle: "[ سياق مفقود: المستوى المستهدف مطلوب ]",
-      missingContextDesc: (type: string) => `يرجى تحديد قضية ومرحلة ومستوى من الشريط الجانبي لتعيين بيانات ${type}.`,
+      missingContextDesc: (type: string = "") => `يرجى تحديد قضية ومرحلة ومستوى من الشريط الجانبي لتعيين بيانات ${type}.`,
       mismatchTitle: "[ سياق غير صالح: عدم تطابق نوع المستوى ]",
-      mismatchDesc: (currentType: string, requiredType: string) => `المستوى المحدد حالياً مُهيكل لـ '${currentType}'. لا يمكنك بناء تخطيطات ${requiredType} هنا. يرجى تحديد مستوى من نوع '${requiredType}' من الشريط الجانبي.`
-    }
+      mismatchDesc: (currentType: string = "", requiredType: string = "") => `المستوى المحدد حالياً مُهيكل لـ '${currentType}'. لا يمكنك بناء تخطيطات ${requiredType} هنا. يرجى تحديد مستوى من نوع '${requiredType}' من الشريط الجانبي.`
+    },
+    interrogationBuilder: {
+    canvasTitle: "منشئ شجرة الاستجواب",
+    criticalWarning: "⚠️ تحذير حاسم: شجرة الاستجواب هذه تفتقر إلى حالة نهائية. سيتم قفل الفريق أثناء اللعب. يرجى التأكد من أن عقدة واحدة على الأقل ليس لها خيارات أو تم تعيين استجابة اللاعب على [ إنهاء المحادثة / العودة إلى المحور ].",
+    nodeStats: (saved: number, drafts: number) => `إجمالي العقد: ${saved} (محفوظة) + ${drafts} (مسودات)`,
+    appendNodeBtn: "+ إلحاق عقدة جديدة",
+    emptyWorkspace: "مساحة العمل فارغة. قم بإلحاق عقدة جديدة لبدء تسلسل الاستجواب."
+  },
+  interrogationForm: {
+    emptyDialogueError: "لا يمكن أن يكون حوار المشتبه به فارغاً.",
+    emptyBranchError: "يجب أن تحتوي جميع فروع الاستجابة على نص.",
+    deleteConfirm: "حذف العقدة؟",
+    nodeIdBadge: (id: number | string) => `معرف العقدة: ${id}`,
+    unsavedBadge: "عقدة مسودة غير محفوظة",
+    suspectDialogueLabel: "حوار المشتبه به",
+    suspectDialoguePlaceholder: "يقول المشتبه به...",
+    playerResponsesLabel: "استجابات وفروع اللاعب",
+    addBranchBtn: "+ إضافة فرع استجابة",
+    syncingBtn: "جاري المزامنة...",
+    updateBtn: "تحديث العقدة",
+    commitBtn: "اعتماد عقدة جديدة",
+    deleteBtn: "حذف"
+  },
+  locationBuilder: {
+    canvasTitle: "محرر الموقع المرئي",
+    mappingError: "يجب أن تحتوي جميع النقاط على نص تعيين الإحداثيات.",
+    appendSceneBtn: "+ إلحاق مشهد جديد",
+    scenesTitle: "مشاهد الموقع",
+    emptyScenesMsg: "لم يتم تكوين أي مشاهد.",
+    sceneIdBadge: (id: number | string) => `معرف المشهد: ${id}`,
+    unnamedScene: "مشهد بدون اسم"
+  },
+  locationForm: {
+    sceneTitleLabel: "عنوان المشهد / نص التلميح",
+    envMapLabel: "خريطة البيئة (صورة - بحد أقصى 10 ميجابايت)",
+    targetingBanner: "⚠️ مصفوفة التحديد مفعلة: انقر فوق الخريطة للقفل.",
+    cancelTargetBtn: "إلغاء",
+    mapCoordinateBtn: "+ تعيين نقطة إحداثيات جديدة",
+    processingBtn: "جاري المعالجة...",
+    commitSceneBtn: "اعتماد تخطيط المشهد"
+  },
+  wiretapBuilder: {
+    canvasTitle: "منشئ اعتراض التنصت",
+    minChoicesError: "تتطلب عقدة الاعتراض خيارين على الأقل.",
+    listTitle: "اعتراضات التنصت النشطة",
+    emptyListMsg: "لم يتم بناء اعتراضات تنصت.",
+    audioFeedStatus: (isConnected: boolean) => `[بث الصوت: ${isConnected ? 'متصل' : 'مفقود'}]`
+  },
+  wiretapForm: {
+    transcriptLabel: "نص النص المحاور / نص الموجه",
+    audioFeedLabel: (isEditing: boolean) => `بث صوت التنصت (MP3/WAV) ${isEditing ? '(اتركه فارغاً للاحتفاظ بالحالي)' : ''}`,
+    imageDossierLabel: "صورة / ملف مرتبط (اختياري)",
+    storeLocallyLabel: "التخزين محلياً على الخادم",
+    choicesHeader: "خيارات تحليل الاعتراض",
+    addOptionBtn: "+ إضافة خيار",
+    transmittingBtn: "جاري الإرسال...",
+    updateInterceptBtn: "تحديث الاعتراض",
+    commitInterceptBtn: "اعتماد الاعتراض"
+  },
+  nodeBuilderCanvas: {
+    targetingHeader: (caseTitle: string = '', phaseTitle: string = '', levelTitle: string = '') => `الاستهداف: ${caseTitle} > ${phaseTitle} > ${levelTitle}`
+  }
   }
 };

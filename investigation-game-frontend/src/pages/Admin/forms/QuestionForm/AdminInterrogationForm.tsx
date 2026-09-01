@@ -4,6 +4,7 @@ import { useAdminMutations } from '@/pages/Admin/hooks/useAdminMutations';
 import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
 import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '@/pages/Admin/utils/questionUtils';
 import type { Question } from '@/types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 
 interface AdminInterrogationFormProps {
   nodeData: Question | any;
@@ -17,6 +18,8 @@ export default function AdminInterrogationForm({
 }: AdminInterrogationFormProps) {
   const [text, setText] = useState(nodeData.text || '');
   const isSaved = typeof nodeData.id === 'number';
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.interrogationForm;
 
   const initialChoices: DraftChoice[] = (nodeData.choices || []).map((c: any) => ({
     id: c.id || crypto.randomUUID(),
@@ -36,11 +39,11 @@ export default function AdminInterrogationForm({
 
   const handleSave = () => {
     if (!text.trim()) {
-      toast.error('Suspect dialogue cannot be empty.');
+      toast.error(t.emptyDialogueError);
       return;
     }
     if (choicesState.some(c => !c.text.trim())) {
-      toast.error('All response branches must have text.');
+      toast.error(t.emptyBranchError);
       return;
     }
 
@@ -59,7 +62,7 @@ export default function AdminInterrogationForm({
   };
 
   const handleDelete = () => {
-    if (window.confirm('Delete node?')) {
+    if (window.confirm(t.deleteConfirm)) {
       deleteEntity(nodeData.id, { onSuccess: onDeleted });
     }
   };
@@ -67,24 +70,24 @@ export default function AdminInterrogationForm({
   return (
     <div className={`dialogue-node-card ${isSaved ? '' : 'unsaved'}`}>
       <div className="node-header">
-        <span className="node-id-badge">{isSaved ? `NODE ID: ${nodeData.id}` : 'UNSAVED DRAFT NODE'}</span>
+        <span className="node-id-badge">{isSaved ? t.nodeIdBadge(nodeData.id) : t.unsavedBadge}</span>
       </div>
 
       <div className="node-body">
         <div className="node-suspect-block">
-          <label>Suspect Dialogue</label>
+          <label>{t.suspectDialogueLabel}</label>
           <textarea
             className="admin-textarea"
             dir="auto"
             value={text}
             onChange={(e) => setText(e.target.value)}
             style={{ minHeight: '80px' }}
-            placeholder="Suspect says..."
+            placeholder={t.suspectDialoguePlaceholder}
           />
         </div>
 
         <div className="node-responses-block">
-          <label>Player Responses & Branches</label>
+          <label>{t.playerResponsesLabel}</label>
           {choicesState.map((choice, index) => (
             <ChoiceEditorCard
               key={choice.id}
@@ -103,18 +106,18 @@ export default function AdminInterrogationForm({
             style={{ padding: '0.5rem', marginTop: '0.5rem' }}
             onClick={() => setChoicesState([...choicesState, { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }])}
           >
-            + Add Response Branch
+            {t.addBranchBtn}
           </button>
         </div>
       </div>
 
       <div className="node-footer">
         <button className="btn-primary" onClick={handleSave} disabled={isProcessing}>
-          {isProcessing ? 'Syncing...' : isSaved ? 'Update Node' : 'Commit New Node'}
+          {isProcessing ? t.syncingBtn : isSaved ? t.updateBtn : t.commitBtn}
         </button>
         {isSaved && (
           <button className="btn-secondary delete-btn" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }} onClick={handleDelete} disabled={isProcessing}>
-            Delete
+            {t.deleteBtn}
           </button>
         )}
       </div>

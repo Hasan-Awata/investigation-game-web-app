@@ -1,6 +1,7 @@
 import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
 import MediaUploader from '@/pages/Admin/components/MediaUploader';
 import type { BaseNodeFormProps } from '@/pages/Admin/utils/questionUtils';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 
 interface AdminWiretapFormProps extends BaseNodeFormProps {
   setImage: (file: File | null) => void;
@@ -13,19 +14,21 @@ interface AdminWiretapFormProps extends BaseNodeFormProps {
 export default function AdminWiretapForm({
   state, setters, actions, status, previews, setImage, setAudio, addChoice, updateChoice, removeChoice
 }: AdminWiretapFormProps) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.wiretapForm;
 
   return (
     <div>
       <form onSubmit={actions.handleSubmit} className="admin-form">
         <div className="form-group">
-          <label>Intercept Transcript / Prompt Text</label>
+          <label>{t.transcriptLabel}</label>
           <textarea className="admin-textarea" required value={state.text} onChange={(e) => setters.setText(e.target.value)} style={{ minHeight: '100px' }} />
         </div>
 
         <div className="admin-form-row">
           <div className="form-group" style={{ flex: 1 }}>
             <MediaUploader 
-              label={`Wiretap Audio Feed (MP3/WAV) ${state.editingId ? '(Leave blank to keep existing)' : ''}`} 
+              label={t.audioFeedLabel(!!state.editingId)} 
               accept="audio/*" 
               ref={actions.registerFileRef('audio')} 
               onChange={setAudio} 
@@ -34,7 +37,7 @@ export default function AdminWiretapForm({
           </div>
           <div className="form-group" style={{ flex: 1 }}>
             <MediaUploader 
-              label="Associated Image / Dossier (Optional)" 
+              label={t.imageDossierLabel} 
               accept="image/*" 
               ref={actions.registerFileRef('image')} 
               onChange={setImage} 
@@ -45,13 +48,13 @@ export default function AdminWiretapForm({
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid rgba(255,255,255,0.05)' }}>
           <input type="checkbox" id="store-locally-toggle" checked={state.storeLocally} onChange={(e) => setters.setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
-          <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}><strong>Store Locally on Server</strong></label>
+          <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}><strong>{t.storeLocallyLabel}</strong></label>
         </div>
 
         <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h4 style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', margin: 0 }}>Intercept Analysis Choices</h4>
-            <button type="button" onClick={addChoice} className="btn-secondary" style={{ padding: '0.5rem 1rem', width: 'auto', fontSize: '0.85rem' }}>+ Add Option</button>
+            <h4 style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', margin: 0 }}>{t.choicesHeader}</h4>
+            <button type="button" onClick={addChoice} className="btn-secondary" style={{ padding: '0.5rem 1rem', width: 'auto', fontSize: '0.85rem' }}>{t.addOptionBtn}</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {state.choices.map((choice, index) => (
@@ -61,7 +64,7 @@ export default function AdminWiretapForm({
         </div>
 
         <button type="submit" className="btn-primary" disabled={status.isProcessing} style={{ background: state.editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', color: 'var(--bg-dark)', marginTop: '2rem' }}>
-          {status.isProcessing ? 'Transmitting...' : state.editingId ? 'Update Intercept' : 'Commit Intercept'}
+          {status.isProcessing ? t.transmittingBtn : state.editingId ? t.updateInterceptBtn : t.commitInterceptBtn}
         </button>
       </form>
     </div>

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react';
 import { useAdminCases, useAdminPhases, useAdminLevels } from '@/pages/Admin/hooks/useAdminData';
 import type { GameCase, Phase, Level } from '@/types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 
 interface AdminContextState {
   caseId: string;
@@ -28,6 +29,8 @@ const AdminContext = createContext<AdminContextState | undefined>(undefined);
 
 export function AdminProvider({ children }: { children: ReactNode }) {
   const [isDirty, setIsDirty] = useState<boolean>(false);
+  const { adminT } = useAdminTranslation();
+  const t = adminT.context.adminContext;
 
   // Browser-level protection against accidental tab closure/refresh
   useEffect(() => {
@@ -53,25 +56,25 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   // Cascading state handlers memoized to maintain stable reference equality
   const handleSetCaseId = useCallback((id: string) => {
-    if (isDirty && !window.confirm('You have unsaved changes. Discard and switch cases?')) return;
+    if (isDirty && !window.confirm(t.switchCaseConfirm)) return;
     setIsDirty(false);
     setCaseId(id);
     setPhaseId('');
     setLevelId('');
-  }, [isDirty]);
+  }, [isDirty, t]);
 
   const handleSetPhaseId = useCallback((id: string) => {
-    if (isDirty && !window.confirm('You have unsaved changes. Discard and switch phases?')) return;
+    if (isDirty && !window.confirm(t.switchPhaseConfirm)) return;
     setIsDirty(false);
     setPhaseId(id);
     setLevelId('');
-  }, [isDirty]);
+  }, [isDirty, t]);
 
   const handleSetLevelId = useCallback((id: string) => {
-    if (isDirty && !window.confirm('You have unsaved changes. Discard and switch levels?')) return;
+    if (isDirty && !window.confirm(t.switchLevelConfirm)) return;
     setIsDirty(false);
     setLevelId(id);
-  }, [isDirty]);
+  }, [isDirty, t]);
 
   // Derived Data (Memoized to prevent unnecessary recalculations)
   const selectedCase = useMemo(() => cases.find(c => c.id.toString() === caseId), [cases, caseId]);

@@ -2,17 +2,20 @@ import { useState } from 'react';
 import NodeBuilderCanvas from './NodeBuilderCanvas';
 import AdminInterrogationForm from './AdminInterrogationForm';
 import type { Question, Choice } from '@/types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import './AdminInterrogationBuilder.css';
 
 export default function AdminInterrogationBuilder() {
   const [draftNodes, setDraftNodes] = useState<any[]>([]);
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.interrogationBuilder;
 
   const addDraftNode = () => {
     setDraftNodes([...draftNodes, { id: `draft_${Date.now()}`, text: '', choices: [] }]);
   };
 
   return (
-    <NodeBuilderCanvas requiredType="interrogation" title="Interrogation Tree Builder">
+    <NodeBuilderCanvas requiredType="interrogation" title={t.canvasTitle}>
       {({ levelId, savedNodes }) => {
         // Domain-specific logic remains isolated here
         const hasTerminalNode = savedNodes.some((n: Question) => {
@@ -24,16 +27,16 @@ export default function AdminInterrogationBuilder() {
           <>
             {!hasTerminalNode && savedNodes.length > 0 && (
               <div className="terminal-text error" style={{ background: 'rgba(163, 50, 50, 0.1)', padding: '1rem', border: '1px solid var(--accent-crimson)', borderRadius: '8px', margin: '0 1rem 1rem' }}>
-                ⚠️ CRITICAL WARNING: This interrogation tree lacks a terminal state. The team will be soft-locked during gameplay. Please ensure at least one node has zero choices OR a player response is set to [ END CONVERSATION / RETURN TO HUB ].
+                {t.criticalWarning}
               </div>
             )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 1rem', marginBottom: '1rem' }}>
               <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-                Total Nodes: {savedNodes.length} (Saved) + {draftNodes.length} (Drafts)
+                {t.nodeStats(savedNodes.length, draftNodes.length)}
               </span>
               <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} onClick={addDraftNode}>
-                + Append New Node
+                {t.appendNodeBtn}
               </button>
             </div>
 
@@ -53,7 +56,7 @@ export default function AdminInterrogationBuilder() {
               ))}
 
               {savedNodes.length === 0 && draftNodes.length === 0 && (
-                <div className="terminal-text" style={{ gridColumn: '1 / -1' }}>Workspace empty. Append a new node to begin the interrogation sequence.</div>
+                <div className="terminal-text" style={{ gridColumn: '1 / -1' }}>{t.emptyWorkspace}</div>
               )}
             </div>
           </>

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext';
 import LevelBuilderGuard from '../Shared/LevelBuilderGuard';
 import type { Question } from '@/types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 
 interface CanvasContext {
   levelId: string;
@@ -19,6 +20,8 @@ interface NodeBuilderCanvasProps {
 
 export default function NodeBuilderCanvas({ requiredType, title, children }: NodeBuilderCanvasProps) {
   const { levelId, selectedCase, selectedPhase, selectedLevel } = useAdminContext();
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.nodeBuilderCanvas;
 
   const savedNodes: Question[] = selectedLevel?.questions || [];
 
@@ -30,7 +33,7 @@ export default function NodeBuilderCanvas({ requiredType, title, children }: Nod
             // {title}
           </h3>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-            Targeting: {selectedCase?.title} &gt; {selectedPhase?.title} &gt; {selectedLevel?.title}
+            {t.targetingHeader(selectedCase?.title, selectedPhase?.title, selectedLevel?.title)}
           </span>
         </div>
 
