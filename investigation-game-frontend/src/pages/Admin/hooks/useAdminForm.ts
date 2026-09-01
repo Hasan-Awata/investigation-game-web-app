@@ -1,6 +1,7 @@
-import React, { useState, useRef } from 'react'; // Removed bare FormEvent import
-import { useAdminMutations, type AdminEntityType } from '@/hooks/useAdminMutations';
-import { objectToFormData } from '@/utils/formUtils';
+import React, { useState, useRef } from 'react';
+import { useAdminMutations, type AdminEntityType } from '@/pages/Admin/hooks/useAdminMutations';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { objectToFormData } from '@/pages/Admin/utils/formUtils';
 
 interface UseAdminFormProps<T> {
   entityType: AdminEntityType;
@@ -11,19 +12,21 @@ interface UseAdminFormProps<T> {
 export function useAdminForm<T extends Record<string, any>>({ entityType, initialState, basePayload = {} }: UseAdminFormProps<T>) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<T>(initialState);
-  
+
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const { createEntity, updateEntity, deleteEntity, isProcessing, feedback, clearFeedback } = useAdminMutations(entityType);
+  const { createEntity, updateEntity, deleteEntity, isProcessing } = useAdminMutations(entityType);
+  const { setIsDirty } = useAdminContext();
 
   const updateField = (field: keyof T, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    setIsDirty(true);
   };
 
   const clearForm = () => {
     setEditingId(null);
     setFormData(initialState);
-    clearFeedback();
+    setIsDirty(false);
     Object.values(fileInputRefs.current).forEach(ref => { if (ref) ref.value = ''; });
   };
 
@@ -34,7 +37,6 @@ export function useAdminForm<T extends Record<string, any>>({ entityType, initia
   // STRICT TYPING APPLIED HERE
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>, files: Record<string, File | null> = {}) => {
     e.preventDefault();
-    clearFeedback();
 
     const payloadData = { ...basePayload, ...formData };
     const payload = objectToFormData(payloadData);
@@ -51,10 +53,10 @@ export function useAdminForm<T extends Record<string, any>>({ entityType, initia
   };
 
   const handleEditInit = (entity: any, mappingFn?: (e: any) => T) => {
-    clearFeedback();
     setEditingId(entity.id);
     setFormData(mappingFn ? mappingFn(entity) : { ...initialState, ...entity });
-    
+    setIsDirty(false);
+
     Object.values(fileInputRefs.current).forEach(ref => { if (ref) ref.value = ''; });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -68,6 +70,6 @@ export function useAdminForm<T extends Record<string, any>>({ entityType, initia
 
   return {
     formData, setFormData, updateField, editingId, clearForm, handleSubmit,
-    handleEditInit, handleDelete, registerFileRef, isProcessing, feedback
+    handleEditInit, handleDelete, registerFileRef, isProcessing
   };
 }

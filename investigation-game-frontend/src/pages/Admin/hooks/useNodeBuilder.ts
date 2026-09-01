@@ -1,22 +1,28 @@
 import React, { useState, useRef } from 'react';
-import { useAdminContext } from '@/context/AdminContext';
-import { useAdminMutations } from '@/hooks/useAdminMutations';
-import { buildNodeFormData } from '@/utils/questionUtils';
+import toast from 'react-hot-toast';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useAdminMutations } from '@/pages/Admin/hooks/useAdminMutations';
+import { buildNodeFormData } from '@/pages/Admin/utils/questionUtils';
 import type { Question, Choice } from '@/types';
 import type { DraftChoice } from '@/pages/Admin/forms/Shared/ChoiceEditorCard';
 
 export function useNodeBuilder(defaultChoices: DraftChoice[] = []) {
-  const { setCaseId, setPhaseId, setLevelId, selectedCase, selectedPhase, selectedLevel, levelId } = useAdminContext();
-  
+  const { setCaseId, setPhaseId, setLevelId, selectedCase, selectedPhase, selectedLevel, levelId, setIsDirty } = useAdminContext();
+
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [text, setText] = useState('');
   const [storeLocally, setStoreLocally] = useState(false);
   const [choices, setChoices] = useState<DraftChoice[]>(defaultChoices);
-  
+
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  
-  const { createEntity, updateEntity, deleteEntity, isProcessing, feedback, setFeedback, clearFeedback } = useAdminMutations('question');
+
+  const { createEntity, updateEntity, deleteEntity, isProcessing } = useAdminMutations('question');
+
+  // Wrapped setters to trigger dirty state tracking
+  const handleSetText = (t: string) => { setText(t); setIsDirty(true); };
+  const handleSetStoreLocally = (v: boolean) => { setStoreLocally(v); setIsDirty(true); };
+  const handleSetChoices = (c: DraftChoice[]) => { setChoices(c); setIsDirty(true); };
 
   const clearForm = () => {
     setEditingId(null);
@@ -24,7 +30,7 @@ export function useNodeBuilder(defaultChoices: DraftChoice[] = []) {
     setText('');
     setStoreLocally(false);
     setChoices(defaultChoices);
-    clearFeedback();
+    setIsDirty(false);
     Object.values(fileRefs.current).forEach(ref => { if (ref) ref.value = ''; });
   };
 
@@ -42,7 +48,7 @@ export function useNodeBuilder(defaultChoices: DraftChoice[] = []) {
     setEditingId(node.id);
     setText(node.text || '');
     setStoreLocally(false);
-    
+
     if (node.choices && node.choices.length > 0) {
       setChoices(node.choices.map((c: Choice) => ({
         id: c.id, text: c.text, requirements: c.requirements || {}, outcomes: c.outcomes || {}
@@ -51,7 +57,7 @@ export function useNodeBuilder(defaultChoices: DraftChoice[] = []) {
       setChoices(defaultChoices);
     }
 
-    clearFeedback();
+    setIsDirty(false);
     Object.values(fileRefs.current).forEach(ref => { if (ref) ref.value = ''; });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -65,11 +71,10 @@ export function useNodeBuilder(defaultChoices: DraftChoice[] = []) {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>, files: { image?: File | null, audio?: File | null } = {}) => {
     e.preventDefault();
-    clearFeedback();
 
-    if (!text.trim()) return setFeedback({ type: 'error', message: 'Node text cannot be empty.' });
+    if (!text.trim()) { toast.error('Node text cannot be empty.'); return; }
     if (choices.length > 0 && choices.some(c => !c.text.trim())) {
-      return setFeedback({ type: 'error', message: 'All response branches/choices must have text.' });
+      toast.error('All response branches/choices must have text.'); return;
     }
 
     const formData = buildNodeFormData({
@@ -90,8 +95,13 @@ export function useNodeBuilder(defaultChoices: DraftChoice[] = []) {
 
   return {
     state: { editingId, isFormOpen, text, storeLocally, choices },
-    setters: { setIsFormOpen, setText, setStoreLocally, setChoices },
+    setters: { 
+      setIsFormOpen, 
+      setText: handleSetText, 
+      setStoreLocally: handleSetStoreLocally, 
+      setChoices: handleSetChoices 
+    },
     actions: { clearForm, handleEdit, handleDelete, handleSubmit, registerFileRef },
-    status: { isProcessing, feedback, setFeedback }
+    status: { isProcessing }
   };
 }

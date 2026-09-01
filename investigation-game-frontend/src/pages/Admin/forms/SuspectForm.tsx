@@ -1,129 +1,90 @@
 import React, { useState } from 'react';
-import { useAdminContext } from '@/context/AdminContext';
-import { useAdminForm } from '@/hooks/useAdminForm';
-import AdminFormLayout from '@/components/AdminFormLayout';
-import EntityList from './Shared/EntityList';
-import { AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/components/AdminUI';
-import { validateImageSize } from '@/utils/fileValidation';
+import toast from 'react-hot-toast';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
+import { AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/pages/Admin/components/AdminUI';
+import { validateSuspectForm, validateImageSize } from '../utils/validators';
 import type { Suspect } from '@/types';
+import './Shared/AdminForms.css';
 
-const initialFormState = {
-  name: '',
-  background: '',
-  is_initial: true,
-  is_guilty: false,
-  store_locally: false
-};
+const initialFormState = { name: '', background: '', is_initial: true, is_guilty: false, store_locally: false };
 
 export default function SuspectForm() {
   const { caseId, selectedCase } = useAdminContext();
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.suspectForm;
+
   const [image, setImage] = useState<File | null>(null);
 
   const {
-    formData, updateField, editingId, clearForm, handleSubmit,
-    handleEditInit, handleDelete, registerFileRef, isProcessing, feedback
-  } = useAdminForm({
+    formData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing
+  } = useValidatedForm({
     entityType: 'suspect',
     initialState: initialFormState,
-    basePayload: { case_id: caseId }
+    basePayload: { case_id: caseId },
+    validator: validateSuspectForm 
   });
 
   if (!caseId || !selectedCase) {
     return (
-      <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
-        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', margin: '0 0 1rem 0' }}>[ MISSING CONTEXT: NO CASE SELECTED ]</h3>
-        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>Please select a Target Case from the Global Directory to manage Suspects.</p>
+      <div className="admin-form-container glass-panel admin-missing-context">
+        <h3>{t.missingContextTitle}</h3><p>{t.missingContextDesc}</p>
       </div>
     );
   }
 
-  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => handleSubmit(e, { image });
-
   const onEdit = (suspect: Suspect) => {
     handleEditInit(suspect, (s) => ({
-      name: s.name,
-      background: s.background || '',
-      is_initial: !!s.is_initial,
-      is_guilty: !!s.is_guilty,
-      store_locally: !!s.store_locally
+      name: s.name, background: s.background || '', is_initial: !!s.is_initial, is_guilty: !!s.is_guilty, store_locally: !!s.store_locally
     }));
     setImage(null);
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file && validateImageSize(file)) {
-      setImage(file);
-    } else {
+    if (!file) {
       setImage(null);
-      e.target.value = '';
+      return;
+    }
+    
+    const error = validateImageSize(file);
+    if (!error) { 
+      setImage(file); 
+    } else { 
+      toast.error(error);
+      setImage(null); 
+      e.target.value = ''; 
     }
   };
 
+  const onClear = () => { clearForm(); setImage(null); };
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-      <AdminFormLayout editingId={editingId} entityName="Suspect" contextHeader={`Targeting Case: ${selectedCase.title}`} feedback={feedback} onCancel={clearForm}>
-        <form onSubmit={onSubmit} className="admin-form">
-          <AdminCheckbox
-            checked={formData.is_guilty}
-            onChange={(e) => updateField('is_guilty', e.target.checked)}
-            labelTitle="Guilty Verdict"
-            description="This individual is one of the actual perpetrators required to solve the case."
-            accentColor="var(--accent-crimson)"
-            bgColor="rgba(163,50,50,0.1)"
-          />
-
-          <AdminCheckbox
-            checked={formData.is_initial}
-            onChange={(e) => updateField('is_initial', e.target.checked)}
-            labelTitle="Initial Suspect"
-            description="Available on the board immediately when the case starts."
-            accentColor="var(--accent-cyan)"
-            bgColor="rgba(0,0,0,0.2)"
-          />
-
-          <AdminInput label="Full Name / Alias" required value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
-          <AdminTextarea label="Background Intel" value={formData.background} onChange={(e) => updateField('background', e.target.value)} />
-          
-          <AdminFileInput
-            label={`Mugshot ${editingId ? '(Leave blank to keep existing)' : ''}`}
-            hint="Optimal: 1:1 (Square) ratio. Face centered. Min 400x400px. WEBP or JPG. Max 4MB."
-            accept="image/*"
-            ref={registerFileRef('image')}
-            onChange={handleImageChange}
-          />
-
-          <AdminCheckbox
-            checked={formData.store_locally}
-            onChange={(e) => updateField('store_locally', e.target.checked)}
-            labelTitle="Store Locally on Server"
-            description="Save assets directly to public server folders instead of Cloudinary."
-            accentColor="var(--accent-amber)"
-          />
-
-          <button type="submit" className="btn-primary" disabled={isProcessing} style={{ background: editingId ? 'var(--accent-amber)' : 'var(--accent-crimson)', color: 'var(--bg-dark)', marginTop: '1rem' }}>
-            {isProcessing ? 'Processing Data...' : editingId ? 'Update Suspect' : 'Commit Suspect to Database'}
-          </button>
-        </form>
-      </AdminFormLayout>
-
-      <EntityList<Suspect>
-        title="Case Suspects"
-        items={selectedCase.suspects || []}
-        emptyMessage="No suspects filed for this case."
-        keyExtractor={(s) => s.id}
-        isProcessing={isProcessing}
-        onEdit={onEdit}
-        onDelete={(s) => handleDelete(s.id, `Are you absolutely sure you want to delete ${s.name}?`)}
-        renderItemContent={(s) => (
-          <>
-            <span style={{ fontFamily: 'var(--font-mono)', color: s.is_guilty ? 'var(--accent-crimson)' : 'var(--text-secondary)', marginRight: '1rem' }}>
-              PID-{s.id.toString().padStart(4, '0')}
-            </span>
-            <strong>{s.name}</strong>
-          </>
-        )}
-      />
-    </div>
+    <EntityDashboard<Suspect>
+      entityName={t.entityName} listTitle={t.manageTitle} items={selectedCase.suspects || []}
+      editingId={editingId} isProcessing={isProcessing} emptyMessage={t.emptyMessage}
+      contextHeader={t.targetCaseHeader(selectedCase.title)} keyExtractor={(s) => s.id}
+      onClear={onClear} onEdit={onEdit} onDelete={(s) => handleDelete(s.id, t.deleteConfirm(s.name))}
+      renderItemContent={(s) => (
+        <>
+          <span className={`admin-list-id ${s.is_guilty ? 'admin-list-guilty' : ''}`}>PID-{s.id.toString().padStart(4, '0')}</span>
+          <strong>{s.name}</strong>
+        </>
+      )}
+    >
+      <form onSubmit={(e) => handleValidatedSubmit(e, { image })} className="admin-form">
+        <AdminCheckbox checked={formData.is_guilty} onChange={(e) => updateField('is_guilty', e.target.checked)} labelTitle={t.guiltyVerdictLabel} description={t.guiltyVerdictDesc} className="status-draft" />
+        <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialSuspectLabel} description={t.initialSuspectDesc} className="status-live" />
+        <AdminInput label={t.nameLabel} required value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
+        <AdminTextarea label={t.backgroundLabel} value={formData.background} onChange={(e) => updateField('background', e.target.value)} />
+        <AdminFileInput label={`${t.mugshotLabel} ${editingId ? t.mugshotEditSuffix : ''}`} hint={t.mugshotHint} accept="image/*" ref={registerFileRef('image')} onChange={handleImageChange} />
+        <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} description={t.storeLocallyDesc} className="amber" />
+        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing}>
+          {isProcessing ? t.processingData : editingId ? t.updateSuspect : t.commitSuspect}
+        </button>
+      </form>
+    </EntityDashboard>
   );
 }

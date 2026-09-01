@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { AdminProvider, useAdminContext } from '@/context/AdminContext';
+import { AdminProvider, useAdminContext } from '@/pages/Admin/context/AdminContext';
 
 import CaseForm from './forms/CaseForm';
 import PhaseForm from './forms/PhaseForm';
-import LevelForm from './forms/LevelForm/LevelForm';
+import LevelForm from './forms/LevelForm';
 import EvidenceForm from './forms/EvidenceForm';
 import SuspectForm from './forms/SuspectForm'; 
 import VictimForm from './forms/VictimForm'; 
@@ -18,10 +18,19 @@ type AdminTab = 'cases' | 'phases' | 'levels' | 'interrogation' | 'location' | '
 function AdminDashboardContent() {
   const [activeTab, setActiveTab] = useState<AdminTab>('cases');
   
-  const { 
+  const {
     isLoading, error, cases, availablePhases, availableLevels,
-    caseId, setCaseId, phaseId, setPhaseId, levelId, setLevelId 
+    caseId, setCaseId, phaseId, setPhaseId, levelId, setLevelId,
+    isDirty, setIsDirty
   } = useAdminContext();
+
+  const handleTabChange = (tab: AdminTab) => {
+    if (isDirty) {
+      if (!window.confirm('You have unsaved changes. Discard and switch tabs?')) return;
+      setIsDirty(false);
+    }
+    setActiveTab(tab);
+  };
 
   if (isLoading) {
     return (
@@ -75,28 +84,28 @@ function AdminDashboardContent() {
         <div className="admin-nav-group">
           <h4 className="admin-nav-group-title">Narrative Hierarchy</h4>
           <nav className="admin-nav-menu">
-            <button className={`admin-tab-btn ${activeTab === 'cases' ? 'active' : ''}`} onClick={() => setActiveTab('cases')}>📁 Cases (Root)</button>
-            <button className={`admin-tab-btn ${activeTab === 'phases' ? 'active' : ''}`} onClick={() => setActiveTab('phases')}>📑 Phases (Chapters)</button>
-            <button className={`admin-tab-btn ${activeTab === 'levels' ? 'active' : ''}`} onClick={() => setActiveTab('levels')}>📌 Levels (Encounters)</button>
+            <button className={`admin-tab-btn ${activeTab === 'cases' ? 'active' : ''}`} onClick={() => handleTabChange('cases')}>📁 Cases (Root)</button>
+            <button className={`admin-tab-btn ${activeTab === 'phases' ? 'active' : ''}`} onClick={() => handleTabChange('phases')}>📑 Phases (Chapters)</button>
+            <button className={`admin-tab-btn ${activeTab === 'levels' ? 'active' : ''}`} onClick={() => handleTabChange('levels')}>📌 Levels (Encounters)</button>
           </nav>
         </div>
 
         <div className="admin-nav-group">
           <h4 className="admin-nav-group-title">Node Builders</h4>
           <nav className="admin-nav-menu">
-            <button className={`admin-tab-btn ${activeTab === 'interrogation' ? 'active' : ''}`} onClick={() => setActiveTab('interrogation')}>💬 Interrogation Tree</button>
-            <button className={`admin-tab-btn ${activeTab === 'location' ? 'active' : ''}`} onClick={() => setActiveTab('location')}>🎯 Location Sweeps</button>
-            <button className={`admin-tab-btn ${activeTab === 'wiretap' ? 'active' : ''}`} onClick={() => setActiveTab('wiretap')}>🎙️ Wiretap Intercepts</button>
+            <button className={`admin-tab-btn ${activeTab === 'interrogation' ? 'active' : ''}`} onClick={() => handleTabChange('interrogation')}>💬 Interrogation Tree</button>
+            <button className={`admin-tab-btn ${activeTab === 'location' ? 'active' : ''}`} onClick={() => handleTabChange('location')}>🎯 Location Sweeps</button>
+            <button className={`admin-tab-btn ${activeTab === 'wiretap' ? 'active' : ''}`} onClick={() => handleTabChange('wiretap')}>🎙️ Wiretap Intercepts</button>
           </nav>
         </div>
 
         <div className="admin-nav-group" style={{ borderBottom: 'none' }}>
           <h4 className="admin-nav-group-title">Database Assets</h4>
           <nav className="admin-nav-menu">
-            <button className={`admin-tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => setActiveTab('evidences')}>🔍 Evidence Locker</button>
-            <button className={`admin-tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} onClick={() => setActiveTab('suspects')}>👤 Suspect Profiles</button>
-            <button className={`admin-tab-btn ${activeTab === 'victims' ? 'active' : ''}`} onClick={() => setActiveTab('victims')}>💀 Identified Casualties</button>
-            <button className={`admin-tab-btn ${activeTab === 'requests' ? 'active' : ''}`} onClick={() => setActiveTab('requests')}>⚖️ Procedural Combos</button>
+            <button className={`admin-tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => handleTabChange('evidences')}>🔍 Evidence Locker</button>
+            <button className={`admin-tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} onClick={() => handleTabChange('suspects')}>👤 Suspect Profiles</button>
+            <button className={`admin-tab-btn ${activeTab === 'victims' ? 'active' : ''}`} onClick={() => handleTabChange('victims')}>💀 Identified Casualties</button>
+            <button className={`admin-tab-btn ${activeTab === 'requests' ? 'active' : ''}`} onClick={() => handleTabChange('requests')}>⚖️ Procedural Combos</button>
           </nav>
         </div>
       </aside>

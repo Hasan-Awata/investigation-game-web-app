@@ -1,8 +1,6 @@
 import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
-import AdminFormHeader from '../Shared/AdminFormHeader';
-import type { BaseNodeFormProps } from '@/utils/questionUtils';
-import { AdminFileInput } from '@/components/AdminUI';
-import { validateImageSize, validateAudioSize } from '@/utils/fileValidation';
+import MediaUploader from '@/pages/Admin/components/MediaUploader';
+import type { BaseNodeFormProps } from '@/pages/Admin/utils/questionUtils';
 
 interface AdminWiretapFormProps extends BaseNodeFormProps {
   setImage: (file: File | null) => void;
@@ -10,28 +8,14 @@ interface AdminWiretapFormProps extends BaseNodeFormProps {
   addChoice: () => void;
   updateChoice: (index: number, choice: DraftChoice) => void;
   removeChoice: (index: number) => void;
-  contextHeader: string;
 }
 
 export default function AdminWiretapForm({
-  state, setters, actions, status, previews, setImage, setAudio, addChoice, updateChoice, removeChoice, contextHeader
+  state, setters, actions, status, previews, setImage, setAudio, addChoice, updateChoice, removeChoice
 }: AdminWiretapFormProps) {
-
-  const handleAudioChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    setAudio(file && validateAudioSize(file) ? file : null);
-  };
-
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    setImage(file && validateImageSize(file) ? file : null);
-  };
 
   return (
     <div>
-      <AdminFormHeader editingId={state.editingId} entityName="Wiretap Intercept" contextHeader={contextHeader} onCancel={actions.handleCancel} />
-      {status.feedback && <div className={`status-message ${status.feedback.type}`}>{status.feedback.message}</div>}
-
       <form onSubmit={actions.handleSubmit} className="admin-form">
         <div className="form-group">
           <label>Intercept Transcript / Prompt Text</label>
@@ -40,12 +24,22 @@ export default function AdminWiretapForm({
 
         <div className="admin-form-row">
           <div className="form-group" style={{ flex: 1 }}>
-            <AdminFileInput label={`Wiretap Audio Feed (MP3/WAV) ${state.editingId ? '(Leave blank to keep existing)' : ''}`} accept="audio/*" ref={actions.registerFileRef('audio')} onChange={handleAudioChange} />
-            {previews.audio && <audio controls src={previews.audio} style={{ height: '32px', width: '100%', marginTop: '0.5rem' }} />}
+            <MediaUploader 
+              label={`Wiretap Audio Feed (MP3/WAV) ${state.editingId ? '(Leave blank to keep existing)' : ''}`} 
+              accept="audio/*" 
+              ref={actions.registerFileRef('audio')} 
+              onChange={setAudio} 
+              previewUrl={previews.audio} 
+            />
           </div>
           <div className="form-group" style={{ flex: 1 }}>
-            <AdminFileInput label="Associated Image / Dossier (Optional)" accept="image/*" ref={actions.registerFileRef('image')} onChange={handleImageChange} />
-            {previews.image && <img src={previews.image} alt="Preview" style={{ maxHeight: '100px', borderRadius: '4px', marginTop: '0.5rem', border: '1px solid rgba(255,255,255,0.1)' }} />}
+            <MediaUploader 
+              label="Associated Image / Dossier (Optional)" 
+              accept="image/*" 
+              ref={actions.registerFileRef('image')} 
+              onChange={setImage} 
+              previewUrl={previews.image} 
+            />
           </div>
         </div>
 

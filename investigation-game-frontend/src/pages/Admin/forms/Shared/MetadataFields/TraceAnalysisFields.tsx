@@ -1,11 +1,8 @@
-import { AdminRow, AdminInput } from '@/components/AdminUI';
+import { AdminRow, AdminInput } from '@/pages/Admin/components/AdminUI';
+import type { TraceMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
 
-interface TraceAnalysisFieldsProps {
-  metadata: Record<string, any>;
-  updateMeta: (key: string, value: any) => void;
-}
-
-export default function TraceAnalysisFields({ metadata, updateMeta }: TraceAnalysisFieldsProps) {
+export default function TraceAnalysisFields({ metadata, updateMeta }: MetadataFieldProps<TraceMetadata>) {
   return (
     <AdminRow>
       <AdminInput label="Material Composition" required value={metadata.material_type || ''} onChange={e => updateMeta('material_type', e.target.value)} />

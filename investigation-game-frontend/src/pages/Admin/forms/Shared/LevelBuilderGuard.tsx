@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useAdminContext } from '@/context/AdminContext';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
 
 interface LevelBuilderGuardProps {
   requiredType: 'location' | 'wiretap' | 'interrogation';

@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { useAdminMutations } from '@/hooks/useAdminMutations';
+import toast from 'react-hot-toast';
+import { useAdminMutations } from '@/pages/Admin/hooks/useAdminMutations';
 import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
-import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '@/utils/questionUtils';
-import StatusMessage from '../Shared/StatusMessage';
+import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '@/pages/Admin/utils/questionUtils';
 import type { Question } from '@/types';
 
 interface AdminInterrogationFormProps {
@@ -32,22 +32,22 @@ export default function AdminInterrogationForm({
   );
 
   // Directly utilize the unified mutations
-  const { createEntity, updateEntity, deleteEntity, isProcessing, feedback, setFeedback, clearFeedback } = useAdminMutations('question');
+  const { createEntity, updateEntity, deleteEntity, isProcessing } = useAdminMutations('question');
 
   const handleSave = () => {
-    clearFeedback();
-    
     if (!text.trim()) {
-      return setFeedback({ type: 'error', message: 'Suspect dialogue cannot be empty.' });
+      toast.error('Suspect dialogue cannot be empty.');
+      return;
     }
     if (choicesState.some(c => !c.text.trim())) {
-      return setFeedback({ type: 'error', message: 'All response branches must have text.' });
+      toast.error('All response branches must have text.');
+      return;
     }
 
     const formData = buildNodeFormData({
       level_id: levelId,
       text,
-      store_locally: false, // Not typically used for text nodes, but required by the builder contract
+      store_locally: false,
       choices: choicesState,
     });
 
@@ -68,7 +68,6 @@ export default function AdminInterrogationForm({
     <div className={`dialogue-node-card ${isSaved ? '' : 'unsaved'}`}>
       <div className="node-header">
         <span className="node-id-badge">{isSaved ? `NODE ID: ${nodeData.id}` : 'UNSAVED DRAFT NODE'}</span>
-        <StatusMessage feedback={feedback} />
       </div>
 
       <div className="node-body">

@@ -1,8 +1,10 @@
-import { AdminSelect, AdminTextarea } from '@/components/AdminUI';
+import { AdminSelect, AdminTextarea } from '@/pages/Admin/components/AdminUI';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import {
   AutopsyFields, BallisticsFields, DNAFields, DigitalForensicsFields, TraceAnalysisFields,
   CorrespondenceFields, FinancialFields, JournalFields, ContractFields, MemoFields, BackgroundCheckFields
 } from './MetadataFields';
+import './AdminForms.css';
 
 interface EvidenceMetadataFieldsProps {
   evidenceType: string;
@@ -13,32 +15,50 @@ interface EvidenceMetadataFieldsProps {
 }
 
 export default function EvidenceMetadataFields({ evidenceType, subType, setSubType, metadata, updateMeta }: EvidenceMetadataFieldsProps) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata || {
+    sectionTitle: "[ Structured Metadata Injection ]",
+    forensicAutopsy: "Autopsy Report",
+    forensicBallistics: "Ballistics Analysis",
+    forensicDna: "DNA / Serology Profile",
+    forensicDigital: "Digital Forensics",
+    forensicTrace: "Trace / Material Analysis",
+    docCorrespondence: "Correspondence (Email/Letter)",
+    docFinancial: "Financial Record",
+    docJournal: "Personal Diary / Journal",
+    docContract: "Official Contract / Deed",
+    docMemo: "Corporate Memo / Note",
+    docBackground: "Background Check / Dossier",
+    selectForensicPlaceholder: "-- Select Forensic Classification --",
+    selectDocPlaceholder: "-- Select Document Classification --",
+    officialTranscriptLabel: "Official Transcript"
+  };
 
   const FORENSIC_OPTIONS = [
-    { value: "autopsy", label: "Autopsy Report" },
-    { value: "ballistics", label: "Ballistics Analysis" },
-    { value: "dna", label: "DNA / Serology Profile" },
-    { value: "digital_forensics", label: "Digital Forensics" },
-    { value: "trace_analysis", label: "Trace / Material Analysis" }
+    { value: "autopsy", label: t.forensicAutopsy },
+    { value: "ballistics", label: t.forensicBallistics },
+    { value: "dna", label: t.forensicDna },
+    { value: "digital_forensics", label: t.forensicDigital },
+    { value: "trace_analysis", label: t.forensicTrace }
   ];
 
   const DOCUMENT_OPTIONS = [
-    { value: "correspondence", label: "Correspondence (Email/Letter)" },
-    { value: "financial", label: "Financial Record" },
-    { value: "journal", label: "Personal Diary / Journal" },
-    { value: "contract", label: "Official Contract / Deed" },
-    { value: "memo", label: "Corporate Memo / Note" },
-    { value: "background_check", label: "Background Check / Dossier" }
+    { value: "correspondence", label: t.docCorrespondence },
+    { value: "financial", label: t.docFinancial },
+    { value: "journal", label: t.docJournal },
+    { value: "contract", label: t.docContract },
+    { value: "memo", label: t.docMemo },
+    { value: "background_check", label: t.docBackground }
   ];
 
   const renderSubTypeSelector = () => {
-    if (evidenceType === 'forensic') return <AdminSelect required value={subType} onChange={e => setSubType(e.target.value)} options={FORENSIC_OPTIONS} placeholder="-- Select Forensic Classification --" />;
-    if (evidenceType === 'document') return <AdminSelect required value={subType} onChange={e => setSubType(e.target.value)} options={DOCUMENT_OPTIONS} placeholder="-- Select Document Classification --" />;
+    if (evidenceType === 'forensic') return <AdminSelect required value={subType} onChange={e => setSubType(e.target.value)} options={FORENSIC_OPTIONS} placeholder={t.selectForensicPlaceholder} />;
+    if (evidenceType === 'document') return <AdminSelect required value={subType} onChange={e => setSubType(e.target.value)} options={DOCUMENT_OPTIONS} placeholder={t.selectDocPlaceholder} />;
     return null;
   };
 
   const renderDynamicInputs = () => {
-    const props = { metadata, updateMeta };
+    const props = { metadata, updateMeta: updateMeta as any };
     
     switch (subType) {
       // FORENSICS
@@ -59,7 +79,7 @@ export default function EvidenceMetadataFields({ evidenceType, subType, setSubTy
       // FALLBACK
       default:
         if (evidenceType === 'testimony') {
-          return <AdminTextarea label="Official Transcript" value={metadata.transcript || ''} onChange={e => updateMeta('transcript', e.target.value)} />;
+          return <AdminTextarea label={t.officialTranscriptLabel} value={metadata.transcript || ''} onChange={e => updateMeta('transcript', e.target.value)} />;
         }
         return null;
     }
@@ -68,13 +88,13 @@ export default function EvidenceMetadataFields({ evidenceType, subType, setSubTy
   if (evidenceType === 'image' || evidenceType === 'audio') return null;
 
   return (
-    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', marginTop: '1.5rem' }}>
-      <h4 style={{ margin: '0 0 1rem 0', fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', fontSize: '0.85rem', textTransform: 'uppercase' }}>
-        [ Structured Metadata Injection ]
+    <div className="metadata-container">
+      <h4 className="metadata-title">
+        {t.sectionTitle}
       </h4>
       {renderSubTypeSelector()}
       {(subType || evidenceType === 'testimony') && (
-        <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div className="metadata-inputs-wrapper">
           {renderDynamicInputs()}
         </div>
       )}

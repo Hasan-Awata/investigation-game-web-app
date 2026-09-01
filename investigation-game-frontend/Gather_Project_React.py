@@ -29,12 +29,14 @@ def clean_code(content, is_css=False):
     content = "\n".join(line.rstrip() for line in content.splitlines())
     return content.strip()
 
-def gather_project_code(root_dir, output_file, include_styles=False):
+def gather_project_code(root_dir, output_file, include_styles=False, include_admin_files=False):
     ignore_dirs = {
         '.git', '.vscode', '.idea', 'node_modules', 'public', 
         'dist', 'build', 'assets', 'images', 'fonts', 'coverage', '.husky'
     }
-    
+    if not include_admin_files:
+        ignore_dirs.update({'Admin'})
+
     allowed_extensions = {'.ts', '.tsx', '.js', '.jsx', '.json'}
     if include_styles:
         allowed_extensions.update({'.css', '.scss'})
@@ -141,4 +143,4 @@ if __name__ == "__main__":
     admin_files = r"D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin" 
     output_filename = "ai_project_context.xml"
     
-    gather_project_code(project_root, output_filename, include_styles=False)
+    gather_project_code(admin_files, output_filename, include_styles=False, include_admin_files=True)

@@ -1,5 +1,6 @@
+import { useEffect } from 'react';
 import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react';
-import { useAdminCases, useAdminPhases, useAdminLevels } from '@/hooks/useAdminData';
+import { useAdminCases, useAdminPhases, useAdminLevels } from '@/pages/Admin/hooks/useAdminData';
 import type { GameCase, Phase, Level } from '@/types';
 
 interface AdminContextState {
@@ -19,11 +20,27 @@ interface AdminContextState {
 
   isLoading: boolean;
   error: Error | null;
+  isDirty: boolean;
+  setIsDirty: (val: boolean) => void;
 }
 
 const AdminContext = createContext<AdminContextState | undefined>(undefined);
 
 export function AdminProvider({ children }: { children: ReactNode }) {
+  const [isDirty, setIsDirty] = useState<boolean>(false);
+
+  // Browser-level protection against accidental tab closure/refresh
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = ''; // Required by modern browsers to trigger the warning
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
   // Local state for dropdown selections
   const [caseId, setCaseId] = useState<string>('');
   const [phaseId, setPhaseId] = useState<string>('');
@@ -36,15 +53,25 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   // Cascading state handlers memoized to maintain stable reference equality
   const handleSetCaseId = useCallback((id: string) => {
+    if (isDirty && !window.confirm('You have unsaved changes. Discard and switch cases?')) return;
+    setIsDirty(false);
     setCaseId(id);
-    setPhaseId(''); // Reset child selections when parent changes
+    setPhaseId('');
     setLevelId('');
-  }, []);
+  }, [isDirty]);
 
   const handleSetPhaseId = useCallback((id: string) => {
+    if (isDirty && !window.confirm('You have unsaved changes. Discard and switch phases?')) return;
+    setIsDirty(false);
     setPhaseId(id);
-    setLevelId(''); // Reset child selections when parent changes
-  }, []);
+    setLevelId('');
+  }, [isDirty]);
+
+  const handleSetLevelId = useCallback((id: string) => {
+    if (isDirty && !window.confirm('You have unsaved changes. Discard and switch levels?')) return;
+    setIsDirty(false);
+    setLevelId(id);
+  }, [isDirty]);
 
   // Derived Data (Memoized to prevent unnecessary recalculations)
   const selectedCase = useMemo(() => cases.find(c => c.id.toString() === caseId), [cases, caseId]);
@@ -63,7 +90,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     levelId,
     setCaseId: handleSetCaseId,
     setPhaseId: handleSetPhaseId,
-    setLevelId,
+    setLevelId: handleSetLevelId,
     cases,
     selectedCase,
     availablePhases,
@@ -71,13 +98,16 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     availableLevels,
     selectedLevel,
     isLoading,
-    error
+    error,
+    isDirty,
+    setIsDirty
   }), [
     caseId,
     phaseId,
     levelId,
     handleSetCaseId,
     handleSetPhaseId,
+    handleSetLevelId,
     cases,
     selectedCase,
     availablePhases,
@@ -85,7 +115,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     availableLevels,
     selectedLevel,
     isLoading,
-    error
+    error,
+    isDirty,
+    setIsDirty
   ]);
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;

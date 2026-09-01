@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useAdminContext } from '@/context/AdminContext';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
 import { useTargeting } from '@/context/TargetingContext';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import type { Evidence, Level, Phase, Suspect, Victim } from '@/types';
 import './ChoiceEditorCard.css';
 
@@ -50,7 +51,9 @@ export default function ChoiceEditorCard({
   );
 
   const { selectedCase } = useAdminContext();
-  const targeting = useTargeting(); // Consume targeting context instead of prop drilling
+  const targeting = useTargeting();
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.choiceEditorCard;
 
   if (!selectedCase) return null;
 
@@ -89,9 +92,9 @@ export default function ChoiceEditorCard({
       {/* CLEAN HEADER BAR */}
       <div className="choice-editor-header" onClick={() => setIsExpanded(!isExpanded)}>
         <div className="header-info-group">
-          <span className="choice-index">Choice #{index + 1}</span>
+          <span className="choice-index">{t.choiceIndex(index + 1)}</span>
           <span className="choice-preview">
-            {choice.text ? `"${choice.text}"` : '(Blank Choice Text)'}
+            {choice.text ? `"${choice.text}"` : t.blankChoice}
           </span>
 
           {coordPreview && (
@@ -99,27 +102,26 @@ export default function ChoiceEditorCard({
           )}
 
           {choice.outcomes?.gives_strike && (
-            <span className="badge-strike">STRIKE PENALTY</span>
+            <span className="badge-strike">{t.strikePenaltyBadge}</span>
           )}
         </div>
 
         <div className="header-actions-group" onClick={(e) => e.stopPropagation()}>
-          {/* Conditionally render targeting button ONLY if context is provided */}
           {targeting && (
             <button
               type="button"
               className={`btn-secondary target-btn ${isTargeting ? 'active' : ''}`}
               onClick={() => targeting.toggleTarget(choice.id as string | number)}
             >
-              {isTargeting ? '🎯 TARGETING...' : '🎯 MAP'}
+              {isTargeting ? t.targetingActive : t.targetingMap}
             </button>
           )}
 
           <button type="button" className="btn-secondary collapse-btn" onClick={() => setIsExpanded(!isExpanded)}>
-            {isExpanded ? '▲ Collapse' : '▼ Expand'}
+            {isExpanded ? t.collapse : t.expand}
           </button>
 
-          <button type="button" className="delete-btn" onClick={removeChoice} title="Delete Choice">
+          <button type="button" className="delete-btn" onClick={removeChoice} title={t.deleteTitle}>
             ✕
           </button>
         </div>
@@ -129,19 +131,19 @@ export default function ChoiceEditorCard({
       {isExpanded && (
         <div className="choice-editor-body">
           <div className="form-group">
-            <label>Choice Text</label>
+            <label>{t.choiceTextLabel}</label>
             <input
               type="text"
               className="admin-input"
               required
               value={choice.text}
               onChange={(e) => updateChoice({ ...choice, text: e.target.value })}
-              placeholder="e.g., The killer entered through the vents."
+              placeholder={t.choiceTextPlaceholder}
             />
           </div>
 
           <div className="outcomes-panel">
-            <h6>[ NARRATIVE OUTCOMES & UNLOCKS ]</h6>
+            <h6>{t.narrativeOutcomesTitle}</h6>
 
             <div className="checkbox-row strike-penalty-row">
               <input
@@ -149,33 +151,33 @@ export default function ChoiceEditorCard({
                 checked={!!choice.outcomes?.gives_strike}
                 onChange={(e) => updateOutcomes('gives_strike', e.target.checked)}
               />
-              <label><strong>PENALTY STRIKE:</strong> Selecting this choice logs a strike against the team.</label>
+              <label><strong>{t.penaltyStrikeLabel}</strong> {t.penaltyStrikeDesc}</label>
             </div>
 
             <div className="form-group">
-              <label>Feedback Message (Shown when selected / Failed hint)</label>
+              <label>{t.feedbackLabel}</label>
               <textarea
                 className="admin-textarea"
                 value={choice.outcomes?.feedback || ''}
                 onChange={(e) => updateOutcomes('feedback', e.target.value)}
-                placeholder="e.g., You wasted time tracking a dead end."
+                placeholder={t.feedbackPlaceholder}
               />
             </div>
 
             <div className="admin-form-row">
               <div className="form-group">
-                <label>Unlocks Evidence</label>
+                <label>{t.unlockEvidenceLabel}</label>
                 <select multiple className="admin-input" value={unlockedEv} onChange={(e) => updateOutcomes('unlock_evidence', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
                   {availableEvidence.map((ev: Evidence) => (
-                    <option key={ev.id} value={ev.id.toString()}>EX-{ev.id.toString().padStart(3, '0')}: {ev.title}</option>
+                    <option key={ev.id} value={ev.id.toString()}>{t.evidenceOption(ev.id, ev.title)}</option>
                   ))}
                 </select>
               </div>
               <div className="form-group">
-                <label>Unlocks Phase/Level</label>
+                <label>{t.unlockLevelsLabel}</label>
                 <select multiple className="admin-input" value={unlockedLv} onChange={(e) => updateOutcomes('unlock_levels', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
                   {availableLevels.map((lv: Level) => (
-                    <option key={lv.id} value={lv.id.toString()}>Level {lv.order_index}: {lv.title}</option>
+                    <option key={lv.id} value={lv.id.toString()}>{t.levelOption(lv.order_index, lv.title)}</option>
                   ))}
                 </select>
               </div>
@@ -183,7 +185,7 @@ export default function ChoiceEditorCard({
 
             <div className="admin-form-row">
               <div className="form-group">
-                <label>Unlocks Suspects</label>
+                <label>{t.unlockSuspectsLabel}</label>
                 <select multiple className="admin-input" value={unlockedSu} onChange={(e) => updateOutcomes('unlock_suspects', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
                   {availableSuspects.map((su: Suspect) => (
                     <option key={su.id} value={su.id.toString()}>{su.name}</option>
@@ -191,7 +193,7 @@ export default function ChoiceEditorCard({
                 </select>
               </div>
               <div className="form-group">
-                <label>Unlocks Victims</label>
+                <label>{t.unlockVictimsLabel}</label>
                 <select multiple className="admin-input" value={unlockedVi} onChange={(e) => updateOutcomes('unlock_victims', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
                   {availableVictims.map((vi: Victim) => (
                     <option key={vi.id} value={vi.id.toString()}>{vi.name}</option>
@@ -202,12 +204,12 @@ export default function ChoiceEditorCard({
           </div>
 
           <div className="requirements-panel">
-            <h6>[ GATEKEEPER REQUIREMENTS ]</h6>
+            <h6>{t.gatekeeperRequirementsTitle}</h6>
             <div className="form-group">
-              <label>Required Evidence to Select</label>
+              <label>{t.requiredEvidenceLabel}</label>
               <select multiple className="admin-input" value={reqEv} onChange={(e) => updateRequirements('required_evidence', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
                 {availableEvidence.map((ev: Evidence) => (
-                  <option key={ev.id} value={ev.id.toString()}>EX-{ev.id.toString().padStart(3, '0')}: {ev.title}</option>
+                  <option key={ev.id} value={ev.id.toString()}>{t.evidenceOption(ev.id, ev.title)}</option>
                 ))}
               </select>
             </div>

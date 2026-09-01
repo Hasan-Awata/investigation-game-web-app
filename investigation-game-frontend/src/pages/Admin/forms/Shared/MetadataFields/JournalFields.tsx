@@ -2,15 +2,12 @@ import { useDynamicList } from '@/hooks/useDynamicList';
 import {
   AdminRow, AdminInput, AdminTextarea, AdminCheckbox,
   DynamicListHeader, RemoveButton
-} from '@/components/AdminUI';
+} from '@/pages/Admin/components/AdminUI';
+import type { JournalMetadata, JournalPage } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
 
-interface JournalFieldsProps {
-  metadata: Record<string, any>;
-  updateMeta: (key: string, value: any) => void;
-}
-
-export default function JournalFields({ metadata, updateMeta }: JournalFieldsProps) {
-  const { items: pages, add: addPage, update: updatePage, remove: removePage } = useDynamicList<{page_number: number, date_entry: string, content: string, is_torn: boolean}>(
+export default function JournalFields({ metadata, updateMeta }: MetadataFieldProps<JournalMetadata>) {
+  const { items: pages, add: addPage, update: updatePage, remove: removePage } = useDynamicList<JournalPage>(
     metadata.pages || [],
     (newList) => updateMeta('pages', newList)
   );

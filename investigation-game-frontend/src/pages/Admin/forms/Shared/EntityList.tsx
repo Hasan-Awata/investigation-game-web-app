@@ -1,4 +1,6 @@
 import { type ReactNode } from 'react';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import './AdminForms.css';
 
 interface EntityListProps<T> {
   title: string;
@@ -21,42 +23,43 @@ export default function EntityList<T>({
   onDelete,
   isProcessing
 }: EntityListProps<T>) {
+  const { adminT } = useAdminTranslation();
+  // Fallback safe reference if key isn't added yet, or standard lookup:
+  const t = adminT.forms.entityList || { editBtn: 'Edit', deleteBtn: 'Delete' };
+
   return (
-    <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
-      <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', marginBottom: '1.5rem' }}>
+    <div className="admin-entity-list-container">
+      <h3 className="admin-entity-list-title">
         // {title}
       </h3>
       
       {items.length === 0 ? (
-        <div className="terminal-text" style={{ padding: 0, textAlign: 'left', color: 'var(--text-secondary)' }}>
+        <div className="terminal-text admin-missing-context" style={{ padding: 0, textAlign: 'left' }}>
           {emptyMessage}
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+        <div className="admin-entity-stack">
           {items.map((item) => (
-            <div 
-              key={keyExtractor(item)} 
-              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(0,0,0,0.3)', padding: '1rem', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.05)' }}
-            >
-              <div style={{ overflow: 'hidden' }}>
+            <div key={keyExtractor(item)} className="admin-entity-row">
+              <div className="admin-entity-content">
                 {renderItemContent(item)}
               </div>
-              <div style={{ display: 'flex', gap: '0.75rem', flex: 'none', marginLeft: '1rem' }}>
+              <div className="admin-entity-actions">
                 <button 
                   type="button" 
                   onClick={() => onEdit(item)} 
                   disabled={isProcessing} 
-                  style={{ background: 'transparent', border: '1px solid var(--accent-amber)', color: 'var(--accent-amber)', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}
+                  className="admin-action-btn edit"
                 >
-                  Edit
+                  {t.editBtn}
                 </button>
                 <button 
                   type="button" 
                   onClick={() => onDelete(item)} 
                   disabled={isProcessing} 
-                  style={{ background: 'transparent', border: '1px solid var(--accent-crimson)', color: 'var(--accent-crimson)', padding: '0.5rem 1rem', borderRadius: '4px', cursor: 'pointer', fontFamily: 'var(--font-mono)' }}
+                  className="admin-action-btn delete"
                 >
-                  Delete
+                  {t.deleteBtn}
                 </button>
               </div>
             </div>

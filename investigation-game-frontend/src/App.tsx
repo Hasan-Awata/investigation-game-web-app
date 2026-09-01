@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/reac
 import MainMenu from '@/pages/MainMenu/MainMenu';
 import Auth from '@/pages/Auth/Auth';
 import GameRoom from '@/pages/GameRoom/GameRoom';
-import AdminGuard from '@/components/AdminGuard';
+import AdminGuard from '@/pages/Admin/components/AdminGuard';
 import AdminDashboard from '@/pages/Admin/AdminDashboard';
 import { getToken, logout } from '@/services/auth';
 import { useAuthSession } from '@/hooks/useAuth';

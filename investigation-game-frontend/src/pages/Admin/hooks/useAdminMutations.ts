@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import toast from 'react-hot-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as adminApi from '@/services/adminApi';
 
@@ -14,9 +14,6 @@ export type AdminEntityType =
 
 export function useAdminMutations(entityType: AdminEntityType) {
   const queryClient = useQueryClient();
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
-  const clearFeedback = () => setFeedback(null);
 
   // Map the entity type to the exact API service functions from adminApi
   const apiMap = {
@@ -33,13 +30,12 @@ export function useAdminMutations(entityType: AdminEntityType) {
   const methods = apiMap[entityType];
 
   const handleSuccess = (action: string) => {
-    setFeedback({ type: 'success', message: `${methods.name} successfully ${action}.` });
-    // This instantly refreshes the data in useAdminData across the whole app
+    toast.success(`${methods.name} successfully ${action}.`);
     queryClient.invalidateQueries({ queryKey: ['adminCases'] });
   };
 
   const handleError = (error: Error) => {
-    setFeedback({ type: 'error', message: error.message });
+    toast.error(error.message);
   };
 
   const createMutation = useMutation({
@@ -78,9 +74,6 @@ export function useAdminMutations(entityType: AdminEntityType) {
     createEntity: createMutation.mutate,
     updateEntity: updateMutation.mutate,
     deleteEntity: deleteMutation.mutate,
-    isProcessing,
-    feedback,
-    setFeedback, 
-    clearFeedback
+    isProcessing
   };
 }

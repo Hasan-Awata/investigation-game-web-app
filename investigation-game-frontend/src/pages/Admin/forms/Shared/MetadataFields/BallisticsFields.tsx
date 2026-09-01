@@ -2,14 +2,11 @@ import { useDynamicList } from '@/hooks/useDynamicList';
 import {
   AdminRow, AdminInput, AdminTextarea,
   FormattingGuide, DynamicListHeader, RemoveButton
-} from '@/components/AdminUI';
+} from '@/pages/Admin/components/AdminUI';
+import type { BallisticsMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
 
-interface BallisticsFieldsProps {
-  metadata: Record<string, any>;
-  updateMeta: (key: string, value: any) => void;
-}
-
-export default function BallisticsFields({ metadata, updateMeta }: BallisticsFieldsProps) {
+export default function BallisticsFields({ metadata, updateMeta }: MetadataFieldProps<BallisticsMetadata>) {
   const { items, add, update, remove } = useDynamicList<{reference: string, description: string}>(
     metadata.exhibits || [],
     (newList) => updateMeta('exhibits', newList)

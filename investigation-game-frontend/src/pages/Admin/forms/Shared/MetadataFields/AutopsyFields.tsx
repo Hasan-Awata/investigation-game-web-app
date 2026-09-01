@@ -1,15 +1,12 @@
 import { useDynamicList } from '@/hooks/useDynamicList';
+import type { AutopsyMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
 import {
   AdminRow, AdminInput, AdminTextarea, 
   DynamicListHeader, RemoveButton
-} from '@/components/AdminUI';
+} from '@/pages/Admin/components/AdminUI';
 
-interface AutopsyFieldsProps {
-  metadata: Record<string, any>;
-  updateMeta: (key: string, value: any) => void;
-}
-
-export default function AutopsyFields({ metadata, updateMeta }: AutopsyFieldsProps) {
+export default function AutopsyFields({ metadata, updateMeta }: MetadataFieldProps<AutopsyMetadata>) {
   const { items, add, updatePrimitive, remove } = useDynamicList<string>(
     metadata.evidence_collected || [],
     (newList) => updateMeta('evidence_collected', newList)

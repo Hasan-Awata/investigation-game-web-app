@@ -1,10 +1,7 @@
 import { useDynamicList } from '@/hooks/useDynamicList';
-import { AdminRow, AdminInput, DynamicListHeader, RemoveButton } from '@/components/AdminUI';
-
-interface FinancialFieldsProps {
-  metadata: Record<string, any>;
-  updateMeta: (key: string, value: any) => void;
-}
+import { AdminRow, AdminInput, DynamicListHeader, RemoveButton } from '@/pages/Admin/components/AdminUI';
+import type { FinancialMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
 
 // Internal sub-component for handling statement pages cleanly
 const FinancialStatementPage = ({ page, pageIdx, updatePage, removePage }: { page: any, pageIdx: number, updatePage: any, removePage: any }) => {
@@ -44,7 +41,7 @@ const FinancialStatementPage = ({ page, pageIdx, updatePage, removePage }: { pag
   );
 };
 
-export default function FinancialFields({ metadata, updateMeta }: FinancialFieldsProps) {
+export default function FinancialFields({ metadata, updateMeta }: MetadataFieldProps<FinancialMetadata>) {
   const { items: pages, add: addPage, update: updatePage, remove: removePage } = useDynamicList<{page_number: number, statement_period: string, transactions: any[]}>(
     metadata.pages || [],
     (newList) => updateMeta('pages', newList)

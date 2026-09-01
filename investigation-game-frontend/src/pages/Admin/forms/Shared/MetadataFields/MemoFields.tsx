@@ -1,11 +1,8 @@
-import { AdminRow, AdminInput, AdminSelect, AdminTextarea } from '@/components/AdminUI';
+import { AdminRow, AdminInput, AdminSelect, AdminTextarea } from '@/pages/Admin/components/AdminUI';
+import type { MemoMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
 
-interface MemoFieldsProps {
-  metadata: Record<string, any>;
-  updateMeta: (key: string, value: any) => void;
-}
-
-export default function MemoFields({ metadata, updateMeta }: MemoFieldsProps) {
+export default function MemoFields({ metadata, updateMeta }: MetadataFieldProps<MemoMetadata>) {
   return (
     <>
       <AdminRow>
@@ -13,7 +10,7 @@ export default function MemoFields({ metadata, updateMeta }: MemoFieldsProps) {
         <AdminSelect
           label="Presentation Style"
           value={metadata.style || 'notebook'}
-          onChange={e => updateMeta('style', e.target.value)}
+          onChange={e => updateMeta('style', e.target.value as 'sticky' | 'notebook')}
           options={[{ value: 'notebook', label: 'Notebook Page' }, { value: 'sticky', label: 'Sticky Note' }]}
         />
       </AdminRow>

@@ -1,11 +1,8 @@
-import { AdminRow, AdminInput, AdminTextarea } from '@/components/AdminUI';
+import { AdminRow, AdminInput, AdminTextarea } from '@/pages/Admin/components/AdminUI';
+import type { CorrespondenceMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
 
-interface CorrespondenceFieldsProps {
-  metadata: Record<string, any>;
-  updateMeta: (key: string, value: any) => void;
-}
-
-export default function CorrespondenceFields({ metadata, updateMeta }: CorrespondenceFieldsProps) {
+export default function CorrespondenceFields({ metadata, updateMeta }: MetadataFieldProps<CorrespondenceMetadata>) {
   return (
     <>
       <AdminRow>

@@ -1,0 +1,273 @@
+/* ==========================================
+   1. PAGE LAYOUT & MISSING CONTEXT STATES
+   ========================================== */
+.admin-form-page {
+  display: flex;
+  flex-direction: column;
+  gap: 3rem;
+}
+
+.admin-missing-context {
+  padding: 3rem;
+  text-align: center;
+}
+
+.admin-missing-context h3 {
+  font-family: var(--font-mono);
+  color: var(--accent-amber);
+  margin: 0 0 1rem 0;
+}
+
+.admin-missing-context p {
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+
+/* ==========================================
+   2. BUTTON STATES & SUBMIT ACTIONS
+   ========================================== */
+.admin-submit-btn {
+  margin-top: 1rem;
+  color: var(--bg-dark);
+}
+
+.admin-submit-btn.editing {
+  background: var(--accent-amber);
+}
+
+.admin-submit-btn.creating {
+  background: var(--accent-crimson);
+}
+
+.admin-submit-btn.cyan-accent.creating {
+  background: var(--accent-cyan);
+}
+
+
+/* ==========================================
+   3. CUSTOM FORM GROUPS & SECTIONS
+   ========================================== */
+.admin-multiselect-group {
+  margin-top: 1.5rem;
+}
+
+.admin-multiselect-label {
+  color: var(--accent-amber);
+}
+
+.admin-multiselect-hint {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+.admin-multiselect-box {
+  height: 120px;
+  padding: 0.5rem;
+  border-color: var(--accent-amber);
+}
+
+.admin-reward-container {
+  margin-top: 1.5rem;
+  background: rgba(0, 229, 255, 0.05);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 229, 255, 0.2);
+}
+
+
+/* ==========================================
+   4. CHECKBOX CARDS
+   ========================================== */
+.admin-checkbox-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--text-secondary);
+}
+
+.admin-checkbox-card.status-live {
+  background: rgba(0, 229, 255, 0.1);
+  border-color: var(--accent-cyan);
+}
+
+.admin-checkbox-card.status-draft {
+  background: rgba(163, 50, 50, 0.1);
+  border-color: var(--accent-crimson);
+}
+
+.admin-checkbox-card.amber {
+  border-color: var(--accent-amber);
+}
+
+.admin-checkbox-card input[type="checkbox"] {
+  transform: scale(1.5);
+  cursor: pointer;
+}
+
+.admin-checkbox-card label {
+  font-family: var(--font-mono);
+  cursor: pointer;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.admin-checkbox-card.status-live label { color: var(--accent-cyan); }
+.admin-checkbox-card.status-draft label { color: var(--accent-crimson); }
+.admin-checkbox-card.amber label { color: var(--accent-amber); }
+
+
+/* ==========================================
+   5. UNIFIED ENTITY LIST STYLING TOKENS
+   ========================================== */
+.admin-stack-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.admin-list-id {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  margin-right: 1rem;
+}
+
+.admin-list-id.cyan {
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+}
+
+.admin-list-badge {
+  margin-left: 1rem;
+  font-size: 0.75rem;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+.admin-list-meta {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-top: 0.25rem;
+}
+
+.admin-list-id.admin-list-guilty {
+  color: var(--accent-crimson);
+}
+
+/* EntityList Component Styles */
+.admin-entity-list-container {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 2rem;
+}
+
+.admin-entity-list-title {
+  font-family: var(--font-mono);
+  color: var(--accent-crimson);
+  margin-bottom: 1.5rem;
+}
+
+.admin-entity-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-entity-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.admin-entity-content {
+  overflow: hidden;
+}
+
+.admin-entity-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex: none;
+  margin-left: 1rem;
+}
+
+.admin-action-btn {
+  background: transparent;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+
+.admin-action-btn.edit {
+  border: 1px solid var(--accent-amber);
+  color: var(--accent-amber);
+}
+
+.admin-action-btn.delete {
+  border: 1px solid var(--accent-crimson);
+  color: var(--accent-crimson);
+}
+
+/* Evidence Metadata Fields Styles */
+.metadata-container {
+  background: rgba(0, 0, 0, 0.2);
+  padding: 1.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-top: 1.5rem;
+}
+
+.metadata-title {
+  margin: 0 0 1rem 0;
+  font-family: var(--font-mono);
+  color: var(--accent-amber);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+}
+
+.metadata-inputs-wrapper {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Level Builder Guard Styles */
+.guard-container {
+  padding: 3rem;
+  text-align: center;
+}
+
+.guard-container.mismatch {
+  border-color: var(--accent-crimson);
+}
+
+.guard-title-amber {
+  font-family: var(--font-mono);
+  color: var(--accent-amber);
+  margin: 0 0 1rem 0;
+}
+
+.guard-title-crimson {
+  font-family: var(--font-mono);
+  color: var(--accent-crimson);
+  margin: 0 0 1rem 0;
+}
+
+.guard-desc {
+  color: var(--text-secondary);
+  margin: 0;
+}

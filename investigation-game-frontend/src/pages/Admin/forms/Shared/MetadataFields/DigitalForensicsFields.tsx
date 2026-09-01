@@ -1,11 +1,8 @@
-import { AdminRow, AdminInput, AdminTextarea } from '@/components/AdminUI';
+import { AdminRow, AdminInput, AdminTextarea } from '@/pages/Admin/components/AdminUI';
+import type { DigitalForensicsMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
 
-interface DigitalForensicsFieldsProps {
-  metadata: Record<string, any>;
-  updateMeta: (key: string, value: any) => void;
-}
-
-export default function DigitalForensicsFields({ metadata, updateMeta }: DigitalForensicsFieldsProps) {
+export default function DigitalForensicsFields({ metadata, updateMeta }: MetadataFieldProps<DigitalForensicsMetadata>) {
   return (
     <>
       <AdminRow>

@@ -1,11 +1,8 @@
-import { AdminRow, AdminInput, AdminTextarea } from '@/components/AdminUI';
+import { AdminRow, AdminInput, AdminTextarea } from '@/pages/Admin/components/AdminUI';
+import type { DnaMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
 
-interface DNAFieldsProps {
-  metadata: Record<string, any>;
-  updateMeta: (key: string, value: any) => void;
-}
-
-export default function DNAFields({ metadata, updateMeta }: DNAFieldsProps) {
+export default function DNAFields({ metadata, updateMeta }: MetadataFieldProps<DnaMetadata>) {
   return (
     <>
       <AdminRow>

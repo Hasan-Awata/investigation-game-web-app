@@ -1,11 +1,8 @@
-import { AdminRow, AdminInput, AdminTextarea, FormattingGuide } from '@/components/AdminUI';
+import { AdminRow, AdminInput, AdminTextarea, FormattingGuide } from '@/pages/Admin/components/AdminUI';
+import type { BackgroundCheckMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
 
-interface BackgroundCheckFieldsProps {
-  metadata: Record<string, any>;
-  updateMeta: (key: string, value: any) => void;
-}
-
-export default function BackgroundCheckFields({ metadata, updateMeta }: BackgroundCheckFieldsProps) {
+export default function BackgroundCheckFields({ metadata, updateMeta }: MetadataFieldProps<BackgroundCheckMetadata>) {
   return (
     <>
       <FormattingGuide />

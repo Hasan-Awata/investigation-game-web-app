@@ -38,13 +38,18 @@ export const AdminSelect = ({ label, options, placeholder, ...props }: SelectPro
 interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
   labelTitle: string;
   description?: string;
-  accentColor: string;
+  accentColor?: string;
   bgColor?: string;
+  className?: string;
 }
-export const AdminCheckbox = ({ labelTitle, description, accentColor, bgColor = 'rgba(255,255,255,0.02)', ...props }: CheckboxProps) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: bgColor, border: `1px solid ${accentColor}`, padding: '1rem', borderRadius: '8px', marginBottom: '1rem', transition: 'all 0.3s ease' }}>
-    <input type="checkbox" style={{ transform: 'scale(1.5)', accentColor, cursor: 'pointer' }} {...props} />
-    <label style={{ fontFamily: 'var(--font-mono)', color: accentColor, cursor: 'pointer', margin: 0, fontSize: '0.85rem' }}>
+
+export const AdminCheckbox = ({ labelTitle, description, accentColor, bgColor, className = '', ...props }: CheckboxProps) => (
+  <div 
+    className={`admin-checkbox-card ${className}`} 
+    style={{ background: bgColor, ...(accentColor ? { borderColor: accentColor } : {}) }}
+  >
+    <input type="checkbox" style={accentColor ? { accentColor } : undefined} {...props} />
+    <label style={accentColor ? { color: accentColor } : undefined}>
       <strong>{labelTitle}</strong> {description ? `: ${description}` : ''}
     </label>
   </div>

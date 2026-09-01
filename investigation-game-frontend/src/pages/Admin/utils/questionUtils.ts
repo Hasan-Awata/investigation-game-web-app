@@ -82,6 +82,6 @@ export interface BaseNodeFormProps {
   state: { editingId: number | null; text: string; storeLocally: boolean; choices: DraftChoice[] };
   setters: { setText: (t: string) => void; setStoreLocally: (v: boolean) => void; setChoices: (c: DraftChoice[]) => void };
   actions: { registerFileRef: (key: string) => any; handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void; handleCancel: () => void };
-  status: { isProcessing: boolean; feedback: any };
+  status: { isProcessing: boolean }; 
   previews: { image?: string | null; audio?: string | null };
 }
