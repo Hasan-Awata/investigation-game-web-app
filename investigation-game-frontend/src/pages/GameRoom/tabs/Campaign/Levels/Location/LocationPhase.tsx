@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -48,20 +48,42 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
   };
 
   const [inspectingQuestionId, setInspectingQuestionId] = useState<number | null>(null);
-  const [popup, setPopup] = useState<{ title: string; message: string; isSuccess: boolean } | null>(null);
-  const popupTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // 1. ADD LOCAL STATE TO PREVENT TANSTACK REFETCHES FROM WIPING THE UI ANIMATIONS
-  const [localFound, setLocalFound] = useState<Set<number>>(new Set());
-  const [localDeadEnds, setLocalDeadEnds] = useState<Set<number>>(new Set());
+  // --- ZOOM & PAN STATE ---
+  const [scale, setScale] = useState(1);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [lastMouse, setLastMouse] = useState({ x: 0, y: 0 }); // Tracks delta movement to prevent sticky edges
+  
+  // Ref to measure the image bounds against the screen
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  const storageKeyBase = `inv_loc_state_${room.id}_${level.id}`;
+
+  const [localFound, setLocalFound] = useState<Set<number>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(`${storageKeyBase}_found`) || '[]')); } catch { return new Set(); }
+  });
+
+  const [localDeadEnds, setLocalDeadEnds] = useState<Set<number>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(`${storageKeyBase}_deadEnds`) || '[]')); } catch { return new Set(); }
+  });
+
+  const [activeBubbles, setActiveBubbles] = useState<Set<number>>(() => {
+    try { return new Set(JSON.parse(localStorage.getItem(`${storageKeyBase}_bubbles`) || '[]')); } catch { return new Set(); }
+  });
 
   useEffect(() => {
-    return () => {
-      if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
-    };
-  }, []);
+    localStorage.setItem(`${storageKeyBase}_found`, JSON.stringify([...localFound]));
+  }, [localFound, storageKeyBase]);
 
-  // DERIVE STATE FROM AUTHORITATIVE BACKEND + LOCAL STATE
+  useEffect(() => {
+    localStorage.setItem(`${storageKeyBase}_deadEnds`, JSON.stringify([...localDeadEnds]));
+  }, [localDeadEnds, storageKeyBase]);
+
+  useEffect(() => {
+    localStorage.setItem(`${storageKeyBase}_bubbles`, JSON.stringify([...activeBubbles]));
+  }, [activeBubbles, storageKeyBase]);
+
   const foundPoints = new Set([
     ...(room.inspections?.filter((i: any) => !i.is_dead_end).map((i: any) => i.choice_id) || []),
     ...localFound
@@ -71,7 +93,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     ...localDeadEnds
   ]);
 
-  // OPTIMISTIC MUTATION
   const inspectMutation = useMutation({
     mutationFn: async (choiceId: number) => {
       const result = await api.inspectLocation(room.id, choiceId);
@@ -82,11 +103,9 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
       await queryClient.cancelQueries({ queryKey: ['gameRoom', room.invite_code] });
       const previousRoom = queryClient.getQueryData(['gameRoom', room.invite_code]);
 
-      // Optimistically patch the cache
       queryClient.setQueryData(['gameRoom', room.invite_code], (old: any) => {
         if (!old) return old;
         
-        // Find choice to determine dead-end status locally for the instant UX snapshot
         let isCorrectFind = false;
         level.questions?.forEach(q => {
           const c = q.choices?.find(x => x.id === choiceId);
@@ -152,12 +171,23 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 
   const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice) => {
     e.stopPropagation();
+
+    // Prevent click actions if the user was just trying to pan/drag the image
+    if (isDragging) return;
+
+    const isAlreadyDiscovered = foundPoints.has(choice.id) || clickedDeadEnds.has(choice.id) || room.votes?.some((v: any) => v.choice_id === choice.id);
+
+    if (isAlreadyDiscovered) {
+      setActiveBubbles(prev => {
+        const next = new Set(prev);
+        if (next.has(choice.id)) next.delete(choice.id);
+        else next.add(choice.id);
+        return next;
+      });
+      return; 
+    }
+
     if (status !== 'active') return;
-
-    // 2. PREVENT SPAMMING NOTIFICATIONS: If already clicked, abort immediately
-    if (foundPoints.has(choice.id) || clickedDeadEnds.has(choice.id)) return;
-
-    if (popupTimeoutRef.current) clearTimeout(popupTimeoutRef.current);
 
     const hasUnlocks = choice.outcomes && (
       (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) ||
@@ -169,23 +199,16 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 
     const isCorrectFind = !!hasUnlocks;
 
-    // Update local state instantly to stabilize UI animations
     if (isCorrectFind) {
       setLocalFound(prev => new Set(prev).add(choice.id));
     } else {
       setLocalDeadEnds(prev => new Set(prev).add(choice.id));
     }
 
-    // Fire the optimistic TanStack mutation to the server
+    setActiveBubbles(prev => new Set(prev).add(choice.id));
     inspectMutation.mutate(choice.id);
 
     if (isCorrectFind) {
-      setPopup({
-        title: t('pages.gameRoom.campaign.levels.location.leadDiscovered'),
-        message: choice.outcomes?.feedback || t('pages.gameRoom.campaign.levels.location.foundUseful'),
-        isSuccess: true
-      });
-
       if (choice.outcomes?.next_question_id) {
         addToast({
           type: 'level',
@@ -194,51 +217,104 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
           icon: 'https://api.iconify.design/ph:map-pin-line-duotone.svg?color=%235a8a9e'
         });
       }
-
-      // Lock in the vote/discovery globally
       handleSelectChoice(e, qId, choice, status);
-      
-    } else {
-        setPopup({
-          title: t('pages.gameRoom.campaign.levels.location.deadEnd'),
-          message: choice.outcomes?.feedback || t('pages.gameRoom.campaign.levels.location.nothingFound'),
-          isSuccess: false
-        });
     }
-
-    popupTimeoutRef.current = setTimeout(() => {
-      setPopup(null);
-    }, 2500);
   };
+
+  const closeViewer = () => {
+    setInspectingQuestionId(null);
+    setScale(1);
+    setPosition({ x: 0, y: 0 });
+  };
+
+  // --- BOUNDARY CALCULATION ---
+  const clampPosition = (targetX: number, targetY: number, currentScale: number) => {
+    if (!wrapperRef.current) return { x: targetX, y: targetY };
+
+    const { clientWidth, clientHeight } = wrapperRef.current;
+    
+    // Calculate the maximum allowed movement from the center
+    const maxX = Math.max(0, (clientWidth * currentScale - window.innerWidth) / 2);
+    const maxY = Math.max(0, (clientHeight * currentScale - window.innerHeight) / 2);
+
+    return {
+      x: Math.min(Math.max(targetX, -maxX), maxX),
+      y: Math.min(Math.max(targetY, -maxY), maxY)
+    };
+  };
+
+  // --- ZOOM & PAN EVENT HANDLERS ---
+  const handleWheel = (e: React.WheelEvent) => {
+    const zoomSensitivity = 0.005;
+    const delta = e.deltaY * -zoomSensitivity;
+    const newScale = Math.min(Math.max(1, scale + delta), 5); // Clamped between 1x and 5x
+    
+    setScale(newScale);
+
+    if (newScale === 1) {
+      setPosition({ x: 0, y: 0 });
+    } else {
+      // Clamp position in case zooming out forces the image out of bounds
+      setPosition(prev => clampPosition(prev.x, prev.y, newScale));
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (scale > 1) {
+      setIsDragging(true);
+      setLastMouse({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (isDragging && scale > 1) {
+      // Frame-by-frame delta movement
+      const deltaX = e.clientX - lastMouse.x;
+      const deltaY = e.clientY - lastMouse.y;
+      
+      const newX = position.x + deltaX;
+      const newY = position.y + deltaY;
+
+      // Ensure we don't drift past the black borders
+      setPosition(clampPosition(newX, newY, scale));
+      
+      // Update last mouse position for the next frame
+      setLastMouse({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
 
   const activeQuestion = displayQuestions.find(q => q.id === inspectingQuestionId);
 
   const fullScreenViewer = activeQuestion ? createPortal(
     <div className="location-fullscreen-overlay">
-      <div className="location-header glass-panel">
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          <h2 className="section-title" style={{ margin: 0, border: 'none', padding: 0 }}>
-            {activeQuestion.text || level.title}
-          </h2>
-          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{t('pages.gameRoom.campaign.levels.location.activeSceneSweep')}</span>
-        </div>
-        <button className="btn-secondary" style={{ flex: 'none', padding: '0.5rem 1.5rem' }} onClick={() => setInspectingQuestionId(null)}>
-          {t('pages.gameRoom.campaign.levels.location.closeViewer')}
-        </button>
-      </div>
+      <button 
+        className="location-close-button" 
+        onClick={closeViewer}
+        title={t('pages.gameRoom.campaign.levels.location.closeViewer')}
+      >
+        ✕
+      </button>
 
-      <div className="location-image-container">
-        {popup && (
-          <div className={`loc-feedback-modal ${popup.isSuccess ? 'success' : 'error'}`}>
-            <h3 style={{ margin: '0 0 0.5rem 0', color: popup.isSuccess ? 'var(--accent-cyan)' : 'var(--text-secondary)', fontFamily: 'var(--font-mono)', letterSpacing: '0.1em' }}>
-              {popup.title}
-            </h3>
-            <p style={{ margin: 0, color: 'var(--text-primary)' }}>{popup.message}</p>
-          </div>
-        )}
-
-        <div className="location-image-wrapper">
-          <img src={activeQuestion.img_url || '/placeholder-crime-scene.jpg'} alt={t('pages.gameRoom.campaign.levels.location.crimeSceneAlt')} className="location-image-full" />
+      <div 
+        className="location-image-container"
+        onWheel={handleWheel}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+        style={{ cursor: isDragging ? 'grabbing' : (scale > 1 ? 'grab' : 'auto') }}
+      >
+        <div 
+          ref={wrapperRef}
+          className="location-image-wrapper"
+          style={{
+            transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
+            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+          }}
+        >
+          <img src={activeQuestion.img_url || '/placeholder-crime-scene.jpg'} alt={t('pages.gameRoom.campaign.levels.location.crimeSceneAlt')} className="location-image-full" draggable="false" />
 
           {activeQuestion.choices?.map(choice => {
             const parts = choice.text.split('|');
@@ -246,7 +322,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 
             const coords = parts[0].trim();
             const title = parts[1].trim();
-
             const coordParts = coords.split(',');
             if (coordParts.length < 2) return null;
 
@@ -260,32 +335,54 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
               (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0) ||
               (choice.outcomes.next_question_id)
             );
+            const isCorrectFind = !!hasUnlocks;
 
-            const isSelected = localVotes[activeQuestion.id] === choice.id || foundPoints.has(choice.id) || (isCompleted && !!hasUnlocks);
+            const isSelected = localVotes[activeQuestion.id] === choice.id || foundPoints.has(choice.id) || room.votes?.some((v: any) => v.choice_id === choice.id);
             const isDeadEndClicked = clickedDeadEnds.has(choice.id);
             const isNarrativeLocked = checkIsLockedByNarrative(choice);
+            const isDiscovered = isSelected || isDeadEndClicked;
 
             let zoneClass = 'loc-hover-zone';
             if (isSelected) {
               zoneClass += ' selected';
-            } else if (isCompleted || isDeadEndClicked || isNarrativeLocked) {
+            } else if (isDeadEndClicked || isNarrativeLocked) {
               zoneClass += ' investigated';
             }
+
+            const isBubbleActive = activeBubbles.has(choice.id);
+            const isInteractable = (status === 'active' && !isNarrativeLocked) || isDiscovered;
+            const shouldRender = (status === 'active' && !isNarrativeLocked) || isDiscovered; 
 
             return (
               <div
                 key={choice.id}
                 className={zoneClass}
-                style={{ top: `${y}%`, left: `${x}%`, cursor: isNarrativeLocked ? 'not-allowed' : 'crosshair' }}
+                style={{ 
+                  top: `${y}%`, 
+                  left: `${x}%`, 
+                  cursor: isNarrativeLocked ? 'not-allowed' : (isInteractable ? 'pointer' : 'default'),
+                  pointerEvents: shouldRender ? 'auto' : 'none',
+                  display: shouldRender ? 'flex' : 'none'
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
-                  if (isNarrativeLocked) return;
+                  if (!isInteractable) return;
                   handlePointClick(e, activeQuestion.id, choice);
                 }}
               >
                 <div className="loc-crosshair"></div>
-                <div className="loc-tooltip">
-                  {isNarrativeLocked ? t('pages.gameRoom.campaign.levels.location.requiresIntel') : title}
-                </div>
+                
+                {!isBubbleActive && (
+                  <div className="loc-tooltip">
+                    {isNarrativeLocked ? t('pages.gameRoom.campaign.levels.location.requiresIntel') : title}
+                  </div>
+                )}
+
+                {isBubbleActive && (
+                  <div className={`loc-info-bubble ${isCorrectFind ? 'success' : 'error'}`}>
+                    {choice.outcomes?.feedback || (isCorrectFind ? t('pages.gameRoom.campaign.levels.location.foundUseful') : t('pages.gameRoom.campaign.levels.location.nothingFound'))}
+                  </div>
+                )}
               </div>
             );
           })}

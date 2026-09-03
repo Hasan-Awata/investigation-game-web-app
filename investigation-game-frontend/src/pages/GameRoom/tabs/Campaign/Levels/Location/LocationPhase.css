@@ -42,55 +42,71 @@
 .location-fullscreen-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(10, 11, 13, 0.98);
+  background: #000;
   z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  animation: fadeIn 0.3s ease-out;
-}
-
-.location-header {
-  padding: 1rem 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-radius: 0;
-  /* Swapped to logical properties */
-  border-inline: none;
-  border-top: none;
-  background: rgba(20, 21, 24, 0.9);
-  flex-shrink: 0;
-}
-
-.location-image-container {
-  flex: 1;
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 2rem;
-  overflow: auto;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.location-close-button {
+  position: absolute;
+  top: 24px;
+  inset-inline-end: 24px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(20, 21, 24, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10000;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(4px);
+}
+
+.location-close-button:hover {
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  color: #000;
+  transform: scale(1.05);
+}
+
+.location-image-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* Changed from auto to hidden to prevent native scrollbars during custom zoom */
+  overflow: hidden; 
 }
 
 .location-image-wrapper {
   position: relative;
-  display: block; 
-  box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+  display: inline-block; 
+  /* Origin centered so zoom expands outward nicely */
+  transform-origin: center center;
 }
 
 .location-image-full {
   display: block;
-  max-width: 100%;
-  max-height: calc(100vh - 120px);
+  max-width: 100vw;
+  max-height: 100vh;
   width: auto;
   height: auto;
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 4px;
+  object-fit: contain;
+  -webkit-user-drag: none;
 }
 
 /* --- INVISIBLE HOVER ZONES --- */
 .loc-hover-zone {
   position: absolute;
-  /* Physical transform kept to guarantee (X,Y) coordinates map correctly in both LTR/RTL */
   transform: translate(-50%, -50%);
   width: 90px; 
   height: 90px;
@@ -101,7 +117,7 @@
   justify-content: center;
   align-items: center;
   border: 1px solid transparent;
-  background: rgba(255, 255, 255, 0.001); 
+  background: transparent; 
   transition: all 0.2s ease-out;
 }
 
@@ -113,16 +129,13 @@
   transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.loc-hover-zone:hover {
-  background: rgba(0, 229, 255, 0.05); 
-}
-
 .loc-hover-zone:hover .loc-crosshair {
   background: var(--accent-cyan);
-  box-shadow: 0 0 15px 5px rgba(0, 229, 255, 0.4);
-  transform: scale(1.5);
+  box-shadow: 0 0 10px 2px rgba(0, 229, 255, 0.4);
+  transform: scale(1.2);
 }
 
+/* HOVER TOOLTIP */
 .loc-tooltip {
   position: absolute;
   bottom: 75%; 
@@ -149,29 +162,26 @@
 
 /* --- SELECTED STATE (Pre-Submit) --- */
 .loc-hover-zone.selected {
-  background: rgba(0, 229, 255, 0.15);
-  border: 1px solid var(--accent-cyan);
+  background: transparent;
+  border: 1px solid transparent;
 }
 
 .loc-hover-zone.selected .loc-crosshair {
   background: var(--accent-cyan);
-  transform: scale(1.5);
-  box-shadow: 0 0 15px 5px rgba(0, 229, 255, 0.4);
-}
-
-.loc-hover-zone.selected .loc-tooltip {
-  opacity: 1;
-  transform: translateY(0);
+  transform: scale(1.2);
+  box-shadow: 0 0 8px 1px rgba(0, 229, 255, 0.3);
 }
 
 /* --- INVESTIGATED STATE (Post-Submit / Completed Phase) --- */
 .loc-hover-zone.investigated {
-  border: 1px dashed rgba(255,255,255,0.2);
-  cursor: default;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
 }
 
 .loc-hover-zone.investigated .loc-crosshair {
   background: var(--text-secondary);
+  box-shadow: none;
 }
 
 .loc-hover-zone.investigated:hover {
@@ -183,32 +193,57 @@
   color: var(--text-secondary);
 }
 
-/* --- FEEDBACK POPUP --- */
-.loc-feedback-modal {
+/* --- CONVERSATION BUBBLE (Clicked State) --- */
+.loc-info-bubble {
   position: absolute;
-  top: 50%;
+  bottom: 85%;
   left: 50%;
-  transform: translate(-50%, -50%);
-  background: var(--bg-panel);
-  padding: 2rem 3rem;
+  transform: translateX(-50%);
+  background: rgba(20, 21, 24, 0.95);
+  color: var(--text-primary);
+  padding: 0.75rem 1.25rem;
   border-radius: var(--radius-md);
-  z-index: 50;
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  width: max-content;
+  max-width: 260px;
   text-align: center;
-  box-shadow: 0 20px 50px rgba(0,0,0,0.9);
-  animation: zoomIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   border: 1px solid;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  z-index: 50;
+  pointer-events: none;
+  animation: popInBubble 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  backdrop-filter: blur(8px);
+  white-space: pre-wrap;
 }
 
-.loc-feedback-modal.success {
+.loc-info-bubble::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: transparent;
+}
+
+.loc-info-bubble.success {
   border-color: var(--accent-cyan);
-  box-shadow: inset 0 0 20px rgba(0, 229, 255, 0.1), 0 20px 50px rgba(0,0,0,0.9);
+}
+.loc-info-bubble.success::after {
+  border-top-color: var(--accent-cyan);
 }
 
-.loc-feedback-modal.error {
+.loc-info-bubble.error {
   border-color: var(--text-secondary);
 }
+.loc-info-bubble.error::after {
+  border-top-color: var(--text-secondary);
+}
 
-@keyframes zoomIn {
-  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.9); }
-  100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+@keyframes popInBubble {
+  0% { opacity: 0; transform: translate(-50%, 15px) scale(0.9); }
+  100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
 }

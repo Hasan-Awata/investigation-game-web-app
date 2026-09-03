@@ -22,25 +22,29 @@
   --accent-crimson-rgb: 163, 50, 50;
   --accent-success-rgb: 74, 124, 89;
 
-  /* Sharpen the radii for a more hostile, official feel */
+  /* --- CONTROLLED CHAOS SHAPES --- */
+  /* Tight radii for the digital system UI */
+  --border-thin: 1px solid rgba(var(--border-light-rgb), 0.2);
   --radius-sm: 2px;
   --radius-md: 4px;
-  --radius-lg: 4px; 
+  --radius-lg: 6px;
   --radius-xl: 8px;
 
-  --font-primary: 'YourCurrentEnglishFont', 'IBM Plex Sans Arabic', sans-serif;
-  --font-mono: 'YourCurrentEnglishMonoFont', 'IBM Plex Sans Arabic', monospace;
+  /* --- TYPOGRAPHY SYSTEM --- */
+  /* --font-primary: 'Inter', 'IBM Plex Sans Arabic', 'Cairo', system-ui, sans-serif;
+  --font-mono: 'Fira Code', 'JetBrains Mono', monospace;
+  --font-serif: 'Merriweather', 'Amiri', serif; */
+
+  --font-primary: 'IBM Plex Sans Arabic';
+  --font-mono: 'IBM Plex Sans Arabic';
+  --font-serif: 'IBM Plex Sans Arabic';
 }
 
-/* Automatically handle RTL for Arabic and LTR for English */
-p, h1, h2, h3, h4, h5, h6, 
-textarea, input, 
-.terminal-text, 
-.story-text-block, 
-.evidence-text-content,
-.chat-bubble p {
-  unicode-bidi: plaintext;
-  text-align: start;
+/* =========================================
+   GLOBAL RESETS
+   ========================================= */
+*, *::before, *::after {
+  box-sizing: border-box;
 }
 
 body {
@@ -49,23 +53,34 @@ body {
   font-family: var(--font-primary);
   margin: 0;
   padding: 0;
-  -webkit-font-smoothing: antialiased;
-  
-  /* Disable text selection globally */
-  -webkit-user-select: none; /* Safari */
-  user-select: none; /* Standard syntax */
+  user-select: none;
 }
 
-/* 
-  CRITICAL EXCEPTION: 
-  Re-enable text selection for input fields and textareas. 
-  If you don't do this, players won't be able to highlight, delete, 
-  or easily edit text inside the Agent Notepad or authentication forms.
-*/
+/* Re-enable text selection for input fields and textareas */
 input, textarea {
-  -webkit-user-select: auto;
   user-select: auto;
 }
+
+/* Automatically handle RTL for Arabic and LTR for English */
+p, h1, h2, h3, h4, h5, h6,
+textarea, input,
+.terminal-text,
+.story-text-block,
+.evidence-text-content,
+.chat-bubble p {
+  unicode-bidi: plaintext;
+  text-align: start;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+/* =========================================
+   GLOBAL UTILITIES & COMPONENTS
+   ========================================= */
 
 .terminal-text {
   font-family: var(--font-mono);
@@ -78,176 +93,134 @@ input, textarea {
   color: var(--accent-crimson);
 }
 
-/* --- CENTRALIZED BUTTON SHAPES --- */
+/* --- BUTTONS --- */
 .btn-primary, .btn-secondary {
   flex: 1;
   padding: 1rem;
-  border-radius: var(--radius-sm); 
-  font-weight: 700; 
+  border-radius: var(--radius-sm);
+  font-weight: 700;
   font-family: var(--font-primary);
   text-transform: uppercase;
-  letter-spacing: 0.1em; 
+  letter-spacing: 0.1em;
   cursor: pointer;
-  transition: all 0.1s ease-in-out; 
+  transition: all 0.15s ease-in-out;
   border: 1px solid transparent;
 }
 
 .btn-primary {
   background: var(--accent-cyan);
   color: var(--bg-dark);
-  border: 1px solid var(--accent-cyan);
+  border-color: var(--accent-cyan);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   background: var(--bg-dark);
   color: var(--accent-cyan);
-  /* Tactical left-border highlight (LTR) */
-  box-shadow: inset 4px 0 0 0 var(--accent-cyan); 
+  box-shadow: inset 4px 0 0 0 var(--accent-cyan);
 }
 
-/* RTL OVERRIDE: Flip inset shadow to the right side */
-[dir="rtl"] .btn-primary:hover {
-  box-shadow: inset -4px 0 0 0 var(--accent-cyan); 
+[dir="rtl"] .btn-primary:hover:not(:disabled) {
+  box-shadow: inset -4px 0 0 0 var(--accent-cyan);
 }
 
 .btn-primary:disabled {
-  background: rgba(var(--border-light-rgb), 0.1);
-  color: rgba(var(--border-light-rgb), 0.3);
-  border-color: rgba(var(--border-light-rgb), 0.1);
-  box-shadow: none;
+  background: rgba(var(--border-light-rgb), 0.3);
+  color: rgba(var(--text-secondary-rgb), 0.5);
+  border-color: rgba(var(--border-light-rgb), 0.3);
   cursor: not-allowed;
 }
 
 .btn-secondary {
-  background: rgba(var(--bg-panel-rgb), 0.4);
+  background: rgba(var(--bg-panel-rgb), 0.6);
   color: var(--text-secondary);
-  border: 1px solid rgba(var(--border-light-rgb), 0.2);
+  border-color: rgba(var(--border-light-rgb), 0.5);
 }
 
-.btn-secondary:hover {
-  background: rgba(var(--border-light-rgb), 0.1);
+.btn-secondary:hover:not(:disabled) {
+  background: rgba(var(--border-light-rgb), 0.2);
   color: var(--text-primary);
-  border-color: rgba(var(--border-light-rgb), 0.4);
-  /* Tactical left-border highlight (LTR) */
+  border-color: var(--text-secondary);
   box-shadow: inset 4px 0 0 0 var(--text-secondary);
 }
 
-/* RTL OVERRIDE: Flip inset shadow to the right side */
-[dir="rtl"] .btn-secondary:hover {
+[dir="rtl"] .btn-secondary:hover:not(:disabled) {
   box-shadow: inset -4px 0 0 0 var(--text-secondary);
 }
 
-/* --- CENTRALIZED BADGES --- */
+/* --- BADGES --- */
 .badge {
   font-family: var(--font-mono);
   font-size: 0.75rem;
   padding: 0.25rem 0.5rem;
   border-radius: var(--radius-sm);
-  background: rgba(var(--bg-panel-rgb), 0.6);
+  background: rgba(var(--bg-panel-rgb), 0.8);
   backdrop-filter: blur(4px);
   border: var(--border-thin);
 }
 
 .badge.reward {
   color: var(--accent-amber);
-  border-color: rgba(var(--accent-amber-rgb), 0.3);
+  border-color: rgba(var(--accent-amber-rgb), 0.4);
 }
 
-/* --- CENTRALIZED GLASS PANELS --- */
+/* --- PANELS --- */
 .glass-panel {
   background: var(--bg-panel);
-  backdrop-filter: blur(4px); 
-  border: 1px solid rgba(var(--border-light-rgb), 0.15);
-  /* A sharper, harsher drop shadow (Pushes down and right in LTR) */
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.4); 
+  border: var(--border-thin);
+  border-radius: var(--radius-md);
+  /* Sharp, tactical drop shadow */
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
 }
 
-/* RTL OVERRIDE: Mirror the harsh shadow to push down and left */
 [dir="rtl"] .glass-panel {
-  box-shadow: -4px 4px 0px rgba(0, 0, 0, 0.4); 
+  box-shadow: -4px 4px 0px rgba(0, 0, 0, 0.5);
 }
 
-/* --- TYPOGRAPHY UPGRADES --- */
-h1, h2, h3, h4, h5, h6 {
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-}
-
-/* Unify specific component titles with a tactical accent */
-.section-title, 
-.modal-title, 
-.case-title {
-  font-family: var(--font-mono);
-  letter-spacing: 0.1em;
-  /* Swapped to logical properties to perfectly mirror in Arabic */
-  border-inline-start: 3px solid var(--accent-cyan);
-  padding-inline-start: 0.75rem;
-}
-
-/* --- UNREAD ITEMS NOTIFICATION --- */
+/* --- UNREAD ITEM INDICATOR --- */
 .unread-indicator {
   position: absolute;
-  top: -8px;
-  /* Swapped to logical property */
-  inset-inline-end: -8px;
-  width: 16px;
-  height: 16px;
-  background-color: rgba(112, 239, 112, 0.8);
+  top: -6px;
+  inset-inline-end: -6px;
+  width: 14px;
+  height: 14px;
+  background-color: var(--accent-success);
   border-radius: 50%;
-  border: 2px solid #1a1a1a;
-  box-shadow: 0 0 10px rgba(112, 239, 112, 0.8);
+  border: 2px solid var(--bg-dark);
+  box-shadow: 0 0 10px rgba(var(--accent-success-rgb), 0.8);
   z-index: 20;
   pointer-events: none;
   animation: radar-pulse 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-@keyframes radar-pulse {
-  0% { 
-    transform: scale(0.95); 
-    box-shadow: 0 0 0 0 rgba(112, 239, 112, 0.8); 
-  }
-  70% { 
-    transform: scale(1); 
-    box-shadow: 0 0 0 8px rgba(163, 50, 50, 0); 
-  }
-  100% { 
-    transform: scale(0.95); 
-    box-shadow: 0 0 0 0 rgba(163, 50, 50, 0); 
-  }
-}
-
-/* --- GLOBAL TACTICAL SCROLLBAR --- */
-
-/* Firefox Support */
+/* --- SCROLLBAR --- */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(90, 138, 158, 0.5) transparent; 
+  scrollbar-color: rgba(var(--accent-cyan-rgb), 0.4) transparent;
 }
 
-/* WebKit Support (Chrome, Safari, Edge) */
 ::-webkit-scrollbar {
   width: 6px;
-  height: 6px; 
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(var(--bg-dark-rgb), 0.5); 
+  background: rgba(var(--bg-dark-rgb), 0.5);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-cyan-rgb), 0.5); 
+  background: rgba(var(--accent-cyan-rgb), 0.4);
   border-radius: var(--radius-sm);
   transition: background 0.2s ease;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-cyan); 
+  background: var(--accent-cyan);
 }
 
 /* =========================================
-   UTILITY ANIMATIONS (Skeletons/Loaders)
+   CENTRALIZED ANIMATIONS
    ========================================= */
+
 @keyframes pulse {
   0% { opacity: 0.6; }
   50% { opacity: 1; }
@@ -257,4 +230,34 @@ h1, h2, h3, h4, h5, h6 {
 @keyframes shimmer {
   0% { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes radar-pulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(var(--accent-success-rgb), 0.8);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(var(--accent-success-rgb), 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(var(--accent-success-rgb), 0);
+  }
 }

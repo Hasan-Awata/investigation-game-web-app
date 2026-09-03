@@ -29,7 +29,7 @@ def clean_code(content, is_css=False):
     content = "\n".join(line.rstrip() for line in content.splitlines())
     return content.strip()
 
-def gather_project_code(root_dir, output_file, include_styles=False, include_admin_files=False):
+def gather_project_code(root_dir, output_file, include_styles=False, include_admin_files=False, include_translation_files=False, only_css_files=False):
     ignore_dirs = {
         '.git', '.vscode', '.idea', 'node_modules', 'public', 
         'dist', 'build', 'assets', 'images', 'fonts', 'coverage', '.husky'
@@ -37,13 +37,21 @@ def gather_project_code(root_dir, output_file, include_styles=False, include_adm
     if not include_admin_files:
         ignore_dirs.update({'Admin'})
 
-    allowed_extensions = {'.ts', '.tsx', '.js', '.jsx', '.json'}
-    if include_styles:
-        allowed_extensions.update({'.css', '.scss'})
-    
-    allowed_config_files = {
-        'package.json', 'tsconfig.json', 'vite.config.ts', 'index.html'
-    }
+    if not include_translation_files:
+        ignore_dirs.update({'locales'})
+
+    # Handle conditional file and extension filtering based on flags
+    if only_css_files:
+        allowed_extensions = {'.css', '.scss'}
+        allowed_config_files = set()
+    else:
+        allowed_extensions = {'.ts', '.tsx', '.js', '.jsx', '.json'}
+        if include_styles:
+            allowed_extensions.update({'.css', '.scss'})
+        
+        allowed_config_files = {
+            'package.json', 'tsconfig.json', 'vite.config.ts', 'index.html'
+        }
     
     ignored_patterns = {'.test.', '.spec.', '.stories.', '.d.ts.map'}
     
@@ -51,7 +59,7 @@ def gather_project_code(root_dir, output_file, include_styles=False, include_adm
     total_chars = 0
     skipped_log = []
     
-    print(f"Scanning React project at: {root_dir}...\n")
+    print(f"Scanning project at: {root_dir}...\n")
 
     with open(output_file, 'w', encoding='utf-8') as outfile:
         
@@ -143,4 +151,12 @@ if __name__ == "__main__":
     admin_files = r"D:\Laravel\investigation-game\investigation-game-frontend\src\pages\Admin" 
     output_filename = "ai_project_context.xml"
     
-    gather_project_code(admin_files, output_filename, include_styles=False, include_admin_files=True)
+    # Toggle `only_css_files=True` here whenever you want to grab ONLY CSS files
+    gather_project_code(
+        project_root, 
+        output_filename, 
+        include_styles=False, 
+        include_admin_files=False, 
+        include_translation_files=False, 
+        only_css_files=False
+    )
