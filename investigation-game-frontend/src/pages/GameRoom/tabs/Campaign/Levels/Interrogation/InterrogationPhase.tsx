@@ -5,9 +5,9 @@ import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Level, Choice, Question } from '@/types';
 import './InterrogationPhase.css';
 
-// --- TYPEWRITER COMPONENT ---
-const Typewriter = ({ text, delay = 30, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
-  const spanRef = useRef<HTMLSpanElement>(null);
+// --- MESSAGE REVEAL COMPONENT ---
+const MessageReveal = ({ text, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
+  const [isTyping, setIsTyping] = useState(!skip && !(cacheKey && sessionStorage.getItem(cacheKey)));
   const savedOnComplete = useRef(onComplete);
 
   useEffect(() => {
@@ -15,38 +15,36 @@ const Typewriter = ({ text, delay = 30, onComplete, skip = false, cacheKey = '' 
   }, [onComplete]);
 
   useEffect(() => {
-    const el = spanRef.current;
-    if (!el) return;
-
     if (!text) {
       if (savedOnComplete.current) savedOnComplete.current();
       return;
     }
 
-    if (skip || (cacheKey && sessionStorage.getItem(cacheKey))) {
-      el.textContent = text;
-      if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
+    if (!isTyping) {
       if (savedOnComplete.current) savedOnComplete.current();
       return;
     }
 
-    let i = 0;
-    el.textContent = '';
+    // Dynamic delay based on text length (min 800ms, max 2500ms) for realism
+    const calculatedDelay = Math.min(Math.max(text.length * 15, 800), 2500);
 
-    const interval = setInterval(() => {
-      el.textContent += text.charAt(i);
-      i++;
-      if (i >= text.length) {
-        clearInterval(interval);
-        if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
-        if (savedOnComplete.current) savedOnComplete.current();
-      }
-    }, delay);
+    const timer = setTimeout(() => {
+      setIsTyping(false);
+      if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
+    }, calculatedDelay);
 
-    return () => clearInterval(interval);
-  }, [text, delay, skip, cacheKey]);
+    return () => clearTimeout(timer);
+  }, [isTyping, text, cacheKey]);
 
-  return <span ref={spanRef} />;
+  if (isTyping) {
+    return (
+      <span className="typing-indicator">
+        <span></span><span></span><span></span>
+      </span>
+    );
+  }
+
+  return <span className="fade-in-text">{text}</span>;
 };
 
 interface InterrogationPhaseProps {
@@ -56,7 +54,6 @@ interface InterrogationPhaseProps {
   getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
   isHost: boolean;
   isSubmitting: boolean;
-  // Updated interface to make the event optional
   handleSubmitTheory: (e?: React.MouseEvent) => void; 
 }
 
@@ -157,12 +154,23 @@ export default function InterrogationPhase({
       : (investigatorTypingComplete[lastQuestion.id] || status === 'completed')
   );
 
-  // --- Clean programmatic trigger ---
+  // 1. ADD THIS: A strict local lock to prevent double-firing
+  const hasAutoSubmitted = useRef(false);
+
+  // 2. ADD THIS: Reset the lock if the level status safely changes
   useEffect(() => {
-    if (isTerminalNode && isReadyToSubmit && status === 'active' && isHost && !isSubmitting) {
-      handleSubmitTheory(); // Called cleanly with no arguments
+    if (status !== 'active') {
+      hasAutoSubmitted.current = false;
     }
-  }, [isTerminalNode, isReadyToSubmit, status, isHost, isSubmitting, handleSubmitTheory]);
+  }, [status]);
+
+  // 3. UPDATE THIS: Add the ref check to your existing trigger
+  useEffect(() => {
+    if (status === 'active' && isTerminalNode && isReadyToSubmit && isHost && !isSubmitting && !hasAutoSubmitted.current) {
+      hasAutoSubmitted.current = true; // Lock it immediately
+      handleSubmitTheory();
+    }
+  }, [status, isTerminalNode, isReadyToSubmit, isHost, isSubmitting, handleSubmitTheory]);
 
   if (visibleQuestions.length === 0) return null;
 
@@ -191,7 +199,7 @@ export default function InterrogationPhase({
                 {t('pages.gameRoom.campaign.levels.interrogation.suspect')} {customReaction ? `[${customReaction}]` : ''}
               </span>
               <p>
-                <Typewriter
+                <MessageReveal
                   text={q.text}
                   skip={skipTyping}
                   cacheKey={`room_${room.id}_suspect_${q.id}`}
@@ -226,7 +234,7 @@ export default function InterrogationPhase({
                               key={c.id}
                               className={pillClass}
                               onClick={(e) => {
-                                if (isNarrativeLocked) return;
+                                if (isNarrativeLocked || status !== 'active') return;
                                 handleSelectChoice(e, q.id, c, status);
                               }}
                               style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}
@@ -245,7 +253,7 @@ export default function InterrogationPhase({
                     <div className="chat-bubble agent-bubble">
                       <span className="speaker-label investigator">{t('pages.gameRoom.campaign.levels.interrogation.investigators')}</span>
                       <p>
-                        <Typewriter
+                        <MessageReveal
                           text={winningChoice.text}
                           skip={skipTyping}
                           cacheKey={`room_${room.id}_investigator_${q.id}`}

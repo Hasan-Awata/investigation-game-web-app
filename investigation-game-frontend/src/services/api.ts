@@ -138,7 +138,7 @@ export const lockVote = async (roomId: number, questionId: number, choiceId: num
   }
 };
 
-export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string; }, { title: string, message: string }>> => {  
+export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string; }, { title: string, message: string }>> => {
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/submit`, {
       method: 'POST',
@@ -148,7 +148,7 @@ export const submitAssessment = async (roomId: number): Promise<Result<{ status:
         'Authorization': `Bearer ${getToken()}`
       }
     });
-    
+
     if (!response.ok) {
       if (response.status === 401) handleUnauthorized();
       const data = await response.json().catch(() => null);
@@ -277,7 +277,7 @@ export const inspectLocation = async (roomId: number, choiceId: number): Promise
       },
       body: JSON.stringify({ choice_id: choiceId }),
     });
-    
+
     if (!response.ok) {
       if (response.status === 401) {
         handleUnauthorized();
@@ -286,7 +286,7 @@ export const inspectLocation = async (roomId: number, choiceId: number): Promise
       const data = await response.json().catch(() => null);
       return failure(data?.message || 'Failed to inspect location.');
     }
-    
+
     const data = await response.json();
     return success(data);
   } catch (error) {

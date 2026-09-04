@@ -381,7 +381,7 @@
         "undiscoveredEncounter": "مواجهة غير مكتشفة",
         "hiddenPathDesc": "هذا المسار يظل مخفياً. يجب عليك استنتاج الرابط السردي الصحيح أو تحديد أدلة معينة لفتح هذا الخيط.",
         "activeInvestigation": "تحقيق نشط",
-        "hostInitiateWarning": "بدء هذه المرحلة سيقفل جميع المراحل الأخرى حتى يتم التوصل إلى حكم.",
+        "hostInitiateWarning": "عند بدء التحقيق، سيتم إقفال جميع المراحل الأخرى حتى انتهاء التحقيق.",
         "awaitingHost": "في انتظار تفويض المضيف لبدء مرحلة التحقيق هذه.",
         "lockingCoordinator": "جاري قفل المنسق...",
         "commenceInvestigation": "بدء التحقيق",
@@ -438,7 +438,11 @@
           "goToLocation": "الذهاب إلى الموقع",
           "noDescription": "لا يوجد وصف متاح لهذه المرحلة.",
           "levelsPreview": "نظرة على المستويات",
-          "phaseIndex": "المرحلة"
+          "closeEsc": "إغلاق ESC",
+          "phaseSysIndex": "فهرس_نظام_المرحلة {{index}}",
+          "entriesCount": "عدد السجلات: {{count}}",
+          "dataAvailable": "البيانات متاحة",
+          "restricted": "وصول مقيد"
         }
     },
     "hooks": {

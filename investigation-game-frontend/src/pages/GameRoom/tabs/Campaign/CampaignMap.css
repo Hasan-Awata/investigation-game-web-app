@@ -1,15 +1,20 @@
 .campaign-map-container {
   position: relative;
   width: 100%;
-  height: 660px;
-  border-radius: 12px;
+  min-height: 600px;
+  height: calc(100vh - 180px);
   overflow: hidden;
-  border: 1px solid rgba(0, 229, 255, 0.2);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
   background-color: #0a0a0a;
   box-sizing: border-box;
   overscroll-behavior: none; 
   touch-action: none;
+}
+
+/* Optional: True Fullscreen Expansion */
+@media all and (display-mode: fullscreen) {
+  .campaign-map-container {
+    height: calc(100vh - 100px); 
+  }
 }
 
 .campaign-map-container::after {
@@ -50,7 +55,7 @@
 
 .map-overlay-grid {
   position: absolute;
-  inset: 0;
+  inset: -200px; 
   background-image: 
     linear-gradient(rgba(0, 229, 255, 0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(0, 229, 255, 0.05) 1px, transparent 1px);
@@ -58,7 +63,6 @@
   pointer-events: none;
   z-index: 2;
 }
-
 .map-pin-wrapper {
   cursor: pointer;
   display: flex;
@@ -135,22 +139,4 @@
 .map-pin-wrapper:hover .pin-tooltip {
   opacity: 1;
   transform: translateY(0);
-}
-
-.pin-order-badge {
-  background: var(--accent-cyan);
-  color: var(--bg-dark);
-  border-radius: 50%;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.7rem;
-  font-weight: bold;
-}
-
-.map-pin-wrapper.locked .pin-order-badge {
-  background: #555;
-  color: #ccc;
 }

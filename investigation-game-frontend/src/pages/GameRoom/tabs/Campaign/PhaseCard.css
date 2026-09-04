@@ -1,125 +1,74 @@
 .phase-card-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(10, 12, 16, 0.8);
-  backdrop-filter: blur(6px);
-  z-index: 100;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 2rem;
-  animation: fadeIn 0.2s ease-out forwards;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease-out;
+  padding: 1rem;
 }
 
 .phase-card-content {
+  position: relative;
   width: 100%;
   max-width: 500px;
-  background: linear-gradient(135deg, rgba(20, 24, 30, 0.95), rgba(10, 12, 16, 0.98));
-  padding: 2.5rem;
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(0, 229, 255, 0.1);
-  /* The signature sci-fi clipped corner */
-  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 30px), calc(100% - 30px) 100%, 0 100%);
-  animation: hudDeploy 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-}
-
-/* Decorative HUD Corners */
-.hud-corner {
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  border: 2px solid var(--accent-cyan);
-  opacity: 0.5;
-  pointer-events: none;
-}
-.hud-corner.top-left {
-  top: 10px;
-  left: 10px;
-  border-right: none;
-  border-bottom: none;
-}
-.hud-corner.bottom-right {
-  bottom: 10px;
-  right: 40px; /* Offset for the clip-path */
-  border-left: none;
-  border-top: none;
-}
-
-.hud-close {
-  top: 1.5rem;
-  right: 1.5rem;
-  font-family: var(--font-mono);
-  font-size: 0.8rem;
-  color: var(--text-secondary);
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-.hud-close:hover {
-  color: var(--accent-crimson);
+  padding: 2rem;
+  background-color: var(--bg-panel);
+  border-radius: var(--radius-lg);
+  border: var(--border-thin);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
 }
 
 .phase-card-header {
-  border-bottom: 1px solid rgba(0, 229, 255, 0.2);
-  padding-bottom: 1rem;
-}
-
-.phase-card-meta {
-  font-family: var(--font-mono);
-  color: var(--accent-amber);
-  font-size: 0.8rem;
-  text-transform: uppercase;
-  display: block;
-  margin-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding-inline-end: 2rem; /* Keeps text from overlapping the close button */
 }
 
 .phase-card-title {
-  margin: 0;
+  font-size: 1.6rem;
   color: var(--text-primary);
-  font-size: 2rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  text-shadow: 0 0 10px rgba(0, 229, 255, 0.3);
+  margin: 0;
+  font-weight: 700;
 }
 
 .phase-card-desc {
   color: var(--text-secondary);
-  font-size: 0.95rem;
+  font-size: 1rem;
   line-height: 1.6;
   margin: 0;
 }
 
 .phase-card-levels-container {
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  border-left: 2px solid var(--accent-cyan);
-  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
 }
 
 .levels-heading-wrapper {
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
-  border-bottom: 1px dashed rgba(255,255,255,0.15);
-  padding-bottom: 0.75rem;
-  margin-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.5rem;
 }
 
 .levels-heading {
+  font-size: 1.1rem;
+  color: var(--text-primary);
   margin: 0;
-  font-family: var(--font-mono);
-  color: var(--accent-cyan);
-  font-size: 0.85rem;
-  text-transform: uppercase;
 }
 
 .levels-count {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
 }
 
@@ -129,75 +78,78 @@
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  max-height: 220px;
+  gap: 0.5rem;
+  max-height: 250px;
   overflow-y: auto;
+  padding-inline-end: 0.5rem;
 }
 
 .level-preview-item {
   display: flex;
   align-items: center;
   gap: 1rem;
-  background: rgba(255,255,255,0.02);
-  padding: 0.75rem;
-  border: 1px solid transparent;
-  transition: background 0.2s;
-}
-
-.level-preview-item:hover {
-  background: rgba(255,255,255,0.05);
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-md);
+  transition: all 0.2s ease;
 }
 
 .level-preview-item.unlocked {
-  border-left: 2px solid var(--text-secondary);
-}
-.level-preview-item.locked {
-  border-left: 2px solid rgba(255, 100, 100, 0.3);
-  opacity: 0.6;
+  border-color: rgba(0, 229, 255, 0.2);
 }
 
-.level-icon {
-  font-size: 1.1rem;
+.level-preview-item.locked {
+  opacity: 0.5;
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.level-preview-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.level-preview-item.unlocked .level-preview-icon {
   color: var(--accent-cyan);
 }
-.locked .level-icon {
-  color: var(--accent-crimson);
+
+.level-preview-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .level-data {
   display: flex;
   flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .level-title {
-  font-size: 0.95rem;
   color: var(--text-primary);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 600;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .level-status-text {
   font-family: var(--font-mono);
-  font-size: 0.65rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.level-preview-item.unlocked .level-status-text {
   color: var(--accent-amber);
-  margin-top: 0.25rem;
-}
-.locked .level-status-text {
-  color: var(--accent-crimson);
 }
 
-.tactical-engage-btn {
-  margin-top: 1rem;
-  width: 100%;
-  padding: 1.25rem;
-  font-size: 1rem;
-  font-family: var(--font-mono);
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
-}
-
-@keyframes hudDeploy {
-  from { opacity: 0; transform: scale(0.95) translateY(20px); filter: blur(5px); }
-  to { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+.phase-card-actions {
+  margin-top: 0.5rem;
 }

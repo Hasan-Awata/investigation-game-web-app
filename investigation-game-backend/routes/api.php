@@ -49,9 +49,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rooms/{room}/questions/{question}/vote', [VoteController::class, 'store']);
     Route::post('/rooms/{room}/submit', [AssessmentController::class, 'store']);
     Route::post('/rooms/{room}/levels/{level}/start', [GameRoomController::class, 'startLevel']);
+    Route::post('/rooms/{room}/inspect', [GameRoomController::class, 'inspect']);   
     Route::post('/rooms/{room}/suspects/submit', [SuspectVerdictController::class, 'store']);
     Route::post('/rooms/{room}/investigate', [InvestigationRequestController::class, 'store']);
-    Route::post('/rooms/{room}/questions/{question}/wiretap/play', [WiretapController::class, 'play']);    
+    Route::post('/rooms/{room}/questions/{question}/wiretap/play', [WiretapController::class, 'play']); 
 
     // Admin Dashboard Routes (Protected by auth:sanctum from outer group + IsAdmin middleware)
     Route::middleware([IsAdmin::class])->prefix('admin')->group(function () {

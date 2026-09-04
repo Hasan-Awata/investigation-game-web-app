@@ -97,13 +97,13 @@ h1, h2, h3, h4, h5, h6 {
 .btn-primary, .btn-secondary {
   flex: 1;
   padding: 1rem;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   font-weight: 700;
   font-family: var(--font-primary);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   cursor: pointer;
-  transition: all 0.15s ease-in-out;
+  transition: all 0.2s ease-in-out;
   border: 1px solid transparent;
 }
 
@@ -111,25 +111,28 @@ h1, h2, h3, h4, h5, h6 {
   background: var(--accent-cyan);
   color: var(--bg-dark);
   border-color: var(--accent-cyan);
+  box-shadow: 0 4px 12px rgba(var(--accent-cyan-rgb), 0.15); 
 }
 
 .btn-primary:hover:not(:disabled) {
   background: var(--bg-dark);
   color: var(--accent-cyan);
-  box-shadow: inset 4px 0 0 0 var(--accent-cyan);
+  box-shadow: inset 4px 0 0 0 var(--accent-cyan), 0 6px 16px rgba(var(--accent-cyan-rgb), 0.25);
 }
 
 [dir="rtl"] .btn-primary:hover:not(:disabled) {
-  box-shadow: inset -4px 0 0 0 var(--accent-cyan);
+  box-shadow: inset -4px 0 0 0 var(--accent-cyan), 0 6px 16px rgba(var(--accent-cyan-rgb), 0.25);
 }
 
 .btn-primary:disabled {
-  background: rgba(var(--border-light-rgb), 0.3);
+  background: rgba(var(--border-light-rgb), 0.15);
   color: rgba(var(--text-secondary-rgb), 0.5);
-  border-color: rgba(var(--border-light-rgb), 0.3);
+  border-color: transparent;
+  box-shadow: none;
   cursor: not-allowed;
 }
 
+/* This was missing, causing the white button issue! */
 .btn-secondary {
   background: rgba(var(--bg-panel-rgb), 0.6);
   color: var(--text-secondary);
@@ -165,15 +168,12 @@ h1, h2, h3, h4, h5, h6 {
 
 /* --- PANELS --- */
 .glass-panel {
-  background: var(--bg-panel);
+  background: rgba(var(--bg-panel-rgb), 0.7); 
+  backdrop-filter: blur(12px); 
+  -webkit-backdrop-filter: blur(12px);
   border: var(--border-thin);
-  border-radius: var(--radius-md);
-  /* Sharp, tactical drop shadow */
-  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.5);
-}
-
-[dir="rtl"] .glass-panel {
-  box-shadow: -4px 4px 0px rgba(0, 0, 0, 0.5);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); 
 }
 
 /* --- UNREAD ITEM INDICATOR --- */

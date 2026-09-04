@@ -1,65 +1,309 @@
 /* ==============================================================
    LAYOUT & STRUCTURAL UTILITIES
 ============================================================== */
-
 .campaign-tab-wrapper {
+  /* 1. Break out of the parent container's padding. 
+     Note: If your .tab-content-area padding is 2rem instead of 1.5rem, 
+     change this to -2rem margin and +4rem width/height */
+  margin: -2rem;
+  width: calc(100% + 4rem);
+  height: calc(100% + 4rem);
+  
+  display: flex;
+  flex-direction: column;
+}
+
+.campaign-map-container {
+  position: relative;
+  flex: 1; 
   width: 100%;
+  min-height: calc(100vh - 80px);
+  overflow: hidden;
+  background-color: #0a0a0a;
+  box-sizing: border-box;
+  overscroll-behavior: none; 
+  touch-action: none;
+}
+
+/* Optional: True Fullscreen Expansion */
+@media all and (display-mode: fullscreen) {
+  .campaign-map-container {
+    min-height: calc(100vh - 80px); 
+  }
 }
 
 .campaign-roadmap-container {
   width: 100%;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
+  box-sizing: border-box;  
+  padding: 2rem; 
 }
 
-/* Phase Header */
-.phase-header-container {
+/* --- SPLIT SCREEN LAYOUT --- */
+.split-screen-layout {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start; /* Stops vertical stretching */
-  flex-wrap: wrap;
-  gap: 1.5rem;
-  margin-bottom: 2rem;
-  margin-top: 1.5rem;
+  gap: 1rem;
+  
+  /* 1. Establish a safe baseline for smaller laptop screens */
+  min-height: 600px;
+  
+  /* 2. Dynamically stretch to fill the screen on large monitors. 
+        The '180px' accounts for the height of your top navigation tabs and padding, 
+        preventing the layout from pushing off the bottom of the screen. */
+  height: calc(100vh - 180px); 
+  
+  margin-top: 0;
 }
 
-.phase-header-info {
-  flex: 1;
-  min-width: 280px;
+/* Optional: If you want it to stretch EVEN MORE specifically when they press F11 */
+@media all and (display-mode: fullscreen) {
+  .split-screen-layout {
+    /* Less top-nav space is usually visible in true fullscreen */
+    height: calc(100vh - 160px); 
+  }
 }
 
-.phase-description {
-  color: var(--text-secondary);
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  margin-top: 0.5rem;
-}
-
-/* Navigation Button */
-button.btn-secondary.return-to-map-btn {
-  width: max-content;
-  flex: 0 0 auto;
-  align-self: flex-start;
-  padding: 0.6rem 1.25rem;
-}
-
-.return-to-map-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  pointer-events: none;
-}
-
-/* Timeline Container */
-.roadmap-timeline {
+.level-list-column {
+  flex: 0 0 350px;
   display: flex;
   flex-direction: column;
-  gap: 0;
-  margin-top: 2rem;
-  padding-inline-start: 1rem;
+  gap: 0.5rem;
+  overflow-y: auto;
+  padding-inline-end: 1rem;
 }
 
-.terminal-text.empty-leads {
-  padding: 0;
-  text-align: start;
+/* --- PHASE INFO SIDEBAR --- */
+.phase-info-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem; 
+}
+
+.phase-sidebar-title {
+  font-size: 1.8rem;
+  margin: 0;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+
+.phase-sidebar-desc {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+/* --- RETURN TO MAP UNIQUE CARD --- */
+.return-map-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: rgba(var(--bg-dark-rgb), 0.4);
+  backdrop-filter: blur(8px);
+  border: 1px dashed rgba(var(--border-light-rgb), 0.3);
+  border-radius: var(--radius-md);
+  padding: 1.15rem 1.5rem;
+  min-height: 70px;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.return-map-card:hover:not(.locked) {
+  background: rgba(var(--bg-panel-rgb), 0.8);
+  border-color: rgba(var(--border-light-rgb), 0.6);
+  transform: translateX(4px);
+}
+
+[dir="rtl"] .return-map-card:hover:not(.locked) {
+  transform: translateX(-4px);
+}
+
+.return-map-card.locked {
+  opacity: 0.35;
+  cursor: not-allowed;
+  filter: grayscale(100%);
+}
+
+.map-return-area {
+  display: flex;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 1rem;
+}
+
+.return-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+}
+
+.return-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.return-map-card:hover:not(.locked) .return-icon,
+.return-map-card:hover:not(.locked) .list-item-title {
+  color: var(--text-primary);
+}
+
+/* --- PREVIEW & GAMEPLAY CONTAINER --- */
+.preview-column {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background-color: var(--bg-panel);
+}
+
+.preview-bg-layer {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center top;
+  z-index: 0;
+  transition: filter 0.5s ease, transform 0.5s ease;
+}
+
+.preview-bg-layer.blurred {
+  filter: blur(12px) brightness(0.3);
+  transform: scale(1.05); 
+}
+
+/* Edge Fades & Text Backdrop Only - Bottom Gradient Removed and shifted to .info-view */
+.preview-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(to right, var(--bg-dark) 0%, transparent 3%),
+    linear-gradient(to left, var(--bg-dark) 0%, transparent 3%),
+    linear-gradient(to bottom, var(--bg-dark) 0%, transparent 3%),
+    linear-gradient(to top, var(--bg-dark) 0%, transparent 3%);
+  z-index: 1;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+.preview-overlay.hidden {
+  opacity: 0;
+}
+
+/* --- TOP RIGHT ACTIONS --- */
+.top-right-actions {
+  position: absolute;
+  top: 1.5rem;
+  inset-inline-end: 1.5rem;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.host-warning-text {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--accent-amber); 
+  font-weight: 500;
+  background: rgba(var(--bg-panel-rgb), 0.7);
+  backdrop-filter: blur(4px);
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  border: var(--border-thin);
+}
+
+.start-btn-top {
+  padding: 0.6rem 1.5rem;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.swap-view-btn {
+  background: rgba(var(--bg-panel-rgb), 0.7);
+  backdrop-filter: blur(4px);
+  border: var(--border-thin);
+  color: var(--text-primary);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.swap-view-btn:hover {
+  background: var(--accent-cyan);
+  color: var(--bg-dark);
+  transform: scale(1.1);
+  border-color: var(--accent-cyan);
+}
+
+/* --- CONTENT LAYER --- */
+.preview-content-layer {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.info-view {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: 6rem 2.5rem 3rem 2.5rem; 
+  box-sizing: border-box;
+  animation: fadeIn 0.4s ease-out;
+  background: linear-gradient(to top, rgba(var(--bg-dark-rgb), 0.9) 25%, rgba(var(--bg-dark-rgb), 0.85) 65%, transparent 100%);
+}
+
+.preview-content-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.75rem; 
+  width: 100%;
+}
+
+[dir="rtl"] .preview-content-box {
+  text-align: right;
+}
+
+.preview-title {
+  color: var(--accent-cyan);
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin: 0;
+  text-shadow: 0 4px 12px rgba(0,0,0,0.9);
+}
+
+.preview-desc {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  max-width: 85%;
+  margin: 0;
+  line-height: 1.6;
+}
+
+.gameplay-view {
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.full-screen-active {
+  animation: fadeIn 0.4s ease-out forwards;
 }

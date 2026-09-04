@@ -21,6 +21,10 @@ class AssessmentService
         return DB::transaction(function () use ($room) {
             $level = $room->currentLevel;
 
+            if (!$level) {
+                return Result::failure("No active phase to evaluate. This phase may have already been submitted.");
+            }
+            
             // Eager load `choice` to resolve the N+1 loop flaw
             $votes = \App\Models\RoomVote::with('choice')->where('room_id', $room->id)
                 ->whereHas('question', fn($q) => $q->where('level_id', $level->id))

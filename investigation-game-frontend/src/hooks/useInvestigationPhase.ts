@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useRoomState, useRoomActions } from '@/context/RoomContext';
@@ -51,7 +51,13 @@ export function useInvestigationPhase() {
 
   const submitTheoryMutation = useMutation({
     mutationFn: async () => {
+      // STRICT GUARD
+      if (room.current_level_id === null || room.current_level_id === undefined) {
+        throw { message: 'No active level to submit.' };
+      }      
+      
       const result = await submitAssessment(roomId);
+      
       if (!result.isSuccess) throw { message: result.errorMessage };
       return result.value;
     },
@@ -165,10 +171,16 @@ export function useInvestigationPhase() {
     voteMutation.mutate({ questionId, choiceId: choice.id });
   };
 
-  const handleSubmitTheory = (e?: React.MouseEvent | any) => {
+  const handleSubmitTheory = useCallback((e?: React.MouseEvent | any) => {
     if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
+
+    // STRICT GUARD: Block submission entirely if the room has no active level currently in play
+    if (room.current_level_id === null || room.current_level_id === undefined) {
+      return;
+    }
+
     submitTheoryMutation.mutate();
-  };
+  }, [room.current_level_id, submitTheoryMutation]);
 
   const clearFeedback = (e?: React.MouseEvent | any) => {
     if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
