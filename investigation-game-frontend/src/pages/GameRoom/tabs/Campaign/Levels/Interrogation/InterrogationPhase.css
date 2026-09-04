@@ -35,16 +35,14 @@
 
 /* Suspect Styles */
 .suspect-bubble {
-  align-self: flex-start;
+  align-self: flex-end; 
   background: rgba(20, 21, 24, 0.8);
-  /* Swapped to logical property */
   border-inline-start: 3px solid var(--accent-crimson);
-  box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+  box-shadow: -4px 4px 0px rgba(0,0,0,0.3);
 }
 
 [dir="rtl"] .suspect-bubble {
-  /* Mirror the block shadow in Arabic */
-  box-shadow: -4px 4px 0px rgba(0,0,0,0.3);
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
 }
 
 .speaker-label.suspect {
@@ -54,31 +52,30 @@
 /* Investigator Styles */
 .agent-bubble {
   background: rgba(90, 138, 158, 0.1);
-  /* Swapped to logical property */
-  border-inline-end: 3px solid var(--accent-cyan);
-  box-shadow: -4px 4px 0px rgba(0,0,0,0.3);
+  border-inline-start: 3px solid var(--accent-cyan);
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
   max-width: 100%;
 }
 
 [dir="rtl"] .agent-bubble {
-  /* Mirror the block shadow in Arabic */
-  box-shadow: 4px 4px 0px rgba(0,0,0,0.3);
+  box-shadow: -4px 4px 0px rgba(0,0,0,0.3);
 }
 
 .speaker-label.investigator {
   color: var(--accent-cyan);
-  /* Swapped to logical property */
   text-align: start;
 }
 
 /* Interactive Area */
 .investigator-interaction-area {
-  align-self: flex-end;
+  /* Swapped to flex-start (Right in RTL, Left in LTR) */
+  align-self: flex-start;
   max-width: 85%;
   width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  /* Swapped alignment */
+  align-items: flex-start;
   gap: 0.5rem;
   animation: fadeIn 0.4s ease-out;
 }
@@ -87,7 +84,7 @@
   border-radius: 4px;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
+  align-items: flex-start;
   transition: all 0.3s ease;
 }
 
@@ -107,6 +104,6 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  justify-content: flex-end;
+  justify-content: flex-start;
   margin-top: 0.5rem;
 }

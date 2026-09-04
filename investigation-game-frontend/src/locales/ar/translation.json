@@ -385,7 +385,7 @@
         "awaitingHost": "في انتظار تفويض المضيف لبدء مرحلة التحقيق هذه.",
         "lockingCoordinator": "جاري قفل المنسق...",
         "commenceInvestigation": "بدء التحقيق",
-        "lead": "الخيط",
+        "lead": "الخيط {{id}}",
         "levels": {
           "interrogation": {
           "suspect": "المشتبه به",

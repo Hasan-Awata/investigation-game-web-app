@@ -7,7 +7,7 @@ import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/ser
 
 export type { ToastNotification, GlobalFeedback } from '@/context/RoomContext';
 
-interface ApiError { title?: string; message: string; }
+interface ApiError { title?: string; message: any; }
 
 export function useInvestigationPhase() {
   const { t } = useTranslation();
@@ -16,6 +16,15 @@ export function useInvestigationPhase() {
 
   const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
   const roomId = room.id;
+
+  // --- Helper to strictly extract strings and prevent React object-child crashes ---
+  const getSafeString = (val: any, fallback: string): string => {
+    if (!val) return fallback;
+    if (typeof val === 'string') return val;
+    if (typeof val.message === 'string') return val.message;
+    if (val.message && typeof val.message.message === 'string') return val.message.message;
+    return fallback;
+  };
 
   useEffect(() => {
     const storedUser = localStorage.getItem('auth_user');
@@ -34,12 +43,10 @@ export function useInvestigationPhase() {
   const voteMutation = useMutation({
     mutationFn: async ({ questionId, choiceId }: { questionId: number, choiceId: number }) => {
       const result = await lockVote(roomId, questionId, choiceId);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
+      if (!result.isSuccess) throw new Error(result.errorMessage as string);
       return result.value;
     },
-    onSuccess: () => {
-      refreshRoomData();
-    }
+    onSuccess: () => refreshRoomData()
   });
 
   const submitTheoryMutation = useMutation({
@@ -53,22 +60,33 @@ export function useInvestigationPhase() {
         setGlobalFeedback({
           type: data.status === 'success' ? 'success' : 'error',
           title: data.status === 'success' ? t('pages.gameRoom.hooks.phase.consensusVerified') : t('pages.gameRoom.hooks.phase.theoryRejected'),
-          message: data.message
+          message: getSafeString(data.message, '')
         });
 
+        // 1. UPDATE STATE IMMEDIATELY (Eliminates the 4-second block)
+        setLocalVotes({});
+        refreshRoomData();
+
+        // 2. ONLY DELAY THE MODAL DISMISSAL
         setTimeout(() => {
           setGlobalFeedback(null);
-          setLocalVotes({});
-          refreshRoomData();
         }, 4000);
       } else {
-        setGlobalFeedback({ type: 'error', title: t('pages.gameRoom.hooks.phase.theoryRejected'), message: data.message });
+        setGlobalFeedback({
+          type: 'error',
+          title: t('pages.gameRoom.hooks.phase.theoryRejected'),
+          message: getSafeString(data.message, t('pages.gameRoom.hooks.phase.systemError'))
+        });
         setLocalVotes({});
         refreshRoomData();
       }
     },
     onError: (error: ApiError) => {
-      setGlobalFeedback({ type: 'error', title: error.title || t('pages.gameRoom.hooks.phase.systemError'), message: error.message });
+      // Safely parse the title and message so React never receives an object
+      const safeTitle = error.title || error?.message?.title || t('pages.gameRoom.hooks.phase.systemError');
+      const safeMessage = getSafeString(error.message, t('pages.gameRoom.hooks.phase.systemError'));
+      
+      setGlobalFeedback({ type: 'error', title: safeTitle, message: safeMessage });
     }
   });
 
@@ -79,9 +97,13 @@ export function useInvestigationPhase() {
       return result.value;
     },
     onSuccess: () => refreshRoomData(),
-    onError: (error: ApiError) => setGlobalFeedback({
-      type: 'error', title: error.title || t('pages.gameRoom.hooks.phase.systemError'), message: error.message
-    })
+    onError: (error: ApiError) => {
+      setGlobalFeedback({
+        type: 'error', 
+        title: error.title || t('pages.gameRoom.hooks.phase.systemError'), 
+        message: getSafeString(error.message, t('pages.gameRoom.hooks.phase.systemError'))
+      });
+    }
   });
 
   const triggerWiretapMutation = useMutation({
@@ -90,16 +112,19 @@ export function useInvestigationPhase() {
       if (!result.isSuccess) throw { message: result.errorMessage };
       return { value: result.value, audioUrl };
     },
-    onSuccess: () => {
-      refreshRoomData();
-    },
-    onError: (error: ApiError) => setGlobalFeedback({
-      type: 'error', title: error.title || t('pages.gameRoom.hooks.phase.transmissionError'), message: error.message
-    })
+    onSuccess: () => refreshRoomData(),
+    onError: (error: ApiError) => {
+      setGlobalFeedback({
+        type: 'error', 
+        title: error.title || t('pages.gameRoom.hooks.phase.transmissionError'), 
+        message: getSafeString(error.message, t('pages.gameRoom.hooks.phase.transmissionError'))
+      });
+    }
   });
 
-  const handleSelectChoice = (e: React.MouseEvent, questionId: number, choice: Choice, status: string) => {
-    e.stopPropagation();
+  // --- NEW: Safe Event Handling ---
+  const handleSelectChoice = (e: React.MouseEvent | any, questionId: number, choice: Choice, status: string) => {
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
     if (status !== 'active') return;
 
     setLocalVotes(prev => ({ ...prev, [questionId]: choice.id }));
@@ -140,13 +165,13 @@ export function useInvestigationPhase() {
     voteMutation.mutate({ questionId, choiceId: choice.id });
   };
 
-  const handleSubmitTheory = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleSubmitTheory = (e?: React.MouseEvent | any) => {
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
     submitTheoryMutation.mutate();
   };
 
-  const clearFeedback = (e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
+  const clearFeedback = (e?: React.MouseEvent | any) => {
+    if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
     setGlobalFeedback(null);
   };
 

@@ -56,7 +56,8 @@ interface InterrogationPhaseProps {
   getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
   isHost: boolean;
   isSubmitting: boolean;
-  handleSubmitTheory: (e: React.MouseEvent) => void;
+  // Updated interface to make the event optional
+  handleSubmitTheory: (e?: React.MouseEvent) => void; 
 }
 
 export default function InterrogationPhase({
@@ -136,8 +137,6 @@ export default function InterrogationPhase({
     return { visibleQuestions: questions, consensusMap: map };
   }, [level.questions, room.votes, getQuestionConsensus]);
 
-  if (visibleQuestions.length === 0) return null;
-
   const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
   const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
 
@@ -157,6 +156,15 @@ export default function InterrogationPhase({
       ? (suspectTypingComplete[lastQuestion.id] || status === 'completed')
       : (investigatorTypingComplete[lastQuestion.id] || status === 'completed')
   );
+
+  // --- Clean programmatic trigger ---
+  useEffect(() => {
+    if (isTerminalNode && isReadyToSubmit && status === 'active' && isHost && !isSubmitting) {
+      handleSubmitTheory(); // Called cleanly with no arguments
+    }
+  }, [isTerminalNode, isReadyToSubmit, status, isHost, isSubmitting, handleSubmitTheory]);
+
+  if (visibleQuestions.length === 0) return null;
 
   return (
     <div className="interrogation-log">
@@ -194,7 +202,6 @@ export default function InterrogationPhase({
 
             {isSuspectDone && q.choices && q.choices.length > 0 && (
               <>
-                {/* 1. Only show voting choices if the phase is active and waiting for a verdict */}
                 {status === 'active' && !isGloballyLocked && (
                   <div className="investigator-interaction-area">
                     <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
@@ -233,7 +240,6 @@ export default function InterrogationPhase({
                   </div>
                 )}
 
-                {/* 2. Only show the investigator bubble if a specific choice was successfully locked in */}
                 {isGloballyLocked && winningChoice && (
                   <div className="investigator-interaction-area">
                     <div className="chat-bubble agent-bubble">
@@ -254,20 +260,6 @@ export default function InterrogationPhase({
           </div>
         );
       })}
-
-      {isTerminalNode && isReadyToSubmit && status === 'active' && (
-        <div className="submit-theory-container" style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid rgba(255, 255, 255, 0.05)', paddingTop: '1.5rem' }}>
-          {isHost ? (
-            <button className="btn-primary submit-theory-btn" disabled={isSubmitting} onClick={handleSubmitTheory}>
-              {isSubmitting ? t('pages.gameRoom.campaign.levels.interrogation.processing') : t('pages.gameRoom.campaign.levels.interrogation.submitVerdict')}
-            </button>
-          ) : (
-            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
-              {t('pages.gameRoom.campaign.levels.interrogation.awaitingHostVerdict')}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
