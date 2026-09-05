@@ -293,3 +293,29 @@ export const inspectLocation = async (roomId: number, choiceId: number): Promise
     return failure(error instanceof Error ? error.message : 'Network error');
   }
 };
+
+export const leaveRoom = async (roomId: number): Promise<Result<any>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/leave`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        handleUnauthorized();
+        return failure('Session expired.');
+      }
+      const data = await response.json().catch(() => null);
+      return failure(data?.message || 'Failed to disconnect from session.');
+    }
+
+    return success(await response.json());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};

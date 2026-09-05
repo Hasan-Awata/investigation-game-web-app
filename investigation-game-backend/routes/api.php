@@ -7,7 +7,7 @@ use App\Http\Controllers\CaseController;
 use App\Http\Controllers\GameRoomController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\AssessmentController;
-use App\Http\Controllers\InvestigationRequestController; 
+use App\Http\Controllers\InvestigationRequestController;
 use App\Http\Controllers\SuspectVerdictController;
 use App\Http\Controllers\WiretapController;
 use App\Http\Controllers\Admin\AdminCaseController;
@@ -17,8 +17,8 @@ use App\Http\Controllers\Admin\AdminEvidenceController;
 use App\Http\Controllers\Admin\AdminQuestionController;
 use App\Http\Controllers\Admin\AdminSuspectController;
 use App\Http\Controllers\Admin\AdminVictimController;
-use App\Http\Controllers\Admin\AdminInvestigationRequestController; 
-use App\Http\Middleware\IsAdmin; 
+use App\Http\Controllers\Admin\AdminInvestigationRequestController;
+use App\Http\Middleware\IsAdmin;
 
 Route::get('/login', function () {
     return response()->json(['error' => 'Unauthenticated', 'message' => 'Session expired. Please log in again.'], 401);
@@ -30,7 +30,7 @@ Route::post('/login', [AuthController::class, 'login']);
 
 // Protected Gameplay Routes
 Route::middleware('auth:sanctum')->group(function () {
-    
+
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
@@ -39,38 +39,39 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Case Discovery
     Route::get('/cases', [CaseController::class, 'index']);
-    
+
     // Room Management
     Route::post('/rooms', [GameRoomController::class, 'store']);
     Route::post('/rooms/join', [GameRoomController::class, 'join']);
+    Route::post('/rooms/{room}/leave', [GameRoomController::class, 'leave']);
     Route::get('/rooms/{room}', [GameRoomController::class, 'show']);
-    
+
     // Core Gameplay Loop
     Route::post('/rooms/{room}/questions/{question}/vote', [VoteController::class, 'store']);
     Route::post('/rooms/{room}/submit', [AssessmentController::class, 'store']);
     Route::post('/rooms/{room}/levels/{level}/start', [GameRoomController::class, 'startLevel']);
-    Route::post('/rooms/{room}/inspect', [GameRoomController::class, 'inspect']);   
+    Route::post('/rooms/{room}/inspect', [GameRoomController::class, 'inspect']);
     Route::post('/rooms/{room}/suspects/submit', [SuspectVerdictController::class, 'store']);
     Route::post('/rooms/{room}/investigate', [InvestigationRequestController::class, 'store']);
-    Route::post('/rooms/{room}/questions/{question}/wiretap/play', [WiretapController::class, 'play']); 
+    Route::post('/rooms/{room}/questions/{question}/wiretap/play', [WiretapController::class, 'play']);
 
     // Admin Dashboard Routes (Protected by auth:sanctum from outer group + IsAdmin middleware)
     Route::middleware([IsAdmin::class])->prefix('admin')->group(function () {
         // GET (Fetch) Granular Endpoints
-        Route::get('/cases', [AdminCaseController::class, 'index']); 
+        Route::get('/cases', [AdminCaseController::class, 'index']);
         Route::get('/cases/{caseId}/phases', [AdminPhaseController::class, 'indexByCase']);
         Route::get('/phases/{phaseId}/levels', [AdminLevelController::class, 'indexByPhase']);
-        
+
         // POST (Create)
         Route::post('/cases', [AdminCaseController::class, 'store']);
-        Route::post('/phases', [AdminPhaseController::class, 'store']);  
+        Route::post('/phases', [AdminPhaseController::class, 'store']);
         Route::post('/levels', [AdminLevelController::class, 'store']);
         Route::post('/evidences', [AdminEvidenceController::class, 'store']);
         Route::post('/questions', [AdminQuestionController::class, 'store']);
         Route::post('/suspects', [AdminSuspectController::class, 'store']);
         Route::post('/victims', [AdminVictimController::class, 'store']);
-        Route::post('/investigation-requests', [AdminInvestigationRequestController::class, 'store']);        
-        
+        Route::post('/investigation-requests', [AdminInvestigationRequestController::class, 'store']);
+
         // PUT (Update)
         Route::put('/cases/{case}', [AdminCaseController::class, 'update']);
         Route::put('/phases/{phase}', [AdminPhaseController::class, 'update']);
@@ -80,7 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/suspects/{suspect}', [AdminSuspectController::class, 'update']);
         Route::put('/victims/{victim}', [AdminVictimController::class, 'update']);
         Route::put('/investigation-requests/{request}', [AdminInvestigationRequestController::class, 'update']);
-        
+
         // DELETE (Destroy)
         Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']);
         Route::delete('/phases/{phase}', [AdminPhaseController::class, 'destroy']);

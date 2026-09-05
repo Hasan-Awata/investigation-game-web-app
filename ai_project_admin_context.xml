@@ -1,0 +1,3440 @@
+<system_directives>
+  <rule>Read this entire document carefully. Do NOT assume code is missing. Write complete, fully functional blocks.</rule>
+  <rule>Strictly adhere to Clean Architecture, SOLID principles, and Dependency Injection patterns. Maintain strict Separation of Concerns.</rule>
+  <rule>Do NOT write inline CSS or Tailwind utility classes in .tsx files unless explicitly asked. The directory tree shows existing stylesheet files; if you need to modify UI visuals, ask the user to provide the relevant CSS/SCSS file.</rule>
+  <rule>Rely ONLY on the explicit state variables, custom hooks, and props provided in this context. Do not hallucinate external libraries, utility functions, or imports not present in the code.</rule>
+  <rule>When troubleshooting WebSocket connections or complex component state, verify the data flow through the entire component tree before suggesting a fix.</rule>
+  <rule>If the fix/update you are suggesting require less than three modifications within the same file, don't rewrite the whole file, just inicate precisely where the user should write the changes</rule>
+  <rule>Maintain the translation mechanic used all around the codebase in all of your responses</rule>
+</system_directives>
+
+<project_context>
+  <root_directory>Admin</root_directory>
+  <directory_structure>
+├── AdminDashboard.css
+├── AdminDashboard.tsx
+├── components
+│   ├── AdminFormLayout.tsx
+│   ├── AdminGuard.tsx
+│   ├── AdminUI
+│   │   └── index.tsx
+│   ├── EntityDashboard.tsx
+│   └── MediaUploader.tsx
+├── context
+│   └── AdminContext.tsx
+├── forms
+│   ├── CaseForm.tsx
+│   ├── EvidenceForm.tsx
+│   ├── InvestigationRequestForm.tsx
+│   ├── LevelForm.tsx
+│   ├── PhaseForm.tsx
+│   ├── QuestionForm
+│   │   ├── AdminInterrogationBuilder.css
+│   │   ├── AdminInterrogationBuilder.tsx
+│   │   ├── AdminInterrogationForm.tsx
+│   │   ├── AdminLocationBuilder.css
+│   │   ├── AdminLocationBuilder.tsx
+│   │   ├── AdminLocationForm.tsx
+│   │   ├── AdminWiretapBuilder.tsx
+│   │   ├── AdminWiretapForm.tsx
+│   │   └── NodeBuilderCanvas.tsx
+│   ├── Shared
+│   │   ├── AdminForms.css
+│   │   ├── ChoiceEditorCard.css
+│   │   ├── ChoiceEditorCard.tsx
+│   │   ├── EntityList.tsx
+│   │   ├── EvidenceMetadataFields.tsx
+│   │   ├── LevelBuilderGuard.tsx
+│   │   └── MetadataFields
+│   │       ├── AutopsyFields.tsx
+│   │       ├── BackgroundCheckFields.tsx
+│   │       ├── BallisticsFields.tsx
+│   │       ├── ContractFields.tsx
+│   │       ├── CorrespondenceFields.tsx
+│   │       ├── DNAFields.tsx
+│   │       ├── DigitalForensicsFields.tsx
+│   │       ├── FinancialFields.tsx
+│   │       ├── JournalFields.tsx
+│   │       ├── MemoFields.tsx
+│   │       ├── TraceAnalysisFields.tsx
+│   │       ├── index.ts
+│   │       └── types.ts
+│   ├── SuspectForm.tsx
+│   └── VictimForm.tsx
+├── hooks
+│   ├── useAdminData.ts
+│   ├── useAdminForm.ts
+│   ├── useAdminMutations.ts
+│   ├── useAdminTranslation.ts
+│   ├── useCoordinateMapper.ts
+│   ├── useNodeBuilder.ts
+│   └── useValidatedForm.ts
+└── utils
+    ├── formUtils.ts
+    ├── questionUtils.ts
+    └── validators.ts
+  </directory_structure>
+</project_context>
+
+<source_code>
+<file path="AdminDashboard.tsx">
+import { useState } from 'react';
+import { AdminProvider, useAdminContext } from '@/pages/Admin/context/AdminContext';
+
+import CaseForm from './forms/CaseForm';
+import PhaseForm from './forms/PhaseForm';
+import LevelForm from './forms/LevelForm';
+import EvidenceForm from './forms/EvidenceForm';
+import SuspectForm from './forms/SuspectForm';
+import VictimForm from './forms/VictimForm';
+import AdminInterrogationBuilder from './forms/QuestionForm/AdminInterrogationBuilder';
+import AdminLocationBuilder from './forms/QuestionForm/AdminLocationBuilder';
+import AdminWiretapBuilder from './forms/QuestionForm/AdminWiretapBuilder';
+import InvestigationRequestForm from './forms/InvestigationRequestForm';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import './AdminDashboard.css';
+
+type AdminTab = 'cases' | 'phases' | 'levels' | 'interrogation' | 'location' | 'wiretap' | 'evidences' | 'suspects' | 'victims' | 'requests';
+
+function AdminDashboardContent() {
+  const [activeTab, setActiveTab] = useState<AdminTab>('cases');
+  const { adminT } = useAdminTranslation();
+  const t = adminT.adminDashboard;
+
+  const {
+    isLoading, error, cases, availablePhases, availableLevels,
+    caseId, setCaseId, phaseId, setPhaseId, levelId, setLevelId,
+    isDirty, setIsDirty
+  } = useAdminContext();
+
+  const handleTabChange = (tab: AdminTab) => {
+    if (isDirty) {
+      if (!window.confirm(t.unsavedChangesConfirm)) return;
+      setIsDirty(false);
+    }
+    setActiveTab(tab);
+  };
+
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <div className="terminal-text">{t.loadingConnection}</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '50vh' }}>
+        <div className="terminal-text error">{t.systemError(error.message)}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="admin-dashboard-layout">
+      {/* THE TACTICAL SIDEBAR */}
+      <aside className="admin-sidebar">
+
+        {/* GLOBAL CONTEXT SELECTORS */}
+        <div className="admin-global-selectors">
+          <div className="form-group" style={{ gap: '0.25rem' }}>
+            <label style={{ color: 'var(--accent-amber)', fontSize: '0.75rem' }}>{t.activeCaseLabel}</label>
+            <select className="admin-input" style={{ padding: '0.5rem' }} value={caseId} onChange={(e) => setCaseId(e.target.value)}>
+              <option value="">{t.globalDatabaseOption}</option>
+              {cases.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+            </select>
+          </div>
+
+          <div className="form-group" style={{ gap: '0.25rem' }}>
+            <label style={{ color: 'var(--accent-amber)', fontSize: '0.75rem' }}>{t.activePhaseLabel}</label>
+            <select className="admin-input" style={{ padding: '0.5rem' }} value={phaseId} onChange={(e) => setPhaseId(e.target.value)} disabled={!caseId}>
+              <option value="">{t.allPhasesOption}</option>
+              {availablePhases.map(p => <option key={p.id} value={p.id}>{p.order_index}: {p.title}</option>)}
+            </select>
+          </div>
+
+          <div className="form-group" style={{ gap: '0.25rem' }}>
+            <label style={{ color: 'var(--accent-amber)', fontSize: '0.75rem' }}>{t.activeLevelLabel}</label>
+            <select className="admin-input" style={{ padding: '0.5rem' }} value={levelId} onChange={(e) => setLevelId(e.target.value)} disabled={!phaseId}>
+              <option value="">{t.allLevelsOption}</option>
+              {availableLevels.map(l => <option key={l.id} value={l.id}>{l.order_index}: {l.title} ({l.presentation_type})</option>)}
+            </select>
+          </div>
+        </div>
+
+        {/* NAVIGATION MENUS */}
+        <div className="admin-nav-group">
+          <h4 className="admin-nav-group-title">{t.narrativeHierarchyGroup}</h4>
+          <nav className="admin-nav-menu">
+            <button className={`admin-tab-btn ${activeTab === 'cases' ? 'active' : ''}`} onClick={() => handleTabChange('cases')}>{t.casesTab}</button>
+            <button className={`admin-tab-btn ${activeTab === 'phases' ? 'active' : ''}`} onClick={() => handleTabChange('phases')}>{t.phasesTab}</button>
+            <button className={`admin-tab-btn ${activeTab === 'levels' ? 'active' : ''}`} onClick={() => handleTabChange('levels')}>{t.levelsTab}</button>
+          </nav>
+        </div>
+
+        <div className="admin-nav-group">
+          <h4 className="admin-nav-group-title">{t.nodeBuildersGroup}</h4>
+          <nav className="admin-nav-menu">
+            <button className={`admin-tab-btn ${activeTab === 'interrogation' ? 'active' : ''}`} onClick={() => handleTabChange('interrogation')}>{t.interrogationTab}</button>
+            <button className={`admin-tab-btn ${activeTab === 'location' ? 'active' : ''}`} onClick={() => handleTabChange('location')}>{t.locationTab}</button>
+            <button className={`admin-tab-btn ${activeTab === 'wiretap' ? 'active' : ''}`} onClick={() => handleTabChange('wiretap')}>{t.wiretapTab}</button>
+          </nav>
+        </div>
+
+        <div className="admin-nav-group" style={{ borderBottom: 'none' }}>
+          <h4 className="admin-nav-group-title">{t.databaseAssetsGroup}</h4>
+          <nav className="admin-nav-menu">
+            <button className={`admin-tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => handleTabChange('evidences')}>{t.evidencesTab}</button>
+            <button className={`admin-tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} onClick={() => handleTabChange('suspects')}>{t.suspectsTab}</button>
+            <button className={`admin-tab-btn ${activeTab === 'victims' ? 'active' : ''}`} onClick={() => handleTabChange('victims')}>{t.victimsTab}</button>
+            <button className={`admin-tab-btn ${activeTab === 'requests' ? 'active' : ''}`} onClick={() => handleTabChange('requests')}>{t.requestsTab}</button>
+          </nav>
+        </div>
+      </aside>
+
+      {/* MAIN WORKSPACE */}
+      <main className="admin-workspace">
+        {activeTab === 'cases' && <CaseForm />}
+        {activeTab === 'phases' && <PhaseForm />}
+        {activeTab === 'levels' && <LevelForm />}
+        {activeTab === 'interrogation' && <AdminInterrogationBuilder />}
+        {activeTab === 'location' && <AdminLocationBuilder />}
+        {activeTab === 'wiretap' && <AdminWiretapBuilder />}
+        {activeTab === 'evidences' && <EvidenceForm />}
+        {activeTab === 'suspects' && <SuspectForm />}
+        {activeTab === 'victims' && <VictimForm />}
+        {activeTab === 'requests' && <InvestigationRequestForm />}
+      </main>
+    </div>
+  );
+}
+
+export default function AdminDashboard() {
+  return (
+    <AdminProvider>
+      <AdminDashboardContent />
+    </AdminProvider>
+  );
+}
+</file>
+
+<file path="components/AdminFormLayout.tsx">
+import { type ReactNode } from 'react';
+import { useAdminTranslation } from '../hooks/useAdminTranslation';
+
+interface AdminFormLayoutProps {
+  editingId: number | string | null;
+  entityName: string;
+  contextHeader?: string;
+  feedback?: { type: 'success' | 'error'; message: string } | null;
+  onCancel?: () => void;
+  children: ReactNode;
+}
+
+export default function AdminFormLayout({ editingId, entityName, contextHeader, onCancel, children }: AdminFormLayoutProps) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.component.adminFormLayout;
+
+  return (
+    <div className="admin-form-wrapper glass-panel">
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+          <div>
+            <h3 style={{ fontFamily: 'var(--font-mono)', color: editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', margin: '0 0 0.5rem 0' }}>
+              {editingId ? `${t.editingPrefix} ${entityName} ${t.idLabel}: ${editingId}` : `${t.initializingPrefix} ${entityName}`}
+            </h3>
+            {contextHeader && (
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                {contextHeader}
+              </span>
+            )}
+          </div>
+          {editingId && onCancel && (
+            <button type="button" className="btn-secondary" onClick={onCancel} style={{ padding: '0.5rem 1rem', width: 'auto' }}>
+              {t.cancelEdit}
+            </button>
+          )}
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="components/AdminGuard.tsx">
+import { Navigate, Outlet } from 'react-router-dom';
+import { useAuthSession } from '@/hooks/useAuth';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import '@/i18n';
+
+export default function AdminGuard() {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.component.adminGuard;
+
+  // Directly subscribe to the authoritative session verification
+  const { data: user, isLoading, isError } = useAuthSession();
+
+  // Secure Loading State ensuring no premature rendering of the admin layout
+  if (isLoading) {
+    return (
+      <div className="admin-layout" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'var(--bg-dark)' }}>
+         <div className="terminal-text" style={{ color: 'var(--accent-cyan)' }}>
+           {t.loading}
+         </div>
+      </div>
+    );
+  }
+
+  // Strictly evaluate the server-provided flag.
+  // If the user attempts access without standard authentication, bounce them.
+  if (isError || !user || !user.is_admin) {
+    return <Navigate to="/" replace />;
+  }
+
+  // Verification passed - yield nested routes
+  return (
+    <div className="admin-layout">
+      <header className="admin-header glass-panel" style={{ padding: '1rem 2rem', borderBottom: '1px solid rgba(255,51,102,0.3)' }}>
+        <h2 style={{ margin: 0, color: 'var(--accent-crimson)', fontFamily: 'var(--font-mono)' }}>{t.dashboardTitle}</h2>
+      </header>
+      <main className="admin-content" style={{ padding: '2rem' }}>
+        <Outlet />
+      </main>
+    </div>
+  );
+}
+</file>
+
+<file path="components/EntityDashboard.tsx">
+import { type ReactNode } from 'react';
+import AdminFormLayout from './AdminFormLayout';
+import EntityList from '../forms/Shared/EntityList';
+
+interface EntityDashboardProps<T> {
+  entityName: string;
+  listTitle: string;
+  items: T[];
+  editingId: number | string | null;
+  isProcessing: boolean;
+  isFetching?: boolean;
+  contextHeader?: string;
+  emptyMessage: string;
+  keyExtractor: (item: T) => string | number;
+  onClear: () => void;
+  onEdit: (item: T) => void;
+  onDelete: (item: T) => void;
+  renderItemContent: (item: T) => ReactNode;
+  children: ReactNode;
+}
+
+export default function EntityDashboard<T>({
+  entityName, listTitle, items, editingId, isProcessing,
+  contextHeader, emptyMessage, keyExtractor,
+  onClear, onEdit, onDelete, renderItemContent, children
+}: EntityDashboardProps<T>) {
+
+  return (
+    <div className="admin-form-page">
+      <AdminFormLayout
+        editingId={editingId}
+        entityName={entityName}
+        contextHeader={contextHeader}
+        onCancel={onClear}
+      >
+        {children}
+      </AdminFormLayout>
+
+      <EntityList<T>
+        title={listTitle}
+        items={items}
+        emptyMessage={emptyMessage}
+        keyExtractor={keyExtractor}
+        isProcessing={isProcessing}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        renderItemContent={renderItemContent}
+      />
+    </div>
+  );
+}
+</file>
+
+<file path="components/MediaUploader.tsx">
+import { forwardRef } from 'react';
+import toast from 'react-hot-toast';
+import { AdminFileInput } from './AdminUI';
+import { validateImageSize, validateAudioSize } from '../utils/validators';
+
+interface MediaUploaderProps {
+  label: string;
+  hint?: string;
+  accept: 'image/*' | 'audio/*';
+  previewUrl?: string | null;
+  maxSizeMB?: number;
+  onChange: (file: File | null) => void;
+}
+
+const MediaUploader = forwardRef<HTMLInputElement, MediaUploaderProps>(({
+  label, hint, accept, previewUrl, maxSizeMB, onChange
+}, ref) => {
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) { onChange(null); return; }
+
+    const error = accept === 'image/*' ? validateImageSize(file, maxSizeMB) : validateAudioSize(file);
+
+    if (!error) {
+      onChange(file);
+    } else {
+      toast.error(error);
+      onChange(null);
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <div className="media-uploader-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <AdminFileInput
+        label={label}
+        hint={hint}
+        accept={accept}
+        ref={ref}
+        onChange={handleFileChange}
+      />
+
+      {/* Abstracted Preview Handlers */}
+      {previewUrl && accept === 'image/*' && (
+        <img
+          src={previewUrl}
+          alt="Upload Preview"
+          style={{ maxHeight: '100px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', alignSelf: 'flex-start' }}
+        />
+      )}
+      {previewUrl && accept === 'audio/*' && (
+        <audio
+          controls
+          src={previewUrl}
+          style={{ height: '32px', width: '100%' }}
+        />
+      )}
+    </div>
+  );
+});
+
+MediaUploader.displayName = 'MediaUploader';
+export default MediaUploader;
+</file>
+
+<file path="components/AdminUI/index.tsx">
+import React, { forwardRef } from 'react';
+
+export const AdminRow = ({ children }: { children: React.ReactNode }) => (
+  <div className="admin-form-row">
+    {React.Children.map(children, (child) => (
+      <div style={{ flex: 1 }}>{child}</div>
+    ))}
+  </div>
+);
+
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> { label?: string; }
+export const AdminInput = ({ label, ...props }: InputProps) => (
+  <div className="form-group">
+    {label && <label>{label}</label>}
+    <input className="admin-input" {...props} />
+  </div>
+);
+
+interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> { label?: string; minHeight?: string; }
+export const AdminTextarea = ({ label, minHeight = '80px', style, ...props }: TextareaProps) => (
+  <div className="form-group">
+    {label && <label>{label}</label>}
+    <textarea className="admin-textarea" style={{ minHeight, ...style }} {...props} />
+  </div>
+);
+
+interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> { label?: string; options: { label: string; value: string }[]; placeholder?: string; }
+export const AdminSelect = ({ label, options, placeholder, ...props }: SelectProps) => (
+  <div className="form-group">
+    {label && <label>{label}</label>}
+    <select className="admin-input" {...props}>
+      {placeholder && <option value="" disabled>{placeholder}</option>}
+      {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+    </select>
+  </div>
+);
+
+interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'type'> {
+  labelTitle: string;
+  description?: string;
+  accentColor?: string;
+  bgColor?: string;
+  className?: string;
+}
+
+export const AdminCheckbox = ({ labelTitle, description, accentColor, bgColor, className = '', ...props }: CheckboxProps) => (
+  <div
+    className={`admin-checkbox-card ${className}`}
+    style={{ background: bgColor, ...(accentColor ? { borderColor: accentColor } : {}) }}
+  >
+    <input type="checkbox" style={accentColor ? { accentColor } : undefined} {...props} />
+    <label style={accentColor ? { color: accentColor } : undefined}>
+      <strong>{labelTitle}</strong> {description ? `: ${description}` : ''}
+    </label>
+  </div>
+);
+
+interface FileInputProps extends React.InputHTMLAttributes<HTMLInputElement> { label: string; hint?: string; }
+export const AdminFileInput = forwardRef<HTMLInputElement, FileInputProps>(({ label, hint, ...props }, ref) => (
+  <div className="form-group">
+    <label>{label}</label>
+    {hint && <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{hint}</p>}
+    <input type="file" className="admin-file-input" ref={ref} {...props} />
+  </div>
+));
+AdminFileInput.displayName = 'AdminFileInput';
+
+export const FormattingGuide = () => (
+  <div style={{ background: 'rgba(0, 0, 0, 0.4)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', border: '1px dashed var(--accent-cyan)' }}>
+    <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--accent-cyan)', fontFamily: 'var(--font-mono)' }}>
+      <strong>[ FORMATTING GUIDE ]</strong> Immersive HTML effects:
+    </p>
+    <ul style={{ margin: 0, paddingLeft: '1.5rem', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+      <li><code>&lt;span className="redacted"&gt;Text&lt;/span&gt;</code> : Black redaction bar.</li>
+      <li><code>&lt;span className="highlighted"&gt;Text&lt;/span&gt;</code> : Yellow highlighter marker.</li>
+    </ul>
+  </div>
+);
+
+export const DynamicListHeader = ({ title, onAdd, addLabel }: { title: string; onAdd: () => void; addLabel: string }) => (
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', marginTop: '1.5rem', borderTop: '1px dashed rgba(255,255,255,0.1)', paddingTop: '1rem' }}>
+    <label style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)', margin: 0 }}>{title}</label>
+    <button type="button" className="btn-secondary" onClick={onAdd} style={{ padding: '0.25rem 0.75rem', width: 'auto', fontSize: '0.75rem' }}>{addLabel}</button>
+  </div>
+);
+
+export const RemoveButton = ({ onClick, title = "Remove Item", style }: { onClick: () => void, title?: string, style?: React.CSSProperties }) => (
+  <button type="button" onClick={onClick} title={title} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem', ...style }}>×</button>
+);
+
+interface ResourceSelectorProps {
+  label: string;
+  items: { id: number | string; name?: string; title?: string; order_index?: number }[];
+  selectedValues: string[];
+  onChange: (values: number[]) => void;
+  getName?: (item: any) => string;
+}
+
+export const ResourceSelectorGrid = ({ label, items, selectedValues, onChange, getName }: ResourceSelectorProps) => (
+  <div className="form-group" style={{ flex: 1, margin: 0 }}>
+    <label style={{ fontSize: '0.7rem' }}>{label}</label>
+    <select
+      multiple
+      className="admin-input"
+      style={{ height: '80px', padding: '0.25rem' }}
+      value={selectedValues}
+      onChange={(e) => onChange(Array.from(e.target.selectedOptions, opt => Number(opt.value)))}
+    >
+      {items.map((item) => (
+        <option key={item.id} value={item.id.toString()}>
+          {getName ? getName(item) : (item.name || item.title)}
+        </option>
+      ))}
+    </select>
+  </div>
+);
+</file>
+
+<file path="context/AdminContext.tsx">
+import { useEffect } from 'react';
+import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react';
+import { useAdminCases, useAdminPhases, useAdminLevels } from '@/pages/Admin/hooks/useAdminData';
+import type { GameCase, Phase, Level } from '@/types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+interface AdminContextState {
+  caseId: string;
+  phaseId: string;
+  levelId: string;
+  setCaseId: (id: string) => void;
+  setPhaseId: (id: string) => void;
+  setLevelId: (id: string) => void;
+
+  cases: GameCase[];
+  selectedCase: GameCase | undefined;
+  availablePhases: Phase[];
+  selectedPhase: Phase | undefined;
+  availableLevels: Level[];
+  selectedLevel: Level | undefined;
+
+  isLoading: boolean;
+  error: Error | null;
+  isDirty: boolean;
+  setIsDirty: (val: boolean) => void;
+}
+
+const AdminContext = createContext<AdminContextState | undefined>(undefined);
+
+export function AdminProvider({ children }: { children: ReactNode }) {
+  const [isDirty, setIsDirty] = useState<boolean>(false);
+  const { adminT } = useAdminTranslation();
+  const t = adminT.context.adminContext;
+
+  // Browser-level protection against accidental tab closure/refresh
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = ''; // Required by modern browsers to trigger the warning
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  // Local state for dropdown selections
+  const [caseId, setCaseId] = useState<string>('');
+  const [phaseId, setPhaseId] = useState<string>('');
+  const [levelId, setLevelId] = useState<string>('');
+
+  // Granular Data Fetching
+  const { data: cases = [], isLoading: isCasesLoading, error: casesError } = useAdminCases();
+  const { data: availablePhases = [], isLoading: isPhasesLoading, error: phasesError } = useAdminPhases(caseId);
+  const { data: availableLevels = [], isLoading: isLevelsLoading, error: levelsError } = useAdminLevels(phaseId);
+
+  // Cascading state handlers memoized to maintain stable reference equality
+  const handleSetCaseId = useCallback((id: string) => {
+    if (isDirty && !window.confirm(t.switchCaseConfirm)) return;
+    setIsDirty(false);
+    setCaseId(id);
+    setPhaseId('');
+    setLevelId('');
+  }, [isDirty, t]);
+
+  const handleSetPhaseId = useCallback((id: string) => {
+    if (isDirty && !window.confirm(t.switchPhaseConfirm)) return;
+    setIsDirty(false);
+    setPhaseId(id);
+    setLevelId('');
+  }, [isDirty, t]);
+
+  const handleSetLevelId = useCallback((id: string) => {
+    if (isDirty && !window.confirm(t.switchLevelConfirm)) return;
+    setIsDirty(false);
+    setLevelId(id);
+  }, [isDirty, t]);
+
+  // Derived Data (Memoized to prevent unnecessary recalculations)
+  const selectedCase = useMemo(() => cases.find(c => c.id.toString() === caseId), [cases, caseId]);
+  const selectedPhase = useMemo(() => availablePhases.find(p => p.id.toString() === phaseId), [availablePhases, phaseId]);
+  const selectedLevel = useMemo(() => availableLevels.find(l => l.id.toString() === levelId), [availableLevels, levelId]);
+
+  // Aggregate loading and error states
+  const isLoading = isCasesLoading || isPhasesLoading || isLevelsLoading;
+  const error = (casesError || phasesError || levelsError) as Error | null;
+
+  // The Provider value is strictly memoized.
+  // It will ONLY trigger consumer re-renders when a dependency genuinely updates.
+  const value = useMemo(() => ({
+    caseId,
+    phaseId,
+    levelId,
+    setCaseId: handleSetCaseId,
+    setPhaseId: handleSetPhaseId,
+    setLevelId: handleSetLevelId,
+    cases,
+    selectedCase,
+    availablePhases,
+    selectedPhase,
+    availableLevels,
+    selectedLevel,
+    isLoading,
+    error,
+    isDirty,
+    setIsDirty
+  }), [
+    caseId,
+    phaseId,
+    levelId,
+    handleSetCaseId,
+    handleSetPhaseId,
+    handleSetLevelId,
+    cases,
+    selectedCase,
+    availablePhases,
+    selectedPhase,
+    availableLevels,
+    selectedLevel,
+    isLoading,
+    error,
+    isDirty,
+    setIsDirty
+  ]);
+
+  return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;
+}
+
+export function useAdminContext() {
+  const context = useContext(AdminContext);
+  if (context === undefined) {
+    throw new Error('useAdminContext must be used within an AdminProvider');
+  }
+  return context;
+}
+</file>
+
+<file path="forms/CaseForm.tsx">
+import { useState } from 'react';
+import { useAdminCases } from '@/pages/Admin/hooks/useAdminData';
+import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
+import { AdminRow, AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/pages/Admin/components/AdminUI';
+import { validateCaseForm } from '@/pages/Admin/utils/validators';
+import type { GameCase } from '@/types';
+import './Shared/AdminForms.css';
+
+const initialFormState = {
+  title: '', story: '', min_player_XP: '0', XP_on_solve: '100', max_strikes: '5', rating_stars: '5.0',
+  age_rating: 'Mature 17+', estimated_playtime: '60 Minutes', difficulty: 'Standard', tags: '',
+  author_name: 'System', is_published: false, store_locally: false
+};
+
+export default function CaseForm() {
+  const { data: cases = [], isLoading: isFetchingCases } = useAdminCases();
+  const [image, setImage] = useState<File | null>(null);
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.caseForm;
+
+  const {
+    formData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing
+  } = useValidatedForm({
+  entityType: 'case',
+  initialState: initialFormState,
+  validator: validateCaseForm
+});
+
+  const onEdit = (c: GameCase) => {
+    handleEditInit(c, (caseObj) => ({
+      ...initialFormState, ...caseObj,
+      tags: Array.isArray(caseObj.tags) ? caseObj.tags.join(', ') : (caseObj.tags || ''),
+      is_published: !!caseObj.is_published
+    }));
+    setImage(null);
+  };
+
+  const onClear = () => { clearForm(); setImage(null); };
+
+  return (
+    <EntityDashboard<GameCase>
+      entityName={t.entityName}
+      listTitle={t.manageTitle}
+      items={cases}
+      editingId={editingId}
+      isProcessing={isProcessing}
+      isFetching={isFetchingCases}
+      emptyMessage={isFetchingCases ? t.loadingArchive : t.noCases}
+      keyExtractor={(c) => c.id}
+      onClear={onClear}
+      onEdit={onEdit}
+      onDelete={(c) => handleDelete(c.id, t.deleteConfirm(c.title))}
+      renderItemContent={(c) => (
+        <>
+          <span className={`entity-tag ${c.is_published ? 'published' : 'draft'}`}>
+            [{c.is_published ? t.publishedTag : t.draftTag}]
+          </span>
+          <span className="entity-id">ID: {c.id}</span>
+          <strong>{c.title}</strong>
+        </>
+      )}
+    >
+      <form onSubmit={(e) => handleValidatedSubmit(e, { image })} className="admin-form">
+        <AdminCheckbox checked={formData.is_published} onChange={(e) => updateField('is_published', e.target.checked)} labelTitle={formData.is_published ? t.livePublished : t.draftClassified} description={formData.is_published ? t.liveDescription : t.draftDescription} className={formData.is_published ? 'status-live' : 'status-draft'} />
+        <AdminInput label={t.titleLabel} required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
+        <AdminTextarea label={t.storyLabel} required value={formData.story} onChange={(e) => updateField('story', e.target.value)} />
+
+        <AdminRow>
+          <AdminInput label={t.minXpLabel} type="number" required value={formData.min_player_XP} onChange={(e) => updateField('min_player_XP', e.target.value)} />
+          <AdminInput label={t.rewardXpLabel} type="number" required value={formData.XP_on_solve} onChange={(e) => updateField('XP_on_solve', e.target.value)} />
+          <AdminInput label={t.strikesLabel} type="number" required value={formData.max_strikes} onChange={(e) => updateField('max_strikes', e.target.value)} />
+        </AdminRow>
+
+        <AdminRow>
+          <AdminInput label={t.difficultyLabel} required value={formData.difficulty} onChange={(e) => updateField('difficulty', e.target.value)} />
+          <AdminInput label={t.playtimeLabel} required value={formData.estimated_playtime} onChange={(e) => updateField('estimated_playtime', e.target.value)} />
+          <AdminInput label={t.ageRatingLabel} required value={formData.age_rating} onChange={(e) => updateField('age_rating', e.target.value)} />
+        </AdminRow>
+
+        <AdminRow>
+          <AdminInput label={t.userRatingLabel} type="number" step="0.1" required value={formData.rating_stars} onChange={(e) => updateField('rating_stars', e.target.value)} />
+          <AdminInput label={t.authorLabel} required value={formData.author_name} onChange={(e) => updateField('author_name', e.target.value)} />
+        </AdminRow>
+
+        <AdminInput label={t.tagsLabel} placeholder={t.tagsPlaceholder} value={formData.tags} onChange={(e) => updateField('tags', e.target.value)} />
+        <AdminFileInput label={`${t.coverImageLabel} ${editingId ? t.coverImageEditSuffix : ''}`} hint={t.coverImageHint} accept="image/*" ref={registerFileRef('image')} onChange={(e) => setImage(e.target.files?.[0] || null)} />
+
+        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing}>
+          {isProcessing ? t.processingData : editingId ? t.updateCase : t.commitCase}
+        </button>
+      </form>
+    </EntityDashboard>
+  );
+}
+</file>
+
+<file path="forms/EvidenceForm.tsx">
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
+import EvidenceMetadataFields from './Shared/EvidenceMetadataFields';
+import { AdminCheckbox, AdminInput, AdminFileInput } from '@/pages/Admin/components/AdminUI';
+import { validateEvidenceForm, validateImageSize, validateAudioSize } from '../utils/validators';
+import type { Evidence } from '@/types/evidence';
+import './Shared/AdminForms.css';
+
+const initialFormState = { title: '', description: '', evidence_type: 'document', sub_type: '', metadata: {} as Record<string, any>, is_initial: true, is_vital_for_conviction: false, store_locally: false };
+
+export default function EvidenceForm() {
+  const { caseId, selectedCase } = useAdminContext();
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceForm;
+
+  const [image, setImage] = useState<File | null>(null);
+  const [audio, setAudio] = useState<File | null>(null);
+
+  const {
+    formData, setFormData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing
+  } = useValidatedForm({
+    entityType: 'evidence',
+    initialState: initialFormState,
+    basePayload: { case_id: caseId },
+    validator: validateEvidenceForm
+  });
+
+  if (!caseId || !selectedCase) {
+    return (
+      <div className="admin-form-container glass-panel admin-missing-context">
+        <h3>{t.missingContextTitle}</h3><p>{t.missingContextDesc}</p>
+      </div>
+    );
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFile: React.Dispatch<React.SetStateAction<File | null>>, validator: (file: File) => string | null) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setFile(null);
+      return;
+    }
+
+    const error = validator(file);
+    if (!error) {
+      setFile(file);
+    } else {
+      toast.error(error);
+      setFile(null);
+      e.target.value = '';
+    }
+  };
+
+  const onClear = () => { clearForm(); setImage(null); setAudio(null); };
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    const files: Record<string, File | null> = {};
+    if ((formData.evidence_type === 'image' || formData.sub_type === 'background_check') && image) files.image = image;
+    if (formData.evidence_type === 'audio' && audio) files.audio = audio;
+    handleValidatedSubmit(e, files);
+  };
+
+  const onEdit = (ev: Evidence | any) => {
+    handleEditInit(ev, (e) => ({
+      title: e.title, description: e.description || '', evidence_type: e.evidence_type, sub_type: e.sub_type || '', metadata: e.metadata || {}, is_initial: !!e.is_initial, is_vital_for_conviction: !!e.is_vital_for_conviction, store_locally: !!e.store_locally
+    }));
+    setImage(null); setAudio(null);
+  };
+
+  const requiresImage = formData.evidence_type === 'image' || formData.sub_type === 'background_check';
+  const requiresLocalToggle = requiresImage || formData.evidence_type === 'audio';
+
+  return (
+    <EntityDashboard<Evidence>
+      entityName={t.entityName} listTitle={t.manageTitle} items={selectedCase.evidences || []}
+      editingId={editingId} isProcessing={isProcessing} emptyMessage={t.emptyMessage}
+      contextHeader={t.targetCaseHeader(selectedCase.title)} keyExtractor={(ev) => ev.id.toString()}
+      onClear={onClear} onEdit={onEdit} onDelete={(ev) => handleDelete(ev.id, t.deleteConfirm(ev.title))}
+      renderItemContent={(ev: any) => (
+        <>
+          <span className="admin-list-id">EX-{ev.id.toString().padStart(3, '0')}</span>
+          <strong>{ev.title}</strong>
+          {ev.sub_type && <span className="admin-list-badge">{ev.sub_type.replace('_', ' ')}</span>}
+        </>
+      )}
+    >
+      <form onSubmit={onSubmit} className="admin-form">
+        <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialEvidenceLabel} description={t.initialEvidenceDesc} className="status-live" />
+        <AdminCheckbox checked={formData.is_vital_for_conviction} onChange={(e) => updateField('is_vital_for_conviction', e.target.checked)} labelTitle={t.vitalEvidenceLabel} description={t.vitalEvidenceDesc} className="status-draft" />
+        <div className="form-group">
+          <label>{t.masterCategoryLabel}</label>
+          <select className="admin-input" value={formData.evidence_type} onChange={(e) => setFormData(prev => ({ ...prev, evidence_type: e.target.value, sub_type: '', metadata: {} }))}>
+            <option value="document">{t.docOption}</option><option value="testimony">{t.testimonyOption}</option><option value="forensic">{t.forensicOption}</option><option value="audio">{t.audioOption}</option><option value="image">{t.imageOption}</option>
+          </select>
+        </div>
+        <AdminInput label={t.evidenceTitleLabel} required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
+        <AdminInput label={t.evidenceDescLabel} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
+        <EvidenceMetadataFields evidenceType={formData.evidence_type} subType={formData.sub_type} setSubType={(val) => updateField('sub_type', val)} metadata={formData.metadata} updateMeta={(key, value) => setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: value } }))} />
+        {requiresImage && <AdminFileInput label={formData.sub_type === 'background_check' ? t.mugshotLabel : t.evidenceImageLabel} hint={t.imageHint} accept="image/*" ref={registerFileRef('image')} onChange={(e) => handleFileChange(e, setImage, validateImageSize)} />}
+        {formData.evidence_type === 'audio' && <AdminFileInput label={t.audioLabel} hint={t.audioHint} accept="audio/*" ref={registerFileRef('audio')} onChange={(e) => handleFileChange(e, setAudio, validateAudioSize)} />}
+        {requiresLocalToggle && <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} className="amber" />}
+        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing}>
+          {isProcessing ? t.processingData : editingId ? t.updateEvidence : t.commitEvidence}
+        </button>
+      </form>
+    </EntityDashboard>
+  );
+}
+</file>
+
+<file path="forms/InvestigationRequestForm.tsx">
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
+import { getInvestigationRequestLabel } from '@/types';
+import type { Evidence, Level, InvestigationRequest } from '@/types';
+import { AdminSelect } from '@/pages/Admin/components/AdminUI';
+import { validateInvestigationRequestForm } from '@/pages/Admin/utils/validators';
+import './Shared/AdminForms.css';
+
+const initialFormState = { request_type: 'search_warrant', required_evidence_ids: [] as string[], unlocks_evidence_id: '', unlocks_level_id: '' };
+
+export default function InvestigationRequestForm() {
+  const { caseId, selectedCase } = useAdminContext();
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.investigationRequestForm;
+
+  const {
+    formData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, isProcessing
+  } = useValidatedForm({
+    entityType: 'request',
+    initialState: initialFormState,
+    basePayload: { case_id: caseId },
+    validator: (data) => validateInvestigationRequestForm(
+      data,
+      t.minTwoEvidenceAlert,
+      t.rewardRequiredAlert
+    )
+  });
+
+  if (!caseId || !selectedCase) {
+    return (
+      <div className="admin-form-container glass-panel admin-missing-context">
+        <h3>{t.missingContextTitle}</h3><p>{t.missingContextDesc}</p>
+      </div>
+    );
+  }
+
+  const onEdit = (req: InvestigationRequest) => {
+    handleEditInit(req, (r) => ({
+      request_type: r.request_type,
+      required_evidence_ids: r.required_evidences?.map((ev: Evidence) => ev.id.toString()) || [],
+      unlocks_evidence_id: r.unlocks_evidence_id?.toString() || '',
+      unlocks_level_id: r.unlocks_level_id?.toString() || ''
+    }));
+  };
+
+  const allCaseLevels: Level[] = selectedCase.phases?.flatMap(p => p.levels || []) || [];
+
+  return (
+    <EntityDashboard<InvestigationRequest>
+      entityName={t.entityName} listTitle={t.manageTitle} items={selectedCase.investigation_requests || []}
+      editingId={editingId} isProcessing={isProcessing} emptyMessage={t.emptyMessage}
+      contextHeader={t.targetCaseHeader(selectedCase.title)} keyExtractor={(req) => req.id}
+      onClear={clearForm} onEdit={onEdit} onDelete={(req) => handleDelete(req.id, t.deleteConfirm(getInvestigationRequestLabel(req.request_type)))}
+      renderItemContent={(req) => (
+        <>
+          <span className="admin-list-id cyan">REQ-{req.id}</span>
+          <strong>{getInvestigationRequestLabel(req.request_type)}</strong>
+          <div className="admin-list-meta">
+            {t.requiresCount(req.required_evidences?.length || 0)}
+            {(req.unlocks_evidence_id || req.unlocks_level_id) && ` ${t.hasReward}`}
+          </div>
+        </>
+      )}
+    >
+      <form onSubmit={handleValidatedSubmit} className="admin-form">
+        <AdminSelect label={t.requestCategoryLabel} required value={formData.request_type} onChange={(e) => updateField('request_type', e.target.value)} options={[
+          { value: 'search_warrant', label: getInvestigationRequestLabel('search_warrant') },
+          { value: 'financial_subpoena', label: getInvestigationRequestLabel('financial_subpoena') },
+          { value: 'toxicology_report', label: getInvestigationRequestLabel('toxicology_report') },
+          { value: 'wiretap_authorization', label: getInvestigationRequestLabel('wiretap_authorization') },
+          { value: 'ballistics_analysis', label: getInvestigationRequestLabel('ballistics_analysis') },
+          { value: 'digital_forensics', label: getInvestigationRequestLabel('digital_forensics') },
+          { value: 'exhumation_order', label: getInvestigationRequestLabel('exhumation_order') }
+        ]} />
+
+        <div className="form-group admin-multiselect-group">
+          <label className="admin-multiselect-label">{t.puzzleHeader}</label>
+          <p className="admin-multiselect-hint">{t.puzzleHint}</p>
+          <select multiple className="admin-input admin-multiselect-box" value={formData.required_evidence_ids} onChange={(e) => updateField('required_evidence_ids', Array.from(e.target.selectedOptions, opt => opt.value))}>
+            {selectedCase.evidences?.map((ev: Evidence) => (
+              <option key={ev.id} value={ev.id.toString()}>EX-{ev.id.toString().padStart(3, '0')} : {ev.title}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="admin-form-row admin-reward-container">
+          <AdminSelect label={t.rewardEvidenceLabel} value={formData.unlocks_evidence_id} onChange={(e) => updateField('unlocks_evidence_id', e.target.value)} options={[{ value: '', label: t.noEvidenceReward }, ...(selectedCase.evidences?.filter((ev: Evidence) => !ev.is_initial).map((ev: Evidence) => ({ value: ev.id.toString(), label: `EX-${ev.id.toString().padStart(3, '0')} : ${ev.title}` })) || [])]} />
+          <AdminSelect label={t.rewardLevelLabel} value={formData.unlocks_level_id} onChange={(e) => updateField('unlocks_level_id', e.target.value)} options={[{ value: '', label: t.noLevelReward }, ...allCaseLevels.filter(l => !l.is_initial).map((l: Level) => ({ value: l.id.toString(), label: `Level ${l.order_index} : ${l.title}` }))] } />
+        </div>
+
+        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'cyan-accent creating'}`} disabled={isProcessing}>
+          {isProcessing ? t.processingData : editingId ? t.updateProtocol : t.commitProtocol}
+        </button>
+      </form>
+    </EntityDashboard>
+  );
+}
+</file>
+
+<file path="forms/LevelForm.tsx">
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import AdminFormLayout from '@/pages/Admin/components/AdminFormLayout';
+import EntityList from './Shared/EntityList';
+import { getInvestigationRequestLabel } from '@/types';
+import type { Level, Phase } from '@/types';
+import { AdminRow, AdminInput, AdminSelect, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/pages/Admin/components/AdminUI';
+import { validateLevelForm, validateImageSize } from '../utils/validators';
+import './Shared/AdminForms.css';
+
+const initialFormState = { title: '', details: '', order_index: '1', store_locally: false, is_initial: true, presentation_type: 'interrogation', required_request_id: '' };
+
+export default function LevelForm() {
+  const { caseId, phaseId, setPhaseId, selectedCase, selectedPhase, availablePhases } = useAdminContext();
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.levelForm;
+
+  const [image, setImage] = useState<File | null>(null);
+
+  const {
+    formData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing
+  } = useValidatedForm({
+    entityType: 'level',
+    initialState: initialFormState,
+    basePayload: { phase_id: phaseId },
+    validator: validateLevelForm
+  });
+
+  if (!caseId || !phaseId || !selectedCase || !selectedPhase) {
+    return (
+      <div className="admin-form-container glass-panel admin-missing-context">
+        <h3>{t.missingContextTitle}</h3><p>{t.missingContextDesc}</p>
+      </div>
+    );
+  }
+
+  const availableRequests = (selectedCase as any)?.investigation_requests || [];
+  const requestOptions = [{ value: '', label: t.noRequirementOption }, ...availableRequests.map((req: any) => ({ value: req.id.toString(), label: `REQ-${req.id}: ${getInvestigationRequestLabel(req.request_type)}` }))];
+
+  const onEdit = (level: Level, parentPhaseId: number) => {
+    setPhaseId(parentPhaseId.toString());
+    handleEditInit(level, (l) => ({
+      title: l.title, details: l.details || '', order_index: l.order_index.toString(), is_initial: !!l.is_initial, presentation_type: l.presentation_type || 'interrogation', required_request_id: (l as any).required_request_id?.toString() || '', store_locally: false
+    }));
+    setImage(null);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setImage(null);
+      return;
+    }
+
+    const error = validateImageSize(file);
+    if (!error) {
+      setImage(file);
+    } else {
+      toast.error(error);
+      setImage(null);
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <div className="admin-form-page">
+      <AdminFormLayout editingId={editingId} entityName={t.entityName} contextHeader={t.targetContextHeader(selectedCase.title, selectedPhase.title)} onCancel={clearForm}>
+        <form onSubmit={(e) => handleValidatedSubmit(e, { image })} className="admin-form">
+          <AdminRow>
+            <AdminInput label={t.orderIndexLabel} type="number" min="1" required value={formData.order_index} onChange={(e) => updateField('order_index', e.target.value)} />
+            <AdminSelect label={t.presentationFormatLabel} value={formData.presentation_type} onChange={(e) => updateField('presentation_type', e.target.value)} options={[{ value: 'interrogation', label: t.interrogationOption }, { value: 'location', label: t.locationOption }, { value: 'wiretap', label: t.wiretapOption }]} />
+            <AdminSelect label={t.gatekeeperLabel} value={formData.required_request_id} onChange={(e) => updateField('required_request_id', e.target.value)} options={requestOptions} />
+          </AdminRow>
+          <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialPhaseLabel} description={t.initialPhaseDesc} className="status-live" />
+          <AdminInput label={t.levelTitleLabel} type="text" required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
+          <AdminTextarea label={t.levelDetailsLabel} required value={formData.details} onChange={(e) => updateField('details', e.target.value)} />
+          <AdminFileInput label={`${t.bgImageLabel} ${editingId ? t.bgImageEditSuffix : ''}`} hint={t.bgImageHint} accept="image/*" ref={registerFileRef('image')} onChange={handleImageChange} />
+          <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} description={t.storeLocallyDesc} className="amber" />
+          <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing}>
+            {isProcessing ? t.processingData : editingId ? t.updateLevel : t.commitLevel}
+          </button>
+        </form>
+      </AdminFormLayout>
+
+      {availablePhases.length > 0 && (
+        <div className="admin-stack-group">
+          {availablePhases.map((phase: Phase) => (
+            <EntityList<Level>
+              key={`phase-group-${phase.id}`} title={t.phaseLevelsTitle(phase.title)} items={[...(phase.levels || [])].sort((a, b) => a.order_index - b.order_index)}
+              emptyMessage={t.emptyMessage} keyExtractor={(level) => level.id.toString()} isProcessing={isProcessing}
+              onEdit={(level) => onEdit(level, phase.id)} onDelete={(level) => handleDelete(level.id, t.deleteConfirm(level.title))}
+              renderItemContent={(level) => (
+                <><span className="admin-list-id cyan">IDX: {level.order_index}</span><strong>{level.title}</strong><span className="admin-list-badge">({level.presentation_type})</span></>
+              )}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="forms/PhaseForm.tsx">
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
+import { AdminInput, AdminTextarea } from '@/pages/Admin/components/AdminUI';
+import type { Phase } from '@/types';
+import { validatePhaseForm } from '@/pages/Admin/utils/validators';
+import './Shared/AdminForms.css';
+
+const initialFormState = { title: '', description: '', order_index: '1' };
+
+export default function PhaseForm() {
+  const { caseId, selectedCase } = useAdminContext();
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.phaseForm;
+
+  const {
+    formData, updateField, editingId, clearForm, handleValidatedSubmit,
+    handleEditInit, handleDelete, isProcessing
+  } = useValidatedForm({
+      entityType: 'phase',
+      initialState: initialFormState,
+      basePayload: { case_id: caseId },
+      validator: validatePhaseForm
+    });
+
+  if (!caseId || !selectedCase) {
+    return (
+      <div className="admin-form-container glass-panel admin-missing-context">
+        <h3>{t.missingContextTitle}</h3>
+        <p>{t.missingContextDesc}</p>
+      </div>
+    );
+  }
+
+  const onEdit = (phase: Phase) => {
+    handleEditInit(phase, (p) => ({
+      title: p.title,
+      description: p.description || '',
+      order_index: p.order_index.toString()
+    }));
+  };
+
+  return (
+    <EntityDashboard<Phase>
+      entityName={t.entityName}
+      listTitle={t.manageTitle(selectedCase.title)}
+      items={selectedCase.phases || []}
+      editingId={editingId}
+      isProcessing={isProcessing}
+      emptyMessage={t.emptyMessage}
+      contextHeader={t.targetCaseHeader(selectedCase.title)}
+      keyExtractor={(p) => p.id}
+      onClear={clearForm}
+      onEdit={onEdit}
+      onDelete={(p) => handleDelete(p.id, t.deleteConfirm(p.title))}
+      renderItemContent={(p) => (
+        <>
+          <span className="admin-list-id">IDX: {p.order_index}</span>
+          <strong>{p.title}</strong>
+        </>
+      )}
+    >
+      <form onSubmit={handleValidatedSubmit} className="admin-form">
+        <AdminInput label={t.orderIndexLabel} type="number" min="1" required value={formData.order_index} onChange={(e) => updateField('order_index', e.target.value)} />
+        <AdminInput label={t.titleLabel} type="text" required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
+        <AdminTextarea label={t.descriptionLabel} style={{ minHeight: '100px' }} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
+
+        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing}>
+          {isProcessing ? t.processingData : editingId ? t.updatePhase : t.commitPhase}
+        </button>
+      </form>
+    </EntityDashboard>
+  );
+}
+</file>
+
+<file path="forms/SuspectForm.tsx">
+import React, { useState } from 'react';
+import toast from 'react-hot-toast';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
+import { AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/pages/Admin/components/AdminUI';
+import { validateSuspectForm, validateImageSize } from '../utils/validators';
+import type { Suspect } from '@/types';
+import './Shared/AdminForms.css';
+
+const initialFormState = { name: '', background: '', is_initial: true, is_guilty: false, store_locally: false };
+
+export default function SuspectForm() {
+  const { caseId, selectedCase } = useAdminContext();
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.suspectForm;
+
+  const [image, setImage] = useState<File | null>(null);
+
+  const {
+    formData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing
+  } = useValidatedForm({
+    entityType: 'suspect',
+    initialState: initialFormState,
+    basePayload: { case_id: caseId },
+    validator: validateSuspectForm
+  });
+
+  if (!caseId || !selectedCase) {
+    return (
+      <div className="admin-form-container glass-panel admin-missing-context">
+        <h3>{t.missingContextTitle}</h3><p>{t.missingContextDesc}</p>
+      </div>
+    );
+  }
+
+  const onEdit = (suspect: Suspect) => {
+    handleEditInit(suspect, (s) => ({
+      name: s.name, background: s.background || '', is_initial: !!s.is_initial, is_guilty: !!s.is_guilty, store_locally: !!s.store_locally
+    }));
+    setImage(null);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setImage(null);
+      return;
+    }
+
+    const error = validateImageSize(file);
+    if (!error) {
+      setImage(file);
+    } else {
+      toast.error(error);
+      setImage(null);
+      e.target.value = '';
+    }
+  };
+
+  const onClear = () => { clearForm(); setImage(null); };
+
+  return (
+    <EntityDashboard<Suspect>
+      entityName={t.entityName} listTitle={t.manageTitle} items={selectedCase.suspects || []}
+      editingId={editingId} isProcessing={isProcessing} emptyMessage={t.emptyMessage}
+      contextHeader={t.targetCaseHeader(selectedCase.title)} keyExtractor={(s) => s.id}
+      onClear={onClear} onEdit={onEdit} onDelete={(s) => handleDelete(s.id, t.deleteConfirm(s.name))}
+      renderItemContent={(s) => (
+        <>
+          <span className={`admin-list-id ${s.is_guilty ? 'admin-list-guilty' : ''}`}>PID-{s.id.toString().padStart(4, '0')}</span>
+          <strong>{s.name}</strong>
+        </>
+      )}
+    >
+      <form onSubmit={(e) => handleValidatedSubmit(e, { image })} className="admin-form">
+        <AdminCheckbox checked={formData.is_guilty} onChange={(e) => updateField('is_guilty', e.target.checked)} labelTitle={t.guiltyVerdictLabel} description={t.guiltyVerdictDesc} className="status-draft" />
+        <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialSuspectLabel} description={t.initialSuspectDesc} className="status-live" />
+        <AdminInput label={t.nameLabel} required value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
+        <AdminTextarea label={t.backgroundLabel} value={formData.background} onChange={(e) => updateField('background', e.target.value)} />
+        <AdminFileInput label={`${t.mugshotLabel} ${editingId ? t.mugshotEditSuffix : ''}`} hint={t.mugshotHint} accept="image/*" ref={registerFileRef('image')} onChange={handleImageChange} />
+        <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} description={t.storeLocallyDesc} className="amber" />
+        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing}>
+          {isProcessing ? t.processingData : editingId ? t.updateSuspect : t.commitSuspect}
+        </button>
+      </form>
+    </EntityDashboard>
+  );
+}
+</file>
+
+<file path="forms/VictimForm.tsx">
+import { useState } from 'react';
+import toast from 'react-hot-toast';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
+import { AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/pages/Admin/components/AdminUI';
+import { validateVictimForm, validateImageSize } from '../utils/validators';
+import type { Victim } from '@/types';
+import './Shared/AdminForms.css';
+
+const initialFormState = { name: '', background: '', is_initial: true, store_locally: false };
+
+export default function VictimForm() {
+  const { caseId, selectedCase } = useAdminContext();
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.victimForm;
+
+  const [image, setImage] = useState<File | null>(null);
+
+  const {
+    formData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing
+  } = useValidatedForm({
+    entityType: 'victim',
+    initialState: initialFormState,
+    basePayload: { case_id: caseId },
+    validator: validateVictimForm
+  });
+
+  if (!caseId || !selectedCase) {
+    return (
+      <div className="admin-form-container glass-panel admin-missing-context">
+        <h3>{t.missingContextTitle}</h3>
+        <p>{t.missingContextDesc}</p>
+      </div>
+    );
+  }
+
+  const onEdit = (victim: Victim) => {
+    handleEditInit(victim, (v) => ({ name: v.name, background: v.background || '', is_initial: !!v.is_initial, store_locally: false }));
+    setImage(null);
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) { setImage(null); return; }
+
+    const error = validateImageSize(file);
+    if (!error) {
+      setImage(file);
+    } else {
+      toast.error(error);
+      setImage(null);
+      e.target.value = '';
+    }
+  };
+
+  const onClear = () => { clearForm(); setImage(null); };
+
+  return (
+    <EntityDashboard<Victim>
+      entityName={t.entityName} listTitle={t.manageTitle} items={selectedCase.victims || []}
+      editingId={editingId} isProcessing={isProcessing} emptyMessage={t.emptyMessage}
+      contextHeader={t.targetCaseHeader(selectedCase.title)} keyExtractor={(v) => v.id}
+      onClear={onClear} onEdit={onEdit} onDelete={(v) => handleDelete(v.id, t.deleteConfirm(v.name))}
+      renderItemContent={(v) => (
+        <>
+          <span className="admin-list-id">VIC-{v.id.toString().padStart(4, '0')}</span>
+          <strong>{v.name}</strong>
+        </>
+      )}
+    >
+      <form onSubmit={(e) => handleValidatedSubmit(e, { image })} className="admin-form">
+        <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialVictimLabel} description={t.initialVictimDesc} className="status-live" />
+        <AdminInput label={t.nameLabel} required value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
+        <AdminTextarea label={t.backgroundLabel} value={formData.background} onChange={(e) => updateField('background', e.target.value)} />
+        <AdminFileInput label={`${t.victimImageLabel} ${editingId ? t.victimImageEditSuffix : ''}`} hint={t.victimImageHint} accept="image/*" ref={registerFileRef('image')} onChange={handleImageChange} />
+        <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} className="amber" />
+        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing}>
+          {isProcessing ? t.processingData : editingId ? t.updateVictim : t.commitVictim}
+        </button>
+      </form>
+    </EntityDashboard>
+  );
+}
+</file>
+
+<file path="forms/QuestionForm/AdminInterrogationBuilder.tsx">
+import { useState } from 'react';
+import NodeBuilderCanvas from './NodeBuilderCanvas';
+import AdminInterrogationForm from './AdminInterrogationForm';
+import type { Question, Choice } from '@/types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import './AdminInterrogationBuilder.css';
+
+export default function AdminInterrogationBuilder() {
+  const [draftNodes, setDraftNodes] = useState<any[]>([]);
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.interrogationBuilder;
+
+  const addDraftNode = () => {
+    setDraftNodes([...draftNodes, { id: `draft_${Date.now()}`, text: '', choices: [] }]);
+  };
+
+  return (
+    <NodeBuilderCanvas requiredType="interrogation" title={t.canvasTitle}>
+      {({ levelId, savedNodes }) => {
+        // Domain-specific logic remains isolated here
+        const hasTerminalNode = savedNodes.some((n: Question) => {
+          if (!n.choices || n.choices.length === 0) return true;
+          return n.choices.some((c: Choice | any) => !c.outcomes?.next_question_id);
+        });
+
+        return (
+          <>
+            {!hasTerminalNode && savedNodes.length > 0 && (
+              <div className="terminal-text error" style={{ background: 'rgba(163, 50, 50, 0.1)', padding: '1rem', border: '1px solid var(--accent-crimson)', borderRadius: '8px', margin: '0 1rem 1rem' }}>
+                {t.criticalWarning}
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 1rem', marginBottom: '1rem' }}>
+              <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+                {t.nodeStats(savedNodes.length, draftNodes.length)}
+              </span>
+              <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} onClick={addDraftNode}>
+                {t.appendNodeBtn}
+              </button>
+            </div>
+
+            <div className="interrogation-workspace">
+              {savedNodes.map((node) => (
+                <AdminInterrogationForm key={node.id} nodeData={node} levelId={levelId} onSaved={() => {}} onDeleted={() => {}} />
+              ))}
+
+              {draftNodes.map((node) => (
+                <AdminInterrogationForm
+                  key={node.id}
+                  nodeData={node}
+                  levelId={levelId}
+                  onSaved={() => setDraftNodes(draftNodes.filter(d => d.id !== node.id))}
+                  onDeleted={() => setDraftNodes(draftNodes.filter(d => d.id !== node.id))}
+                />
+              ))}
+
+              {savedNodes.length === 0 && draftNodes.length === 0 && (
+                <div className="terminal-text" style={{ gridColumn: '1 / -1' }}>{t.emptyWorkspace}</div>
+              )}
+            </div>
+          </>
+        );
+      }}
+    </NodeBuilderCanvas>
+  );
+}
+</file>
+
+<file path="forms/QuestionForm/AdminInterrogationForm.tsx">
+import { useState } from 'react';
+import toast from 'react-hot-toast';
+import { useAdminMutations } from '@/pages/Admin/hooks/useAdminMutations';
+import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
+import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '@/pages/Admin/utils/questionUtils';
+import type { Question } from '@/types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+interface AdminInterrogationFormProps {
+  nodeData: Question | any;
+  levelId: string;
+  onSaved: () => void;
+  onDeleted: () => void;
+}
+
+export default function AdminInterrogationForm({
+  nodeData, levelId, onSaved, onDeleted
+}: AdminInterrogationFormProps) {
+  const [text, setText] = useState(nodeData.text || '');
+  const isSaved = typeof nodeData.id === 'number';
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.interrogationForm;
+
+  const initialChoices: DraftChoice[] = (nodeData.choices || []).map((c: any) => ({
+    id: c.id || crypto.randomUUID(),
+    text: c.text || '',
+    outcomes: { ...defaultOutcomes(), ...(c.outcomes || {}) },
+    requirements: { ...defaultRequirements(), ...(c.requirements || {}) }
+  }));
+
+  const [choicesState, setChoicesState] = useState<DraftChoice[]>(
+    initialChoices.length > 0
+      ? initialChoices
+      : [{ id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }]
+  );
+
+  // Directly utilize the unified mutations
+  const { createEntity, updateEntity, deleteEntity, isProcessing } = useAdminMutations('question');
+
+  const handleSave = () => {
+    if (!text.trim()) {
+      toast.error(t.emptyDialogueError);
+      return;
+    }
+    if (choicesState.some(c => !c.text.trim())) {
+      toast.error(t.emptyBranchError);
+      return;
+    }
+
+    const formData = buildNodeFormData({
+      level_id: levelId,
+      text,
+      store_locally: false,
+      choices: choicesState,
+    });
+
+    if (isSaved) {
+      updateEntity({ id: nodeData.id, formData }, { onSuccess: onSaved });
+    } else {
+      createEntity(formData, { onSuccess: onSaved });
+    }
+  };
+
+  const handleDelete = () => {
+    if (window.confirm(t.deleteConfirm)) {
+      deleteEntity(nodeData.id, { onSuccess: onDeleted });
+    }
+  };
+
+  return (
+    <div className={`dialogue-node-card ${isSaved ? '' : 'unsaved'}`}>
+      <div className="node-header">
+        <span className="node-id-badge">{isSaved ? t.nodeIdBadge(nodeData.id) : t.unsavedBadge}</span>
+      </div>
+
+      <div className="node-body">
+        <div className="node-suspect-block">
+          <label>{t.suspectDialogueLabel}</label>
+          <textarea
+            className="admin-textarea"
+            dir="auto"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            style={{ minHeight: '80px' }}
+            placeholder={t.suspectDialoguePlaceholder}
+          />
+        </div>
+
+        <div className="node-responses-block">
+          <label>{t.playerResponsesLabel}</label>
+          {choicesState.map((choice, index) => (
+            <ChoiceEditorCard
+              key={choice.id}
+              index={index}
+              choice={choice}
+              updateChoice={(updated) => {
+                const updatedList = choicesState.map(c => c.id === choice.id ? updated : c);
+                setChoicesState(updatedList);
+              }}
+              removeChoice={() => setChoicesState(choicesState.filter(c => c.id !== choice.id))}
+            />
+          ))}
+          <button
+            type="button"
+            className="btn-secondary"
+            style={{ padding: '0.5rem', marginTop: '0.5rem' }}
+            onClick={() => setChoicesState([...choicesState, { id: crypto.randomUUID(), text: '', outcomes: defaultOutcomes(), requirements: defaultRequirements() }])}
+          >
+            {t.addBranchBtn}
+          </button>
+        </div>
+      </div>
+
+      <div className="node-footer">
+        <button className="btn-primary" onClick={handleSave} disabled={isProcessing}>
+          {isProcessing ? t.syncingBtn : isSaved ? t.updateBtn : t.commitBtn}
+        </button>
+        {isSaved && (
+          <button className="btn-secondary delete-btn" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }} onClick={handleDelete} disabled={isProcessing}>
+            {t.deleteBtn}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="forms/QuestionForm/AdminLocationBuilder.tsx">
+import { useState } from 'react';
+import toast from 'react-hot-toast';
+import { useCoordinateMapper } from '@/pages/Admin/hooks/useCoordinateMapper';
+import { useNodeBuilder } from '@/pages/Admin/hooks/useNodeBuilder';
+import NodeBuilderCanvas from './NodeBuilderCanvas';
+import AdminLocationForm from './AdminLocationForm';
+import EntityList from '../Shared/EntityList';
+import type { Question } from '@/types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import './AdminLocationBuilder.css';
+
+export default function AdminLocationBuilder() {
+  const [image, setImage] = useState<File | null>(null);
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.locationBuilder;
+
+  const { state, setters, actions, status } = useNodeBuilder();
+  const { activeCoordinateTarget, setActiveCoordinateTarget, handleImageClick } = useCoordinateMapper(state.choices, setters.setChoices);
+
+  const handleCreateNewScene = () => {
+    actions.clearForm();
+    setImage(null);
+    setters.setIsFormOpen(true);
+    setters.setChoices([{ id: crypto.randomUUID(), text: '', outcomes: {}, requirements: {} }]);
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (state.choices.some(c => !c.text.trim())) {
+      toast.error(t.mappingError);
+      return;
+    }
+    actions.handleSubmit(e, { image });
+  };
+
+  return (
+    <NodeBuilderCanvas requiredType="location" title={t.canvasTitle}>
+      {({ savedNodes }) => {
+        const activeNode = savedNodes.find((q: Question) => q.id === state.editingId);
+        const previewUrl = image ? URL.createObjectURL(image) : (activeNode?.img_url || null);
+
+        return (
+          <>
+            {!state.isFormOpen && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} onClick={handleCreateNewScene}>
+                    {t.appendSceneBtn}
+                  </button>
+                </div>
+                <EntityList<Question>
+                  title={t.scenesTitle} items={savedNodes} emptyMessage={t.emptyScenesMsg}
+                  keyExtractor={(q) => q.id} isProcessing={status.isProcessing} onEdit={actions.handleEdit} onDelete={actions.handleDelete}
+                  renderItemContent={(scene) => (
+                    <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                      <div className="scene-thumbnail" style={{ backgroundImage: `url(${scene.img_url || '/placeholder-crime-scene.jpg'})` }} />
+                      <div>
+                        <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontSize: '0.8rem' }}>{t.sceneIdBadge(scene.id)}</span>
+                        <h4 style={{ margin: '0.25rem 0', color: 'var(--text-primary)' }}>{scene.text || t.unnamedScene}</h4>
+                      </div>
+                    </div>
+                  )}
+                />
+              </div>
+            )}
+
+            {state.isFormOpen && (
+              <AdminLocationForm
+                state={state} setters={setters} status={status} previews={{ image: previewUrl }}
+                actions={{ registerFileRef: actions.registerFileRef, handleSubmit, handleCancel: actions.clearForm }}
+                setImage={setImage} activeCoordinateTarget={activeCoordinateTarget} setActiveCoordinateTarget={setActiveCoordinateTarget}
+                handleImageClick={handleImageClick}
+              />
+            )}
+          </>
+        );
+      }}
+    </NodeBuilderCanvas>
+  );
+}
+</file>
+
+<file path="forms/QuestionForm/AdminLocationForm.tsx">
+import ChoiceEditorCard from '../Shared/ChoiceEditorCard';
+import MediaUploader from '@/pages/Admin/components/MediaUploader';
+import type { BaseNodeFormProps } from '@/pages/Admin/utils/questionUtils';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+interface AdminLocationFormProps extends BaseNodeFormProps {
+  setImage: (file: File | null) => void;
+  activeCoordinateTarget: string | number | null;
+  setActiveCoordinateTarget: (val: string | number | null) => void;
+  handleImageClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+}
+
+export default function AdminLocationForm({
+  state, setters, actions, status, previews, setImage, activeCoordinateTarget, setActiveCoordinateTarget, handleImageClick
+}: AdminLocationFormProps) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.locationForm;
+
+  return (
+    <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+      <form onSubmit={actions.handleSubmit} className="admin-form">
+        <div className="form-group">
+          <label>{t.sceneTitleLabel}</label>
+          <textarea className="admin-textarea" style={{ minHeight: '80px' }} required value={state.text} onChange={(e) => setters.setText(e.target.value)} />
+        </div>
+
+        <div className="admin-form-row" style={{ marginTop: '1rem' }}>
+          <div className="form-group" style={{ flex: 1 }}>
+            <MediaUploader
+              label={t.envMapLabel}
+              accept="image/*"
+              maxSizeMB={10}
+              ref={actions.registerFileRef('image')}
+              onChange={setImage}
+            />
+          </div>
+        </div>
+
+        {previews.image && (
+          <div className="coordinate-picker-container" style={{ marginTop: '1.5rem' }}>
+            {activeCoordinateTarget && (
+              <div className="targeting-active-banner">
+                <span>{t.targetingBanner}</span>
+                <button type="button" onClick={() => setActiveCoordinateTarget(null)} style={{ background: 'transparent', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)' }}>{t.cancelTargetBtn}</button>
+              </div>
+            )}
+            <div className={`coordinate-picker-image-wrapper ${activeCoordinateTarget ? 'mapping-active' : ''}`} onClick={handleImageClick}>
+              <img src={previews.image} alt="Map Preview" />
+            </div>
+          </div>
+        )}
+
+        <div className="qf-choices-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
+          {state.choices.map((choice, index) => (
+            <ChoiceEditorCard key={choice.id || index} index={index} choice={choice} updateChoice={(updated) => setters.setChoices(state.choices.map(c => c.id === choice.id ? updated : c))} removeChoice={() => setters.setChoices(state.choices.filter(c => c.id !== choice.id))} />
+          ))}
+        </div>
+
+        <button type="button" onClick={() => setters.setChoices([...state.choices, { id: crypto.randomUUID(), text: '', outcomes: {}, requirements: {} }])} className="btn-secondary" style={{ padding: '0.75rem', width: '100%', marginTop: '1rem' }}>
+          {t.mapCoordinateBtn}
+        </button>
+
+        <button type="submit" className="btn-primary" disabled={status.isProcessing} style={{ background: state.editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', color: 'var(--bg-dark)', marginTop: '2rem' }}>
+          {status.isProcessing ? t.processingBtn : t.commitSceneBtn}
+        </button>
+      </form>
+    </div>
+  );
+}
+</file>
+
+<file path="forms/QuestionForm/AdminWiretapBuilder.tsx">
+import { useState } from 'react';
+import toast from 'react-hot-toast';
+import NodeBuilderCanvas from './NodeBuilderCanvas';
+import AdminWiretapForm from './AdminWiretapForm';
+import EntityList from '../Shared/EntityList';
+import { useNodeBuilder } from '@/pages/Admin/hooks/useNodeBuilder';
+import type { Question } from '@/types';
+import { type DraftChoice } from '../Shared/ChoiceEditorCard';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+export default function AdminWiretapBuilder() {
+  const [image, setImage] = useState<File | null>(null);
+  const [audio, setAudio] = useState<File | null>(null);
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.wiretapBuilder;
+
+  const { state, setters, actions, status } = useNodeBuilder([
+    { id: crypto.randomUUID(), text: '', outcomes: {}, requirements: {} },
+    { id: crypto.randomUUID(), text: '', outcomes: {}, requirements: {} }
+  ]);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (state.choices.length < 2) {
+      toast.error(t.minChoicesError);
+      return;
+    }
+    actions.handleSubmit(e, { image, audio });
+  };
+
+  const addChoice = () => setters.setChoices([...state.choices, { id: crypto.randomUUID(), text: '', outcomes: {}, requirements: {} }]);
+  const updateChoice = (index: number, updatedChoice: DraftChoice) => {
+    const newChoices = [...state.choices];
+    newChoices[index] = updatedChoice;
+    setters.setChoices(newChoices);
+  };
+  const removeChoice = (index: number) => setters.setChoices(state.choices.filter((_, i) => i !== index));
+
+  return (
+    <NodeBuilderCanvas requiredType="wiretap" title={t.canvasTitle}>
+      {({ savedNodes }) => {
+        const activeNode = savedNodes.find((q: Question) => q.id === state.editingId);
+        const previewUrl = image ? URL.createObjectURL(image) : (activeNode?.img_url || null);
+        const audioPreviewUrl = audio ? URL.createObjectURL(audio) : (activeNode?.audio_url || null);
+
+        return (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+            <AdminWiretapForm
+              state={state} setters={setters} status={status} previews={{ image: previewUrl, audio: audioPreviewUrl }}
+              actions={{ registerFileRef: actions.registerFileRef, handleSubmit, handleCancel: actions.clearForm }}
+              setImage={setImage} setAudio={setAudio} addChoice={addChoice} updateChoice={updateChoice} removeChoice={removeChoice}
+            />
+
+            <EntityList<Question>
+              title={t.listTitle} items={savedNodes} emptyMessage={t.emptyListMsg}
+              keyExtractor={(q) => q.id} isProcessing={status.isProcessing} onEdit={actions.handleEdit} onDelete={actions.handleDelete}
+              renderItemContent={(q) => (
+                <>
+                  <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', marginRight: '1rem', fontSize: '0.85rem' }}>
+                    {t.audioFeedStatus(!!q.audio_url)}
+                  </span>
+                  <strong style={{ display: 'block', marginTop: '0.5rem' }}>{q.text}</strong>
+                </>
+              )}
+            />
+          </div>
+        );
+      }}
+    </NodeBuilderCanvas>
+  );
+}
+</file>
+
+<file path="forms/QuestionForm/AdminWiretapForm.tsx">
+import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
+import MediaUploader from '@/pages/Admin/components/MediaUploader';
+import type { BaseNodeFormProps } from '@/pages/Admin/utils/questionUtils';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+interface AdminWiretapFormProps extends BaseNodeFormProps {
+  setImage: (file: File | null) => void;
+  setAudio: (file: File | null) => void;
+  addChoice: () => void;
+  updateChoice: (index: number, choice: DraftChoice) => void;
+  removeChoice: (index: number) => void;
+}
+
+export default function AdminWiretapForm({
+  state, setters, actions, status, previews, setImage, setAudio, addChoice, updateChoice, removeChoice
+}: AdminWiretapFormProps) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.wiretapForm;
+
+  return (
+    <div>
+      <form onSubmit={actions.handleSubmit} className="admin-form">
+        <div className="form-group">
+          <label>{t.transcriptLabel}</label>
+          <textarea className="admin-textarea" required value={state.text} onChange={(e) => setters.setText(e.target.value)} style={{ minHeight: '100px' }} />
+        </div>
+
+        <div className="admin-form-row">
+          <div className="form-group" style={{ flex: 1 }}>
+            <MediaUploader
+              label={t.audioFeedLabel(!!state.editingId)}
+              accept="audio/*"
+              ref={actions.registerFileRef('audio')}
+              onChange={setAudio}
+              previewUrl={previews.audio}
+            />
+          </div>
+          <div className="form-group" style={{ flex: 1 }}>
+            <MediaUploader
+              label={t.imageDossierLabel}
+              accept="image/*"
+              ref={actions.registerFileRef('image')}
+              onChange={setImage}
+              previewUrl={previews.image}
+            />
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(255,255,255,0.02)', padding: '1rem', borderRadius: '8px', marginBottom: '2rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+          <input type="checkbox" id="store-locally-toggle" checked={state.storeLocally} onChange={(e) => setters.setStoreLocally(e.target.checked)} style={{ transform: 'scale(1.3)', accentColor: 'var(--accent-amber)' }} />
+          <label htmlFor="store-locally-toggle" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--accent-amber)', cursor: 'pointer' }}><strong>{t.storeLocallyLabel}</strong></label>
+        </div>
+
+        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h4 style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-primary)', margin: 0 }}>{t.choicesHeader}</h4>
+            <button type="button" onClick={addChoice} className="btn-secondary" style={{ padding: '0.5rem 1rem', width: 'auto', fontSize: '0.85rem' }}>{t.addOptionBtn}</button>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {state.choices.map((choice, index) => (
+              <ChoiceEditorCard key={choice.id || index} index={index} choice={choice} updateChoice={(updated) => updateChoice(index, updated)} removeChoice={() => removeChoice(index)} />
+            ))}
+          </div>
+        </div>
+
+        <button type="submit" className="btn-primary" disabled={status.isProcessing} style={{ background: state.editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', color: 'var(--bg-dark)', marginTop: '2rem' }}>
+          {status.isProcessing ? t.transmittingBtn : state.editingId ? t.updateInterceptBtn : t.commitInterceptBtn}
+        </button>
+      </form>
+    </div>
+  );
+}
+</file>
+
+<file path="forms/QuestionForm/NodeBuilderCanvas.tsx">
+import type { ReactNode } from 'react';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import LevelBuilderGuard from '../Shared/LevelBuilderGuard';
+import type { Question } from '@/types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+interface CanvasContext {
+  levelId: string;
+  selectedCase: any;
+  selectedPhase: any;
+  selectedLevel: any;
+  savedNodes: Question[];
+}
+
+interface NodeBuilderCanvasProps {
+  requiredType: 'interrogation' | 'location' | 'wiretap';
+  title: string;
+  children: (context: CanvasContext) => ReactNode;
+}
+
+export default function NodeBuilderCanvas({ requiredType, title, children }: NodeBuilderCanvasProps) {
+  const { levelId, selectedCase, selectedPhase, selectedLevel } = useAdminContext();
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.nodeBuilderCanvas;
+
+  const savedNodes: Question[] = selectedLevel?.questions || [];
+
+  return (
+    <LevelBuilderGuard requiredType={requiredType}>
+      <div className={`${requiredType}-builder-container`}>
+        <div className="admin-form-container glass-panel" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
+          <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', margin: '0 0 0.5rem 0' }}>
+            // {title}
+          </h3>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
+            {t.targetingHeader(selectedCase?.title, selectedPhase?.title, selectedLevel?.title)}
+          </span>
+        </div>
+
+        {/* Injecting the context down to the specific mechanic implementation */}
+        {children({ levelId, selectedCase, selectedPhase, selectedLevel, savedNodes })}
+      </div>
+    </LevelBuilderGuard>
+  );
+}
+</file>
+
+<file path="forms/Shared/ChoiceEditorCard.tsx">
+import { useState } from 'react';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useTargeting } from '@/context/TargetingContext';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import type { Evidence, Level, Phase, Suspect, Victim } from '@/types';
+import './ChoiceEditorCard.css';
+
+export interface DraftChoice {
+  id?: number | string;
+  text: string;
+  outcomes?: {
+    unlock_evidence?: number[];
+    unlock_levels?: number[];
+    unlock_suspects?: number[];
+    unlock_victims?: number[];
+    next_question_id?: number | null;
+    gives_strike?: boolean;
+    feedback?: string;
+  };
+  requirements?: {
+    required_evidence?: number[];
+    required_choices?: number[];
+  };
+}
+
+export interface LevelWithPhase extends Level {
+  phase?: Phase;
+  phase_title?: string;
+}
+
+export interface FlattenedChoice extends DraftChoice {
+  question_id?: number;
+  question_text?: string;
+}
+
+interface ChoiceEditorCardProps {
+  index: number;
+  choice: DraftChoice;
+  updateChoice: (updated: DraftChoice) => void;
+  removeChoice: () => void;
+}
+
+export default function ChoiceEditorCard({
+  index,
+  choice,
+  updateChoice,
+  removeChoice,
+}: ChoiceEditorCardProps) {
+  const [isExpanded, setIsExpanded] = useState<boolean>(
+    typeof choice.id === 'string' || choice.id === undefined
+  );
+
+  const { selectedCase } = useAdminContext();
+  const targeting = useTargeting();
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.choiceEditorCard;
+
+  if (!selectedCase) return null;
+
+  const availableEvidence = selectedCase.evidences || [];
+  const availableLevels = selectedCase.phases?.flatMap(p => p.levels || []) || [];
+  const availableSuspects = selectedCase.suspects || [];
+  const availableVictims = selectedCase.victims || [];
+
+  const updateOutcomes = <K extends keyof NonNullable<DraftChoice['outcomes']>>(
+    key: K,
+    value: NonNullable<DraftChoice['outcomes']>[K]
+  ) => {
+    updateChoice({ ...choice, outcomes: { ...(choice.outcomes || {}), [key]: value } });
+  };
+
+  const updateRequirements = <K extends keyof NonNullable<DraftChoice['requirements']>>(
+    key: K,
+    value: NonNullable<DraftChoice['requirements']>[K]
+  ) => {
+    updateChoice({ ...choice, requirements: { ...(choice.requirements || {}), [key]: value } });
+  };
+
+  const unlockedEv = choice.outcomes?.unlock_evidence?.map(String) || [];
+  const unlockedLv = choice.outcomes?.unlock_levels?.map(String) || [];
+  const unlockedSu = choice.outcomes?.unlock_suspects?.map(String) || [];
+  const unlockedVi = choice.outcomes?.unlock_victims?.map(String) || [];
+  const reqEv = choice.requirements?.required_evidence?.map(String) || [];
+
+  const hasCoords = choice.text.includes('|') && !choice.text.startsWith('|');
+  const coordPreview = hasCoords ? choice.text.split('|')[0].trim() : null;
+
+  const isTargeting = targeting?.activeTarget === choice.id;
+
+  return (
+    <div className="choice-editor-card">
+      {/* CLEAN HEADER BAR */}
+      <div className="choice-editor-header" onClick={() => setIsExpanded(!isExpanded)}>
+        <div className="header-info-group">
+          <span className="choice-index">{t.choiceIndex(index + 1)}</span>
+          <span className="choice-preview">
+            {choice.text ? `"${choice.text}"` : t.blankChoice}
+          </span>
+
+          {coordPreview && (
+            <span className="badge-coord">📍 {coordPreview}%</span>
+          )}
+
+          {choice.outcomes?.gives_strike && (
+            <span className="badge-strike">{t.strikePenaltyBadge}</span>
+          )}
+        </div>
+
+        <div className="header-actions-group" onClick={(e) => e.stopPropagation()}>
+          {targeting && (
+            <button
+              type="button"
+              className={`btn-secondary target-btn ${isTargeting ? 'active' : ''}`}
+              onClick={() => targeting.toggleTarget(choice.id as string | number)}
+            >
+              {isTargeting ? t.targetingActive : t.targetingMap}
+            </button>
+          )}
+
+          <button type="button" className="btn-secondary collapse-btn" onClick={() => setIsExpanded(!isExpanded)}>
+            {isExpanded ? t.collapse : t.expand}
+          </button>
+
+          <button type="button" className="delete-btn" onClick={removeChoice} title={t.deleteTitle}>
+            ✕
+          </button>
+        </div>
+      </div>
+
+      {/* COLLAPSIBLE BODY CONTENT */}
+      {isExpanded && (
+        <div className="choice-editor-body">
+          <div className="form-group">
+            <label>{t.choiceTextLabel}</label>
+            <input
+              type="text"
+              className="admin-input"
+              required
+              value={choice.text}
+              onChange={(e) => updateChoice({ ...choice, text: e.target.value })}
+              placeholder={t.choiceTextPlaceholder}
+            />
+          </div>
+
+          <div className="outcomes-panel">
+            <h6>{t.narrativeOutcomesTitle}</h6>
+
+            <div className="checkbox-row strike-penalty-row">
+              <input
+                type="checkbox"
+                checked={!!choice.outcomes?.gives_strike}
+                onChange={(e) => updateOutcomes('gives_strike', e.target.checked)}
+              />
+              <label><strong>{t.penaltyStrikeLabel}</strong> {t.penaltyStrikeDesc}</label>
+            </div>
+
+            <div className="form-group">
+              <label>{t.feedbackLabel}</label>
+              <textarea
+                className="admin-textarea"
+                value={choice.outcomes?.feedback || ''}
+                onChange={(e) => updateOutcomes('feedback', e.target.value)}
+                placeholder={t.feedbackPlaceholder}
+              />
+            </div>
+
+            <div className="admin-form-row">
+              <div className="form-group">
+                <label>{t.unlockEvidenceLabel}</label>
+                <select multiple className="admin-input" value={unlockedEv} onChange={(e) => updateOutcomes('unlock_evidence', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
+                  {availableEvidence.map((ev: Evidence) => (
+                    <option key={ev.id} value={ev.id.toString()}>{t.evidenceOption(ev.id, ev.title)}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>{t.unlockLevelsLabel}</label>
+                <select multiple className="admin-input" value={unlockedLv} onChange={(e) => updateOutcomes('unlock_levels', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
+                  {availableLevels.map((lv: Level) => (
+                    <option key={lv.id} value={lv.id.toString()}>{t.levelOption(lv.order_index, lv.title)}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="admin-form-row">
+              <div className="form-group">
+                <label>{t.unlockSuspectsLabel}</label>
+                <select multiple className="admin-input" value={unlockedSu} onChange={(e) => updateOutcomes('unlock_suspects', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
+                  {availableSuspects.map((su: Suspect) => (
+                    <option key={su.id} value={su.id.toString()}>{su.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="form-group">
+                <label>{t.unlockVictimsLabel}</label>
+                <select multiple className="admin-input" value={unlockedVi} onChange={(e) => updateOutcomes('unlock_victims', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
+                  {availableVictims.map((vi: Victim) => (
+                    <option key={vi.id} value={vi.id.toString()}>{vi.name}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div className="requirements-panel">
+            <h6>{t.gatekeeperRequirementsTitle}</h6>
+            <div className="form-group">
+              <label>{t.requiredEvidenceLabel}</label>
+              <select multiple className="admin-input" value={reqEv} onChange={(e) => updateRequirements('required_evidence', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
+                {availableEvidence.map((ev: Evidence) => (
+                  <option key={ev.id} value={ev.id.toString()}>{t.evidenceOption(ev.id, ev.title)}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="forms/Shared/EntityList.tsx">
+import { type ReactNode } from 'react';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import './AdminForms.css';
+
+interface EntityListProps<T> {
+  title: string;
+  items: T[];
+  emptyMessage?: string;
+  keyExtractor: (item: T) => string | number;
+  renderItemContent: (item: T) => ReactNode;
+  onEdit: (item: T) => void;
+  onDelete: (item: T) => void;
+  isProcessing: boolean;
+}
+
+export default function EntityList<T>({
+  title,
+  items,
+  emptyMessage = 'No items found.',
+  keyExtractor,
+  renderItemContent,
+  onEdit,
+  onDelete,
+  isProcessing
+}: EntityListProps<T>) {
+  const { adminT } = useAdminTranslation();
+  // Fallback safe reference if key isn't added yet, or standard lookup:
+  const t = adminT.forms.entityList || { editBtn: 'Edit', deleteBtn: 'Delete' };
+
+  return (
+    <div className="admin-entity-list-container">
+      <h3 className="admin-entity-list-title">
+        // {title}
+      </h3>
+
+      {items.length === 0 ? (
+        <div className="terminal-text admin-missing-context" style={{ padding: 0, textAlign: 'left' }}>
+          {emptyMessage}
+        </div>
+      ) : (
+        <div className="admin-entity-stack">
+          {items.map((item) => (
+            <div key={keyExtractor(item)} className="admin-entity-row">
+              <div className="admin-entity-content">
+                {renderItemContent(item)}
+              </div>
+              <div className="admin-entity-actions">
+                <button
+                  type="button"
+                  onClick={() => onEdit(item)}
+                  disabled={isProcessing}
+                  className="admin-action-btn edit"
+                >
+                  {t.editBtn}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDelete(item)}
+                  disabled={isProcessing}
+                  className="admin-action-btn delete"
+                >
+                  {t.deleteBtn}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="forms/Shared/EvidenceMetadataFields.tsx">
+import { AdminSelect, AdminTextarea } from '@/pages/Admin/components/AdminUI';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import {
+  AutopsyFields, BallisticsFields, DNAFields, DigitalForensicsFields, TraceAnalysisFields,
+  CorrespondenceFields, FinancialFields, JournalFields, ContractFields, MemoFields, BackgroundCheckFields
+} from './MetadataFields';
+import './AdminForms.css';
+
+interface EvidenceMetadataFieldsProps {
+  evidenceType: string;
+  subType: string;
+  setSubType: (val: string) => void;
+  metadata: Record<string, any>;
+  updateMeta: (key: string, value: any) => void;
+}
+
+export default function EvidenceMetadataFields({ evidenceType, subType, setSubType, metadata, updateMeta }: EvidenceMetadataFieldsProps) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata || {
+    sectionTitle: "[ Structured Metadata Injection ]",
+    forensicAutopsy: "Autopsy Report",
+    forensicBallistics: "Ballistics Analysis",
+    forensicDna: "DNA / Serology Profile",
+    forensicDigital: "Digital Forensics",
+    forensicTrace: "Trace / Material Analysis",
+    docCorrespondence: "Correspondence (Email/Letter)",
+    docFinancial: "Financial Record",
+    docJournal: "Personal Diary / Journal",
+    docContract: "Official Contract / Deed",
+    docMemo: "Corporate Memo / Note",
+    docBackground: "Background Check / Dossier",
+    selectForensicPlaceholder: "-- Select Forensic Classification --",
+    selectDocPlaceholder: "-- Select Document Classification --",
+    officialTranscriptLabel: "Official Transcript"
+  };
+
+  const FORENSIC_OPTIONS = [
+    { value: "autopsy", label: t.forensicAutopsy },
+    { value: "ballistics", label: t.forensicBallistics },
+    { value: "dna", label: t.forensicDna },
+    { value: "digital_forensics", label: t.forensicDigital },
+    { value: "trace_analysis", label: t.forensicTrace }
+  ];
+
+  const DOCUMENT_OPTIONS = [
+    { value: "correspondence", label: t.docCorrespondence },
+    { value: "financial", label: t.docFinancial },
+    { value: "journal", label: t.docJournal },
+    { value: "contract", label: t.docContract },
+    { value: "memo", label: t.docMemo },
+    { value: "background_check", label: t.docBackground }
+  ];
+
+  const renderSubTypeSelector = () => {
+    if (evidenceType === 'forensic') return <AdminSelect required value={subType} onChange={e => setSubType(e.target.value)} options={FORENSIC_OPTIONS} placeholder={t.selectForensicPlaceholder} />;
+    if (evidenceType === 'document') return <AdminSelect required value={subType} onChange={e => setSubType(e.target.value)} options={DOCUMENT_OPTIONS} placeholder={t.selectDocPlaceholder} />;
+    return null;
+  };
+
+  const renderDynamicInputs = () => {
+    const props = { metadata, updateMeta: updateMeta as any };
+
+    switch (subType) {
+      // FORENSICS
+      case 'autopsy': return <AutopsyFields {...props} />;
+      case 'ballistics': return <BallisticsFields {...props} />;
+      case 'dna': return <DNAFields {...props} />;
+      case 'digital_forensics': return <DigitalForensicsFields {...props} />;
+      case 'trace_analysis': return <TraceAnalysisFields {...props} />;
+
+      // DOCUMENTS
+      case 'correspondence': return <CorrespondenceFields {...props} />;
+      case 'financial': return <FinancialFields {...props} />;
+      case 'journal': return <JournalFields {...props} />;
+      case 'contract': return <ContractFields {...props} />;
+      case 'memo': return <MemoFields {...props} />;
+      case 'background_check': return <BackgroundCheckFields {...props} />;
+
+      // FALLBACK
+      default:
+        if (evidenceType === 'testimony') {
+          return <AdminTextarea label={t.officialTranscriptLabel} value={metadata.transcript || ''} onChange={e => updateMeta('transcript', e.target.value)} />;
+        }
+        return null;
+    }
+  };
+
+  if (evidenceType === 'image' || evidenceType === 'audio') return null;
+
+  return (
+    <div className="metadata-container">
+      <h4 className="metadata-title">
+        {t.sectionTitle}
+      </h4>
+      {renderSubTypeSelector()}
+      {(subType || evidenceType === 'testimony') && (
+        <div className="metadata-inputs-wrapper">
+          {renderDynamicInputs()}
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="forms/Shared/LevelBuilderGuard.tsx">
+import type { ReactNode } from 'react';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+interface LevelBuilderGuardProps {
+  requiredType: 'location' | 'wiretap' | 'interrogation';
+  children: ReactNode;
+}
+
+export default function LevelBuilderGuard({ requiredType, children }: LevelBuilderGuardProps) {
+  const { caseId, levelId, selectedCase, selectedPhase, selectedLevel } = useAdminContext();
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.levelBuilderGuard;
+
+  if (!caseId || !levelId || !selectedCase || !selectedPhase || !selectedLevel) {
+    return (
+      <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
+        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', margin: '0 0 1rem 0' }}>
+          {t.missingContextTitle}
+        </h3>
+        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+          {t.missingContextDesc(requiredType)}
+        </p>
+      </div>
+    );
+  }
+
+  if (selectedLevel.presentation_type !== requiredType) {
+    return (
+      <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center', borderColor: 'var(--accent-crimson)' }}>
+        <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', margin: '0 0 1rem 0' }}>
+          {t.mismatchTitle}
+        </h3>
+        <p style={{ color: 'var(--text-secondary)', margin: 0 }}>
+          {t.mismatchDesc(selectedLevel.presentation_type, requiredType)}
+        </p>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+</file>
+
+<file path="forms/Shared/MetadataFields/AutopsyFields.tsx">
+import { useDynamicList } from '@/hooks/useDynamicList';
+import type { AutopsyMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import {
+  AdminRow, AdminInput, AdminTextarea,
+  DynamicListHeader, RemoveButton
+} from '@/pages/Admin/components/AdminUI';
+
+export default function AutopsyFields({ metadata, updateMeta }: MetadataFieldProps<AutopsyMetadata>) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata.autopsy;
+
+  const { items, add, updatePrimitive, remove } = useDynamicList<string>(
+    metadata.evidence_collected || [],
+    (newList) => updateMeta('evidence_collected', newList)
+  );
+
+  return (
+    <>
+      <AdminRow>
+        <AdminInput label={t.victimNameLabel} value={metadata.victim_name || ''} onChange={e => updateMeta('victim_name', e.target.value)} placeholder={t.victimNamePlaceholder} />
+        <AdminInput label={t.genderLabel} value={metadata.gender || ''} onChange={e => updateMeta('gender', e.target.value)} placeholder={t.genderPlaceholder} />
+        <AdminInput label={t.ageLabel} value={metadata.victim_age || ''} onChange={e => updateMeta('victim_age', e.target.value)} placeholder={t.agePlaceholder} />
+      </AdminRow>
+      <AdminRow>
+        <AdminInput label={t.examinerLabel} required value={metadata.examiner || ''} onChange={e => updateMeta('examiner', e.target.value)} />
+        <AdminInput label={t.timeOfDeathLabel} required value={metadata.time_of_death || ''} onChange={e => updateMeta('time_of_death', e.target.value)} />
+      </AdminRow>
+      <AdminInput label={t.causeOfDeathLabel} required value={metadata.cause_of_death || ''} onChange={e => updateMeta('cause_of_death', e.target.value)} />
+      <AdminTextarea label={t.anomaliesLabel} value={metadata.anomalies || ''} onChange={e => updateMeta('anomalies', e.target.value)} />
+      <AdminTextarea label={t.internalExamLabel} value={metadata.internal_exam || ''} onChange={e => updateMeta('internal_exam', e.target.value)} placeholder={t.internalExamPlaceholder} />
+      <AdminTextarea label={t.toxicologyLabel} minHeight="60px" value={metadata.toxicology_report || ''} onChange={e => updateMeta('toxicology_report', e.target.value)} placeholder={t.toxicologyPlaceholder} />
+
+      <DynamicListHeader title={t.evidenceHeader} onAdd={() => add('')} addLabel={t.addSampleBtn} />
+      {items.map((item, idx) => (
+        <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+          <AdminInput value={item} onChange={e => updatePrimitive(idx, e.target.value)} placeholder={t.samplePlaceholder} required />
+          <RemoveButton onClick={() => remove(idx)} />
+        </div>
+      ))}
+      {items.length === 0 && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>{t.emptyMessage}</div>}
+    </>
+  );
+}
+</file>
+
+<file path="forms/Shared/MetadataFields/BackgroundCheckFields.tsx">
+import { AdminRow, AdminInput, AdminTextarea, FormattingGuide } from '@/pages/Admin/components/AdminUI';
+import type { BackgroundCheckMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+export default function BackgroundCheckFields({ metadata, updateMeta }: MetadataFieldProps<BackgroundCheckMetadata>) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata.backgroundCheck;
+
+  return (
+    <>
+      <FormattingGuide />
+      <AdminRow>
+        <AdminInput label={t.subjectNameLabel} required value={metadata.subject_name || ''} onChange={e => updateMeta('subject_name', e.target.value)} />
+        <AdminInput label={t.dobLabel} required value={metadata.dob || ''} onChange={e => updateMeta('dob', e.target.value)} />
+        <AdminInput label={t.sexAgeLabel} required value={metadata.sex_age || ''} onChange={e => updateMeta('sex_age', e.target.value)} />
+      </AdminRow>
+      <AdminRow>
+        <AdminInput label={t.aliasesLabel} value={metadata.aliases || ''} onChange={e => updateMeta('aliases', e.target.value)} />
+        <AdminInput label={t.addressLabel} value={metadata.last_known_address || ''} onChange={e => updateMeta('last_known_address', e.target.value)} />
+      </AdminRow>
+
+      <AdminTextarea label={t.employmentLabel} value={metadata.employment_financial || ''} onChange={e => updateMeta('employment_financial', e.target.value)} />
+      <AdminTextarea label={t.criminalHistoryLabel} minHeight="100px" value={metadata.criminal_history || ''} onChange={e => updateMeta('criminal_history', e.target.value)} />
+      <AdminTextarea label={t.associatesLabel} value={metadata.associates || ''} onChange={e => updateMeta('associates', e.target.value)} />
+
+      <div className="form-group" style={{ marginTop: '1rem', borderLeft: '3px solid var(--accent-crimson)', paddingLeft: '1rem' }}>
+        <label style={{ color: 'var(--accent-crimson)' }}>{t.notesLabel}</label>
+        <textarea className="admin-textarea" value={metadata.investigator_notes || ''} onChange={e => updateMeta('investigator_notes', e.target.value)} placeholder={t.notesPlaceholder} style={{ minHeight: '80px' }} />
+      </div>
+    </>
+  );
+}
+</file>
+
+<file path="forms/Shared/MetadataFields/BallisticsFields.tsx">
+import { useDynamicList } from '@/hooks/useDynamicList';
+import {
+  AdminRow, AdminInput, AdminTextarea,
+  FormattingGuide, DynamicListHeader, RemoveButton
+} from '@/pages/Admin/components/AdminUI';
+import type { BallisticsMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+export default function BallisticsFields({ metadata, updateMeta }: MetadataFieldProps<BallisticsMetadata>) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata.ballistics;
+
+  const { items, add, update, remove } = useDynamicList<{reference: string, description: string}>(
+    metadata.exhibits || [],
+    (newList) => updateMeta('exhibits', newList)
+  );
+
+  const updateChainOfCustody = (field: string, value: string) => {
+    const current = metadata.chain_of_custody || { submitted_by: '', received_date: '' };
+    updateMeta('chain_of_custody', { ...current, [field]: value });
+  };
+
+  return (
+    <>
+      <FormattingGuide />
+      <AdminRow>
+        <AdminInput label={t.caseNumberLabel} required value={metadata.case_number || ''} onChange={e => updateMeta('case_number', e.target.value)} placeholder={t.caseNumberPlaceholder} />
+      </AdminRow>
+
+      <h5 style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>{t.chainOfCustodyHeader}</h5>
+      <AdminRow>
+        <AdminInput label={t.submittedByLabel} value={metadata.chain_of_custody?.submitted_by || ''} onChange={e => updateChainOfCustody('submitted_by', e.target.value)} placeholder={t.submittedByPlaceholder} />
+        <AdminInput label={t.receivedDateLabel} value={metadata.chain_of_custody?.received_date || ''} onChange={e => updateChainOfCustody('received_date', e.target.value)} placeholder={t.receivedDatePlaceholder} />
+      </AdminRow>
+
+      <h5 style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>{t.ballisticParamsHeader}</h5>
+      <AdminRow>
+        <AdminInput label={t.caliberLabel} value={metadata.caliber || ''} onChange={e => updateMeta('caliber', e.target.value)} placeholder={t.caliberPlaceholder} />
+        <AdminInput label={t.riflingLabel} value={metadata.rifling_pattern || ''} onChange={e => updateMeta('rifling_pattern', e.target.value)} placeholder={t.riflingPlaceholder} />
+      </AdminRow>
+
+      <DynamicListHeader title={t.exhibitsHeader} onAdd={() => add({ reference: '', description: '' })} addLabel={t.addExhibitBtn} />
+      {items.map((ex, idx) => (
+        <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+          <div style={{ width: '160px' }}>
+            <AdminInput value={ex.reference} onChange={e => update(idx, 'reference', e.target.value)} placeholder={t.refPlaceholder} required />
+          </div>
+          <div style={{ flex: 1 }}>
+            <AdminInput value={ex.description} onChange={e => update(idx, 'description', e.target.value)} placeholder={t.descPlaceholder} required />
+          </div>
+          <RemoveButton onClick={() => remove(idx)} />
+        </div>
+      ))}
+      {items.length === 0 && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)' }}>{t.emptyExhibitsMsg}</div>}
+
+      <h5 style={{ color: 'var(--accent-amber)', fontFamily: 'var(--font-mono)', marginTop: '1.5rem', marginBottom: '0.5rem' }}>{t.technicalFindingsHeader}</h5>
+      <AdminTextarea label={t.firearmSpecsLabel} minHeight="60px" value={metadata.firearm_specs || ''} onChange={e => updateMeta('firearm_specs', e.target.value)} />
+      <AdminTextarea label={t.microscopicLabel} value={metadata.microscopic_analysis || ''} onChange={e => updateMeta('microscopic_analysis', e.target.value)} />
+      <AdminTextarea label={t.trajectoryLabel} minHeight="60px" value={metadata.trajectory_range || ''} onChange={e => updateMeta('trajectory_range', e.target.value)} />
+      <AdminTextarea label={t.firingDistanceLabel} minHeight="60px" value={metadata.firing_distance || ''} onChange={e => updateMeta('firing_distance', e.target.value)} placeholder={t.firingDistancePlaceholder} />
+      <AdminTextarea label={t.conclusionLabel} required style={{ borderLeft: '3px solid var(--accent-crimson)' }} minHeight="60px" value={metadata.conclusion || ''} onChange={e => updateMeta('conclusion', e.target.value)} placeholder={t.conclusionPlaceholder} />
+
+      <div className="form-group" style={{ marginTop: '1.5rem', borderLeft: '3px solid var(--accent-crimson)', paddingLeft: '1rem' }}>
+        <label style={{ color: 'var(--accent-crimson)' }}>{t.notesLabel}</label>
+        <textarea className="admin-textarea" value={metadata.investigator_notes || ''} onChange={e => updateMeta('investigator_notes', e.target.value)} placeholder={t.notesPlaceholder} style={{ minHeight: '80px' }} />
+      </div>
+    </>
+  );
+}
+</file>
+
+<file path="forms/Shared/MetadataFields/ContractFields.tsx">
+import { useDynamicList } from '@/hooks/useDynamicList';
+import {
+  AdminRow, AdminInput, AdminTextarea, AdminCheckbox,
+  DynamicListHeader, RemoveButton
+} from '@/pages/Admin/components/AdminUI';
+import type { ContractMetadata, ContractPage } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+export default function ContractFields({ metadata, updateMeta }: MetadataFieldProps<ContractMetadata>) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata.contract;
+
+  const { items: pages, add: addPage, update: updatePage, remove: removePage } = useDynamicList<ContractPage>(
+    metadata.pages || [],
+    (newList) => updateMeta('pages', newList)
+  );
+
+  return (
+    <>
+      <AdminRow>
+        <AdminInput label={t.partiesLabel} required value={metadata.parties_involved ? metadata.parties_involved.join(', ') : ''} onChange={e => updateMeta('parties_involved', e.target.value.split(',').map((s: string) => s.trim()))} placeholder={t.partiesPlaceholder} />
+        <AdminInput label={t.executionDateLabel} value={metadata.execution_date || ''} onChange={e => updateMeta('execution_date', e.target.value)} placeholder={t.executionDatePlaceholder} />
+      </AdminRow>
+
+      <DynamicListHeader title={t.pagesHeader} onAdd={() => addPage({ page_number: pages.length + 1, terms_text: ''})} addLabel={t.addPageBtn} />
+
+      {pages.map((page: any, idx: number) => (
+        <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', position: 'relative' }}>
+          <span style={{ position: 'absolute', top: '10px', right: '10px', color: '#888', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{t.pageNumberLabel(page.page_number)}</span>
+          <RemoveButton onClick={() => removePage(idx, 'page_number')} style={{ position: 'absolute', top: '8px', right: '60px' }} />
+
+          <AdminTextarea label={t.termsTextLabel} minHeight="100px" required value={page.terms_text || ''} onChange={e => updatePage(idx, 'terms_text', e.target.value)} />
+        </div>
+      ))}
+
+      <div style={{ marginTop: '1rem' }}>
+        <AdminCheckbox
+          checked={!!metadata.signatures_valid}
+          onChange={e => updateMeta('signatures_valid', e.target.checked)}
+          labelTitle={t.signaturesValidLabel}
+          description={t.signaturesValidDesc}
+          accentColor="var(--accent-crimson)"
+          bgColor="rgba(163, 50, 50, 0.1)"
+        />
+      </div>
+    </>
+  );
+}
+</file>
+
+<file path="forms/Shared/MetadataFields/CorrespondenceFields.tsx">
+import { AdminRow, AdminInput, AdminTextarea } from '@/pages/Admin/components/AdminUI';
+import type { CorrespondenceMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+export default function CorrespondenceFields({ metadata, updateMeta }: MetadataFieldProps<CorrespondenceMetadata>) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata.correspondence;
+
+  return (
+    <>
+      <AdminRow>
+        <AdminInput label={t.senderLabel} required value={metadata.sender || ''} onChange={e => updateMeta('sender', e.target.value)} />
+        <AdminInput label={t.recipientLabel} required value={metadata.recipient || ''} onChange={e => updateMeta('recipient', e.target.value)} />
+      </AdminRow>
+      <AdminInput label={t.subjectLabel} required value={metadata.subject || ''} onChange={e => updateMeta('subject', e.target.value)} />
+      <AdminTextarea label={t.bodyLabel} required value={metadata.body || ''} onChange={e => updateMeta('body', e.target.value)} />
+    </>
+  );
+}
+</file>
+
+<file path="forms/Shared/MetadataFields/DNAFields.tsx">
+import { AdminRow, AdminInput, AdminTextarea } from '@/pages/Admin/components/AdminUI';
+import type { DnaMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+export default function DNAFields({ metadata, updateMeta }: MetadataFieldProps<DnaMetadata>) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata.dna;
+
+  return (
+    <>
+      <AdminRow>
+        <AdminInput label={t.sampleTypeLabel} required value={metadata.sample_type || ''} onChange={e => updateMeta('sample_type', e.target.value)} placeholder={t.sampleTypePlaceholder} />
+        <AdminInput label={t.matchProbabilityLabel} required value={metadata.match_probability || ''} onChange={e => updateMeta('match_probability', e.target.value)} />
+      </AdminRow>
+      <AdminRow>
+        <AdminInput label={t.technicianLabel} value={metadata.lab_technician || ''} onChange={e => updateMeta('lab_technician', e.target.value)} placeholder={t.technicianPlaceholder} />
+        <AdminInput label={t.extractionMethodLabel} value={metadata.extraction_method || ''} onChange={e => updateMeta('extraction_method', e.target.value)} placeholder={t.extractionMethodPlaceholder} />
+      </AdminRow>
+      <AdminInput label={t.identifiedPersonLabel} value={metadata.identified_person || ''} onChange={e => updateMeta('identified_person', e.target.value)} />
+      <AdminTextarea label={t.lociSummaryLabel} value={metadata.loci_profile_summary || ''} onChange={e => updateMeta('loci_profile_summary', e.target.value)} placeholder={t.lociSummaryPlaceholder} />
+      <AdminTextarea label={t.labNotesLabel} minHeight="60px" value={metadata.lab_notes || ''} onChange={e => updateMeta('lab_notes', e.target.value)} placeholder={t.labNotesPlaceholder} />
+    </>
+  );
+}
+</file>
+
+<file path="forms/Shared/MetadataFields/DigitalForensicsFields.tsx">
+import { AdminRow, AdminInput, AdminTextarea } from '@/pages/Admin/components/AdminUI';
+import type { DigitalForensicsMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+export default function DigitalForensicsFields({ metadata, updateMeta }: MetadataFieldProps<DigitalForensicsMetadata>) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata.digitalForensics;
+
+  return (
+    <>
+      <AdminRow>
+        <AdminInput label={t.deviceTypeLabel} required value={metadata.device_type || ''} onChange={e => updateMeta('device_type', e.target.value)} />
+        <AdminInput label={t.extractionMethodLabel} required value={metadata.extraction_method || ''} onChange={e => updateMeta('extraction_method', e.target.value)} />
+      </AdminRow>
+      <AdminTextarea label={t.recoveredDataLabel} required value={metadata.recovered_data || ''} onChange={e => updateMeta('recovered_data', e.target.value)} />
+    </>
+  );
+}
+</file>
+
+<file path="forms/Shared/MetadataFields/FinancialFields.tsx">
+import { useDynamicList } from '@/hooks/useDynamicList';
+import { AdminRow, AdminInput, DynamicListHeader, RemoveButton } from '@/pages/Admin/components/AdminUI';
+import type { FinancialMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+const FinancialStatementPage = ({ page, pageIdx, updatePage, removePage }: { page: any, pageIdx: number, updatePage: any, removePage: any }) => {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata.financial;
+
+  const { items: txs, add, update, remove } = useDynamicList<{date: string, description: string, amount: number}>(
+    page.transactions || [],
+    (newTxs) => updatePage(pageIdx, 'transactions', newTxs)
+  );
+
+  return (
+    <div style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1.5rem', borderLeft: '3px solid var(--accent-amber)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <div style={{ flex: 1, marginRight: '1rem' }}>
+          <AdminInput label={t.statementPeriodLabel} required value={page.statement_period || ''} onChange={e => updatePage(pageIdx, 'statement_period', e.target.value)} placeholder={t.statementPeriodPlaceholder} />
+        </div>
+        <button type="button" onClick={() => removePage(pageIdx, 'page_number')} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: '0.8rem' }}>
+          {t.removePageBtn(page.page_number)}
+        </button>
+      </div>
+      <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', borderRadius: '4px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+          <span style={{ fontSize: '0.8rem', color: '#aaa', fontFamily: 'var(--font-mono)' }}>{t.transactionsHeader}</span>
+          <button type="button" onClick={() => add({ date: '', description: '', amount: 0 })} style={{ background: 'transparent', border: '1px solid #aaa', color: '#aaa', padding: '2px 8px', borderRadius: '2px', cursor: 'pointer', fontSize: '0.7rem' }}>
+            {t.addRowBtn}
+          </button>
+        </div>
+        {txs.map((tx: any, txIdx: number) => (
+          <div key={txIdx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem', alignItems: 'center' }}>
+            <div style={{ width: '100px' }}><AdminInput value={tx.date} onChange={e => update(txIdx, 'date', e.target.value)} placeholder={t.datePlaceholder} required /></div>
+            <div style={{ flex: 1 }}><AdminInput value={tx.description} onChange={e => update(txIdx, 'description', e.target.value)} placeholder={t.descPlaceholder} required /></div>
+            <div style={{ width: '120px' }}><AdminInput type="number" step="0.01" value={tx.amount} onChange={e => update(txIdx, 'amount', parseFloat(e.target.value))} placeholder={t.amountPlaceholder} required /></div>
+            <RemoveButton onClick={() => remove(txIdx)} />
+          </div>
+        ))}
+        {txs.length === 0 && <div style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontFamily: 'var(--font-mono)', marginTop: '0.5rem' }}>{t.emptyTransactionsMsg}</div>}
+      </div>
+    </div>
+  );
+};
+
+export default function FinancialFields({ metadata, updateMeta }: MetadataFieldProps<FinancialMetadata>) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata.financial;
+
+  const { items: pages, add: addPage, update: updatePage, remove: removePage } = useDynamicList<{page_number: number, statement_period: string, transactions: any[]}>(
+    metadata.pages || [],
+    (newList) => updateMeta('pages', newList)
+  );
+
+  return (
+    <>
+      <AdminRow>
+        <AdminInput label={t.institutionLabel} required value={metadata.institution_name || ''} onChange={e => updateMeta('institution_name', e.target.value)} />
+        <AdminInput label={t.holderLabel} required value={metadata.account_holder || ''} onChange={e => updateMeta('account_holder', e.target.value)} />
+        <AdminInput label={t.accountNumberLabel} required value={metadata.account_number || ''} onChange={e => updateMeta('account_number', e.target.value)} />
+      </AdminRow>
+
+      <DynamicListHeader title={t.pagesHeader} onAdd={() => addPage({ page_number: pages.length + 1, statement_period: '', transactions: [] })} addLabel={t.addPageBtn} />
+
+      {pages.map((page: any, pageIdx: number) => (
+        <FinancialStatementPage key={pageIdx} page={page} pageIdx={pageIdx} updatePage={updatePage} removePage={removePage} />
+      ))}
+    </>
+  );
+}
+</file>
+
+<file path="forms/Shared/MetadataFields/JournalFields.tsx">
+import { useDynamicList } from '@/hooks/useDynamicList';
+import {
+  AdminRow, AdminInput, AdminTextarea, AdminCheckbox,
+  DynamicListHeader, RemoveButton
+} from '@/pages/Admin/components/AdminUI';
+import type { JournalMetadata, JournalPage } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+export default function JournalFields({ metadata, updateMeta }: MetadataFieldProps<JournalMetadata>) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata.journal;
+
+  const { items: pages, add: addPage, update: updatePage, remove: removePage } = useDynamicList<JournalPage>(
+    metadata.pages || [],
+    (newList) => updateMeta('pages', newList)
+  );
+
+  return (
+    <>
+      <AdminRow>
+        <AdminInput label={t.ownerLabel} required value={metadata.owner || ''} onChange={e => updateMeta('owner', e.target.value)} />
+        <AdminInput label={t.coverTitleLabel} value={metadata.cover_title || ''} onChange={e => updateMeta('cover_title', e.target.value)} placeholder={t.coverTitlePlaceholder} />
+      </AdminRow>
+
+      <DynamicListHeader title={t.pagesHeader} onAdd={() => addPage({ page_number: pages.length + 1, date_entry: '', content: '', is_torn: false })} addLabel={t.addPageBtn} />
+
+      {pages.map((page: any, idx: number) => (
+        <div key={idx} style={{ background: 'rgba(0,0,0,0.2)', padding: '1rem', borderRadius: '4px', marginBottom: '1rem', position: 'relative' }}>
+          <span style={{ position: 'absolute', top: '10px', right: '10px', color: '#888', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>{t.pageNumberLabel(page.page_number)}</span>
+          <RemoveButton onClick={() => removePage(idx, 'page_number')} style={{ position: 'absolute', top: '8px', right: '60px' }} />
+
+          <AdminInput label={t.dateEntryLabel} value={page.date_entry || ''} onChange={e => updatePage(idx, 'date_entry', e.target.value)} disabled={page.is_torn} placeholder={t.dateEntryPlaceholder} />
+          <AdminTextarea label={t.contentLabel} value={page.content || ''} onChange={e => updatePage(idx, 'content', e.target.value)} disabled={page.is_torn} required={!page.is_torn} />
+
+          <AdminCheckbox
+            checked={!!page.is_torn}
+            onChange={e => updatePage(idx, 'is_torn', e.target.checked)}
+            labelTitle={t.tornLabel}
+            description={t.tornDesc}
+            accentColor="var(--accent-crimson)"
+            bgColor="transparent"
+            style={{ marginBottom: 0, padding: 0, border: 'none' }}
+          />
+        </div>
+      ))}
+    </>
+  );
+}
+</file>
+
+<file path="forms/Shared/MetadataFields/MemoFields.tsx">
+import { AdminRow, AdminInput, AdminSelect, AdminTextarea } from '@/pages/Admin/components/AdminUI';
+import type { MemoMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+export default function MemoFields({ metadata, updateMeta }: MetadataFieldProps<MemoMetadata>) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata.memo;
+
+  return (
+    <>
+      <AdminRow>
+        <AdminInput label={t.writtenByLabel} required value={metadata.written_by || ''} onChange={e => updateMeta('written_by', e.target.value)} />
+        <AdminSelect
+          label={t.styleLabel}
+          value={metadata.style || 'notebook'}
+          onChange={e => updateMeta('style', e.target.value as 'sticky' | 'notebook')}
+          options={[{ value: 'notebook', label: t.notebookOption }, { value: 'sticky', label: t.stickyOption }]}
+        />
+      </AdminRow>
+      <AdminTextarea label={t.contextLabel} required value={metadata.context || ''} onChange={e => updateMeta('context', e.target.value)} />
+    </>
+  );
+}
+</file>
+
+<file path="forms/Shared/MetadataFields/TraceAnalysisFields.tsx">
+import { AdminRow, AdminInput } from '@/pages/Admin/components/AdminUI';
+import type { TraceMetadata } from '@/types/evidence';
+import type { MetadataFieldProps } from './types';
+import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+
+export default function TraceAnalysisFields({ metadata, updateMeta }: MetadataFieldProps<TraceMetadata>) {
+  const { adminT } = useAdminTranslation();
+  const t = adminT.forms.evidenceMetadata.trace;
+
+  return (
+    <AdminRow>
+      <AdminInput label={t.materialLabel} required value={metadata.material_type || ''} onChange={e => updateMeta('material_type', e.target.value)} />
+      <AdminInput label={t.originLabel} required value={metadata.origin_source || ''} onChange={e => updateMeta('origin_source', e.target.value)} />
+    </AdminRow>
+  );
+}
+</file>
+
+<file path="forms/Shared/MetadataFields/index.ts">
+export { default as AutopsyFields } from './AutopsyFields';
+export { default as BallisticsFields } from './BallisticsFields';
+export { default as DNAFields } from './DNAFields';
+export { default as DigitalForensicsFields } from './DigitalForensicsFields';
+export { default as TraceAnalysisFields } from './TraceAnalysisFields';
+export { default as CorrespondenceFields } from './CorrespondenceFields';
+export { default as FinancialFields } from './FinancialFields';
+export { default as JournalFields } from './JournalFields';
+export { default as ContractFields } from './ContractFields';
+export { default as MemoFields } from './MemoFields';
+export { default as BackgroundCheckFields } from './BackgroundCheckFields';
+</file>
+
+<file path="forms/Shared/MetadataFields/types.ts">
+export interface MetadataFieldProps<T> {
+  metadata: Partial<T>;
+  updateMeta: <K extends keyof T>(key: K, value: T[K]) => void;
+}
+</file>
+
+<file path="hooks/useAdminData.ts">
+import { useQuery } from '@tanstack/react-query';
+import { fetchAdminCases, fetchAdminPhases, fetchAdminLevels } from '@/services/adminApi';
+import type { GameCase, Phase, Level } from '@/types';
+
+// 1. Fetch Top-Level Cases
+export function useAdminCases() {
+  return useQuery<GameCase[]>({
+    queryKey: ['adminCases'],
+    queryFn: async () => {
+      const result = await fetchAdminCases();
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+  });
+}
+
+// 2. Fetch Phases (Only triggers when a Case is selected)
+export function useAdminPhases(caseId: string) {
+  return useQuery<Phase[]>({
+    queryKey: ['adminPhases', caseId],
+    queryFn: async () => {
+      const result = await fetchAdminPhases(caseId);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    enabled: !!caseId, // TanStack Query Guard: Prevents execution until caseId exists
+  });
+}
+
+// 3. Fetch Levels & Nodes (Only triggers when a Phase is selected)
+export function useAdminLevels(phaseId: string) {
+  return useQuery<Level[]>({
+    queryKey: ['adminLevels', phaseId],
+    queryFn: async () => {
+      const result = await fetchAdminLevels(phaseId);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    enabled: !!phaseId, // TanStack Query Guard: Prevents execution until phaseId exists
+  });
+}
+</file>
+
+<file path="hooks/useAdminForm.ts">
+import React, { useState, useRef } from 'react';
+import { useAdminMutations, type AdminEntityType } from '@/pages/Admin/hooks/useAdminMutations';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { objectToFormData } from '@/pages/Admin/utils/formUtils';
+
+interface UseAdminFormProps<T> {
+  entityType: AdminEntityType;
+  initialState: T;
+  basePayload?: Record<string, any>;
+}
+
+export function useAdminForm<T extends Record<string, any>>({ entityType, initialState, basePayload = {} }: UseAdminFormProps<T>) {
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [formData, setFormData] = useState<T>(initialState);
+
+  const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const { createEntity, updateEntity, deleteEntity, isProcessing } = useAdminMutations(entityType);
+  const { setIsDirty } = useAdminContext();
+
+  const updateField = (field: keyof T, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    setIsDirty(true);
+  };
+
+  const clearForm = () => {
+    setEditingId(null);
+    setFormData(initialState);
+    setIsDirty(false);
+    Object.values(fileInputRefs.current).forEach(ref => { if (ref) ref.value = ''; });
+  };
+
+  const registerFileRef = (key: string) => (el: HTMLInputElement | null) => {
+    fileInputRefs.current[key] = el;
+  };
+
+  // STRICT TYPING APPLIED HERE
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>, files: Record<string, File | null> = {}) => {
+    e.preventDefault();
+
+    const payloadData = { ...basePayload, ...formData };
+    const payload = objectToFormData(payloadData);
+
+    Object.entries(files).forEach(([key, file]) => {
+      if (file) payload.append(key, file);
+    });
+
+    if (editingId) {
+      updateEntity({ id: editingId, formData: payload }, { onSuccess: clearForm });
+    } else {
+      createEntity(payload, { onSuccess: clearForm });
+    }
+  };
+
+  const handleEditInit = (entity: any, mappingFn?: (e: any) => T) => {
+    setEditingId(entity.id);
+    setFormData(mappingFn ? mappingFn(entity) : { ...initialState, ...entity });
+    setIsDirty(false);
+
+    Object.values(fileInputRefs.current).forEach(ref => { if (ref) ref.value = ''; });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = (id: number, warningMessage: string) => {
+    if (window.confirm(warningMessage)) {
+      if (editingId === id) clearForm();
+      deleteEntity(id);
+    }
+  };
+
+  return {
+    formData, setFormData, updateField, editingId, clearForm, handleSubmit,
+    handleEditInit, handleDelete, registerFileRef, isProcessing
+  };
+}
+</file>
+
+<file path="hooks/useAdminMutations.ts">
+import toast from 'react-hot-toast';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import * as adminApi from '@/services/adminApi';
+
+export type AdminEntityType =
+  | 'case'
+  | 'phase'
+  | 'level'
+  | 'question'
+  | 'evidence'
+  | 'request'
+  | 'suspect'
+  | 'victim';
+
+export function useAdminMutations(entityType: AdminEntityType) {
+  const queryClient = useQueryClient();
+
+  // Map the entity type to the exact API service functions from adminApi
+  const apiMap = {
+    'case': { create: adminApi.createAdminCase, update: adminApi.updateAdminCase, del: adminApi.deleteAdminCase, name: 'Case' },
+    'phase': { create: adminApi.createAdminPhase, update: adminApi.updateAdminPhase, del: adminApi.deleteAdminPhase, name: 'Phase' },
+    'level': { create: adminApi.createAdminLevel, update: adminApi.updateAdminLevel, del: adminApi.deleteAdminLevel, name: 'Level' },
+    'question': { create: adminApi.createAdminQuestion, update: adminApi.updateAdminQuestion, del: adminApi.deleteAdminQuestion, name: 'Node' },
+    'evidence': { create: adminApi.createAdminEvidence, update: adminApi.updateAdminEvidence, del: adminApi.deleteAdminEvidence, name: 'Evidence' },
+    'request': { create: adminApi.createAdminInvestigationRequest, update: adminApi.updateAdminInvestigationRequest, del: adminApi.deleteAdminInvestigationRequest, name: 'Request protocol' },
+    'suspect': { create: adminApi.createAdminSuspect, update: adminApi.updateAdminSuspect, del: adminApi.deleteAdminSuspect, name: 'Suspect' },
+    'victim': { create: adminApi.createAdminVictim, update: adminApi.updateAdminVictim, del: adminApi.deleteAdminVictim, name: 'Victim' },
+  };
+
+  const methods = apiMap[entityType];
+
+  const handleSuccess = (action: string) => {
+    toast.success(`${methods.name} successfully ${action}.`);
+    queryClient.invalidateQueries({ queryKey: ['adminCases'] });
+  };
+
+  const handleError = (error: Error) => {
+    toast.error(error.message);
+  };
+
+  const createMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const result = await methods.create(formData);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: () => handleSuccess('created'),
+    onError: handleError,
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, formData }: { id: number, formData: FormData }) => {
+      const result = await methods.update(id, formData);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: () => handleSuccess('updated'),
+    onError: handleError,
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const result = await methods.del(id);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: () => handleSuccess('deleted'),
+    onError: handleError,
+  });
+
+  const isProcessing = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+
+  return {
+    createEntity: createMutation.mutate,
+    updateEntity: updateMutation.mutate,
+    deleteEntity: deleteMutation.mutate,
+    isProcessing
+  };
+}
+</file>
+
+<file path="hooks/useAdminTranslation.ts">
+import { useTranslation } from 'react-i18next';
+import { translations } from '@/locales/ar/translationAdmin';
+
+export type AdminTranslationSchema = typeof translations;
+
+export function useAdminTranslation() {
+  const { t } = useTranslation('admin');
+
+  const adminT = buildKeyMap(translations, (path) => t(path)) as AdminTranslationSchema;
+
+  return { adminT };
+}
+
+function buildKeyMap(obj: any, tFunc: (path: string) => string, currentPath = ''): any {
+  const result: any = {};
+  for (const key in obj) {
+    const fullPath = currentPath ? `${currentPath}.${key}` : key;
+    if (typeof obj[key] === 'object' && obj[key] !== null) {
+      result[key] = buildKeyMap(obj[key], tFunc, fullPath);
+    } else {
+      result[key] = tFunc(fullPath);
+    }
+  }
+  return result;
+}
+</file>
+
+<file path="hooks/useCoordinateMapper.ts">
+import { useState, useCallback } from 'react';
+import type { DraftChoice } from '@/pages/Admin/forms/Shared/ChoiceEditorCard';
+
+export function useCoordinateMapper(
+  choices: DraftChoice[],
+  setChoices: (choices: DraftChoice[]) => void
+) {
+  const [activeCoordinateTarget, setActiveCoordinateTarget] = useState<string | number | null>(null);
+
+  const handleImageClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!activeCoordinateTarget) return;
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xPercent = (((e.clientX - rect.left) / rect.width) * 100).toFixed(1);
+    const yPercent = (((e.clientY - rect.top) / rect.height) * 100).toFixed(1);
+
+    const targetChoice = choices.find(c => c.id === activeCoordinateTarget);
+    let title = 'New Point';
+
+    if (targetChoice && targetChoice.text.includes('|')) {
+      title = targetChoice.text.split('|')[1].trim();
+    } else if (targetChoice && targetChoice.text.trim() !== '') {
+      title = targetChoice.text.trim();
+    }
+
+    setChoices(choices.map(c =>
+      c.id === activeCoordinateTarget
+        ? { ...c, text: `${xPercent},${yPercent} | ${title}` }
+        : c
+    ));
+
+    setActiveCoordinateTarget(null);
+  }, [activeCoordinateTarget, choices, setChoices]);
+
+  return {
+    activeCoordinateTarget,
+    setActiveCoordinateTarget,
+    handleImageClick
+  };
+}
+</file>
+
+<file path="hooks/useNodeBuilder.ts">
+import React, { useState, useRef } from 'react';
+import toast from 'react-hot-toast';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useAdminMutations } from '@/pages/Admin/hooks/useAdminMutations';
+import { buildNodeFormData } from '@/pages/Admin/utils/questionUtils';
+import type { Question, Choice } from '@/types';
+import type { DraftChoice } from '@/pages/Admin/forms/Shared/ChoiceEditorCard';
+
+export function useNodeBuilder(defaultChoices: DraftChoice[] = []) {
+  const { setCaseId, setPhaseId, setLevelId, selectedCase, selectedPhase, selectedLevel, levelId, setIsDirty } = useAdminContext();
+
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [text, setText] = useState('');
+  const [storeLocally, setStoreLocally] = useState(false);
+  const [choices, setChoices] = useState<DraftChoice[]>(defaultChoices);
+
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  const { createEntity, updateEntity, deleteEntity, isProcessing } = useAdminMutations('question');
+
+  // Wrapped setters to trigger dirty state tracking
+  const handleSetText = (t: string) => { setText(t); setIsDirty(true); };
+  const handleSetStoreLocally = (v: boolean) => { setStoreLocally(v); setIsDirty(true); };
+  const handleSetChoices = (c: DraftChoice[]) => { setChoices(c); setIsDirty(true); };
+
+  const clearForm = () => {
+    setEditingId(null);
+    setIsFormOpen(false);
+    setText('');
+    setStoreLocally(false);
+    setChoices(defaultChoices);
+    setIsDirty(false);
+    Object.values(fileRefs.current).forEach(ref => { if (ref) ref.value = ''; });
+  };
+
+  const registerFileRef = (key: string) => (el: HTMLInputElement | null) => {
+    fileRefs.current[key] = el;
+  };
+
+  const handleEdit = (node: Question) => {
+    // Restore parent context pointers
+    if (selectedCase) setCaseId(selectedCase.id.toString());
+    if (selectedPhase) setPhaseId(selectedPhase.id.toString());
+    if (selectedLevel) setLevelId(selectedLevel.id.toString());
+
+    setIsFormOpen(true);
+    setEditingId(node.id);
+    setText(node.text || '');
+    setStoreLocally(false);
+
+    if (node.choices && node.choices.length > 0) {
+      setChoices(node.choices.map((c: Choice) => ({
+        id: c.id, text: c.text, requirements: c.requirements || {}, outcomes: c.outcomes || {}
+      })));
+    } else {
+      setChoices(defaultChoices);
+    }
+
+    setIsDirty(false);
+    Object.values(fileRefs.current).forEach(ref => { if (ref) ref.value = ''; });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDelete = (node: Question) => {
+    if (window.confirm('Are you sure you want to delete this asset?')) {
+      if (editingId === node.id) clearForm();
+      deleteEntity(node.id);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>, files: { image?: File | null, audio?: File | null } = {}) => {
+    e.preventDefault();
+
+    if (!text.trim()) { toast.error('Node text cannot be empty.'); return; }
+    if (choices.length > 0 && choices.some(c => !c.text.trim())) {
+      toast.error('All response branches/choices must have text.'); return;
+    }
+
+    const formData = buildNodeFormData({
+      level_id: levelId,
+      text,
+      store_locally: storeLocally,
+      choices,
+      image: files.image || null,
+      audio: files.audio || null,
+    });
+
+    if (editingId) {
+      updateEntity({ id: editingId, formData }, { onSuccess: clearForm });
+    } else {
+      createEntity(formData, { onSuccess: clearForm });
+    }
+  };
+
+  return {
+    state: { editingId, isFormOpen, text, storeLocally, choices },
+    setters: {
+      setIsFormOpen,
+      setText: handleSetText,
+      setStoreLocally: handleSetStoreLocally,
+      setChoices: handleSetChoices
+    },
+    actions: { clearForm, handleEdit, handleDelete, handleSubmit, registerFileRef },
+    status: { isProcessing }
+  };
+}
+</file>
+
+<file path="hooks/useValidatedForm.ts">
+import { useAdminForm } from './useAdminForm';
+import toast from 'react-hot-toast';
+import type { AdminEntityType } from './useAdminMutations';
+
+interface UseValidatedFormProps<T> {
+  entityType: AdminEntityType;
+  initialState: T;
+  basePayload?: Record<string, any>;
+  validator?: (data: T) => string | null; // Returns error message or null if valid
+}
+
+export function useValidatedForm<T extends Record<string, any>>({
+  entityType, initialState, basePayload, validator
+}: UseValidatedFormProps<T>) {
+
+  const formManager = useAdminForm<T>({ entityType, initialState, basePayload });
+
+  const handleValidatedSubmit = (
+    e: React.FormEvent<HTMLFormElement>,
+    files?: Record<string, File | null>
+  ) => {
+    e.preventDefault();
+
+    if (validator) {
+      const error = validator(formManager.formData);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+    }
+
+    formManager.handleSubmit(e, files);
+  };
+
+  return {
+    ...formManager,
+    handleValidatedSubmit
+  };
+}
+</file>
+
+<file path="utils/formUtils.ts">
+export const objectToFormData = (obj: Record<string, any>): FormData => {
+  const formData = new FormData();
+  Object.entries(obj).forEach(([key, value]) => {
+    if (value === null || value === undefined) return;
+
+    if (typeof value === 'boolean') {
+      formData.append(key, value ? '1' : '0');
+    } else if (typeof value === 'object' && !(value instanceof File) && !(value instanceof Blob)) {
+      formData.append(key, JSON.stringify(value));
+    } else {
+      formData.append(key, value.toString());
+    }
+  });
+  return formData;
+};
+</file>
+
+<file path="utils/questionUtils.ts">
+import type { DraftChoice } from '@/pages/Admin/forms/Shared/ChoiceEditorCard';
+
+export interface ChoiceOutcomes {
+  feedback: string;
+  next_question_id: number | null;
+  gives_strike: boolean;
+  unlock_evidence: number[];
+  unlock_levels: number[];
+  unlock_suspects: number[];
+  unlock_victims: number[];
+}
+
+export interface ChoiceRequirements {
+  required_evidence: number[];
+  required_choices: number[];
+}
+
+export const defaultRequirements = (): ChoiceRequirements => ({ required_evidence: [], required_choices: [] });
+
+export const defaultOutcomes = (): ChoiceOutcomes => ({
+  feedback: '', next_question_id: null, gives_strike: false,
+  unlock_evidence: [], unlock_levels: [], unlock_suspects: [], unlock_victims: [],
+});
+
+const appendToFormData = (fd: FormData, rootKey: string, obj: any) => {
+  if (obj === null || obj === undefined) return;
+  if (Array.isArray(obj)) {
+      obj.forEach((val, i) => appendToFormData(fd, `${rootKey}[${i}]`, val));
+  } else if (typeof obj === 'object' && !(obj instanceof File)) {
+      Object.keys(obj).forEach(key => appendToFormData(fd, `${rootKey}[${key}]`, obj[key]));
+  } else {
+      fd.append(rootKey, obj instanceof File ? obj : obj.toString());
+  }
+};
+
+export const appendChoicesToFormData = (formData: FormData, choices: any[]) => {
+  for (let i = 0; i < choices.length; i++) {
+    const choice = choices[i];
+    formData.append(`choices[${i}][text]`, choice.text);
+
+    const cleanReqs: any = {};
+    if (choice.requirements?.required_evidence?.length > 0) cleanReqs.required_evidence = choice.requirements.required_evidence.map(Number);
+    if (choice.requirements?.required_choices?.length > 0) cleanReqs.required_choices = choice.requirements.required_choices.map(Number);
+    if (Object.keys(cleanReqs).length > 0) appendToFormData(formData, `choices[${i}][requirements]`, cleanReqs);
+
+    const cleanOutcomes: any = {};
+    if (choice.outcomes?.gives_strike) cleanOutcomes.gives_strike = true;
+    if (choice.outcomes?.feedback?.trim()) cleanOutcomes.feedback = choice.outcomes.feedback.trim();
+    if (choice.outcomes?.next_question_id) cleanOutcomes.next_question_id = Number(choice.outcomes.next_question_id);
+    if (choice.outcomes?.unlock_evidence?.length > 0) cleanOutcomes.unlock_evidence = choice.outcomes.unlock_evidence.map(Number);
+    if (choice.outcomes?.unlock_levels?.length > 0) cleanOutcomes.unlock_levels = choice.outcomes.unlock_levels.map(Number);
+    if (choice.outcomes?.unlock_suspects?.length > 0) cleanOutcomes.unlock_suspects = choice.outcomes.unlock_suspects.map(Number);
+    if (choice.outcomes?.unlock_victims?.length > 0) cleanOutcomes.unlock_victims = choice.outcomes.unlock_victims.map(Number);
+    if (Object.keys(cleanOutcomes).length > 0) appendToFormData(formData, `choices[${i}][outcomes]`, cleanOutcomes);
+  }
+};
+
+interface NodePayload {
+  level_id: string;
+  text: string;
+  store_locally: boolean;
+  choices: any[];
+  image?: File | null;
+  audio?: File | null;
+}
+
+export const buildNodeFormData = (payload: NodePayload): FormData => {
+  const formData = new FormData();
+  formData.append('level_id', payload.level_id);
+  formData.append('text', payload.text);
+  formData.append('store_locally', payload.store_locally ? '1' : '0');
+
+  if (payload.image) formData.append('image', payload.image);
+  if (payload.audio) formData.append('audio', payload.audio);
+
+  appendChoicesToFormData(formData, payload.choices);
+
+  return formData;
+};
+
+export interface BaseNodeFormProps {
+  state: { editingId: number | null; text: string; storeLocally: boolean; choices: DraftChoice[] };
+  setters: { setText: (t: string) => void; setStoreLocally: (v: boolean) => void; setChoices: (c: DraftChoice[]) => void };
+  actions: { registerFileRef: (key: string) => any; handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void; handleCancel: () => void };
+  status: { isProcessing: boolean };
+  previews: { image?: string | null; audio?: string | null };
+}
+</file>
+
+<file path="utils/validators.ts">
+export const validateCaseForm = (data: { max_strikes: string | number; rating_stars: string | number }) => {
+  if (Number(data.max_strikes) < 1) return 'Cases must allow at least 1 strike.';
+  if (Number(data.rating_stars) > 5 || Number(data.rating_stars) < 0) return 'Rating must be between 0 and 5.0';
+  return null;
+};
+
+export const validatePhaseForm = (data: { order_index: string | number }) => {
+  if (Number(data.order_index) < 1) return 'Order index must be at least 1.';
+  return null;
+};
+
+export const validateInvestigationRequestForm = (data: { required_evidence_ids: string[]; unlocks_evidence_id: string; unlocks_level_id: string }, minEvidenceAlert: string, rewardAlert: string) => {
+  if (data.required_evidence_ids.length < 2) return minEvidenceAlert;
+  if (!data.unlocks_evidence_id && !data.unlocks_level_id) return rewardAlert;
+  return null;
+};
+
+export const validateLevelForm = (data: { order_index: string | number }) => {
+  if (Number(data.order_index) < 1) return 'Order index must be at least 1.';
+  return null;
+};
+
+export const validateEvidenceForm = (data: { evidence_type: string; sub_type: string }) => {
+  if ((data.evidence_type === 'document' || data.evidence_type === 'forensic') && !data.sub_type) {
+    return 'You must select a specific classification sub-type for this evidence.';
+  }
+  return null;
+};
+
+export const validateSuspectForm = (data: { name: string }) => {
+  if (!data.name.trim()) return 'Suspect name cannot be empty.';
+  return null;
+};
+
+export const validateVictimForm = (data: { name: string }) => {
+  if (!data.name.trim()) return 'Victim name cannot be empty.';
+  return null;
+};
+
+export const validateImageSize = (file: File | undefined, maxSizeMB: number = 4): string | null => {
+  if (!file) return null;
+  const MAX_FILE_SIZE = maxSizeMB * 1024 * 1024;
+  if (file.size > MAX_FILE_SIZE) {
+    const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+    return `SECURITY WARNING: File size exceeds the ${maxSizeMB}MB limit (Current size: ${sizeInMB}MB). Please compress the image before uploading to prevent UI freezing and HTTP 413 errors.`;
+  }
+  return null;
+};
+
+export const validateAudioSize = (file: File | undefined): string | null => {
+  if (!file) return null;
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  if (file.size > MAX_FILE_SIZE) {
+    const sizeInMB = (file.size / (1024 * 1024)).toFixed(2);
+    return `SECURITY WARNING: File size exceeds the 10MB limit (Current size: ${sizeInMB}MB). Please compress the audio before uploading to prevent UI freezing and HTTP 413 errors.`;
+  }
+  return null;
+};
+</file>
+
+</source_code>

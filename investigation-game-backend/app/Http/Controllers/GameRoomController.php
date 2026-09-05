@@ -50,6 +50,18 @@ class GameRoomController extends Controller
         return response()->json(['message' => 'Successfully joined the room', 'room' => $result->value], 200);
     }
 
+    public function leave(Request $request, GameRoom $room): JsonResponse
+    {
+        $player = $request->user();
+        $result = $this->roomService->leaveRoom($room, $player);
+
+        if ($result->isFailure()) {
+            return response()->json(['error' => 'Disconnect Failed', 'message' => $result->errorMessage], 400);
+        }
+
+        return response()->json(['message' => $result->value['message']], 200);
+    }
+
     public function startLevel(Request $request, GameRoom $room, Level $level): JsonResponse
     {
         if ($request->user()->id !== $room->host_user_id) {
@@ -81,7 +93,7 @@ class GameRoomController extends Controller
     }
 
     /**
-     * Server authoritative tracking for Location sweeps. 
+     * Server authoritative tracking for Location sweeps.
      */
     public function inspect(Request $request, GameRoom $room): JsonResponse
     {
@@ -91,12 +103,12 @@ class GameRoomController extends Controller
 
         $choice = Choice::findOrFail($validated['choice_id']);
         $outcomes = $choice->outcomes ?? [];
-        
+
         // The backend deterministically calculates if this yields zero clues
-        $isDeadEnd = empty($outcomes['unlock_evidence']) 
-            && empty($outcomes['unlock_levels']) 
-            && empty($outcomes['unlock_suspects']) 
-            && empty($outcomes['unlock_victims']) 
+        $isDeadEnd = empty($outcomes['unlock_evidence'])
+            && empty($outcomes['unlock_levels'])
+            && empty($outcomes['unlock_suspects'])
+            && empty($outcomes['unlock_victims'])
             && empty($outcomes['next_question_id']);
 
         $inspection = RoomInspection::firstOrCreate([
@@ -128,15 +140,15 @@ class GameRoomController extends Controller
             'unlockedVictims',
             'playedWiretaps',
             'votes',
-            'inspections',    
-            'filedRequests'   
+            'inspections',
+            'filedRequests'
         ]);
 
         $this->roomService->distributeLocationQuestions($room);
 
         // --- SERVER-SIDE PRE-COMPILATION ---
         // Offloads heavy array mapping/filtering from the React Client to the Server.
-        
+
         $unlockedEvidenceIds = $room->unlockedEvidences->pluck('id')->toArray();
         $room->accumulated_evidences = $room->gameCase->evidences->filter(function ($e) use ($unlockedEvidenceIds) {
             return $e->is_initial || in_array($e->id, $unlockedEvidenceIds);

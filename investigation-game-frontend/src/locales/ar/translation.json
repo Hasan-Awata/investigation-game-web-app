@@ -92,15 +92,21 @@
         "departmentHeat": "ضغط الإدارة",
         "host": "المضيف",
         "acknowledge": "إقرار",
+        "leave": "مغادرة الجلسة",
+        "leaving": "جاري قطع الاتصال...",
+        "stay": "الحفاظ على الاتصال",
+        "exitWarningTitle": "مغادرة التحقيق؟",
+        "exitWarningDesc": "مغادرة الجلسة سيؤدي إلى قطع اتصالك الآمن. إذا كنت المضيف، ستنتقل الصلاحيات إلى لاعب عشوائي.",
         "tabs": {
           "caseDetails": "تفاصيل القضية",
           "evidences": "الأدلة",
           "suspects": "المشتبه بهم",
-          "campaign": "الحملة"
+          "campaign": "الحملة",
+          "returnToMenu": "مغادرة الجلسة"
         },
-        "notifications":{
-        "newCasualty": "ضحية جديدة",
-        "unreadIntel": "معلومات غير مقروءة"
+        "notifications": {
+          "newCasualty": "ضحية جديدة",
+          "unreadIntel": "معلومات جديدة"
         }
       },
       "gameEndOverlay": {

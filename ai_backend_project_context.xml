@@ -641,6 +641,44 @@ class LevelTransitioned implements ShouldBroadcastNow
 
 <file path="app/Events/LocationInspected.php">
 <?php
+
+namespace App\Events;
+
+use App\Models\GameRoom;
+use App\Models\RoomInspection;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class LocationInspected implements ShouldBroadcastNow
+{
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+
+    public function __construct(
+        public readonly GameRoom $room,
+        public readonly RoomInspection $inspection
+    ) {}
+
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('room.' . $this->room->id)
+        ];
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'inspection' => $this->inspection->toArray()
+        ];
+    }
+}
+</file>
+
+<file path="app/Events/RequestFiled.php">
+<?php
 namespace App\Events;
 use App\Models\GameRoom;
 use App\Models\RoomFiledRequest;
@@ -655,45 +693,6 @@ class RequestFiled implements ShouldBroadcastNow {
     public function __construct(public GameRoom $room, public RoomFiledRequest $request) {}
     public function broadcastOn(): array { return [new PrivateChannel('room.' . $this->room->id)]; }
     public function broadcastWith(): array { return ['filed_request' => $this->request->toArray()]; }
-}
-</file>
-
-<file path="app/Events/RequestFiled.php">
-<?php
-
-namespace App\Events;
-
-use Illuminate\Broadcasting\Channel;
-use Illuminate\Broadcasting\InteractsWithSockets;
-use Illuminate\Broadcasting\PresenceChannel;
-use Illuminate\Broadcasting\PrivateChannel;
-use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
-use Illuminate\Foundation\Events\Dispatchable;
-use Illuminate\Queue\SerializesModels;
-
-class RequestFiled
-{
-    use Dispatchable, InteractsWithSockets, SerializesModels;
-
-    /**
-     * Create a new event instance.
-     */
-    public function __construct()
-    {
-        //
-    }
-
-    /**
-     * Get the channels the event should broadcast on.
-     *
-     * @return array<int, Channel>
-     */
-    public function broadcastOn(): array
-    {
-        return [
-            new PrivateChannel('channel-name'),
-        ];
-    }
 }
 </file>
 
@@ -3125,6 +3124,10 @@ class AssessmentService
     {
         return DB::transaction(function () use ($room) {
             $level = $room->currentLevel;
+
+            if (!$level) {
+                return Result::failure("No active phase to evaluate. This phase may have already been submitted.");
+            }
 
             // Eager load `choice` to resolve the N+1 loop flaw
             $votes = \App\Models\RoomVote::with('choice')->where('room_id', $room->id)
