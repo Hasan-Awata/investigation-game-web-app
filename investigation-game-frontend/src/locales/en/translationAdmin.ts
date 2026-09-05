@@ -169,7 +169,13 @@ export const translations = {
       emptyMessage: "No phases assigned to this case.",
       manageTitle: (caseTitle: string) => `Active Phases in ${caseTitle}`,
       deleteConfirm: (title: string) => `Are you absolutely sure you want to delete the "${title}" phase? All levels and questions inside it will be orphaned or deleted.`,
-      targetCaseHeader: (title: string) => `Targeting Case: ${title}`
+      targetCaseHeader: (title: string) => `Targeting Case: ${title}`,
+      mapUrlLabel: "Campaign Map",
+      mapUrlPlaceholder: "-- Select Map --",
+      targetingBanner: "⚠️ TARGETING MATRIX ENGAGED: Click map to lock phase location.",
+      cancelTargetBtn: "Cancel",
+      mapCoordinateBtn: "Map Phase Coordinate",
+      coordinateLabel: "Current Coordinates:",
     },
     suspectForm: {
       entityName: "Suspect",

@@ -161,6 +161,9 @@ export interface Phase {
   title: string;
   description?: string;
   order_index: number;
+  map_url?: string;
+  coord_x?: number;
+  coord_y?: number;
   levels?: Level[]; 
 }
 

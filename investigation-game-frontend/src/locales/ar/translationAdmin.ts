@@ -169,7 +169,13 @@ export const translations = {
       emptyMessage: "لا توجد مراحل معينة لهذه القضية.",
       manageTitle: (caseTitle: string) => `المراحل النشطة في ${caseTitle}`,
       deleteConfirm: (title: string) => `هل أنت متأكد تماماً من رغبتك في حذف مرحلة "${title}"؟ سيصبح كافة المستويات والأسئلة بداخلها بلا مأوى أو سيتم حذفها.`,
-      targetCaseHeader: (title: string) => `استهداف القضية: ${title}`
+      targetCaseHeader: (title: string) => `استهداف القضية: ${title}`,
+      mapUrlLabel: "خريطة الحملة",
+      mapUrlPlaceholder: "-- اختر الخريطة --",
+      targetingBanner: "⚠️ مصفوفة التحديد مفعلة: انقر فوق الخريطة لقفل موقع المرحلة.",
+      cancelTargetBtn: "إلغاء",
+      mapCoordinateBtn: "تعيين إحداثيات المرحلة",
+      coordinateLabel: "الإحداثيات الحالية:",
     },
     suspectForm: {
       entityName: "المشتبه به",

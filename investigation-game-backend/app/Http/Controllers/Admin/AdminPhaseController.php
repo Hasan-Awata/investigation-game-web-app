@@ -16,6 +16,9 @@ class AdminPhaseController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'order_index' => 'required|integer|min:1',
+            'map_url'     => 'nullable|string',
+            'coord_x'     => 'nullable|numeric|required_with:map_url',
+            'coord_y'     => 'nullable|numeric|required_with:map_url',
         ]);
 
         $phase = Phase::create($validated);
@@ -34,6 +37,9 @@ class AdminPhaseController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'order_index' => 'required|integer|min:1',
+            'map_url'     => 'nullable|string',
+            'coord_x'     => 'nullable|numeric|required_with:map_url',
+            'coord_y'     => 'nullable|numeric|required_with:map_url',
         ]);
         $phase->update($validated);
         return response()->json(['message' => 'Phase updated.', 'phase' => $phase], 200);

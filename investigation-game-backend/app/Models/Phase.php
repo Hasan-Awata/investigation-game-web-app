@@ -13,6 +13,9 @@ class Phase extends Model
         'title',
         'description',
         'order_index',
+        'map_url',
+        'coord_x',
+        'coord_y'
     ];
 
     public function gameCase(): BelongsTo

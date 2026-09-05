@@ -14,7 +14,7 @@ import './Shared/AdminForms.css';
 const initialFormState = { title: '', details: '', order_index: '1', store_locally: false, is_initial: true, presentation_type: 'interrogation', required_request_id: '' };
 
 export default function LevelForm() {
-  const { caseId, phaseId, setPhaseId, selectedCase, selectedPhase, availablePhases } = useAdminContext();
+  const { caseId, phaseId, setPhaseId, selectedCase, selectedPhase, availablePhases, availableLevels } = useAdminContext();
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.levelForm;
 
@@ -89,7 +89,7 @@ export default function LevelForm() {
         <div className="admin-stack-group">
           {availablePhases.map((phase: Phase) => (
             <EntityList<Level>
-              key={`phase-group-${phase.id}`} title={t.phaseLevelsTitle(phase.title)} items={[...(phase.levels || [])].sort((a, b) => a.order_index - b.order_index)}
+              key={`phase-group-${phase.id}`} title={t.phaseLevelsTitle(phase.title)} items={[...(phase.id.toString() === phaseId ? availableLevels : (phase.levels || []))].sort((a, b) => a.order_index - b.order_index)}
               emptyMessage={t.emptyMessage} keyExtractor={(level) => level.id.toString()} isProcessing={isProcessing}
               onEdit={(level) => onEdit(level, phase.id)} onDelete={(level) => handleDelete(level.id, t.deleteConfirm(level.title))}
               renderItemContent={(level) => (

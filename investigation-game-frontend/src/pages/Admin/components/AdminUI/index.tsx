@@ -114,3 +114,70 @@ export const ResourceSelectorGrid = ({ label, items, selectedValues, onChange, g
     </select>
   </div>
 );
+
+export interface CoordinateMarker {
+  id: string | number;
+  x: string | number;
+  y: string | number;
+  label?: string;
+  isTargeting?: boolean;
+}
+
+interface CoordinatePickerProps {
+  imageUrl: string;
+  isTargeting: boolean;
+  targetingBannerText: string;
+  cancelTargetBtnText: string;
+  onCancelTargeting: () => void;
+  onCoordinateSelect: (x: string, y: string) => void;
+  markers: CoordinateMarker[];
+}
+
+export const CoordinatePicker = ({
+  imageUrl, isTargeting, targetingBannerText, cancelTargetBtnText,
+  onCancelTargeting, onCoordinateSelect, markers
+}: CoordinatePickerProps) => {
+  
+  const handleImageClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!isTargeting) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const xPercent = (((e.clientX - rect.left) / rect.width) * 100).toFixed(1);
+    const yPercent = (((e.clientY - rect.top) / rect.height) * 100).toFixed(1);
+    onCoordinateSelect(xPercent, yPercent);
+  };
+
+  return (
+    <div className="coordinate-picker-container" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+      {isTargeting && (
+        <div className="targeting-active-banner">
+          <span>{targetingBannerText}</span>
+          <button type="button" onClick={onCancelTargeting} style={{ background: 'transparent', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)' }}>
+            {cancelTargetBtnText}
+          </button>
+        </div>
+      )}
+
+      <div className={`coordinate-picker-image-wrapper ${isTargeting ? 'mapping-active' : ''}`} onClick={handleImageClick}>
+        <img src={imageUrl} alt="Map Preview" />
+        
+        {markers.map((marker) => (
+          <div
+            key={marker.id}
+            className={`loc-hover-zone ${marker.isTargeting ? 'selected' : 'investigated'}`}
+            style={{ 
+              top: `${marker.y}%`, 
+              left: `${marker.x}%`,
+              display: 'flex',
+              pointerEvents: 'none' 
+            }}
+          >
+            <div className="loc-crosshair"></div>
+            {marker.label && (
+              <div className="loc-tooltip">{marker.label}</div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
