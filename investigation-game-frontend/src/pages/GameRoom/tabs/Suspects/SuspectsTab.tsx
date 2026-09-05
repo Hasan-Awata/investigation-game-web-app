@@ -102,15 +102,6 @@ export default function SuspectsTab() {
 
   return (
     <div className="suspects-tab-container">
-      <header className="suspects-header">
-        <h2 className="section-title">{t('pages.gameRoom.suspects.tab.suspectBoard')}</h2>
-        {!allInitialCompleted && (
-          <div className="lock-warning">
-            <span className="forensic-icon">🔒</span> {t('pages.gameRoom.suspects.tab.lockWarning')}
-          </div>
-        )}
-      </header>
-
       {feedback && (
         <div className="feedback-modal-overlay">
           <div className={`feedback-modal-content ${feedback.type}`}>
@@ -131,7 +122,7 @@ export default function SuspectsTab() {
 
       <div className="verdict-zones">
         <div
-          className="drop-zone guilty-zone glass-panel"
+          className="drop-zone guilty-zone"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => handleDrop(e, 'guilty')}
         >
@@ -156,7 +147,7 @@ export default function SuspectsTab() {
         </div>
 
         <div
-          className="drop-zone innocent-zone glass-panel"
+          className="drop-zone innocent-zone"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => handleDrop(e, 'innocent')}
         >
@@ -182,7 +173,7 @@ export default function SuspectsTab() {
       </div>
 
       <div
-        className="unassigned-pool glass-panel"
+        className="unassigned-pool"
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => handleDrop(e, 'unassigned')}
       >
@@ -226,6 +217,12 @@ export default function SuspectsTab() {
         {isReadyToSubmit && isNoFoulPlay && (
           <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
             {t('pages.gameRoom.suspects.tab.emptyPoolWarning')}
+          </span>
+        )}
+
+        {!allInitialCompleted && (
+          <span className="lock-warning-text">
+            {t('pages.gameRoom.suspects.tab.lockWarning')}
           </span>
         )}
       </div>

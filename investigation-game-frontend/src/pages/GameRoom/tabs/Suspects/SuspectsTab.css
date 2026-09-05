@@ -4,88 +4,69 @@
   gap: 2rem;
   max-width: 1200px;
   margin: 0 auto;
-  /* Removed height: 100% so the container expands dynamically */
-  padding-bottom: 2rem; 
-}
-
-.suspects-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.lock-warning {
-  background: rgba(255, 179, 0, 0.1);
-  border: 1px solid var(--accent-amber);
-  color: var(--accent-amber);
-  padding: 0.5rem 1rem;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  padding: 2rem;
+  
+  /* The original dark tactical wall background */
+  background-color: #1a1b1e;
+  background-image: 
+    radial-gradient(rgba(255, 255, 255, 0.03) 2px, transparent 2px),
+    radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+  background-size: 30px 30px, 12px 12px;
+  border-radius: var(--radius-lg);
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.9);
+  position: relative;
 }
 
 .verdict-zones {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 2rem;
-  height: max-content; /* Forces the grid to stretch based on its children */
+  gap: 3rem;
+  height: max-content; 
+  margin-top: 1rem;
 }
 
 .drop-zone {
   display: flex;
   flex-direction: column;
-  border: 2px dashed rgba(255, 255, 255, 0.1);
-  padding: 1.5rem;
   transition: all 0.2s ease;
   height: max-content; 
-}
-
-.drop-zone.guilty-zone {
-  border-color: rgba(163, 50, 50, 0.3);
-}
-
-.drop-zone.innocent-zone {
-  border-color: rgba(74, 124, 89, 0.3);
 }
 
 .zone-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 2rem;
+  border-bottom: 2px dashed rgba(255, 255, 255, 0.15);
   padding-bottom: 0.5rem;
 }
 
 .zone-header h3 {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 1rem;
-  color: var(--text-secondary);
+  font-size: 1.1rem;
   letter-spacing: 0.1em;
+  text-transform: uppercase;
 }
 
-.guilty-zone .zone-header h3 { color: var(--accent-crimson); }
-.innocent-zone .zone-header h3 { color: var(--accent-success); }
+.guilty-zone .zone-header h3 { color: #ff5252; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+.innocent-zone .zone-header h3 { color: #69f0ae; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
 
 .zone-counter {
   font-family: var(--font-mono);
   font-weight: 700;
   color: var(--text-primary);
-  background: rgba(0, 0, 0, 0.5);
-  padding: 0.2rem 0.5rem;
+  background: rgba(0, 0, 0, 0.6);
+  padding: 0.2rem 0.6rem;
   border-radius: 4px;
 }
 
 .zone-content {
   display: flex;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 1.5rem;
   align-content: flex-start;
-  min-height: 220px; /* Keeps the drop zone open even when empty */
+  min-height: 250px; 
 }
 
 .zone-placeholder {
@@ -95,16 +76,54 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-mono);
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.3);
   text-transform: uppercase;
   letter-spacing: 0.1em;
   text-align: center;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+.zone-content .suspect-card::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #e0e0e0, #555);
+  box-shadow: -2px 4px 5px rgba(0, 0, 0, 0.6), inset -2px -2px 4px rgba(0,0,0,0.4);
+  z-index: 20;
+  pointer-events: none;
+}
+
+.guilty-zone .zone-content .suspect-card::before {
+  background: radial-gradient(circle at 35% 35%, #ff5252, #8a0000);
+}
+
+.innocent-zone .zone-content .suspect-card::before {
+  background: radial-gradient(circle at 35% 35%, #69f0ae, #00600f);
+}
+
+.zone-content .suspect-card:nth-child(4n + 1) { transform: rotate(-3deg) translateY(4px); }
+.zone-content .suspect-card:nth-child(4n + 2) { transform: rotate(4deg) translateY(-2px); }
+.zone-content .suspect-card:nth-child(4n + 3) { transform: rotate(-1deg) translateY(6px); }
+.zone-content .suspect-card:nth-child(4n + 4) { transform: rotate(2deg) translateY(-4px); }
+
+.zone-content .suspect-card:active {
+  transform: scale(1.05) rotate(0deg);
+  z-index: 30;
 }
 
 .unassigned-pool {
   padding: 1.5rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  height: max-content;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(var(--bg-panel-rgb), 0.95);
+  backdrop-filter: blur(12px);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  margin-top: 1rem;
 }
 
 .unassigned-grid {
@@ -120,7 +139,7 @@
   align-items: center;
   margin-top: 1.5rem;
   padding-top: 2rem;
-  padding-bottom: 4rem; /* Gives the button solid breathing room at the bottom of the screen */
+  padding-bottom: 2rem;
   border-top: 1px dashed rgba(255, 255, 255, 0.15);
 }
 
@@ -152,13 +171,6 @@
   box-shadow: none;
 }
 
-@media (max-width: 768px) {
-  .verdict-zones {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* --- NO FOUL PLAY BUTTON MODIFIER --- */
 .final-verdict-btn.no-foul-play {
   background: var(--text-secondary);
   border-color: var(--text-secondary);
@@ -172,4 +184,19 @@
   border-color: var(--text-primary);
   box-shadow: 0 6px 20px rgba(138, 141, 145, 0.5);
   transform: translateY(-2px);
+}
+
+.lock-warning-text {
+  color: var(--accent-amber);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  text-align: center;
+  letter-spacing: 0.05em;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+
+@media (max-width: 768px) {
+  .verdict-zones {
+    grid-template-columns: 1fr;
+  }
 }
