@@ -156,7 +156,7 @@ if __name__ == "__main__":
         project_root, 
         output_filename, 
         include_styles=False, 
-        include_admin_files=True, 
+        include_admin_files=False, 
         include_translation_files=False, 
         only_css_files=False
     )

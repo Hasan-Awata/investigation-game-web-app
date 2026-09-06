@@ -122,7 +122,26 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
         </div>
       );
 
-    case 'memo':
+    case 'memo': {
+      // Explicitly narrow the union so TypeScript knows we are handling MemoMetadata
+      const memoEvidence = docEvidence as Extract<DocEvType, { sub_type: 'memo' }>;
+      const isSticky = memoEvidence.metadata.style === 'sticky';
+
+      if (isSticky) {
+        return (
+          <div className="document-variant memo-sticky-variant">
+            {/* A piece of scotch tape at the top for realism */}
+            <div className="sticky-tape"></div>
+            
+            <div className="memo-content">
+              <h4 className="evidence-title">{evidence.title}</h4>
+              {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
+            </div>
+          </div>
+        );
+      }
+
+      // Default Notebook Fallback
       return (
         <div className="document-variant memo-variant">
           {/* Spiral notebook punch holes on the left */}
@@ -137,6 +156,7 @@ export default function DocumentEvidence({ evidence }: { evidence: Evidence }) {
           </div>
         </div>
       );
+    }
 
     case 'background_check':
       return (

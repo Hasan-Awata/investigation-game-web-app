@@ -158,7 +158,8 @@
   --lab-ink: #1a1a1a;           /* Stamped black ink */
   /* --------------------------- */
   
-  min-height: 190px;
+  min-height: 180px;
+  width: 300px;
   margin-top: 15px;
   background: var(--kraft-paper);
   border-radius: 2px;
@@ -265,14 +266,14 @@
   --dna-band: #34495e;            /* Slate color for genetic bands */
   /* --------------------------- */
   
-  min-height: 190px;
+  min-height: 150px;
+  width: 300px;
   margin-top: 15px;
-  width: 280px;
   background: var(--dna-paper);
   border-radius: 4px;
   box-shadow: 2px 4px 10px rgba(0,0,0,0.25);
   position: relative;
-  overflow: hidden; /* Contains the biohazard strip */
+  overflow: hidden; 
   border: 1px solid var(--dna-border);
 }
 
@@ -291,7 +292,7 @@
 }
 
 .dna-report {
-  padding: 1.25rem;
+  padding: 0.5rem;
 }
 
 .dna-header {
@@ -299,34 +300,57 @@
   align-items: center;
   gap: 0.5rem;
   border-bottom: 1px solid var(--dna-border);
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.75rem;
+  padding-bottom: 0.25rem;
 }
 
 .dna-icon {
   font-size: 1.2rem;
-  filter: grayscale(100%) brightness(50%); /* Mutes the emoji to fit the dark ink */
+  filter: grayscale(100%) brightness(50%); 
 }
 
 /* Staggered DNA Electropherogram Bands */
 .dna-sequence-graphic {
-  height: 25px;
+  height: 20px;
   width: 100%;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   background-color: rgba(0,0,0,0.03);
   border: 1px solid rgba(0,0,0,0.05);
   border-radius: 2px;
-  /* Simulating genetic bands with precise gradient stops */
+  position: relative;
+  overflow: hidden; /* Contains the scanner animation */
+}
+
+/* 1. Base Genetic Bands (Overlapping frequencies for a dynamic, organic look) */
+.dna-sequence-graphic::before {
+  content: '';
+  position: absolute;
+  inset: 0;
   background-image: 
-    linear-gradient(90deg, 
-      transparent 10%, var(--dna-band) 10%, var(--dna-band) 12%, 
-      transparent 12%, transparent 25%, var(--dna-band) 25%, var(--dna-band) 30%, 
-      transparent 30%, transparent 45%, var(--dna-band) 45%, var(--dna-band) 48%, 
-      transparent 48%, transparent 60%, var(--dna-band) 60%, var(--dna-band) 62%, 
-      transparent 62%, transparent 80%, var(--dna-band) 80%, var(--dna-band) 85%, 
-      transparent 85%
-    );
-  opacity: 0.7;
+    repeating-linear-gradient(90deg, transparent 0, transparent 4px, var(--dna-band) 4px, var(--dna-band) 5px),
+    repeating-linear-gradient(90deg, transparent 0, transparent 11px, var(--dna-band) 11px, var(--dna-band) 13px),
+    repeating-linear-gradient(90deg, transparent 0, transparent 23px, var(--dna-band) 23px, var(--dna-band) 26px);
+  opacity: 0.65;
+}
+
+/* 2. Tactical Scanner Sweep (Using your existing biohazard-yellow variable) */
+.dna-sequence-graphic::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -20px;
+  height: 100%;
+  width: 25px;
+  background: linear-gradient(90deg, transparent, var(--biohazard-yellow), transparent);
+  opacity: 0.8;
+  mix-blend-mode: multiply; /* Blends nicely with the dark ink bands */
+  animation: forensic-scan 3s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+}
+
+@keyframes forensic-scan {
+  0% { left: -15%; opacity: 0; }
+  15% { opacity: 1; }
+  85% { opacity: 1; }
+  100% { left: 115%; opacity: 0; }
 }
 
 .dna-variant .evidence-title {
@@ -469,7 +493,8 @@
   --trace-ink: #2c3e50;                     /* Dark ink */
   /* --------------------------- */
   
-  min-height: 190px;
+  min-height: 160px;
+  width: 300px;
   margin-top: 15px;
   background: var(--bag-plastic);
   border-radius: 4px;
@@ -498,7 +523,7 @@
 .trace-bag-label {
   background: var(--label-bg);
   border-radius: 2px;
-  padding: 1.25rem;
+  padding: 0.5rem;
   border: 1px solid #dcdcdc;
   box-shadow: 1px 2px 5px rgba(0,0,0,0.1);
   position: relative;

@@ -13,8 +13,6 @@ export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
           <span className="audio-icon">⏺</span>
           <span className="tape-indicator">{t('pages.gameRoom.evidence.variants.audio.aSide')}</span>
         </div>
-
-        {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
       </div>
 
       {/* The clear plastic window showing the tape reels */}
