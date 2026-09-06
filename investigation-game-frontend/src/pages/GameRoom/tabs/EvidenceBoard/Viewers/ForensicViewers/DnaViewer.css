@@ -2,16 +2,42 @@
    DNA REPORT (Clinical Laboratory Printout)
    ============================================================== */
 .dna-paper {
+  /* --- STANDALONE RULES --- */
+  --dna-font-main: var(--font-primary), sans-serif;
+  --dna-font-mono: var(--dna-font-mono), monospace;
+
   background: #f4f6f8; 
   color: #1a1b1e;
   padding: 3.5rem 4rem;
   border-radius: 2px;
   box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.03), 2px 4px 15px rgba(0, 0, 0, 0.2);
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  
+  /* Explicit boundary dimensions */
+  width: 100%;
   max-width: 850px;
+  min-height: 100%;
+  box-sizing: border-box;
   margin: 0 auto;
   position: relative;
   text-align: start; 
+  
+  font-family: var(--dna-font-main);
+}
+
+/* Isolated reset */
+.dna-paper *,
+.dna-paper *::before,
+.dna-paper *::after {
+  box-sizing: border-box;
+}
+
+.dna-paper h1, 
+.dna-paper h2, 
+.dna-paper h3, 
+.dna-paper h4, 
+.dna-paper p {
+  font-family: inherit;
+  margin-top: 0;
 }
 
 .dna-header {
@@ -66,7 +92,7 @@
 }
 
 .dna-meta-value {
-  font-family: var(--font-mono);
+  font-family: var(--dna-font-mono);
   font-weight: 700;
   font-size: 1.05rem;
 }
@@ -169,7 +195,7 @@
 .dna-value {
   font-size: 1.25rem;
   font-weight: 800;
-  font-family: var(--font-mono);
+  font-family: var(--dna-font-mono);
 }
 
 .dna-value.highlight {
@@ -205,7 +231,7 @@
 }
 
 .dna-codis-stamp {
-  font-family: var(--font-mono);
+  font-family: var(--dna-font-mono);
   font-weight: 900;
   color: #2b6cb0;
   font-size: 0.9rem;

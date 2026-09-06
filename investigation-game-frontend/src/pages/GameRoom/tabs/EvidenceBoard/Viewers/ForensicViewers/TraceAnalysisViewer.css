@@ -2,16 +2,42 @@
    TRACE ANALYSIS (Mass Spectrometry Lab Report)
    ============================================================== */
 .trace-paper {
+  /* --- STANDALONE RULES --- */
+  --trace-font-main: var(--font-primary), sans-serif;
+  --trace-font-mono: var(--trace-font-mono), monospace;
+
   background: #fdfcf9; 
   color: #1a1a1a;
   padding: 3rem 4rem;
   border-radius: 2px;
   box-shadow: inset 0 0 30px rgba(0,0,0,0.02), 2px 4px 15px rgba(0,0,0,0.2);
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  max-width: 800px;
-  margin: 0 auto;
   border-top: 12px solid #2c3e50; 
+  
+  /* Explicit boundary dimensions */
+  width: 100%;
+  max-width: 800px;
+  min-height: 100%;
+  box-sizing: border-box;
+  margin: 0 auto;
   text-align: start;
+  
+  font-family: var(--trace-font-main);
+}
+
+/* Isolated reset */
+.trace-paper *,
+.trace-paper *::before,
+.trace-paper *::after {
+  box-sizing: border-box;
+}
+
+.trace-paper h1, 
+.trace-paper h2, 
+.trace-paper h3, 
+.trace-paper h4, 
+.trace-paper p {
+  font-family: inherit;
+  margin-top: 0;
 }
 
 .trace-header {
@@ -40,7 +66,7 @@
 .trace-meta {
   display: flex;
   justify-content: space-between;
-  font-family: var(--font-mono);
+  font-family: var(--trace-font-mono);
   font-size: 0.95rem;
   margin-bottom: 2.5rem;
 }
@@ -112,7 +138,7 @@
   font-size: 0.75rem;
   color: #7f8c8d;
   margin-top: 0.75rem;
-  font-family: var(--font-mono);
+  font-family: var(--trace-font-mono);
 }
 
 /* --- RESULTS TABLE --- */
@@ -150,7 +176,7 @@
 
 .source-match {
   color: #27ae60; 
-  font-family: var(--font-mono);
+  font-family: var(--trace-font-mono);
   text-transform: uppercase;
   letter-spacing: 0.05em;
   text-shadow: 0 0 1px rgba(39, 174, 96, 0.3);
@@ -160,7 +186,7 @@
   display: flex;
   justify-content: space-between;
   margin-top: 3rem;
-  font-family: var(--font-mono);
+  font-family: var(--trace-font-mono);
   font-size: 0.8rem;
   color: #95a5a6;
   border-top: 1px dashed #bdc3c7;

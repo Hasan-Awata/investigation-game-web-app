@@ -2,18 +2,40 @@
    DIGITAL FORENSICS (Cyber Crimes Decryption Terminal)
    ============================================================== */
 .digital-terminal {
+  /* --- STANDALONE RULES --- */
+  --terminal-font-mono: 'Courier New', Courier, var(--font-mono), monospace;
+
   background: #0a0b0e;
   color: #00e5ff;
-  font-family: 'Courier New', Courier, monospace;
   padding: 0;
   border-radius: 6px;
   border: 1px solid #1a252f;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), inset 0 0 30px rgba(0, 229, 255, 0.05);
+  
+  /* Explicit boundary dimensions */
+  width: 100%;
   max-width: 850px;
+  min-height: 100%;
+  box-sizing: border-box;
   margin: 0 auto;
   overflow: hidden;
   position: relative;
-  text-align: start; /* Allow the layout to naturally follow RTL/LTR rules */
+  text-align: start;
+  
+  font-family: var(--terminal-font-mono);
+}
+
+/* Isolated reset */
+.digital-terminal *,
+.digital-terminal *::before,
+.digital-terminal *::after {
+  box-sizing: border-box;
+}
+
+.digital-terminal p,
+.digital-terminal span,
+.digital-terminal div {
+  font-family: inherit;
 }
 
 /* CRT Scanline effect overlay */

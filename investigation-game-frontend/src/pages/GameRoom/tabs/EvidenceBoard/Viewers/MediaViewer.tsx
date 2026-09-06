@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next'; 
 import type { Evidence } from '@/types/evidence';
+import ViewersContainer from './ViewersContainer';
 import './MediaViewer.css';
 
 type MediaEvidence = Extract<Evidence, { evidence_type: 'image' | 'audio' }>;
@@ -44,9 +45,11 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
 
   if (!mediaUrl) {
     return (
-      <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
-        {t('pages.gameRoom.evidence.viewers.media.noMediaFound')}
-      </div>
+      <ViewersContainer evidence={evidence}>
+        <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
+          {t('pages.gameRoom.evidence.viewers.media.noMediaFound')}
+        </div>
+      </ViewersContainer>
     );
   }
 
@@ -55,38 +58,40 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
     : { minHeight: '300px' };
 
   return (
-    <div className="media-viewer-wrapper">
-      {evidence.evidence_type === 'image' ? (
-        <div className="media-image-container" style={containerStyle}>
-          {!isImageLoaded && <div className="media-skeleton-loader" />}
+    <ViewersContainer evidence={evidence}>
+      <div className="media-viewer-wrapper">
+        {evidence.evidence_type === 'image' ? (
+          <div className="media-image-container" style={containerStyle}>
+            {!isImageLoaded && <div className="media-skeleton-loader" />}
 
-          <img 
-            src={mediaUrl} 
-            alt={evidence.title || t('pages.gameRoom.evidence.viewers.media.imageAltFallback')} 
-            className="media-full-image"
-            onLoad={() => setIsImageLoaded(true)}
-            style={{
-              opacity: isImageLoaded ? 1 : 0,
-            }}
-          />
-        </div>
-      ) : (
-        <div className="media-audio-container">
-          <div className="audio-visualizer-mock"></div>
-          <audio controls className="media-audio-player">
-            <source src={mediaUrl} type="audio/mpeg" />
-            {t('pages.gameRoom.evidence.viewers.media.audioNotSupported')}
-          </audio>
-        </div>
-      )}
-
-      <div className="media-meta-plaque">
-        <h3 className="media-plaque-title">{evidence.title}</h3>
-        {evidence.description && (
-          <p className="media-plaque-desc">{evidence.description}</p>
+            <img 
+              src={mediaUrl} 
+              alt={evidence.title || t('pages.gameRoom.evidence.viewers.media.imageAltFallback')} 
+              className="media-full-image"
+              onLoad={() => setIsImageLoaded(true)}
+              style={{
+                opacity: isImageLoaded ? 1 : 0,
+              }}
+            />
+          </div>
+        ) : (
+          <div className="media-audio-container">
+            <div className="audio-visualizer-mock"></div>
+            <audio controls className="media-audio-player">
+              <source src={mediaUrl} type="audio/mpeg" />
+              {t('pages.gameRoom.evidence.viewers.media.audioNotSupported')}
+            </audio>
+          </div>
         )}
+
+        <div className="media-meta-plaque">
+          <h3 className="media-plaque-title">{evidence.title}</h3>
+          {evidence.description && (
+            <p className="media-plaque-desc">{evidence.description}</p>
+          )}
+        </div>
       </div>
-    </div>
+    </ViewersContainer>
   );
 };
 

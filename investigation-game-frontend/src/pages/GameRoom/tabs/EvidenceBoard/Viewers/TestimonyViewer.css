@@ -2,16 +2,41 @@
    TESTIMONY VIEWER (Police Interrogation Transcript)
    ============================================================== */
 .testimony-modal-viewer {
+  /* --- STANDALONE RULES --- */
+  --testimony-font-main:  var(--font-serif), serif;
+  --testimony-font-mono:  var(--font-mono), monospace;
+
   background: #f4f1ea; 
   padding: 2.5rem 3rem; 
   border-radius: 2px;
   box-shadow: inset 0 0 60px rgba(0, 0, 0, 0.05), 2px 4px 20px rgba(0, 0, 0, 0.2);
+  
+  /* Explicit boundary dimensions */
   width: 100%;
+  max-width: 900px; 
+  min-height: 100%;
   box-sizing: border-box; 
   margin: 0 auto;
   color: #1a1a1a;
   overflow: hidden; 
   text-align: start; /* CRITICAL: Allows natural flow of LTR/RTL text */
+  
+  font-family: var(--testimony-font-main);
+}
+
+/* Isolated reset */
+.testimony-modal-viewer *,
+.testimony-modal-viewer *::before,
+.testimony-modal-viewer *::after {
+  box-sizing: border-box;
+}
+
+.testimony-modal-viewer h1, 
+.testimony-modal-viewer h2, 
+.testimony-modal-viewer h3, 
+.testimony-modal-viewer p {
+  font-family: inherit;
+  margin-top: 0;
 }
 
 .testimony-paper {
@@ -28,7 +53,7 @@
 }
 
 .testimony-agency {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: var(--testimony-font-main);
   font-size: 1.25rem;
   font-weight: bold;
   letter-spacing: 0.15em;
@@ -37,10 +62,11 @@
 
 .testimony-title {
   margin: 0.5rem 0 1.5rem 0;
-  font-family: 'Times New Roman', Times, serif;
+  font-family: var(--testimony-font-main);
   font-size: 2.2rem;
   font-weight: 900;
   text-transform: uppercase;
+  text-align: center;
   letter-spacing: 0.05em;
 }
 
@@ -57,7 +83,7 @@
 }
 
 .meta-label {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--testimony-font-main);
   font-size: 0.75rem;
   font-weight: bold;
   color: #666;
@@ -67,14 +93,15 @@
 }
 
 .meta-value {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--testimony-font-main);
   font-size: 1.1rem;
+  color: #666;
   font-weight: bold;
 }
 
 /* Subject Block */
 .testimony-subject-block {
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--testimony-font-main);
   font-size: 1.25rem;
   margin-bottom: 1.5rem;
   padding: 1rem;
@@ -89,7 +116,7 @@
 }
 
 .testimony-context {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: var(--testimony-font-main);
   font-size: 1.1rem;
   font-style: italic;
   margin-bottom: 2rem;
@@ -112,7 +139,7 @@
   /* Swapped to logical property */
   inset-inline-start: 50%;
   transform: translate(-50%, -50%) rotate(-30deg);
-  font-family: 'Times New Roman', Times, serif;
+  font-family: var(--testimony-font-main);
   font-size: 6rem;
   font-weight: 900;
   color: rgba(0, 0, 0, 0.03);
@@ -130,7 +157,7 @@
 .transcript-content {
   position: relative;
   z-index: 1;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--testimony-font-main);
   font-size: 1.15rem;
   line-height: 1.8;
   color: #1a1a1a;
@@ -182,7 +209,7 @@
 }
 
 .certification-statement {
-  font-family: 'Times New Roman', Times, serif;
+  font-family: var(--testimony-font-main);
   font-size: 1.1rem;
   font-style: italic;
   max-width: 400px;
@@ -221,7 +248,7 @@
 .signature-line {
   border-top: 1px solid #1a1a1a;
   padding-top: 0.5rem;
-  font-family: 'Courier New', Courier, monospace;
+  font-family: var(--testimony-font-main);
   font-size: 0.85rem;
   font-weight: bold;
   position: relative;

@@ -2,17 +2,43 @@
    BACKGROUND CHECK AESTHETIC (Official Dossier)
    ============================================================== */
 .bg-check-preview {
+  /* --- STANDALONE RULES --- */
+  --bg-check-font-main: var(--font-primary), sans-serif;
+  --bg-check-font-mono: var(--font-mono), monospace;
+
   background-color: #f4f1ea;
   box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.1);
   color: #1a1a1a;
   padding: 3rem 4rem;
-  min-height: 50vh;
+  
+  /* Explicit boundary dimensions */
+  width: 100%;
+  max-width: 850px;
+  min-height: 100%;
   box-sizing: border-box;
   position: relative;
+  margin: 0 auto;
   overflow: hidden;
-  font-family: var(--font-primary), sans-serif;
-  /* Ensure overall text flows correctly */
+  
+  
+  /* Apply isolated typography */
+  font-family: var(--bg-check-font-main);
   text-align: start;
+}
+
+/* Isolated reset to prevent global bleed */
+.bg-check-preview *,
+.bg-check-preview *::before,
+.bg-check-preview *::after {
+  box-sizing: border-box;
+}
+
+.bg-check-preview h1, 
+.bg-check-preview h2, 
+.bg-check-preview h3, 
+.bg-check-preview p {
+  font-family: inherit;
+  margin-top: 0;
 }
 
 .bg-check-header {
@@ -74,7 +100,7 @@
 }
 
 .bg-check-label {
-  font-family: var(--font-mono);
+  font-family: var(--bg-check-font-mono);
   font-weight: bold;
   color: #444;
   font-size: 0.85rem;
@@ -83,19 +109,13 @@
 }
 
 .bg-check-value {
-  font-family: var(--font-mono);
+  font-family: var(--bg-check-font-mono);
   font-weight: 600;
   color: #1a1a1a;
 }
 
-.bg-check-section {
-  margin-bottom: 2.5rem;
-  border-top: 2px solid #1a1a1a;
-  padding-top: 1rem;
-}
-
 .bg-check-section-title {
-  font-family: var(--font-mono);
+  font-family: var(--bg-check-font-mono);
   font-weight: 900;
   font-size: 1.1rem;
   margin-bottom: 1rem;
@@ -104,7 +124,7 @@
 }
 
 .bg-check-text {
-  font-family: var(--font-mono);
+  font-family: var(--bg-check-font-mono);
   white-space: pre-wrap;
   font-size: 0.95rem;
   line-height: 1.6;

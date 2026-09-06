@@ -1,17 +1,40 @@
 /* ==============================================================
+   MEMO SHARED BASE (Setup for both Note & Sticky)
+   ============================================================== */
+.memo-preview,
+.memo-sticky-preview {
+  /* --- STANDALONE RULES --- */
+  --memo-font-handwriting: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  --memo-font-fallback: var(--font-primary), sans-serif;
+}
+
+.memo-preview *,
+.memo-preview *::before,
+.memo-preview *::after,
+.memo-sticky-preview *,
+.memo-sticky-preview *::before,
+.memo-sticky-preview *::after {
+  box-sizing: border-box;
+}
+
+.memo-preview p,
+.memo-sticky-preview p {
+  font-family: inherit;
+  margin-top: 0;
+}
+
+/* ==============================================================
    MEMO PREVIEW (Full-Size Crumpled Notebook Page)
    ============================================================== */
 .memo-preview {
-  /* --- THEME CONTROL PANEL --- */
   --memo-paper: #fcfbfa;           
   --memo-lines: #a6c8ff;           
   --memo-margin: #e88b8b;          
   --memo-ink: #1b263b;             
-  /* --------------------------- */
 
+  /* Explicit boundary dimensions */
   width: 100%;
-  box-sizing: border-box;  
-  min-height: 50vh;        
+  min-height: 100%;        
   overflow-x: hidden;      
   
   background-color: var(--memo-paper);
@@ -21,7 +44,6 @@
   
   border-radius: 4px 12px 6px 10px; 
   position: relative;
-  /* Swapped to logical property to ensure text doesn't overlap holes */
   padding: 4rem 3rem 3rem 3rem; 
   padding-inline-start: 6rem;
   display: flex;
@@ -78,7 +100,7 @@
 
 .memo-preview .memo-body-text {
   color: var(--memo-ink);
-  font-family: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  font-family: var(--memo-font-handwriting);
   font-size: 1.8rem; 
   line-height: 32px; 
   margin: 0;
@@ -105,13 +127,11 @@
   display: flex;
   flex-direction: column;
   
-  /* Creates a slight fold/curl effect at the bottom right corner */
   border-radius: 2px 2px 30px 2px;
   box-shadow: 
     3px 5px 15px rgba(0,0,0,0.1),
     8px 15px 25px rgba(0,0,0,0.05);
     
-  /* Jaunty rotation to make it feel casually placed */
   transform: rotate(-3deg);
 }
 
@@ -154,7 +174,7 @@
 
 .memo-sticky-preview .memo-body-text {
   color: #1b263b; 
-  font-family: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  font-family: var(--memo-font-handwriting);
   font-size: 1.8rem; 
   line-height: 1.4; 
   margin: 0;

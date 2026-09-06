@@ -1,7 +1,35 @@
 .media-viewer-wrapper {
+  /* --- STANDALONE RULES --- */
+  --media-font-main: var(--font-primary), sans-serif;
+
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  
+  /* Explicit boundary dimensions */
+  width: 100%;
+  max-width: 900px;
+  min-height: 100%;
+  box-sizing: border-box; 
+  margin: 0 auto;
+  overflow: hidden; 
+  
+  font-family: var(--media-font-main);
+}
+
+/* Isolated reset */
+.media-viewer-wrapper *,
+.media-viewer-wrapper *::before,
+.media-viewer-wrapper *::after {
+  box-sizing: border-box;
+}
+
+.media-viewer-wrapper h1, 
+.media-viewer-wrapper h2, 
+.media-viewer-wrapper h3, 
+.media-viewer-wrapper p {
+  font-family: inherit;
+  margin-top: 0;
 }
 
 /* --- IMAGE STYLES --- */
@@ -95,7 +123,7 @@
 .media-plaque-title {
   margin: 0;
   color: var(--text-primary);
-  font-family: var(--font-primary);
+  font-family: var(--media-font-main);
   font-size: 1.5rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;

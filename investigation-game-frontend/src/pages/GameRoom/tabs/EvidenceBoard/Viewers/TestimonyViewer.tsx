@@ -2,6 +2,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { sanitizeHtml } from '@/utils/sanitize';
 import type { TestimonyEvidence } from '@/types/evidence'; 
+import ViewersContainer from './ViewersContainer';
 import './TestimonyViewer.css';
 
 interface TestimonyViewerProps {
@@ -30,82 +31,84 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
   };
 
   return (
-    <div className="testimony-modal-viewer">
-      <div className="testimony-paper">
-        
-        <div className="testimony-header">
-          <div className="testimony-agency">{agency}</div>
-          <h2 className="testimony-title">{title}</h2>
+    <ViewersContainer evidence={evidence}>
+      <div className="testimony-modal-viewer">
+        <div className="testimony-paper">
           
-          <div className="testimony-meta-grid">
-            <div className="meta-box">
-              <span className="meta-label">{t('pages.gameRoom.evidence.viewers.testimony.date')}</span>
-              <span className="meta-value">{date}</span>
-            </div>
-            <div className="meta-box">
-              <span className="meta-label">{t('pages.gameRoom.evidence.viewers.testimony.caseNo')}</span>
-              <span className="meta-value">{case_number}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="testimony-subject-block">
-          <div>
-            <span className="subject-label">{t('pages.gameRoom.evidence.viewers.testimony.subject')}</span> 
-            {subject_name}
-          </div>
-          <div style={{ marginTop: '0.5rem' }}>
-            <span className="subject-label">{t('pages.gameRoom.evidence.viewers.testimony.interviewer')}</span> 
-            {interviewer}
-          </div>
-        </div>
-
-        {context && (
-          <div className="testimony-context">
-            {context}
-          </div>
-        )}
-
-        <div className="transcript-container">
-          <div className="transcript-watermark">
-            {t('pages.gameRoom.evidence.viewers.testimony.watermark')}
-          </div>
-          
-          <div className="transcript-content">
-            {Array.isArray(transcript) ? (
-              transcript.map((line: any, idx: number) => (
-                <div key={idx} className={`transcript-line ${line.type === 'q' ? 'transcript-q' : 'transcript-a'}`}>
-                  <span className="speaker-tag">{line.speaker}:</span>
-                  {line.text}
-                </div>
-              ))
-            ) : (
-              <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(transcript) }} />
-            )}
-          </div>
-        </div>
-
-        <div className="testimony-footer">
-          <div className="certification-statement">
-            {t('pages.gameRoom.evidence.viewers.testimony.certStatement')}
-          </div>
-          
-          <div className="signature-area">
-            <div className="steno-signature">
-              <img 
-                src={getSignature(evidence.id)} 
-                alt="Stenographer Signature" 
-                className="steno-signature-img" 
-              />
-            </div>
-            <div className="signature-line">
-              {t('pages.gameRoom.evidence.viewers.testimony.stenoSignature')}
+          <div className="testimony-header">
+            <div className="testimony-agency">{agency}</div>
+            <h2 className="testimony-title">{title}</h2>
+            
+            <div className="testimony-meta-grid">
+              <div className="meta-box">
+                <span className="meta-label">{t('pages.gameRoom.evidence.viewers.testimony.date')}</span>
+                <span className="meta-value">{date}</span>
+              </div>
+              <div className="meta-box">
+                <span className="meta-label">{t('pages.gameRoom.evidence.viewers.testimony.caseNo')}</span>
+                <span className="meta-value">{case_number}</span>
+              </div>
             </div>
           </div>
-        </div>
 
+          <div className="testimony-subject-block">
+            <div>
+              <span className="subject-label">{t('pages.gameRoom.evidence.viewers.testimony.subject')}</span> 
+              {subject_name}
+            </div>
+            <div style={{ marginTop: '0.5rem' }}>
+              <span className="subject-label">{t('pages.gameRoom.evidence.viewers.testimony.interviewer')}</span> 
+              {interviewer}
+            </div>
+          </div>
+
+          {context && (
+            <div className="testimony-context">
+              {context}
+            </div>
+          )}
+
+          <div className="transcript-container">
+            <div className="transcript-watermark">
+              {t('pages.gameRoom.evidence.viewers.testimony.watermark')}
+            </div>
+            
+            <div className="transcript-content">
+              {Array.isArray(transcript) ? (
+                transcript.map((line: any, idx: number) => (
+                  <div key={idx} className={`transcript-line ${line.type === 'q' ? 'transcript-q' : 'transcript-a'}`}>
+                    <span className="speaker-tag">{line.speaker}:</span>
+                    {line.text}
+                  </div>
+                ))
+              ) : (
+                <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(transcript) }} />
+              )}
+            </div>
+          </div>
+
+          <div className="testimony-footer">
+            <div className="certification-statement">
+              {t('pages.gameRoom.evidence.viewers.testimony.certStatement')}
+            </div>
+            
+            <div className="signature-area">
+              <div className="steno-signature">
+                <img 
+                  src={getSignature(evidence.id)} 
+                  alt="Stenographer Signature" 
+                  className="steno-signature-img" 
+                />
+              </div>
+              <div className="signature-line">
+                {t('pages.gameRoom.evidence.viewers.testimony.stenoSignature')}
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
-    </div>
+    </ViewersContainer>
   );
 };
 
