@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Admin\Traits\HandlesMedia;
+use App\Services\MediaService;
 use App\Models\Victim;
 use App\Models\GameCase;
 use Illuminate\Http\Request;
@@ -11,7 +11,7 @@ use Illuminate\Http\JsonResponse;
 
 class AdminVictimController extends Controller
 {
-    use HandlesMedia;
+    public function __construct(private readonly MediaService $mediaService) {}
 
     public function store(Request $request): JsonResponse
     {
@@ -27,7 +27,7 @@ class AdminVictimController extends Controller
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
         $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
 
-        $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, 'People', $storeLocally);
+        $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'People', $storeLocally);
 
         $victim = Victim::create([
             'case_id' => $validated['case_id'],
@@ -43,7 +43,7 @@ class AdminVictimController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         $victim = Victim::findOrFail($id);
-        
+
         $validated = $request->validate([
             'case_id' => 'required|exists:cases,id',
             'name' => 'required|string|max:255',
@@ -64,20 +64,19 @@ class AdminVictimController extends Controller
         ];
 
         if ($request->hasFile('image')) {
-            // Wipe old mugshot (local or cloud) safely via trait
-            $this->deleteMedia($victim->getRawOriginal('img_url'));
-            $updateData['img_url'] = $this->storeMedia($request->file('image'), $caseTitle, 'People', $storeLocally);
+            $this->mediaService->delete($victim->getRawOriginal('img_url'));
+            $updateData['img_url'] = $this->mediaService->store($request->file('image'), $caseTitle, 'People', $storeLocally);
         }
 
         $victim->update($updateData);
-        
+
         return response()->json(['message' => 'Victim profile updated.', 'victim' => $victim], 200);
     }
 
     public function destroy($id): JsonResponse
     {
         $victim = Victim::findOrFail($id);
-        $this->deleteMedia($victim->getRawOriginal('img_url'));
+        $this->mediaService->delete($victim->getRawOriginal('img_url'));
         $victim->delete();
         return response()->json(['message' => 'Victim deleted.'], 200);
     }

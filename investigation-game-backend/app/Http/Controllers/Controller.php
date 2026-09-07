@@ -8,46 +8,5 @@ use Illuminate\Support\Str;
 
 abstract class Controller
 {
-    /**
-     * Centralized media storage helper (Local Public Disk or Cloudinary).
-     */
-    protected function storeMedia(?UploadedFile $file, string $caseTitle, string $subfolder, bool $storeLocally): ?string
-    {
-        if (!$file) return null;
-
-        $caseSlug = Str::slug($caseTitle);
-
-        // 1. Local Server Storage Path
-        if ($storeLocally) {
-            $destinationPath = public_path("assets/cases/{$caseSlug}/{$subfolder}");
-            $filename = time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
-            
-            // Move file directly into public/assets/cases/{caseSlug}/{subfolder}
-            $file->move($destinationPath, $filename);
-
-            return "/assets/cases/{$caseSlug}/{$subfolder}/{$filename}";
-        }
-
-        // 2. Cloudinary Cloud Storage Path
-        $cloudinary = new Cloudinary([
-            'cloud' => [
-                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                'api_key'    => env('CLOUDINARY_API_KEY'),
-                'api_secret' => env('CLOUDINARY_API_SECRET'),
-            ],
-            'url' => ['secure' => true]
-        ]);
-
-        $isAudio = str_contains($file->getMimeType(), 'audio') || in_array($file->getClientOriginalExtension(), ['mp3', 'wav', 'ogg']);
-        $resourceType = $isAudio ? 'video' : 'image';
-
-        $cloudFolder = "cases/{$caseSlug}/{$subfolder}";
-
-        $upload = $cloudinary->uploadApi()->upload($file->getRealPath(), [
-            'folder' => $cloudFolder,
-            'resource_type' => $resourceType
-        ]);
-
-        return $upload['secure_url'];
-    }
+    
 }

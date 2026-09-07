@@ -1,25 +1,34 @@
 <?php
 
-namespace App\Http\Controllers\Admin\Traits;
+namespace App\Services;
 
 use Cloudinary\Cloudinary;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Str;
 
-trait HandlesMedia
+class MediaService
 {
-    protected function storeMedia(?UploadedFile $file, string $caseTitle, string $subfolder, bool $storeLocally): ?string
+    public function store(?UploadedFile $file, string $caseTitle, string $subfolder, bool $storeLocally): ?string
     {
         if (!$file) return null;
 
         $caseSlug = Str::slug($caseTitle);
 
-        // 1. Local Server Storage Path
+        // 1. Local Server Storage Path with Hashing Deduplication
         if ($storeLocally) {
             $destinationPath = public_path("assets/cases/{$caseSlug}/{$subfolder}");
-            $filename = time() . '_' . Str::random(8) . '.' . $file->getClientOriginalExtension();
             
-            $file->move($destinationPath, $filename);
+            // Generate a cryptographic hash of the file's binary contents
+            $hash = hash_file('sha256', $file->getRealPath());
+            $extension = $file->getClientOriginalExtension();
+            $filename = "{$hash}.{$extension}";
+            
+            $fullFilePath = $destinationPath . '/' . $filename;
+
+            // Only move the file if a file with this exact content hash doesn't already exist
+            if (!file_exists($fullFilePath)) {
+                $file->move($destinationPath, $filename);
+            }
 
             return "/assets/cases/{$caseSlug}/{$subfolder}/{$filename}";
         }
@@ -35,7 +44,7 @@ trait HandlesMedia
         ]);
 
         $isAudio = str_contains($file->getMimeType(), 'audio') || in_array($file->getClientOriginalExtension(), ['mp3', 'wav', 'ogg']);
-        $resourceType = $isAudio ? 'video' : 'image'; // Cloudinary requires 'video' resource type for audio files[cite: 1]
+        $resourceType = $isAudio ? 'video' : 'image';
 
         $cloudFolder = "cases/{$caseSlug}/{$subfolder}";
 
@@ -47,11 +56,11 @@ trait HandlesMedia
         return $upload['secure_url'];
     }
 
-    protected function deleteMedia(?string $url): void
+    public function delete(?string $url): void
     {
         if (!$url) return;
 
-        // If it's a local public file path (e.g., /assets/cases/...)
+        // If it's a local public file path
         if (str_starts_with($url, '/assets/')) {
             $fullPath = public_path($url);
             if (file_exists($fullPath)) {

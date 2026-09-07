@@ -3,18 +3,15 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Admin\Traits\HandlesMedia;
+use App\Services\MediaService;
 use App\Models\GameCase;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class AdminCaseController extends Controller
 {
-    use HandlesMedia;
+    public function __construct(private readonly MediaService $mediaService) {}
 
-    /**
-     * Store a newly created case with an optional cover image.
-     */
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -22,12 +19,12 @@ class AdminCaseController extends Controller
             'story' => 'required|string',
             'min_player_XP' => 'required|integer|min:0',
             'XP_on_solve' => 'required|integer|min:0',
-            'max_strikes' => 'required|integer|min:1', 
+            'max_strikes' => 'required|integer|min:1',
             'rating_stars' => 'required|numeric|min:0|max:5',
             'age_rating' => 'required|string|max:50',
             'estimated_playtime' => 'required|string|max:100',
             'difficulty' => 'required|string|max:50',
-            'tags' => 'nullable|string', 
+            'tags' => 'nullable|string',
             'author_name' => 'required|string|max:100',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'is_published' => 'required|boolean',
@@ -36,15 +33,15 @@ class AdminCaseController extends Controller
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-        $imageUrl = $this->storeMedia(
-            $request->file('image'), 
-            $validated['title'], 
-            'Cover', 
+        $imageUrl = $this->mediaService->store(
+            $request->file('image'),
+            $validated['title'],
+            'Cover',
             $storeLocally
         );
 
-        $tagsArray = $request->filled('tags') 
-            ? array_map('trim', explode(',', $validated['tags'])) 
+        $tagsArray = $request->filled('tags')
+            ? array_map('trim', explode(',', $validated['tags']))
             : [];
 
         $case = GameCase::create([
@@ -52,7 +49,7 @@ class AdminCaseController extends Controller
             'story' => $validated['story'],
             'min_player_XP' => $validated['min_player_XP'],
             'XP_on_solve' => $validated['XP_on_solve'],
-            'max_strikes' => $validated['max_strikes'], 
+            'max_strikes' => $validated['max_strikes'],
             'rating_stars' => $validated['rating_stars'],
             'age_rating' => $validated['age_rating'],
             'estimated_playtime' => $validated['estimated_playtime'],
@@ -66,17 +63,13 @@ class AdminCaseController extends Controller
         return response()->json(['message' => 'Case created successfully.', 'case' => $case], 201);
     }
 
-    /**
-     * Fetch all cases and their top-level metadata. 
-     * Deep eager loading of phases and levels has been removed to optimize payload size.
-     */
     public function index(): JsonResponse
     {
         $cases = GameCase::with([
             'evidences',
             'suspects',
             'victims',
-            'investigationRequests.requiredEvidences' 
+            'investigationRequests.requiredEvidences'
         ])
         ->orderBy('created_at', 'desc')
         ->get();
@@ -93,7 +86,7 @@ class AdminCaseController extends Controller
             'story' => 'required|string',
             'min_player_XP' => 'required|integer|min:0',
             'XP_on_solve' => 'required|integer|min:0',
-            'max_strikes' => 'required|integer|min:1', 
+            'max_strikes' => 'required|integer|min:1',
             'rating_stars' => 'required|numeric|min:0|max:5',
             'age_rating' => 'required|string|max:50',
             'estimated_playtime' => 'required|string|max:100',
@@ -108,12 +101,12 @@ class AdminCaseController extends Controller
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
         if ($request->hasFile('image')) {
-            $this->deleteMedia($case->getRawOriginal('img_url')); 
-            
-            $case->img_url = $this->storeMedia(
-                $request->file('image'), 
-                $validated['title'], 
-                'Cover', 
+            $this->mediaService->delete($case->getRawOriginal('img_url'));
+
+            $case->img_url = $this->mediaService->store(
+                $request->file('image'),
+                $validated['title'],
+                'Cover',
                 $storeLocally
             );
         }
@@ -123,7 +116,7 @@ class AdminCaseController extends Controller
             'story' => $validated['story'],
             'min_player_XP' => $validated['min_player_XP'],
             'XP_on_solve' => $validated['XP_on_solve'],
-            'max_strikes' => $validated['max_strikes'], 
+            'max_strikes' => $validated['max_strikes'],
             'rating_stars' => $validated['rating_stars'],
             'age_rating' => $validated['age_rating'],
             'estimated_playtime' => $validated['estimated_playtime'],
@@ -140,25 +133,22 @@ class AdminCaseController extends Controller
     {
         $case = GameCase::with(['levels.questions', 'evidences'])->findOrFail($id);
 
-        // 1. Wipe Case Cover
-        $this->deleteMedia($case->getRawOriginal('img_url'));
+        $this->mediaService->delete($case->getRawOriginal('img_url'));
 
-        // 2. Wipe Level and Evidence Media
         foreach ($case->levels as $level) {
-            $this->deleteMedia($level->getRawOriginal('img_url'));
+            $this->mediaService->delete($level->getRawOriginal('img_url'));
 
             foreach ($level->evidences as $evidence) {
-                $this->deleteMedia($evidence->getRawOriginal('img_url'));
-                $this->deleteMedia($evidence->getRawOriginal('audio_url'));
+                $this->mediaService->delete($evidence->getRawOriginal('img_url'));
+                $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
             }
 
             foreach ($level->questions as $question) {
-                $this->deleteMedia($question->getRawOriginal('img_url'));
-                $this->deleteMedia($question->getRawOriginal('audio_url'));
+                $this->mediaService->delete($question->getRawOriginal('img_url'));
+                $this->mediaService->delete($question->getRawOriginal('audio_url'));
             }
         }
 
-        // 3. Wipe database records
         $case->delete();
 
         return response()->json(['message' => 'Case and all associated media completely wiped.'], 200);

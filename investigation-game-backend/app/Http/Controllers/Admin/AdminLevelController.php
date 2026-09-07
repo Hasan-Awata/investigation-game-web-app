@@ -3,45 +3,44 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Admin\Traits\HandlesMedia;
+use App\Services\MediaService;
 use App\Models\Level;
 use App\Models\Phase;
-use App\Enums\LevelPresentationType; 
-use Illuminate\Validation\Rules\Enum; 
+use App\Enums\LevelPresentationType;
+use Illuminate\Validation\Rules\Enum;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class AdminLevelController extends Controller
 {
-    use HandlesMedia;
+    public function __construct(private readonly MediaService $mediaService) {}
 
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'phase_id' => 'required|exists:phases,id', 
+            'phase_id' => 'required|exists:phases,id',
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
-            'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
-            'required_request_id' => 'nullable|exists:investigation_requests,id',          
+            'presentation_type' => ['required', new Enum(LevelPresentationType::class)],
+            'required_request_id' => 'nullable|exists:investigation_requests,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'store_locally' => 'required|boolean',
         ]);
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-        // Fetch the parent case title through the phase relationship to build the folder slug
         $caseTitle = Phase::with('gameCase')->where('id', $validated['phase_id'])->first()?->gameCase?->title ?? 'General';
 
-        $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, 'Levels', $storeLocally);
+        $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'Levels', $storeLocally);
 
         $level = Level::create([
-            'phase_id' => $validated['phase_id'], 
+            'phase_id' => $validated['phase_id'],
             'title' => $validated['title'],
             'details' => $validated['details'],
             'order_index' => $validated['order_index'],
             'is_initial' => filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN),
-            'presentation_type' => $validated['presentation_type'], 
+            'presentation_type' => $validated['presentation_type'],
             'required_request_id' => $validated['required_request_id'] ?? null,
             'img_url' => $imageUrl,
         ]);
@@ -55,13 +54,13 @@ class AdminLevelController extends Controller
     public function update(Request $request, $id): JsonResponse
     {
         $level = Level::findOrFail($id);
-        
+
         $validated = $request->validate([
-            'phase_id' => 'required|exists:phases,id', 
+            'phase_id' => 'required|exists:phases,id',
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
-            'presentation_type' => ['required', new Enum(LevelPresentationType::class)], 
+            'presentation_type' => ['required', new Enum(LevelPresentationType::class)],
             'required_request_id' => 'nullable|exists:investigation_requests,id',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'store_locally' => 'required|boolean',
@@ -81,9 +80,8 @@ class AdminLevelController extends Controller
         ];
 
         if ($request->hasFile('image')) {
-            // Wipe old media (local or cloud) safely via trait
-            $this->deleteMedia($level->getRawOriginal('img_url'));
-            $updateData['img_url'] = $this->storeMedia($request->file('image'), $caseTitle, 'Levels', $storeLocally);
+            $this->mediaService->delete($level->getRawOriginal('img_url'));
+            $updateData['img_url'] = $this->mediaService->store($request->file('image'), $caseTitle, 'Levels', $storeLocally);
         }
 
         $level->update($updateData);
@@ -94,24 +92,18 @@ class AdminLevelController extends Controller
     public function destroy($id): JsonResponse
     {
         $level = Level::findOrFail($id);
-        
-        // Wipe associated media safely via trait
-        $this->deleteMedia($level->getRawOriginal('img_url'));
-        
+        $this->mediaService->delete($level->getRawOriginal('img_url'));
         $level->delete();
-
         return response()->json(['message' => 'Level deleted.'], 200);
     }
 
     public function indexByPhase($phaseId): \Illuminate\Http\JsonResponse
     {
-        // We load questions and choices here because the node builders
-        // explicitly require them immediately upon selecting a Level.
         $levels = Level::with(['questions.choices'])
             ->where('phase_id', $phaseId)
             ->orderBy('order_index', 'asc')
             ->get();
-            
+
         return response()->json($levels, 200);
     }
 }

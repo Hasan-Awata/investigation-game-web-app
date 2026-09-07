@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Admin\Traits\HandlesMedia;
+use App\Services\MediaService;
 use App\Models\Evidence;
 use App\Models\GameCase;
 use App\Enums\EvidenceType;
@@ -13,18 +13,18 @@ use Illuminate\Validation\Rules\Enum;
 
 class AdminEvidenceController extends Controller
 {
-    use HandlesMedia; 
+    public function __construct(private readonly MediaService $mediaService) {}
 
-public function store(Request $request): JsonResponse
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'case_id' => 'required|exists:cases,id', 
+            'case_id' => 'required|exists:cases,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
             'sub_type' => 'nullable|string',
-            'metadata' => 'nullable|string', // Validated as a string, decoded later
-            'is_initial' => 'required|boolean', 
+            'metadata' => 'nullable|string',
+            'is_initial' => 'required|boolean',
             'is_vital_for_conviction' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
@@ -34,10 +34,9 @@ public function store(Request $request): JsonResponse
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
         $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
 
-        $imageUrl = $this->storeMedia($request->file('image'), $caseTitle, 'Evidences', $storeLocally);
-        $audioUrl = $this->storeMedia($request->file('audio'), $caseTitle, 'Evidences', $storeLocally);
+        $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'Evidences', $storeLocally);
+        $audioUrl = $this->mediaService->store($request->file('audio'), $caseTitle, 'Evidences', $storeLocally);
 
-        // Safely decode the metadata JSON string from FormData
         $metadataPayload = null;
         if (!empty($validated['metadata'])) {
             $metadataPayload = json_decode($validated['metadata'], true);
@@ -62,15 +61,15 @@ public function store(Request $request): JsonResponse
     public function update(Request $request, $id): JsonResponse
     {
         $evidence = Evidence::findOrFail($id);
-        
+
         $validated = $request->validate([
-            'case_id' => 'required|exists:cases,id', 
+            'case_id' => 'required|exists:cases,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
             'sub_type' => 'nullable|string',
             'metadata' => 'nullable|string',
-            'is_initial' => 'required|boolean', 
+            'is_initial' => 'required|boolean',
             'is_vital_for_conviction' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
@@ -97,15 +96,13 @@ public function store(Request $request): JsonResponse
         ];
 
         if ($request->hasFile('image')) {
-            // Wipe old image (local or cloud)
-            $this->deleteMedia($evidence->getRawOriginal('img_url'));
-            $updateData['img_url'] = $this->storeMedia($request->file('image'), $caseTitle, 'Evidences', $storeLocally);
+            $this->mediaService->delete($evidence->getRawOriginal('img_url'));
+            $updateData['img_url'] = $this->mediaService->store($request->file('image'), $caseTitle, 'Evidences', $storeLocally);
         }
 
         if ($request->hasFile('audio')) {
-            // Wipe old audio track (local or cloud)
-            $this->deleteMedia($evidence->getRawOriginal('audio_url'));
-            $updateData['audio_url'] = $this->storeMedia($request->file('audio'), $caseTitle, 'Evidences', $storeLocally);
+            $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
+            $updateData['audio_url'] = $this->mediaService->store($request->file('audio'), $caseTitle, 'Evidences', $storeLocally);
         }
 
         $evidence->update($updateData);
@@ -116,13 +113,12 @@ public function store(Request $request): JsonResponse
     public function destroy($id): JsonResponse
     {
         $evidence = Evidence::findOrFail($id);
-        
-        // Wipe associated media safely using the trait helper
-        $this->deleteMedia($evidence->getRawOriginal('img_url'));
-        $this->deleteMedia($evidence->getRawOriginal('audio_url'));
-        
+
+        $this->mediaService->delete($evidence->getRawOriginal('img_url'));
+        $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
+
         $evidence->delete();
-        
+
         return response()->json(['message' => 'Evidence deleted.'], 200);
     }
 }

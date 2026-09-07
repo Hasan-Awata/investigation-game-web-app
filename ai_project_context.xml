@@ -638,6 +638,8 @@ export default MediaUploader;
 
 <file path="components/AdminUI/index.tsx">
 import React, { forwardRef } from 'react';
+import { validateJsonPayload } from '../../utils/validators';
+import toast from 'react-hot-toast';
 
 export const AdminRow = ({ children }: { children: React.ReactNode }) => (
   <div className="admin-form-row">
@@ -817,6 +819,60 @@ export const CoordinatePicker = ({
           </div>
         ))}
       </div>
+    </div>
+  );
+};
+
+export const AdminEntryToggle = ({ mode, setMode, labelForm = "Form Entry", labelJson = "JSON Bulk Entry" }: { mode: 'form' | 'json', setMode: (m: 'form' | 'json') => void, labelForm?: string, labelJson?: string }) => (
+  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
+    <button type="button" className={`btn-secondary ${mode === 'form' ? 'active' : ''}`} onClick={() => setMode('form')} style={mode === 'form' ? { borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' } : {}}>
+      {labelForm}
+    </button>
+    <button type="button" className={`btn-secondary ${mode === 'json' ? 'active' : ''}`} onClick={() => setMode('json')} style={mode === 'json' ? { borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' } : {}}>
+      {labelJson}
+    </button>
+  </div>
+);
+
+export const JsonPopulator = ({
+  jsonInput,
+  setJsonInput,
+  onPopulate,
+  requiredFields = [],
+  template = {},
+  label = "JSON Data Payload"
+}: {
+  jsonInput: string,
+  setJsonInput: (v: string) => void,
+  onPopulate: (parsed: any) => void,
+  requiredFields?: string[],
+  template?: Record<string, any>,
+  label?: string
+}) => {
+
+  // Auto-fill the textarea with the template if it's currently empty
+  React.useEffect(() => {
+    if (!jsonInput && Object.keys(template).length > 0) {
+      setJsonInput(JSON.stringify(template, null, 2));
+    }
+  }, [template, jsonInput, setJsonInput]);
+
+  const handleVerify = () => {
+    const { valid, parsed, error } = validateJsonPayload(jsonInput, requiredFields);
+    if (!valid) {
+      toast.error(error!);
+      return;
+    }
+    onPopulate(parsed);
+    toast.success('JSON verified and injected into form.');
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '8px', border: '1px dashed var(--accent-cyan)' }}>
+      <AdminTextarea label={label} value={jsonInput} onChange={e => setJsonInput(e.target.value)} style={{ minHeight: '250px', fontFamily: 'var(--font-mono)' }} />
+      <button type="button" className="btn-secondary" onClick={handleVerify} style={{ alignSelf: 'flex-start', color: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)' }}>
+        [ Verify & Populate Form ]
+      </button>
     </div>
   );
 };
@@ -1060,15 +1116,16 @@ export default function CaseForm() {
 </file>
 
 <file path="forms/EvidenceForm.tsx">
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext';
 import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
 import EvidenceMetadataFields from './Shared/EvidenceMetadataFields';
-import { AdminCheckbox, AdminInput, AdminFileInput } from '@/pages/Admin/components/AdminUI';
+import { AdminCheckbox, AdminInput, AdminFileInput, AdminEntryToggle, JsonPopulator } from '@/pages/Admin/components/AdminUI';
 import { validateEvidenceForm, validateImageSize, validateAudioSize } from '../utils/validators';
+import { getEvidenceMetadataTemplate } from '@/pages/Admin/utils/formUtils';
 import type { Evidence } from '@/types/evidence';
 import './Shared/AdminForms.css';
 
@@ -1082,6 +1139,7 @@ export default function EvidenceForm() {
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
 
+  // 1. Initialize form data first
   const {
     formData, setFormData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing
   } = useValidatedForm({
@@ -1090,6 +1148,43 @@ export default function EvidenceForm() {
     basePayload: { case_id: caseId },
     validator: validateEvidenceForm
   });
+
+  // 2. Now it is safe to use formData in the JSON logic
+  const [entryMode, setEntryMode] = useState<'form' | 'json'>('form');
+  const [jsonInput, setJsonInput] = useState('');
+
+  useEffect(() => {
+    setJsonInput('');
+  }, [formData.evidence_type, formData.sub_type]);
+
+  const handleJsonPopulate = (parsed: any) => {
+    const newState = { ...formData };
+
+    if (parsed.title !== undefined) newState.title = parsed.title;
+    if (parsed.description !== undefined) newState.description = parsed.description;
+    if (parsed.evidence_type !== undefined) newState.evidence_type = parsed.evidence_type;
+    if (parsed.sub_type !== undefined) newState.sub_type = parsed.sub_type;
+    if (parsed.is_initial !== undefined) newState.is_initial = parsed.is_initial;
+    if (parsed.is_vital_for_conviction !== undefined) newState.is_vital_for_conviction = parsed.is_vital_for_conviction;
+    if (parsed.store_locally !== undefined) newState.store_locally = parsed.store_locally;
+    if (parsed.metadata !== undefined) newState.metadata = parsed.metadata;
+
+    setFormData(newState);
+    setEntryMode('form');
+    setJsonInput('');
+  };
+
+  const combinedTemplate = {
+    is_initial: formData.is_initial,
+    is_vital_for_conviction: formData.is_vital_for_conviction,
+    store_locally: formData.store_locally,
+    evidence_type: formData.evidence_type,
+    sub_type: formData.sub_type,
+    title: formData.title || "",
+    description: formData.description || "",
+
+    metadata: getEvidenceMetadataTemplate(formData.evidence_type, formData.sub_type)
+  };
 
   if (!caseId || !selectedCase) {
     return (
@@ -1116,7 +1211,13 @@ export default function EvidenceForm() {
     }
   };
 
-  const onClear = () => { clearForm(); setImage(null); setAudio(null); };
+  const onClear = () => {
+    clearForm();
+    setImage(null);
+    setAudio(null);
+    setEntryMode('form');
+    setJsonInput('');
+  };
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     const files: Record<string, File | null> = {};
@@ -1129,7 +1230,9 @@ export default function EvidenceForm() {
     handleEditInit(ev, (e) => ({
       title: e.title, description: e.description || '', evidence_type: e.evidence_type, sub_type: e.sub_type || '', metadata: e.metadata || {}, is_initial: !!e.is_initial, is_vital_for_conviction: !!e.is_vital_for_conviction, store_locally: !!e.store_locally
     }));
-    setImage(null); setAudio(null);
+    setImage(null);
+    setAudio(null);
+    setEntryMode('form');
   };
 
   const requiresImage = formData.evidence_type === 'image' || formData.sub_type === 'background_check';
@@ -1150,21 +1253,37 @@ export default function EvidenceForm() {
       )}
     >
       <form onSubmit={onSubmit} className="admin-form">
-        <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialEvidenceLabel} description={t.initialEvidenceDesc} className="status-live" />
-        <AdminCheckbox checked={formData.is_vital_for_conviction} onChange={(e) => updateField('is_vital_for_conviction', e.target.checked)} labelTitle={t.vitalEvidenceLabel} description={t.vitalEvidenceDesc} className="status-draft" />
-        <div className="form-group">
-          <label>{t.masterCategoryLabel}</label>
-          <select className="admin-input" value={formData.evidence_type} onChange={(e) => setFormData(prev => ({ ...prev, evidence_type: e.target.value, sub_type: '', metadata: {} }))}>
-            <option value="document">{t.docOption}</option><option value="testimony">{t.testimonyOption}</option><option value="forensic">{t.forensicOption}</option><option value="audio">{t.audioOption}</option><option value="image">{t.imageOption}</option>
-          </select>
-        </div>
-        <AdminInput label={t.evidenceTitleLabel} required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
-        <AdminInput label={t.evidenceDescLabel} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
-        <EvidenceMetadataFields evidenceType={formData.evidence_type} subType={formData.sub_type} setSubType={(val) => updateField('sub_type', val)} metadata={formData.metadata} updateMeta={(key, value) => setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: value } }))} />
+        <AdminEntryToggle mode={entryMode} setMode={setEntryMode} />
+
+        {entryMode === 'form' ? (
+          <>
+            <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialEvidenceLabel} description={t.initialEvidenceDesc} className="status-live" />
+            <AdminCheckbox checked={formData.is_vital_for_conviction} onChange={(e) => updateField('is_vital_for_conviction', e.target.checked)} labelTitle={t.vitalEvidenceLabel} description={t.vitalEvidenceDesc} className="status-draft" />
+            <div className="form-group">
+              <label>{t.masterCategoryLabel}</label>
+              <select className="admin-input" value={formData.evidence_type} onChange={(e) => setFormData(prev => ({ ...prev, evidence_type: e.target.value, sub_type: '', metadata: {} }))}>
+                <option value="document">{t.docOption}</option><option value="testimony">{t.testimonyOption}</option><option value="forensic">{t.forensicOption}</option><option value="audio">{t.audioOption}</option><option value="image">{t.imageOption}</option>
+              </select>
+            </div>
+            <AdminInput label={t.evidenceTitleLabel} required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
+            <AdminInput label={t.evidenceDescLabel} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
+            <EvidenceMetadataFields evidenceType={formData.evidence_type} subType={formData.sub_type} setSubType={(val) => updateField('sub_type', val)} metadata={formData.metadata} updateMeta={(key, value) => setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: value } }))} />
+            {requiresLocalToggle && <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} className="amber" />}
+          </>
+        ) : (
+          <JsonPopulator
+            jsonInput={jsonInput}
+            setJsonInput={setJsonInput}
+            onPopulate={handleJsonPopulate}
+            requiredFields={['title', 'evidence_type']}
+            template={combinedTemplate}
+          />
+        )}
+
         {requiresImage && <AdminFileInput label={formData.sub_type === 'background_check' ? t.mugshotLabel : t.evidenceImageLabel} hint={t.imageHint} accept="image/*" ref={registerFileRef('image')} onChange={(e) => handleFileChange(e, setImage, validateImageSize)} />}
         {formData.evidence_type === 'audio' && <AdminFileInput label={t.audioLabel} hint={t.audioHint} accept="audio/*" ref={registerFileRef('audio')} onChange={(e) => handleFileChange(e, setAudio, validateAudioSize)} />}
-        {requiresLocalToggle && <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} className="amber" />}
-        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing}>
+
+        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing || entryMode === 'json'}>
           {isProcessing ? t.processingData : editingId ? t.updateEvidence : t.commitEvidence}
         </button>
       </form>
@@ -1553,8 +1672,8 @@ import toast from 'react-hot-toast';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext';
 import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import { AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput, AdminEntryToggle, JsonPopulator } from '@/pages/Admin/components/AdminUI';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
-import { AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/pages/Admin/components/AdminUI';
 import { validateSuspectForm, validateImageSize } from '../utils/validators';
 import type { Suspect } from '@/types';
 import './Shared/AdminForms.css';
@@ -1567,6 +1686,20 @@ export default function SuspectForm() {
   const t = adminT.forms.suspectForm;
 
   const [image, setImage] = useState<File | null>(null);
+
+  const [entryMode, setEntryMode] = useState<'form' | 'json'>('form');
+  const [jsonInput, setJsonInput] = useState('');
+
+  const handleJsonPopulate = (parsed: any) => {
+    if (parsed.name) updateField('name', parsed.name);
+    if (parsed.background) updateField('background', parsed.background);
+    if (typeof parsed.is_initial !== 'undefined') updateField('is_initial', parsed.is_initial);
+    if (typeof parsed.is_guilty !== 'undefined') updateField('is_guilty', parsed.is_guilty);
+    if (typeof parsed.store_locally !== 'undefined') updateField('store_locally', parsed.store_locally);
+
+    setEntryMode('form');
+    setJsonInput('');
+  };
 
   const {
     formData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing
@@ -1625,13 +1758,28 @@ export default function SuspectForm() {
       )}
     >
       <form onSubmit={(e) => handleValidatedSubmit(e, { image })} className="admin-form">
-        <AdminCheckbox checked={formData.is_guilty} onChange={(e) => updateField('is_guilty', e.target.checked)} labelTitle={t.guiltyVerdictLabel} description={t.guiltyVerdictDesc} className="status-draft" />
-        <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialSuspectLabel} description={t.initialSuspectDesc} className="status-live" />
-        <AdminInput label={t.nameLabel} required value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
-        <AdminTextarea label={t.backgroundLabel} value={formData.background} onChange={(e) => updateField('background', e.target.value)} />
-        <AdminFileInput label={`${t.mugshotLabel} ${editingId ? t.mugshotEditSuffix : ''}`} hint={t.mugshotHint} accept="image/*" ref={registerFileRef('image')} onChange={handleImageChange} />
-        <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} description={t.storeLocallyDesc} className="amber" />
-        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing}>
+        <AdminEntryToggle mode={entryMode} setMode={setEntryMode} />
+
+        {entryMode === 'form' ? (
+          <>
+            <AdminCheckbox checked={formData.is_guilty} onChange={(e) => updateField('is_guilty', e.target.checked)} labelTitle={t.guiltyVerdictLabel} description={t.guiltyVerdictDesc} className="status-draft" />
+            <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialSuspectLabel} description={t.initialSuspectDesc} className="status-live" />
+            <AdminInput label={t.nameLabel} required value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
+            <AdminTextarea label={t.backgroundLabel} value={formData.background} onChange={(e) => updateField('background', e.target.value)} />
+            <AdminFileInput label={`${t.mugshotLabel} ${editingId ? t.mugshotEditSuffix : ''}`} hint={t.mugshotHint} accept="image/*" ref={registerFileRef('image')} onChange={handleImageChange} />
+            <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} description={t.storeLocallyDesc} className="amber" />
+          </>
+        ) : (
+          <JsonPopulator
+            jsonInput={jsonInput}
+            setJsonInput={setJsonInput}
+            onPopulate={handleJsonPopulate}
+            requiredFields={['name']}
+            template={{ name: "", background: "", is_initial: true, is_guilty: false, store_locally: false }}
+          />
+        )}
+
+        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing || entryMode === 'json'}>
           {isProcessing ? t.processingData : editingId ? t.updateSuspect : t.commitSuspect}
         </button>
       </form>
@@ -1647,7 +1795,7 @@ import { useAdminContext } from '@/pages/Admin/context/AdminContext';
 import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
-import { AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput } from '@/pages/Admin/components/AdminUI';
+import { AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput, AdminEntryToggle, JsonPopulator } from '@/pages/Admin/components/AdminUI';
 import { validateVictimForm, validateImageSize } from '../utils/validators';
 import type { Victim } from '@/types';
 import './Shared/AdminForms.css';
@@ -1660,6 +1808,19 @@ export default function VictimForm() {
   const t = adminT.forms.victimForm;
 
   const [image, setImage] = useState<File | null>(null);
+
+  const [entryMode, setEntryMode] = useState<'form' | 'json'>('form');
+  const [jsonInput, setJsonInput] = useState('');
+
+  const handleJsonPopulate = (parsed: any) => {
+    if (parsed.name) updateField('name', parsed.name);
+    if (parsed.background) updateField('background', parsed.background);
+    if (typeof parsed.is_initial !== 'undefined') updateField('is_initial', parsed.is_initial);
+    if (typeof parsed.store_locally !== 'undefined') updateField('store_locally', parsed.store_locally);
+
+    setEntryMode('form');
+    setJsonInput('');
+  };
 
   const {
     formData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing
@@ -1714,12 +1875,26 @@ export default function VictimForm() {
       )}
     >
       <form onSubmit={(e) => handleValidatedSubmit(e, { image })} className="admin-form">
-        <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialVictimLabel} description={t.initialVictimDesc} className="status-live" />
-        <AdminInput label={t.nameLabel} required value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
-        <AdminTextarea label={t.backgroundLabel} value={formData.background} onChange={(e) => updateField('background', e.target.value)} />
-        <AdminFileInput label={`${t.victimImageLabel} ${editingId ? t.victimImageEditSuffix : ''}`} hint={t.victimImageHint} accept="image/*" ref={registerFileRef('image')} onChange={handleImageChange} />
-        <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} className="amber" />
-        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing}>
+        <AdminEntryToggle mode={entryMode} setMode={setEntryMode} />
+
+        {entryMode === 'form' ? (
+          <>
+            <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialVictimLabel} description={t.initialVictimDesc} className="status-live" />
+            <AdminInput label={t.nameLabel} required value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
+            <AdminTextarea label={t.backgroundLabel} value={formData.background} onChange={(e) => updateField('background', e.target.value)} />
+            <AdminFileInput label={`${t.victimImageLabel} ${editingId ? t.victimImageEditSuffix : ''}`} hint={t.victimImageHint} accept="image/*" ref={registerFileRef('image')} onChange={handleImageChange} />
+            <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} className="amber" />
+          </>
+        ) : (
+          <JsonPopulator jsonInput={jsonInput}
+            setJsonInput={setJsonInput}
+            onPopulate={handleJsonPopulate}
+            requiredFields={['name']}
+            template={{ name: "", background: "", is_initial: true, store_locally: false }}
+          />
+        )}
+
+        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing || entryMode === 'json'}>
           {isProcessing ? t.processingData : editingId ? t.updateVictim : t.commitVictim}
         </button>
       </form>
@@ -1867,17 +2042,52 @@ export default function VictimForm() {
 import { useState } from 'react';
 import NodeBuilderCanvas from './NodeBuilderCanvas';
 import AdminInterrogationForm from './AdminInterrogationForm';
+import { AdminEntryToggle, JsonPopulator } from '@/pages/Admin/components/AdminUI';
 import type { Question, Choice } from '@/types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import './AdminInterrogationBuilder.css';
 
 export default function AdminInterrogationBuilder() {
   const [draftNodes, setDraftNodes] = useState<any[]>([]);
+  const [entryMode, setEntryMode] = useState<'form' | 'json'>('form');
+  const [jsonInput, setJsonInput] = useState('');
+
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.interrogationBuilder;
 
   const addDraftNode = () => {
     setDraftNodes([...draftNodes, { id: `draft_${Date.now()}`, text: '', choices: [] }]);
+  };
+
+  const handleJsonPopulate = (parsed: any) => {
+    if (parsed.nodes && Array.isArray(parsed.nodes)) {
+      const newDrafts = parsed.nodes.map((n: any, idx: number) => ({
+        id: `draft_${Date.now()}_${idx}`, // Prevents key collision on rapid map
+        text: n.text || '',
+        choices: n.choices || []
+      }));
+      setDraftNodes((prev) => [...prev, ...newDrafts]);
+    }
+    setEntryMode('form');
+    setJsonInput('');
+  };
+
+  const conversationTemplate = {
+    nodes: [
+      {
+        text: "Where were you on the night of the 14th?",
+        choices: [
+          {
+            text: "Press him on his alibi.",
+            outcomes: { feedback: "He seems nervous.", gives_strike: false }
+          },
+          {
+            text: "Accuse him directly.",
+            outcomes: { feedback: "He shuts down.", gives_strike: true }
+          }
+        ]
+      }
+    ]
   };
 
   return (
@@ -1901,30 +2111,53 @@ export default function AdminInterrogationBuilder() {
               <span style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
                 {t.nodeStats(savedNodes.length, draftNodes.length)}
               </span>
-              <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} onClick={addDraftNode}>
-                {t.appendNodeBtn}
-              </button>
-            </div>
-
-            <div className="interrogation-workspace">
-              {savedNodes.map((node) => (
-                <AdminInterrogationForm key={node.id} nodeData={node} levelId={levelId} onSaved={() => {}} onDeleted={() => {}} />
-              ))}
-
-              {draftNodes.map((node) => (
-                <AdminInterrogationForm
-                  key={node.id}
-                  nodeData={node}
-                  levelId={levelId}
-                  onSaved={() => setDraftNodes(draftNodes.filter(d => d.id !== node.id))}
-                  onDeleted={() => setDraftNodes(draftNodes.filter(d => d.id !== node.id))}
-                />
-              ))}
-
-              {savedNodes.length === 0 && draftNodes.length === 0 && (
-                <div className="terminal-text" style={{ gridColumn: '1 / -1' }}>{t.emptyWorkspace}</div>
+              {entryMode === 'form' && (
+                <button className="btn-primary" style={{ width: 'auto', padding: '0.75rem 2rem' }} onClick={addDraftNode}>
+                  {t.appendNodeBtn}
+                </button>
               )}
             </div>
+
+            <div style={{ padding: '0 1rem' }}>
+              <AdminEntryToggle
+                mode={entryMode}
+                setMode={setEntryMode}
+                labelForm="Visual Workspace"
+                labelJson="JSON Bulk Conversation"
+              />
+            </div>
+
+            {entryMode === 'form' ? (
+              <div className="interrogation-workspace">
+                {savedNodes.map((node) => (
+                  <AdminInterrogationForm key={node.id} nodeData={node} levelId={levelId} onSaved={() => {}} onDeleted={() => {}} />
+                ))}
+
+                {draftNodes.map((node) => (
+                  <AdminInterrogationForm
+                    key={node.id}
+                    nodeData={node}
+                    levelId={levelId}
+                    onSaved={() => setDraftNodes(draftNodes.filter(d => d.id !== node.id))}
+                    onDeleted={() => setDraftNodes(draftNodes.filter(d => d.id !== node.id))}
+                  />
+                ))}
+
+                {savedNodes.length === 0 && draftNodes.length === 0 && (
+                  <div className="terminal-text" style={{ gridColumn: '1 / -1' }}>{t.emptyWorkspace}</div>
+                )}
+              </div>
+            ) : (
+              <div style={{ padding: '0 1rem', marginBottom: '2rem' }}>
+                <JsonPopulator
+                  jsonInput={jsonInput}
+                  setJsonInput={setJsonInput}
+                  onPopulate={handleJsonPopulate}
+                  requiredFields={['nodes']}
+                  template={conversationTemplate}
+                />
+              </div>
+            )}
           </>
         );
       }}
@@ -3340,26 +3573,19 @@ export default function EvidenceMetadataFields({ evidenceType, subType, setSubTy
     const props = { metadata, updateMeta: updateMeta as any };
 
     switch (subType) {
-      // FORENSICS
       case 'autopsy': return <AutopsyFields {...props} />;
       case 'ballistics': return <BallisticsFields {...props} />;
       case 'dna': return <DNAFields {...props} />;
       case 'digital_forensics': return <DigitalForensicsFields {...props} />;
       case 'trace_analysis': return <TraceAnalysisFields {...props} />;
-
-      // DOCUMENTS
       case 'correspondence': return <CorrespondenceFields {...props} />;
       case 'financial': return <FinancialFields {...props} />;
       case 'journal': return <JournalFields {...props} />;
       case 'contract': return <ContractFields {...props} />;
       case 'memo': return <MemoFields {...props} />;
       case 'background_check': return <BackgroundCheckFields {...props} />;
-
-      // FALLBACK
       default:
-        if (evidenceType === 'testimony') {
-          return <AdminTextarea label={t.officialTranscriptLabel} value={metadata.transcript || ''} onChange={e => updateMeta('transcript', e.target.value)} />;
-        }
+        if (evidenceType === 'testimony') return <AdminTextarea label={t.officialTranscriptLabel} value={metadata.transcript || ''} onChange={e => updateMeta('transcript', e.target.value)} />;
         return null;
     }
   };
@@ -3368,9 +3594,7 @@ export default function EvidenceMetadataFields({ evidenceType, subType, setSubTy
 
   return (
     <div className="metadata-container">
-      <h4 className="metadata-title">
-        {t.sectionTitle}
-      </h4>
+      <h4 className="metadata-title">{t.sectionTitle}</h4>
       {renderSubTypeSelector()}
       {(subType || evidenceType === 'testimony') && (
         <div className="metadata-inputs-wrapper">
@@ -4341,6 +4565,104 @@ export const objectToFormData = (obj: Record<string, any>): FormData => {
   });
   return formData;
 };
+
+export const getEvidenceMetadataTemplate = (evidenceType: string, subType: string): Record<string, any> => {
+  // 1. Master Types
+  if (evidenceType === 'testimony') {
+    return {
+      agency: "",
+      title: "",
+      date: "",
+      case_number: "",
+      subject_name: "",
+      interviewer: "",
+      context: "",
+      transcript: ""
+    };
+  }
+
+  if (evidenceType === 'image' || evidenceType === 'audio') {
+    return {};
+  }
+
+  // 2. Document Sub-Types
+  if (evidenceType === 'document') {
+    const documentTemplates: Record<string, any> = {
+      correspondence: { sender: "", recipient: "", subject: "", body: "" },
+      financial: {
+        institution_name: "",
+        account_holder: "",
+        account_number: "",
+        pages: [
+          {
+            page_number: 1,
+            statement_period: "",
+            transactions: [
+              { date: "", description: "", amount: 0 }
+            ]
+          }
+        ]
+      },
+      journal: {
+        owner: "",
+        cover_title: "",
+        pages: [
+          { page_number: 1, date_entry: "", content: "", is_torn: false }
+        ]
+      },
+      contract: {
+        parties_involved: [""],
+        execution_date: "",
+        pages: [
+          { page_number: 1, terms_text: "" }
+        ],
+        signatures_valid: false
+      },
+      memo: { written_by: "", style: "notebook", context: "" },
+      background_check: { subject_name: "", dob: "", sex_age: "", aliases: "", last_known_address: "", employment_financial: "", criminal_history: "", associates: "", investigator_notes: "" }
+    };
+    return documentTemplates[subType] || {};
+  }
+
+  // 3. Forensic Sub-Types
+  if (evidenceType === 'forensic') {
+    const forensicTemplates: Record<string, any> = {
+      autopsy: {
+        victim_name: "",
+        gender: "",
+        victim_age: "",
+        examiner: "",
+        time_of_death: "",
+        cause_of_death: "",
+        anomalies: "",
+        internal_exam: "",
+        toxicology_report: "",
+        evidence_collected: [""] // Array of strings representing evidence collected during the autopsy
+      },
+      ballistics: {
+        case_number: "",
+        chain_of_custody: { submitted_by: "", received_date: "" },
+        caliber: "",
+        rifling_pattern: "",
+        exhibits: [
+          { reference: "", description: "" }
+        ],
+        firearm_specs: "",
+        microscopic_analysis: "",
+        trajectory_range: "",
+        firing_distance: "",
+        conclusion: "",
+        investigator_notes: ""
+      },
+      dna: { sample_type: "", match_probability: "", lab_technician: "", extraction_method: "", identified_person: "", loci_profile_summary: "", lab_notes: "" },
+      digital_forensics: { device_type: "", extraction_method: "", recovered_data: "" },
+      trace_analysis: { material_type: "", origin_source: "" }
+    };
+    return forensicTemplates[subType] || {};
+  }
+
+  return {};
+};
 </file>
 
 <file path="utils/questionUtils.ts">
@@ -4496,6 +4818,27 @@ export const validateAudioSize = (file: File | undefined): string | null => {
     return `SECURITY WARNING: File size exceeds the 10MB limit (Current size: ${sizeInMB}MB). Please compress the audio before uploading to prevent UI freezing and HTTP 413 errors.`;
   }
   return null;
+};
+
+export const validateJsonPayload = (jsonString: string, requiredFields: string[] = []): { valid: boolean; parsed?: any; error?: string } => {
+  try {
+    const parsed = JSON.parse(jsonString);
+
+    // Guard clause: ensure it's a strict object, not an array, primitive, or null
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return { valid: false, error: 'Invalid payload: JSON must be a standard object.' };
+    }
+
+    for (const field of requiredFields) {
+      if (!(field in parsed)) {
+        return { valid: false, error: `Missing required field: ${field}` };
+      }
+    }
+
+    return { valid: true, parsed };
+  } catch (e: any) {
+    return { valid: false, error: `Invalid JSON format: ${e.message}` };
+  }
 };
 </file>
 

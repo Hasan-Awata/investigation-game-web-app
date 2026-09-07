@@ -20,6 +20,7 @@
 │   │   ├── LevelPresentationType.php
 │   │   └── RoomStatus.php
 │   ├── Events
+│   │   ├── HostMigrated.php
 │   │   ├── ItemsUnlocked.php
 │   │   ├── LevelTransitioned.php
 │   │   ├── LocationInspected.php
@@ -150,7 +151,8 @@
 │   │   ├── 2026_08_11_154156_add_requirements_to_choices_table.php
 │   │   ├── 2026_08_14_185138_drop_is_mandatory_from_questions_table.php
 │   │   ├── 2026_08_19_112215_refactor_evidences_for_json_metadata.php
-│   │   └── 2026_08_28_104024_create_room_state_tracking_tables.php
+│   │   ├── 2026_08_28_104024_create_room_state_tracking_tables.php
+│   │   └── 2026_09_05_105623_add_map_coordinates_to_phases_table.php
 │   ├── schema
 │   └── seeders
 │       └── DatabaseSeeder.php
@@ -540,6 +542,47 @@ enum RoomStatus: string
     case Active = 'active';
     case Solved = 'solved';
     case Failed = 'failed';
+}
+</file>
+
+<file path="app/Events/HostMigrated.php">
+<?php
+
+namespace App\Events;
+
+use App\Models\GameRoom;
+use App\Models\User;
+use Illuminate\Broadcasting\InteractsWithSockets;
+use Illuminate\Broadcasting\PrivateChannel;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Foundation\Events\Dispatchable;
+use Illuminate\Queue\SerializesModels;
+
+class HostMigrated implements ShouldBroadcastNow
+{
+    use Dispatchable, InteractsWithSockets, SerializesModels;
+
+    public function __construct(
+        public readonly GameRoom $room,
+        public readonly User $newHost
+    ) {}
+
+    public function broadcastOn(): array
+    {
+        return [
+            new PrivateChannel('room.' . $this->room->id),
+        ];
+    }
+
+    public function broadcastWith(): array
+    {
+        return [
+            'room_id' => $this->room->id,
+            'new_host_id' => $this->newHost->id,
+            'new_host_name' => $this->newHost->username,
+            'message' => "Host disconnected. Operational command transferred to Agent {$this->newHost->username}."
+        ];
+    }
 }
 </file>
 
@@ -1064,6 +1107,18 @@ class GameRoomController extends Controller
         }
 
         return response()->json(['message' => 'Successfully joined the room', 'room' => $result->value], 200);
+    }
+
+    public function leave(Request $request, GameRoom $room): JsonResponse
+    {
+        $player = $request->user();
+        $result = $this->roomService->leaveRoom($room, $player);
+
+        if ($result->isFailure()) {
+            return response()->json(['error' => 'Disconnect Failed', 'message' => $result->errorMessage], 400);
+        }
+
+        return response()->json(['message' => $result->value['message']], 200);
     }
 
     public function startLevel(Request $request, GameRoom $room, Level $level): JsonResponse
@@ -1875,6 +1930,9 @@ class AdminPhaseController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'order_index' => 'required|integer|min:1',
+            'map_url'     => 'nullable|string',
+            'coord_x'     => 'nullable|numeric|required_with:map_url',
+            'coord_y'     => 'nullable|numeric|required_with:map_url',
         ]);
 
         $phase = Phase::create($validated);
@@ -1893,6 +1951,9 @@ class AdminPhaseController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'order_index' => 'required|integer|min:1',
+            'map_url'     => 'nullable|string',
+            'coord_x'     => 'nullable|numeric|required_with:map_url',
+            'coord_y'     => 'nullable|numeric|required_with:map_url',
         ]);
         $phase->update($validated);
         return response()->json(['message' => 'Phase updated.', 'phase' => $phase], 200);
@@ -2765,6 +2826,9 @@ class Phase extends Model
         'title',
         'description',
         'order_index',
+        'map_url',
+        'coord_x',
+        'coord_y'
     ];
 
     public function gameCase(): BelongsTo
@@ -3505,6 +3569,7 @@ use Illuminate\Support\Str;
 use App\Enums\RoomStatus;
 use App\Enums\LevelPresentationType;
 use App\Support\Result;
+use App\Events\HostMigrated;
 
 class GameRoomService
 {
@@ -3563,6 +3628,49 @@ class GameRoomService
             }
 
             return Result::success($room);
+        });
+    }
+
+    /**
+     * Process a player leaving the session and handle host migration if necessary.
+     */
+    public function leaveRoom(GameRoom $room, User $player): Result
+    {
+        return DB::transaction(function () use ($room, $player) {
+            $roomUser = RoomUser::where('room_id', $room->id)
+                ->where('user_id', $player->id)
+                ->lockForUpdate()
+                ->first();
+
+            if (!$roomUser) {
+                return Result::failure("You are not a participant in this room.");
+            }
+
+            $wasHost = ($room->host_user_id === $player->id);
+
+            // 1. Remove the departing player
+            $roomUser->delete();
+
+            // 2. Handle Host Migration
+            if ($wasHost) {
+                // Identify the most senior remaining agent (oldest join date)
+                $nextPlayer = RoomUser::with('user')
+                    ->where('room_id', $room->id)
+                    ->orderBy('joined_at', 'asc')
+                    ->first();
+
+                if ($nextPlayer) {
+                    $room->update(['host_user_id' => $nextPlayer->user_id]);
+                    $nextPlayer->update(['role' => 'host']);
+
+                    HostMigrated::dispatch($room, $nextPlayer->user);
+                } else {
+                    // Mark the session as abandoned if completely empty
+                    $room->update(['status' => RoomStatus::Failed]);
+                }
+            }
+
+            return Result::success(['message' => 'Successfully disconnected from the session.']);
         });
     }
 
@@ -6951,6 +7059,33 @@ return new class extends Migration {
 };
 </file>
 
+<file path="database/migrations/2026_09_05_105623_add_map_coordinates_to_phases_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up()
+    {
+        Schema::table('phases', function (Blueprint $table) {
+            $table->string('map_url')->nullable();
+            $table->decimal('coord_x', 5, 2)->nullable();
+            $table->decimal('coord_y', 5, 2)->nullable();
+        });
+    }
+
+    public function down()
+    {
+        Schema::table('phases', function (Blueprint $table) {
+            $table->dropColumn(['map_url', 'coord_x', 'coord_y']);
+        });
+    }
+};
+</file>
+
 <file path="database/seeders/DatabaseSeeder.php">
 <?php
 
@@ -7048,6 +7183,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Room Management
     Route::post('/rooms', [GameRoomController::class, 'store']);
     Route::post('/rooms/join', [GameRoomController::class, 'join']);
+    Route::post('/rooms/{room}/leave', [GameRoomController::class, 'leave']);
     Route::get('/rooms/{room}', [GameRoomController::class, 'show']);
 
     // Core Gameplay Loop
