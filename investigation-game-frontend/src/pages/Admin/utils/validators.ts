@@ -61,3 +61,24 @@ export const validateAudioSize = (file: File | undefined): string | null => {
   }
   return null;
 };
+
+export const validateJsonPayload = (jsonString: string, requiredFields: string[] = []): { valid: boolean; parsed?: any; error?: string } => {
+  try {
+    const parsed = JSON.parse(jsonString);
+
+    // Guard clause: ensure it's a strict object, not an array, primitive, or null
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      return { valid: false, error: 'Invalid payload: JSON must be a standard object.' };
+    }
+
+    for (const field of requiredFields) {
+      if (!(field in parsed)) {
+        return { valid: false, error: `Missing required field: ${field}` };
+      }
+    }
+    
+    return { valid: true, parsed };
+  } catch (e: any) {
+    return { valid: false, error: `Invalid JSON format: ${e.message}` };
+  }
+};

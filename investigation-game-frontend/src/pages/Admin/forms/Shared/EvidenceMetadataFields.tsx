@@ -59,28 +59,21 @@ export default function EvidenceMetadataFields({ evidenceType, subType, setSubTy
 
   const renderDynamicInputs = () => {
     const props = { metadata, updateMeta: updateMeta as any };
-    
+
     switch (subType) {
-      // FORENSICS
       case 'autopsy': return <AutopsyFields {...props} />;
       case 'ballistics': return <BallisticsFields {...props} />;
       case 'dna': return <DNAFields {...props} />;
       case 'digital_forensics': return <DigitalForensicsFields {...props} />;
       case 'trace_analysis': return <TraceAnalysisFields {...props} />;
-
-      // DOCUMENTS
       case 'correspondence': return <CorrespondenceFields {...props} />;
       case 'financial': return <FinancialFields {...props} />;
       case 'journal': return <JournalFields {...props} />;
       case 'contract': return <ContractFields {...props} />;
       case 'memo': return <MemoFields {...props} />;
       case 'background_check': return <BackgroundCheckFields {...props} />;
-
-      // FALLBACK
       default:
-        if (evidenceType === 'testimony') {
-          return <AdminTextarea label={t.officialTranscriptLabel} value={metadata.transcript || ''} onChange={e => updateMeta('transcript', e.target.value)} />;
-        }
+        if (evidenceType === 'testimony') return <AdminTextarea label={t.officialTranscriptLabel} value={metadata.transcript || ''} onChange={e => updateMeta('transcript', e.target.value)} />;
         return null;
     }
   };
@@ -89,9 +82,7 @@ export default function EvidenceMetadataFields({ evidenceType, subType, setSubTy
 
   return (
     <div className="metadata-container">
-      <h4 className="metadata-title">
-        {t.sectionTitle}
-      </h4>
+      <h4 className="metadata-title">{t.sectionTitle}</h4>
       {renderSubTypeSelector()}
       {(subType || evidenceType === 'testimony') && (
         <div className="metadata-inputs-wrapper">

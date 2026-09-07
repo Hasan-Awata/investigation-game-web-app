@@ -1,4 +1,6 @@
 import React, { forwardRef } from 'react';
+import { validateJsonPayload } from '../../utils/validators';
+import toast from 'react-hot-toast';
 
 export const AdminRow = ({ children }: { children: React.ReactNode }) => (
   <div className="admin-form-row">
@@ -178,6 +180,60 @@ export const CoordinatePicker = ({
           </div>
         ))}
       </div>
+    </div>
+  );
+};
+
+export const AdminEntryToggle = ({ mode, setMode, labelForm = "Form Entry", labelJson = "JSON Bulk Entry" }: { mode: 'form' | 'json', setMode: (m: 'form' | 'json') => void, labelForm?: string, labelJson?: string }) => (
+  <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
+    <button type="button" className={`btn-secondary ${mode === 'form' ? 'active' : ''}`} onClick={() => setMode('form')} style={mode === 'form' ? { borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' } : {}}>
+      {labelForm}
+    </button>
+    <button type="button" className={`btn-secondary ${mode === 'json' ? 'active' : ''}`} onClick={() => setMode('json')} style={mode === 'json' ? { borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' } : {}}>
+      {labelJson}
+    </button>
+  </div>
+);
+
+export const JsonPopulator = ({ 
+  jsonInput, 
+  setJsonInput, 
+  onPopulate, 
+  requiredFields = [], 
+  template = {}, 
+  label = "JSON Data Payload" 
+}: { 
+  jsonInput: string, 
+  setJsonInput: (v: string) => void, 
+  onPopulate: (parsed: any) => void, 
+  requiredFields?: string[],
+  template?: Record<string, any>,
+  label?: string 
+}) => {
+  
+  // Auto-fill the textarea with the template if it's currently empty
+  React.useEffect(() => {
+    if (!jsonInput && Object.keys(template).length > 0) {
+      setJsonInput(JSON.stringify(template, null, 2));
+    }
+  }, [template, jsonInput, setJsonInput]);
+
+  const handleVerify = () => {
+    const { valid, parsed, error } = validateJsonPayload(jsonInput, requiredFields);
+    if (!valid) {
+      toast.error(error!);
+      return;
+    }
+    onPopulate(parsed);
+    toast.success('JSON verified and injected into form.');
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'rgba(0,0,0,0.2)', padding: '1.5rem', borderRadius: '8px', border: '1px dashed var(--accent-cyan)' }}>
+      <AdminTextarea label={label} value={jsonInput} onChange={e => setJsonInput(e.target.value)} style={{ minHeight: '250px', fontFamily: 'var(--font-mono)' }} />
+      <button type="button" className="btn-secondary" onClick={handleVerify} style={{ alignSelf: 'flex-start', color: 'var(--accent-cyan)', borderColor: 'var(--accent-cyan)' }}>
+        [ Verify & Populate Form ]
+      </button>
     </div>
   );
 };
