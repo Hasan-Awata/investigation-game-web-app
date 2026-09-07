@@ -51,7 +51,7 @@ const ViewersContainer: React.FC<ViewersContainerProps> = ({ children }) => {
       const fitY = availableH / childHeight;
 
       // Automatically shrink the document to fit, but never scale it up past 1x
-      setBaseScale(Math.min(fitX, fitY, 1));
+      setBaseScale(Math.min(fitX, fitY));
     };
 
     // ResizeObserver catches delayed image loads automatically
@@ -102,6 +102,7 @@ const ViewersContainer: React.FC<ViewersContainerProps> = ({ children }) => {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (zoom > 1) {
+      e.preventDefault();
       setIsDragging(true);
       setLastMouse({ x: e.clientX, y: e.clientY });
     }

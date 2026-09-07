@@ -1,0 +1,51 @@
+.victim-modal-backdrop {
+  z-index: 2000;
+}
+
+.victim-modal-box {
+  max-width: 650px;
+  padding: 2.5rem;
+}
+
+.victim-modal-layout {
+  display: flex;
+  gap: 2rem;
+  margin-top: 0.5rem;
+}
+
+.victim-modal-image {
+  width: 180px;
+  height: 180px;
+  background-size: cover;
+  background-position: center;
+  border-radius: var(--radius-xl);
+  border: var(--border-thin);
+  flex-shrink: 0;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+}
+
+.victim-modal-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.victim-modal-name {
+  margin: 0 0 1rem 0;
+  color: var(--text-primary);
+  text-transform: uppercase;
+  font-size: 2rem;
+  letter-spacing: 0.05em;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.victim-modal-background-text {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  max-height: 40vh;
+  overflow-y: auto;
+  padding-inline-end: 1rem;
+  font-family: var(--font-mono);
+}

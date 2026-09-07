@@ -69,6 +69,7 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
               alt={evidence.title || t('pages.gameRoom.evidence.viewers.media.imageAltFallback')} 
               className="media-full-image"
               onLoad={() => setIsImageLoaded(true)}
+              draggable={false} 
               style={{
                 opacity: isImageLoaded ? 1 : 0,
               }}

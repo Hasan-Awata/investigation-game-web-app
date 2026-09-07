@@ -111,7 +111,6 @@ export default function EvidenceBoardTab() {
     >
       <div className="evidence-board-container">
         <header className="board-header">
-          <h2 className="section-title">{t('pages.gameRoom.evidence.board.title')}</h2>
           <span className="board-meta">{t('pages.gameRoom.evidence.board.subtitle')}</span>
         </header>
 

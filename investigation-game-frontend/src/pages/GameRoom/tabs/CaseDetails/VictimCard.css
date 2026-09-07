@@ -1,0 +1,55 @@
+.victim-card {
+  width: 160px;
+  margin: 0 auto; /* Ensures it stays centered in the responsive grid */
+  background: var(--bg-dark);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  
+  /* Hardened structure to match Suspect Card */
+  display: flex;
+  flex-direction: column;
+  min-height: 220px; 
+  position: relative;
+}
+
+.victim-card:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 15px rgba(0, 0, 0, 0.5);
+}
+
+.victim-card-image {
+  width: 100%;
+  height: 160px;
+  background-color: rgba(0, 0, 0, 0.4); 
+  background-size: cover;
+  background-position: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: calc(var(--radius-sm) - 1px) calc(var(--radius-sm) - 1px) 0 0;
+  filter: grayscale(20%) contrast(110%);
+  transition: filter 0.3s ease;
+}
+
+.victim-card:hover .victim-card-image {
+  filter: grayscale(0%) contrast(100%);
+}
+
+.victim-card-info {
+  padding: 0.75rem;
+  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.victim-card-info h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+  white-space: pre-line;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
