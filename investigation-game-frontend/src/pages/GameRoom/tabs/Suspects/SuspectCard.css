@@ -134,3 +134,18 @@
   line-height: 1.5;
   white-space: pre-wrap; /* Honors line breaks from the database */
 }
+
+/* --- UNREAD SHINE MECHANIC --- */
+.suspect-card .unread-indicator {
+  display: none;
+}
+
+.suspect-card:has(.unread-indicator) {
+  animation: suspect-shine 1.5s infinite alternate ease-in-out;
+  z-index: 5;
+}
+
+@keyframes suspect-shine {
+  0% { filter: drop-shadow(0 0 2px rgba(var(--accent-amber-rgb), 0.3)); }
+  100% { filter: drop-shadow(0 0 14px rgba(var(--accent-amber-rgb), 1)); }
+}

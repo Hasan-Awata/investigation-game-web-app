@@ -53,3 +53,18 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* --- UNREAD SHINE MECHANIC --- */
+.victim-card .unread-indicator {
+  display: none;
+}
+
+.victim-card:has(.unread-indicator) {
+  animation: victim-shine 1.5s infinite alternate ease-in-out;
+  z-index: 5;
+}
+
+@keyframes victim-shine {
+  0% { filter: drop-shadow(0 0 2px rgba(var(--accent-amber-rgb), 0.3)); }
+  100% { filter: drop-shadow(0 0 14px rgba(var(--accent-amber-rgb), 1)); }
+}

@@ -50,3 +50,18 @@
 .digital-pin.amber { color: var(--accent-amber); background: var(--accent-amber); }
 .digital-pin.cyan { color: var(--accent-cyan); background: var(--accent-cyan); }
 .digital-pin.crimson { color: var(--accent-crimson); background: var(--accent-crimson); }
+
+/* --- UNREAD SHINE MECHANIC --- */
+.evidence-card-wrapper .unread-indicator {
+  display: none;
+}
+
+.evidence-card-wrapper:has(.unread-indicator) {
+  animation: evidence-shine 1.5s infinite alternate ease-in-out;
+  z-index: 5;
+}
+
+@keyframes evidence-shine {
+  0% { filter: drop-shadow(0 0 2px rgba(var(--accent-amber-rgb), 0.3)); }
+  100% { filter: drop-shadow(0 0 14px rgba(var(--accent-amber-rgb), 1)); }
+}
