@@ -76,13 +76,13 @@
   gap: 3rem;
 }
 
-.meta-box {
+.testimony-modal-viewer .meta-box {
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.meta-label {
+.testimony-modal-viewer .meta-label {
   font-family: var(--testimony-font-main);
   font-size: 0.75rem;
   font-weight: bold;
@@ -92,7 +92,7 @@
   margin-bottom: 0.25rem;
 }
 
-.meta-value {
+.testimony-modal-viewer .meta-value {
   font-family: var(--testimony-font-main);
   font-size: 1.1rem;
   color: #666;
@@ -109,13 +109,13 @@
   background: #fff;
 }
 
-.subject-label {
+.testimony-modal-viewer .subject-label {
   font-weight: bold;
   /* Swapped to logical property */
   margin-inline-end: 1rem;
 }
 
-.testimony-context {
+.testimony-modal-viewer .testimony-context {
   font-family: var(--testimony-font-main);
   font-size: 1.1rem;
   font-style: italic;

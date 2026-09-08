@@ -37,7 +37,6 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
   const isFinished = isSolved || isFailed;
 
   const activeInviteCode = gameCase.active_room_invite_code;
-
   const showContinue = !!activeInviteCode;
 
   let primaryButtonText = t('components.caseBriefing.startCase');
@@ -49,25 +48,27 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
     primaryButtonText = t('components.caseBriefing.replayCase');
   }
 
+  // Determine dynamic classes instead of inline color strings
   let rewardText = `${gameCase.XP_on_solve} ${t('components.caseBriefing.xp')}`;
-  let rewardColor = 'var(--accent-amber)';
+  let rewardClass = 'reward-standard';
 
   if (userStatus === CaseUserStatus.SolvedPerfect) {
     rewardText = `0 ${t('components.caseBriefing.xp')} ${t('components.caseBriefing.perfectReplay')}`;
-    rewardColor = 'var(--text-secondary)';
+    rewardClass = 'reward-neutral';
   } else if (userStatus === CaseUserStatus.SolvedPartial) {
     rewardText = `0 ${t('components.caseBriefing.xp')} ${t('components.caseBriefing.partialReplay')}`;
-    rewardColor = 'var(--text-secondary)';
+    rewardClass = 'reward-neutral';
   } else if (isFailed) {
     rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} ${t('components.caseBriefing.xp')} ${t('components.caseBriefing.penaltyAllowance')}`;
-    rewardColor = 'var(--accent-crimson)';
+    rewardClass = 'reward-penalty';
   }
 
   const renderStars = (rating: number) => {
     const stars = [];
     for (let i = 1; i <= 5; i++) {
+      const isActive = i <= Math.round(rating);
       stars.push(
-        <span key={i} style={{ color: i <= Math.round(rating) ? 'var(--accent-amber)' : 'rgba(255,255,255,0.1)', fontSize: '1.2rem' }}>★</span>
+        <span key={i} className={`star-icon ${isActive ? 'active' : 'inactive'}`}>★</span>
       );
     }
     return stars;
@@ -96,12 +97,15 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
           <div className="modal-metadata-sidebar">
             <div className="meta-block">
               <span className="meta-label">{t('components.caseBriefing.playerRating')}</span>
-              <div className="meta-value">{renderStars(gameCase.rating_stars || 0)} <span style={{fontSize: '0.8rem', marginLeft: '0.5rem'}}>({gameCase.rating_stars || 'N/A'})</span></div>
+              <div className="meta-value">
+                {renderStars(gameCase.rating_stars || 0)} 
+                <span className="rating-number">({gameCase.rating_stars || 'N/A'})</span>
+              </div>
             </div>
 
             <div className="meta-block">
               <span className="meta-label">{t('components.caseBriefing.difficulty')}</span>
-              <div className="meta-value" style={{ color: 'var(--accent-crimson)' }}>{gameCase.difficulty || t('components.caseBriefing.standard')}</div>
+              <div className="meta-value difficulty-value">{gameCase.difficulty || t('components.caseBriefing.standard')}</div>
             </div>
 
             <div className="meta-block">
@@ -114,11 +118,11 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
               <div className="meta-value advisory-badge">{gameCase.age_rating || t('components.caseBriefing.unrated')}</div>
             </div>
 
-            <div className="meta-block" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed rgba(255,255,255,0.1)' }}>
+            <div className="meta-block requirements-block">
               <span className="meta-label">{t('components.caseBriefing.accessRequirements')}</span>
-              <div className="modal-badges" style={{ marginTop: '0.5rem', flexDirection: 'column' }}>
+              <div className="modal-badges column-layout">
                 <span className="badge">{t('components.caseBriefing.minXp')} {gameCase.min_player_XP}</span>
-                <span className="badge reward" style={{ color: rewardColor, borderColor: rewardColor }}>
+                <span className={`badge reward ${rewardClass}`}>
                   {t('components.caseBriefing.reward')} {rewardText}
                 </span>
               </div>
@@ -126,7 +130,7 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
           </div>
         </div>
 
-        {error && <div className="terminal-text error" style={{ padding: 0 }}>{error}</div>}
+        {error && <div className="terminal-text error modal-error-message">{error}</div>}
 
         <div className="modal-actions">
           <button className="btn-primary" onClick={handleStartSession} disabled={isLoading}>
@@ -135,10 +139,9 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
 
           {showContinue && (
             <button
-              className="btn-secondary"
+              className="btn-secondary continue-btn"
               onClick={() => navigate(`/room/${activeInviteCode}`)}
               disabled={isLoading}
-              style={{ borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' }}
             >
               {t('components.caseBriefing.continueInvestigation')}
             </button>

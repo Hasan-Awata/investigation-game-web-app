@@ -33,20 +33,6 @@ export default function CaseDetailsTab() {
     setInspectedVictim(victim);
   };
 
-  const renderStars = (rating: number) => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <span 
-          key={i} 
-          style={{ color: i <= Math.round(rating) ? '#e65100' : 'rgba(255,255,255,0.15)' }}
-        >
-          ★
-        </span>
-      );
-    }
-    return stars;
-  };
 
   const userStatus = gameCase.user_status;
   const isFailed = userStatus === CaseUserStatus.FailedNoProof || userStatus === CaseUserStatus.FailedIncomplete || userStatus === CaseUserStatus.FailedStrikes;
@@ -88,46 +74,6 @@ export default function CaseDetailsTab() {
 
           {/* THE DIVIDER LINE */}
           <div className="hero-divider-line" />
-
-          {/* 3-COLUMN STATS GRID */}
-          <div className="case-stats-grid">
-            <div className="hero-stat-column">
-              <div className="hero-stat-block">
-                <span className="stat-label">{t('components.caseBriefing.playerRating')}</span>
-                <span className="stat-value">{renderStars(gameCase.rating_stars || 0)}</span>
-              </div>
-              <div className="hero-stat-block">
-                <span className="stat-label">{t('components.caseBriefing.difficulty')}</span>
-                <span className="stat-value" style={{ color: '#d32f2f' }}>
-                  {gameCase.difficulty || t('components.caseBriefing.standard')}
-                </span>
-              </div>
-            </div>
-
-            <div className="hero-stat-column">
-              <div className="hero-stat-block">
-                <span className="stat-label">{t('components.caseBriefing.estPlaytime')}</span>
-                <span className="stat-value">{gameCase.estimated_playtime || t('components.caseBriefing.unknown')}</span>
-              </div>
-              <div className="hero-stat-block">
-                <span className="stat-label">{t('components.caseBriefing.advisory')}</span>
-                <span className="stat-value">
-                  {gameCase.age_rating || t('components.caseBriefing.unrated')}
-                </span>
-              </div>
-            </div>
-
-            <div className="hero-stat-column">
-              <div className="hero-stat-block">
-                <span className="stat-label">{t('components.caseBriefing.accessRequirements')}</span>
-                <span className="stat-value">{t('components.caseBriefing.minXp')} {gameCase.min_player_XP}</span>
-              </div>
-              <div className="hero-stat-block">
-                <span className="stat-label">{t('components.caseBriefing.reward')}</span>
-                <span className="stat-value" style={{ color: rewardColor }}>{rewardText}</span>
-              </div>
-            </div>
-          </div>
           
         </div>
 
