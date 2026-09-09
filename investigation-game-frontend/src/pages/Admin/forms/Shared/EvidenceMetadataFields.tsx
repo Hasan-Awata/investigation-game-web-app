@@ -2,7 +2,7 @@ import { AdminSelect, AdminTextarea } from '@/pages/Admin/components/AdminUI';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import {
   AutopsyFields, BallisticsFields, DNAFields, DigitalForensicsFields, TraceAnalysisFields,
-  CorrespondenceFields, FinancialFields, JournalFields, ContractFields, MemoFields, BackgroundCheckFields
+  CorrespondenceFields, FinancialFields, JournalFields, ContractFields, MemoFields, BackgroundCheckFields, PhoneRecordsFields
 } from './MetadataFields';
 import './AdminForms.css';
 
@@ -29,6 +29,7 @@ export default function EvidenceMetadataFields({ evidenceType, subType, setSubTy
     docContract: "Official Contract / Deed",
     docMemo: "Corporate Memo / Note",
     docBackground: "Background Check / Dossier",
+    docPhoneRecords: "Telecom / Phone Records",
     selectForensicPlaceholder: "-- Select Forensic Classification --",
     selectDocPlaceholder: "-- Select Document Classification --",
     officialTranscriptLabel: "Official Transcript"
@@ -48,7 +49,8 @@ export default function EvidenceMetadataFields({ evidenceType, subType, setSubTy
     { value: "journal", label: t.docJournal },
     { value: "contract", label: t.docContract },
     { value: "memo", label: t.docMemo },
-    { value: "background_check", label: t.docBackground }
+    { value: "background_check", label: t.docBackground },
+    { value: "phone_records", label: t.docPhoneRecords }
   ];
 
   const renderSubTypeSelector = () => {
@@ -72,6 +74,7 @@ export default function EvidenceMetadataFields({ evidenceType, subType, setSubTy
       case 'contract': return <ContractFields {...props} />;
       case 'memo': return <MemoFields {...props} />;
       case 'background_check': return <BackgroundCheckFields {...props} />;
+      case 'phone_records': return <PhoneRecordsFields {...props} />;
       default:
         if (evidenceType === 'testimony') return <AdminTextarea label={t.officialTranscriptLabel} value={metadata.transcript || ''} onChange={e => updateMeta('transcript', e.target.value)} />;
         return null;

@@ -81,8 +81,8 @@
     "gameRoom": {
       "synchronizing": "جاري مزامنة بيانات الجلسة...",
       "noInviteCode": "لم يتم توفير رمز دعوة.",
-      "sessionCode":"رمز الجلسة",
-      "activeAgents":"العملاء النشطون",
+      "sessionCode": "رمز الجلسة",
+      "activeAgents": "العملاء النشطون",
       "strikes": "الإنذارات",
       "sessionNotFound": "الجلسة غير موجودة.",
       "departmentUpdate": "تحديث الإدارة",
@@ -212,7 +212,12 @@
             "financialStatus": "الحالة",
             "financialCleared": "مُسدد",
             "contractLegalFiles": "ملفات قانونية",
-            "dossierRestricted": "سري للغاية"
+            "dossierRestricted": "سري للغاية",
+            "time": "الوقت",
+            "type": "النوع",
+            "contact": "جهة الاتصال",
+            "duration": "المدة",
+            "noLogs": "لا تتوفر بيانات مكالمات"
           }
         },
         "viewers": {
@@ -301,7 +306,7 @@
             "internalExam": "الفحص الداخلي والأعضاء:",
             "toxicologyReport": "تقرير السموم / المختبر:",
             "collectedEvidence": "العينات والأدلة المستخرجة:"
-        },
+          },
           "ballistics": {
             "stateForensicLab": "المختبر الجنائي بالولاية",
             "divBallistics": "قسم الأسلحة النارية وعلامات الأدوات",
@@ -340,7 +345,7 @@
             "extractionMethod": "طريقة الاستخلاص:",
             "lociProfileSummary": "ملخص تحليل المواقع الوراثية (STR Loci):",
             "labNotes": "ملاحظات ومرئيات المختبر:"
-        },
+          },
           "digitalForensics": {
             "terminalTitle": "وحدة_الجرائم_الإلكترونية_v3.4.1 // محطة_فك_التشفير",
             "initiating": "[+] جاري بدء بروتوكول الاستخراج الجنائي...",
@@ -378,10 +383,23 @@
             "audioNotSupported": "متصفحك لا يدعم تشغيل هذا المقطع الصوتي.",
             "imageAltFallback": "صورة دليل مصورة",
             "noMediaFound": "لم يتم العثور على وسائط مرتبطة بهذا الملف."
+          },
+          "phoneRecords": {
+            "networkProvider": "مزود الشبكة",
+            "subscriber": "المشترك",
+            "assignedNumber": "الرقم المخصص",
+            "statementPeriod": "فترة الكشف",
+            "docRef": "مرجع المستند",
+            "logsHeader": "سجل المكالمات",
+            "incoming": "واردة",
+            "outgoing": "صادرة",
+            "missed": "فائتة",
+            "sms": "رسالة نصية",
+            "endOfRecord": "*** نهاية سجل الاتصالات الرسمي ***"
           }
         }
-    },
-    "campaign": {
+      },
+      "campaign": {
         "unknownPhase": "مرحلة غير معروفة",
         "noLeads": "لا توجد خيوط متاحة حالياً في هذه المرحلة.",
         "undiscoveredEncounter": "مواجهة غير مكتشفة",
@@ -394,49 +412,49 @@
         "lead": "الخيط {{id}}",
         "levels": {
           "interrogation": {
-          "suspect": "المشتبه به",
-          "tieDetected": "⚠️ تم اكتشاف تعادل: قم بتغيير التصويت للحل",
-          "voteCast": "تم التصويت ({{votes}}/{{total}}) - يمكنك إعادة التعيين",
-          "selectResponse": "اختر الرد ({{votes}}/{{total}})",
-          "missingIntel": "🔒 [ معلومات مفقودة ]",
-          "investigators": "المحققون",
-          "processing": "جاري المعالجة...",
-          "submitVerdict": "تقديم الحكم النهائي",
-          "awaitingHostVerdict": "في انتظار المضيف لتقديم الحكم النهائي..."
+            "suspect": "المشتبه به",
+            "tieDetected": "⚠️ تم اكتشاف تعادل: قم بتغيير التصويت للحل",
+            "voteCast": "تم التصويت ({{votes}}/{{total}}) - يمكنك إعادة التعيين",
+            "selectResponse": "اختر الرد ({{votes}}/{{total}})",
+            "missingIntel": "🔒 [ معلومات مفقودة ]",
+            "investigators": "المحققون",
+            "processing": "جاري المعالجة...",
+            "submitVerdict": "تقديم الحكم النهائي",
+            "awaitingHostVerdict": "في انتظار المضيف لتقديم الحكم النهائي..."
           },
           "location": {
-          "leadDiscovered": "اكتشاف خيط",
-          "foundUseful": "لقد وجدت شيئاً مفيداً هنا. سأسجله على اللوحة.",
-          "newSceneUnlocked": "تم فتح مشهد جديد",
-          "newVantagePoint": "تم اكتشاف نقطة مراقبة أو غرفة جديدة.",
-          "deadEnd": "طريق مسدود",
-          "nothingFound": "لم يتم العثور على شيء هنا. يجب أن أستمر في البحث.",
-          "activeSceneSweep": "مسح نشط للمشهد",
-          "closeViewer": "إغلاق العارض",
-          "crimeSceneAlt": "مسرح الجريمة",
-          "requiresIntel": "🔒 [ يتطلب معلومات إضافية ]",
-          "inspectLocation": "فحص الموقع",
-          "enterViewerHint": "أدخل وضع ملء الشاشة لمسح المشهد.",
-          "processing": "جاري المعالجة...",
-          "leaveLocation": "مغادرة الموقع",
-          "awaitingHost": "المسح قيد التقدم. في انتظار المضيف لإنهاء البحث..."
+            "leadDiscovered": "اكتشاف خيط",
+            "foundUseful": "لقد وجدت شيئاً مفيداً هنا. سأسجله على اللوحة.",
+            "newSceneUnlocked": "تم فتح مشهد جديد",
+            "newVantagePoint": "تم اكتشاف نقطة مراقبة أو غرفة جديدة.",
+            "deadEnd": "طريق مسدود",
+            "nothingFound": "لم يتم العثور على شيء هنا. يجب أن أستمر في البحث.",
+            "activeSceneSweep": "مسح نشط للمشهد",
+            "closeViewer": "إغلاق العارض",
+            "crimeSceneAlt": "مسرح الجريمة",
+            "requiresIntel": "🔒 [ يتطلب معلومات إضافية ]",
+            "inspectLocation": "فحص الموقع",
+            "enterViewerHint": "أدخل وضع ملء الشاشة لمسح المشهد.",
+            "processing": "جاري المعالجة...",
+            "leaveLocation": "مغادرة الموقع",
+            "awaitingHost": "المسح قيد التقدم. في انتظار المضيف لإنهاء البحث..."
           },
           "wiretap": {
-          "activeIntercept": "[ اعتراض نشط ]",
-          "interceptPrefix": "اعتراض-",
-          "tieDetected": "> ⚠️ تم اكتشاف تعادل: قم بتغيير التصويت للحل",
-          "voteRecorded": "> الحالة: تم تسجيل التصويت [{{votes}}/{{total}}]",
-          "awaitingConsensus": "> الحالة: في انتظار إجماع العملاء [{{votes}}/{{total}}]",
-          "connectionSevered": "انقطع الاتصال. اعتمد على الملاحظات الميدانية.",
-          "initiateAudio": "▶ بدء البث الصوتي (مرة واحدة)",
-          "awaitingHostAudio": "في انتظار المضيف لبدء البث",
-          "pathLocked": "🔒 [ المسار مغلق: لم يتم استيفاء المتطلبات ]",
-          "classified": "[ سري ]",
-          "submitAnalysis": "تقديم تحليل الاعتراض",
-          "processing": "جاري المعالجة...",
-          "awaitingHostSubmit": "في انتظار المضيف لتقديم تحليل الاعتراض...",
-          "audioFeedLabel": "[ بث صوتي ]",
-          "feedSeveredLabel": "[ انقطع البث ]"
+            "activeIntercept": "[ اعتراض نشط ]",
+            "interceptPrefix": "اعتراض-",
+            "tieDetected": "> ⚠️ تم اكتشاف تعادل: قم بتغيير التصويت للحل",
+            "voteRecorded": "> الحالة: تم تسجيل التصويت [{{votes}}/{{total}}]",
+            "awaitingConsensus": "> الحالة: في انتظار إجماع العملاء [{{votes}}/{{total}}]",
+            "connectionSevered": "انقطع الاتصال. اعتمد على الملاحظات الميدانية.",
+            "initiateAudio": "▶ بدء البث الصوتي (مرة واحدة)",
+            "awaitingHostAudio": "في انتظار المضيف لبدء البث",
+            "pathLocked": "🔒 [ المسار مغلق: لم يتم استيفاء المتطلبات ]",
+            "classified": "[ سري ]",
+            "submitAnalysis": "تقديم تحليل الاعتراض",
+            "processing": "جاري المعالجة...",
+            "awaitingHostSubmit": "في انتظار المضيف لتقديم تحليل الاعتراض...",
+            "audioFeedLabel": "[ بث صوتي ]",
+            "feedSeveredLabel": "[ انقطع البث ]"
           }
         },
         "map": {
@@ -450,8 +468,8 @@
           "dataAvailable": "البيانات متاحة",
           "restricted": "وصول مقيد"
         }
-    },
-    "hooks": {
+      },
+      "hooks": {
         "phase": {
           "consensusVerified": "تم التحقق من الإجماع",
           "theoryRejected": "رُفضت النظرية",
@@ -472,10 +490,7 @@
           "warrantExecuted": "تم تنفيذ مذكرة التفتيش",
           "warrantExecutedMsg": "مرحلة تحقيق جديدة متاحة الآن على خارطة الطريق."
         }
-    }    
+      }
+    }
   }
 }
-}
-
-
-  

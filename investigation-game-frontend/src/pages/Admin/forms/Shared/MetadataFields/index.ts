@@ -9,3 +9,4 @@ export { default as JournalFields } from './JournalFields';
 export { default as ContractFields } from './ContractFields';
 export { default as MemoFields } from './MemoFields';
 export { default as BackgroundCheckFields } from './BackgroundCheckFields';
+export { default as PhoneRecordsFields } from './PhoneRecordsFields';

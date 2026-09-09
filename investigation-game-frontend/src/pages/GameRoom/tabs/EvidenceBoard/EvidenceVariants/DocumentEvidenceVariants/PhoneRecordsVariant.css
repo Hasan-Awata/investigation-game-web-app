@@ -1,0 +1,144 @@
+.phone-records-variant {
+  /* --- THEME CONTROL PANEL --- */
+  --telecom-brand: #1e3a8a;      /* Deep corporate telecom blue */
+  --telecom-paper: #ffffff;      /* Crisp white bill paper */
+  --telecom-ink: #111827;        /* Dark text */
+  --telecom-muted: #6b7280;      /* Secondary text/borders */
+  --telecom-highlight: #eff6ff;  /* Light blue row highlight */
+  /* --------------------------- */
+
+  width: 280px;
+  background: var(--telecom-paper);
+  border-radius: 2px;
+  box-shadow: 2px 4px 12px rgba(0, 0, 0, 0.2);
+  position: relative;
+  margin-top: 15px; 
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #d1d5db;
+  overflow: hidden;
+}
+
+/* Simulated horizontal fold crease in the paper */
+.phone-records-variant::after {
+  content: '';
+  position: absolute;
+  top: 45%;
+  inset-inline: 0;
+  height: 2px;
+  background: linear-gradient(to bottom, rgba(0,0,0,0.06), transparent);
+  border-top: 1px solid rgba(0,0,0,0.03);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* 1. CORPORATE HEADER */
+.telecom-header {
+  background: var(--telecom-brand);
+  color: #ffffff;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 3px solid #1e40af;
+}
+
+.telecom-logo-placeholder {
+  font-family: var(--font-primary);
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.telecom-period {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  opacity: 0.8;
+}
+
+/* 2. SUBSCRIBER INFO BLOCK */
+.telecom-account-info {
+  padding: 0.75rem 1rem;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+}
+
+.account-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.subscriber-name {
+  color: var(--telecom-ink);
+  font-family: var(--font-primary);
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-transform: capitalize;
+}
+
+.subscriber-number {
+  color: var(--telecom-brand);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: bold;
+}
+
+/* 3. ITEMIZATION TABLE */
+.telecom-logs-container {
+  padding: 0.5rem 1rem 1rem 1rem;
+}
+
+.phone-records-variant .evidence-title {
+  color: var(--telecom-ink);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+  /* border-bottom: 1px solid var(--telecom-ink); */
+  padding-bottom: 0.25rem;
+}
+
+.phone-records-variant .evidence-desc {
+  font-size: 0.75rem;
+  color: var(--telecom-muted);
+  margin-bottom: 0.75rem;
+}
+
+.call-log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--telecom-ink);
+}
+
+.call-log-table th {
+  text-align: start;
+  color: var(--telecom-muted);
+  border-bottom: 1px solid var(--telecom-muted);
+  padding: 4px 2px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.call-log-table td {
+  padding: 4px 2px;
+  border-bottom: 1px dashed #e5e7eb;
+  white-space: nowrap;
+}
+
+.call-log-table tr:nth-child(even) {
+  background-color: var(--telecom-highlight);
+}
+
+/* Direction icons styling */
+.dir-icon {
+  font-weight: bold;
+  font-size: 0.7rem;
+}
+.dir-in { color: #059669; }  /* Green */
+.dir-out { color: #2563eb; } /* Blue */
+.dir-miss { color: #dc2626; }/* Red */

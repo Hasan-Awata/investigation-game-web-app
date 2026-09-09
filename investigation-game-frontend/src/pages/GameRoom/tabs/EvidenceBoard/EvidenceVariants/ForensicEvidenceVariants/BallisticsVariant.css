@@ -1,0 +1,93 @@
+.ballistics-variant {
+  --kraft-paper: #d4b58e;       
+  --kraft-border: #bba07d;      
+  --tape-red: #c0392b;          
+  --lab-ink: #1a1a1a;           
+  
+  min-height: 180px;
+  width: 300px;
+  margin-top: 15px;
+  background: var(--kraft-paper);
+  border-radius: 2px;
+  box-shadow: 2px 4px 10px rgba(0,0,0,0.3);
+  position: relative;
+  overflow: hidden; 
+  padding: 1.5rem 1.5rem 2.5rem 1.5rem; 
+  border: 1px solid var(--kraft-border);
+}
+
+.ballistics-variant::after {
+  content: '⌖';
+  position: absolute;
+  top: 50%;
+  left: 50%; 
+  transform: translate(-50%, -50%);
+  font-size: 8rem;
+  color: rgba(0,0,0,0.06);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.ballistics-report {
+  position: relative;
+  z-index: 2;
+}
+
+.ballistics-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 2px solid var(--lab-ink);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.crosshair-icon {
+  color: var(--lab-ink);
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.lab-stamp {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--lab-ink);
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+
+.ballistics-variant .evidence-title {
+  color: var(--lab-ink);
+  text-transform: uppercase;
+  font-family: var(--font-primary);
+}
+
+.ballistics-variant .evidence-desc {
+  color: #3a3a3a;
+  font-family: var(--font-mono);
+}
+
+.evidence-tape {
+  position: absolute;
+  bottom: 15px;
+  inset-inline: -5px;
+  height: 24px;
+  background: var(--tape-red);
+  color: white;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: bold;
+  letter-spacing: 0.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3;
+  transform: rotate(-2deg);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  clip-path: polygon(
+    0% 0%, 100% 0%, 
+    98% 10%, 100% 20%, 98% 30%, 100% 40%, 98% 50%, 100% 60%, 98% 70%, 100% 80%, 98% 90%, 100% 100%, 
+    0% 100%, 
+    2% 90%, 0% 80%, 2% 70%, 0% 60%, 2% 50%, 0% 40%, 2% 30%, 0% 20%, 2% 10%
+  );
+}

@@ -7,6 +7,7 @@ import JournalViewer from './DocumentViewers/JournalViewer';
 import MemoViewer from './DocumentViewers/MemoViewer';
 import CorrespondenceViewer from './DocumentViewers/CorrespondenceViewer';
 import BackgroundCheckViewer from './DocumentViewers/BackgroundCheckViewer';
+import PhoneRecordsViewer from './DocumentViewers/PhoneRecordsViewer';
 
 interface DocumentViewerProps {
   evidence: DocumentEvidence;
@@ -25,6 +26,7 @@ const DocumentViewerRegistry: DocumentRegistryMap = {
   contract: ContractViewer,
   memo: MemoViewer,
   background_check: BackgroundCheckViewer,
+  phone_records: PhoneRecordsViewer,
 };
 
 export default function DocumentViewer({ evidence }: DocumentViewerProps) {

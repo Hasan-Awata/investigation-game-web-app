@@ -69,10 +69,26 @@ export interface BackgroundCheckMetadata {
   investigator_notes: string;
 }
 
+export interface PhoneCallLog {
+  timestamp: string;
+  type: 'incoming' | 'outgoing' | 'sms' | 'missed' | string;
+  contact_number: string;
+  duration: string; // e.g., "02:14" or "45s"
+}
+
+export interface PhoneRecordsMetadata {
+  subscriber_name: string;
+  phone_number: string;
+  carrier: string;
+  statement_period: string;
+  logs: PhoneCallLog[];
+}
+
 export type DocumentEvidence =
   | (BaseEvidence & { evidence_type: 'document'; sub_type: 'journal'; metadata: JournalMetadata })
   | (BaseEvidence & { evidence_type: 'document'; sub_type: 'financial'; metadata: FinancialMetadata })
   | (BaseEvidence & { evidence_type: 'document'; sub_type: 'correspondence'; metadata: CorrespondenceMetadata })
   | (BaseEvidence & { evidence_type: 'document'; sub_type: 'contract'; metadata: ContractMetadata })
+  | (BaseEvidence & { evidence_type: 'document'; sub_type: 'phone_records'; metadata: PhoneRecordsMetadata })
   | (BaseEvidence & { evidence_type: 'document'; sub_type: 'memo'; metadata: MemoMetadata })
   | (BaseEvidence & { evidence_type: 'document'; sub_type: 'background_check'; metadata: BackgroundCheckMetadata });

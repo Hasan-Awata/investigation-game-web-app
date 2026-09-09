@@ -1,0 +1,14 @@
+.placeholder-forensic {
+  background: #d9d9d9;
+  border: 1px solid #999;
+  border-top: 12px solid var(--accent-crimson);
+  padding: 1.5rem;
+}
+.placeholder-forensic .forensic-header {
+  display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 2px dashed #999; padding-bottom: 0.5rem;
+}
+.placeholder-forensic .evidence-title,
+.placeholder-forensic .evidence-desc { 
+  color: #1a1a1a; 
+  font-family: var(--font-mono); 
+}
