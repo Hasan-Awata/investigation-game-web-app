@@ -2,22 +2,31 @@ import toast from 'react-hot-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as adminApi from '@/services/adminApi';
 
-export type AdminEntityType = 
-  | 'case' 
-  | 'phase' 
-  | 'level' 
-  | 'question' 
-  | 'evidence' 
-  | 'request' 
-  | 'suspect' 
+export type AdminEntityType =
+  | 'case'
+  | 'phase'
+  | 'level'
+  | 'question'
+  | 'evidence'
+  | 'request'
+  | 'suspect'
   | 'victim';
+
+// 1. Define the strict interface contract 
+interface ApiMethods {
+  create: (fd: FormData) => Promise<any>;
+  update: (id: number, fd: FormData) => Promise<any>;
+  del: (id: number) => Promise<any>;
+  import?: (payload: any) => Promise<any>; // Marked as optional
+  name: string;
+}
 
 export function useAdminMutations(entityType: AdminEntityType) {
   const queryClient = useQueryClient();
 
-  // Map the entity type to the exact API service functions from adminApi
-  const apiMap = {
-    'case': { create: adminApi.createAdminCase, update: adminApi.updateAdminCase, del: adminApi.deleteAdminCase, name: 'Case' },
+  // 2. Explicitly type the map to satisfy TypeScript
+  const apiMap: Record<AdminEntityType, ApiMethods> = {
+    'case': { create: adminApi.createAdminCase, update: adminApi.updateAdminCase, del: adminApi.deleteAdminCase, import: adminApi.importAdminCase, name: 'Case' },
     'phase': { create: adminApi.createAdminPhase, update: adminApi.updateAdminPhase, del: adminApi.deleteAdminPhase, name: 'Phase' },
     'level': { create: adminApi.createAdminLevel, update: adminApi.updateAdminLevel, del: adminApi.deleteAdminLevel, name: 'Level' },
     'question': { create: adminApi.createAdminQuestion, update: adminApi.updateAdminQuestion, del: adminApi.deleteAdminQuestion, name: 'Node' },
@@ -68,12 +77,25 @@ export function useAdminMutations(entityType: AdminEntityType) {
     onError: handleError,
   });
 
-  const isProcessing = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending;
+  const importMutation = useMutation({
+    mutationFn: async (payload: any) => {
+      // TypeScript now safely narrows the type because of the interface
+      if (!methods.import) throw new Error(`Bulk import is not supported for ${methods.name}.`);
+      const result = await methods.import(payload);
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      return result.value;
+    },
+    onSuccess: () => handleSuccess('imported successfully via transaction'),
+    onError: handleError,
+  });
+
+  const isProcessing = createMutation.isPending || updateMutation.isPending || deleteMutation.isPending || importMutation.isPending;
 
   return {
     createEntity: createMutation.mutate,
     updateEntity: updateMutation.mutate,
     deleteEntity: deleteMutation.mutate,
+    importEntity: importMutation.mutate,
     isProcessing
   };
 }

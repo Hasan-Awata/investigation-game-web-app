@@ -153,7 +153,6 @@ export default function GameRoom() {
         icon: 'https://api.iconify.design/ph:waveform-duotone.svg?color=%23c48b36'
       });
 
-      
       if (e.played_wiretap) {
         patchRoomData((oldRoom: GameRoom) => {
           const playedWiretaps = [...(oldRoom.played_wiretaps || [])];
@@ -171,9 +170,16 @@ export default function GameRoom() {
         return {
           ...oldRoom,
           unlocked_evidences: patchArray(oldRoom.unlocked_evidences, e.unlocked_evidences),
+          accumulated_evidences: patchArray(oldRoom.accumulated_evidences, e.unlocked_evidences),
+          
           unlocked_levels: patchArray(oldRoom.unlocked_levels, e.unlocked_levels),
+          
           unlocked_suspects: patchArray(oldRoom.unlocked_suspects, e.unlocked_suspects),
+          accumulated_suspects: patchArray(oldRoom.accumulated_suspects, e.unlocked_suspects),
+          
           unlocked_victims: patchArray(oldRoom.unlocked_victims, e.unlocked_victims),
+          accumulated_victims: patchArray(oldRoom.accumulated_victims, e.unlocked_victims),
+          
           strikes: e.strikes !== undefined ? e.strikes : oldRoom.strikes
         };
       });
@@ -194,19 +200,15 @@ export default function GameRoom() {
     });
 
     channel.listen('HostMigrated', (e: HostMigratedPayload) => {
-      // Alert the room
       setGlobalFeedback({
         type: 'success',
         title: t('pages.gameRoom.departmentUpdate', 'Department Update'),
         message: e.message
       });
 
-      // Patch the local state instantly without refetching
       patchRoomData((oldRoom: GameRoom) => {
-        // Find the old host ID so we can remove them from the active roster
         const oldHostId = oldRoom.host_user_id;
 
-        // Filter out the departed host and upgrade the new host's role
         const updatedUsers = oldRoom.users
           ?.filter(u => u.user_id !== oldHostId)
           .map(u => {
@@ -223,19 +225,16 @@ export default function GameRoom() {
         };
       });
 
-      // Dismiss the notification automatically after 5 seconds
       setTimeout(() => setGlobalFeedback(null), 5000);
     });
 
     return () => {
-      // Unbind specific event listeners
       channel.stopListening('LevelTransitioned');
       channel.stopListening('VoteLockedIn');
       channel.stopListening('WiretapTriggered');
       channel.stopListening('ItemsUnlocked');
-      channel.stopListening('HostMigrated'); 
-      
-      // EXPLICITLY SEVER THE CONNECTION to prevent WebSocket zombie leaks
+      channel.stopListening('HostMigrated');
+
       window.Echo.leave(`room.${room.id}`);
     };
   }, [room?.id, patchRoomData, patchArray, setGameOverData, addGlobalToast, t]);

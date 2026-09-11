@@ -64,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // POST (Create)
         Route::post('/cases', [AdminCaseController::class, 'store']);
+        Route::post('/cases/import', [AdminCaseController::class, 'import']); 
         Route::post('/phases', [AdminPhaseController::class, 'store']);
         Route::post('/levels', [AdminLevelController::class, 'store']);
         Route::post('/evidences', [AdminEvidenceController::class, 'store']);

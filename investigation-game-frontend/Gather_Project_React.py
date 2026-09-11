@@ -153,7 +153,7 @@ if __name__ == "__main__":
     
     # Toggle `only_css_files=True` here whenever you want to grab ONLY CSS files
     gather_project_code(
-        project_root, 
+        admin_files, 
         output_filename, 
         include_styles=False, 
         include_admin_files=False, 

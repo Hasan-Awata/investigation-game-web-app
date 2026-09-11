@@ -48,29 +48,7 @@ export function useGameRoom(inviteCode: string | undefined) {
     if (inviteCode) {
       queryClient.setQueryData(['gameRoom', inviteCode], (oldData: GameRoom | undefined) => {
         if (!oldData) return oldData;
-        
-        const updatedRoom = updater(oldData);
-        
-        // AUTO-SYNC PRE-COMPILED ARRAYS
-        // Syncs WebSocket payload data into the server's pre-compiled arrays to prevent UI desync,
-        // eliminating the need for expensive `.filter()` operations on every React render cycle.
-        
-        if (updatedRoom.unlocked_evidences) {
-            const newEvidences = updatedRoom.unlocked_evidences.filter(ue => !updatedRoom.accumulated_evidences?.some(ae => ae.id === ue.id));
-            if (newEvidences.length) updatedRoom.accumulated_evidences = [...(updatedRoom.accumulated_evidences || []), ...newEvidences];
-        }
-        
-        if (updatedRoom.unlocked_suspects) {
-            const newSuspects = updatedRoom.unlocked_suspects.filter(us => !updatedRoom.accumulated_suspects?.some(as => as.id === us.id));
-            if (newSuspects.length) updatedRoom.accumulated_suspects = [...(updatedRoom.accumulated_suspects || []), ...newSuspects];
-        }
-        
-        if (updatedRoom.unlocked_victims) {
-            const newVictims = updatedRoom.unlocked_victims.filter(uv => !updatedRoom.accumulated_victims?.some(av => av.id === uv.id));
-            if (newVictims.length) updatedRoom.accumulated_victims = [...(updatedRoom.accumulated_victims || []), ...newVictims];
-        }
-
-        return updatedRoom;
+        return updater(oldData);
       });
     }
   };

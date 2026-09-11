@@ -46,6 +46,7 @@ export const fetchAdminCases = async (): Promise<Result<any[]>> => {
 export const createAdminCase = (fd: FormData) => adminRequest('/cases', { method: 'POST', body: fd });
 export const updateAdminCase = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/cases/${id}`, { method: 'POST', body: fd }); };
 export const deleteAdminCase = (id: number) => adminRequest(`/cases/${id}`, { method: 'DELETE' });
+export const importAdminCase = (payload: any) => adminRequest('/cases/import', { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
 
 // ==========================================
 // PHASES

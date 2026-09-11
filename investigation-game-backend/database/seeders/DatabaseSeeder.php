@@ -38,11 +38,5 @@ class DatabaseSeeder extends Seeder
             'XP' => 0,
             'is_admin' => false,
         ]);
-
-        // 3. Run the Game Case seeder
-        $this->call([
-            GameCaseSeeder::class,
-            BloodOperaCaseSeeder::class, 
-        ]);
     }
 }

@@ -15,7 +15,7 @@ export function useAdminForm<T extends Record<string, any>>({ entityType, initia
 
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const { createEntity, updateEntity, deleteEntity, isProcessing } = useAdminMutations(entityType);
+  const { createEntity, updateEntity, deleteEntity, importEntity, isProcessing } = useAdminMutations(entityType);
   const { setIsDirty } = useAdminContext();
 
   const updateField = (field: keyof T, value: any) => {
@@ -70,6 +70,6 @@ export function useAdminForm<T extends Record<string, any>>({ entityType, initia
 
   return {
     formData, setFormData, updateField, editingId, clearForm, handleSubmit,
-    handleEditInit, handleDelete, registerFileRef, isProcessing
+    handleEditInit, handleDelete, registerFileRef, isProcessing, importEntity
   };
 }
