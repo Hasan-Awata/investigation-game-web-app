@@ -3,11 +3,11 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Phase;
+use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
-class AdminPhaseController extends Controller
+class AdminZoneController extends Controller
 {
     public function store(Request $request): JsonResponse
     {
@@ -21,17 +21,17 @@ class AdminPhaseController extends Controller
             'coord_y'     => 'nullable|numeric|required_with:map_url',
         ]);
 
-        $phase = Phase::create($validated);
+        $zone = Zone::create($validated);
 
         return response()->json([
-            'message' => 'Phase created successfully.',
-            'phase' => $phase
+            'message' => 'Zone created successfully.',
+            'zone' => $zone
         ], 201);
     }
 
     public function update(Request $request, $id): JsonResponse
     {
-        $phase = Phase::findOrFail($id);
+        $zone = Zone::findOrFail($id);
         $validated = $request->validate([
             'case_id' => 'required|exists:cases,id',
             'title' => 'required|string|max:255',
@@ -41,23 +41,25 @@ class AdminPhaseController extends Controller
             'coord_x'     => 'nullable|numeric|required_with:map_url',
             'coord_y'     => 'nullable|numeric|required_with:map_url',
         ]);
-        $phase->update($validated);
-        return response()->json(['message' => 'Phase updated.', 'phase' => $phase], 200);
+        
+        $zone->update($validated);
+        return response()->json(['message' => 'Zone updated.', 'zone' => $zone], 200);
     }
 
     public function destroy($id): JsonResponse
     {
-        $phase = Phase::findOrFail($id);
-        $phase->delete();
-        return response()->json(['message' => 'Phase deleted.'], 200);
+        $zone = Zone::findOrFail($id);
+        $zone->delete();
+        return response()->json(['message' => 'Zone deleted.'], 200);
     }
 
-    public function indexByCase($caseId): \Illuminate\Http\JsonResponse
+    public function indexByCase($caseId): JsonResponse
     {
-        $phases = Phase::where('case_id', $caseId)
+        $zones = Zone::with(['levels.questions.choices'])
+            ->where('case_id', $caseId)
             ->orderBy('order_index', 'asc')
             ->get();
-            
-        return response()->json($phases, 200);
+
+        return response()->json($zones, 200);
     }
 }

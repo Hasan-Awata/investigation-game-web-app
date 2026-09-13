@@ -10,7 +10,6 @@
   touch-action: none;
 }
 
-/* Optional: True Fullscreen Expansion */
 @media all and (display-mode: fullscreen) {
   .campaign-map-container {
     height: calc(100vh - 100px); 
@@ -26,18 +25,9 @@
   box-shadow: inset 0 0 40px 20px #0a0a0a;
 }
 
-/* 2. Lock the wrappers to standard fluid layout */
-.map-transform-wrapper {
-  width: 100% !important;
-  height: 100% !important;
-}
+.map-transform-wrapper { width: 100% !important; height: 100% !important; }
+.map-transform-content { width: 100% !important; height: auto !important; }
 
-.map-transform-content {
-  width: 100% !important;
-  height: auto !important;
-}
-
-/* 3. Let the canvas scale natively */
 .custom-map-canvas {
   position: relative;
   width: 100%;
@@ -45,7 +35,6 @@
   display: block;
 }
 
-/* 4. Force image to behave responsibly */
 .custom-map-image {
   width: 100%;
   height: auto;
@@ -63,6 +52,7 @@
   pointer-events: none;
   z-index: 2;
 }
+
 .map-pin-wrapper {
   cursor: pointer;
   display: flex;
@@ -70,73 +60,49 @@
   align-items: center;
   transform: translate(-50%, -100%);
   z-index: 10;
+  animation: dropPin 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
 }
 
-.pin-icon {
-  width: 28px;
-  height: 28px;
-  background-color: var(--accent-cyan);
-  border-radius: 50% 50% 50% 0;
-  transform: rotate(-45deg);
-  box-shadow: -3px 3px 10px rgba(0,0,0,0.6);
-  border: 2px solid var(--bg-dark);
-  position: relative;
-  transition: transform 0.2s ease, background-color 0.2s ease;
+@keyframes dropPin {
+  0% { transform: translate(-50%, -150%); opacity: 0; }
+  100% { transform: translate(-50%, -100%); opacity: 1; }
 }
 
-.pin-icon::after {
-  content: '';
-  width: 10px;
-  height: 10px;
-  background: white;
-  border-radius: 50%;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+/* --- THE SVG TACTICAL MARKERS --- */
+.tactical-svg-pin {
+  color: var(--accent-cyan);
+  filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.5));
+  transition: all 0.15s ease-out;
+  display: block;
 }
 
-.map-pin-wrapper.locked {
-  cursor: not-allowed;
+.map-pin-wrapper:hover .tactical-svg-pin {
+  filter: drop-shadow(0px 6px 8px var(--accent-cyan)) brightness(1.2);
+  transform: translateY(-3px) scale(1.05);
 }
 
-.map-pin-wrapper.locked .pin-icon {
-  background-color: #555;
-  border-color: #333;
-}
-
-.map-pin-wrapper.locked .pin-icon::after {
-  background: #888;
-}
-
-.map-pin-wrapper.unlocked:hover .pin-icon {
-  transform: scale(1.15) rotate(-45deg);
-  background-color: var(--accent-amber);
-}
-
+/* --- CLEAN TOOLTIP (Simple Fade, No Sliding) --- */
 .pin-tooltip {
   position: absolute;
-  bottom: 110%;
-  background: rgba(0, 0, 0, 0.85);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 0.5rem 1rem;
+  bottom: 100%;
+  background: var(--bg-panel);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 0.4rem 0.75rem;
   border-radius: 4px;
   color: var(--text-primary);
-  font-family: var(--font-mono);
+  font-family: var(--font-primary);
   font-size: 0.85rem;
   white-space: nowrap;
   opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.2s ease;
   pointer-events: none;
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+  transform: translateY(6px); 
+  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
   z-index: 20;
+  margin-bottom: 8px;
 }
 
 .map-pin-wrapper:hover .pin-tooltip {
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0); /* Pops up into its final position */
 }

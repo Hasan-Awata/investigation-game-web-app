@@ -7,7 +7,7 @@ import type { Question, Choice } from '@/types';
 import type { DraftChoice } from '@/pages/Admin/forms/Shared/ChoiceEditorCard';
 
 export function useNodeBuilder(defaultChoices: DraftChoice[] = []) {
-  const { setCaseId, setPhaseId, setLevelId, selectedCase, selectedPhase, selectedLevel, levelId, setIsDirty } = useAdminContext();
+  const { setCaseId, setZoneId, setLevelId, selectedCase, selectedZone, selectedLevel, levelId, setIsDirty } = useAdminContext();
 
   const [editingId, setEditingId] = useState<number | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -41,7 +41,7 @@ export function useNodeBuilder(defaultChoices: DraftChoice[] = []) {
   const handleEdit = (node: Question) => {
     // Restore parent context pointers
     if (selectedCase) setCaseId(selectedCase.id.toString());
-    if (selectedPhase) setPhaseId(selectedPhase.id.toString());
+    if (selectedZone) setZoneId(selectedZone.id.toString());
     if (selectedLevel) setLevelId(selectedLevel.id.toString());
 
     setIsFormOpen(true);

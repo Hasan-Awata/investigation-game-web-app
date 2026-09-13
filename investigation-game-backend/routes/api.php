@@ -11,7 +11,7 @@ use App\Http\Controllers\InvestigationRequestController;
 use App\Http\Controllers\SuspectVerdictController;
 use App\Http\Controllers\WiretapController;
 use App\Http\Controllers\Admin\AdminCaseController;
-use App\Http\Controllers\Admin\AdminPhaseController;
+use App\Http\Controllers\Admin\AdminZoneController;
 use App\Http\Controllers\Admin\AdminLevelController;
 use App\Http\Controllers\Admin\AdminEvidenceController;
 use App\Http\Controllers\Admin\AdminQuestionController;
@@ -58,13 +58,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware([IsAdmin::class])->prefix('admin')->group(function () {
         // GET (Fetch) Granular Endpoints
         Route::get('/cases', [AdminCaseController::class, 'index']);
-        Route::get('/cases/{caseId}/phases', [AdminPhaseController::class, 'indexByCase']);
-        Route::get('/phases/{phaseId}/levels', [AdminLevelController::class, 'indexByPhase']);
+        Route::get('/cases/{caseId}/zones', [AdminZoneController::class, 'indexByCase']);
+        Route::get('/zones/{zoneId}/levels', [AdminLevelController::class, 'indexByZone']);
 
         // POST (Create)
         Route::post('/cases', [AdminCaseController::class, 'store']);
         Route::post('/cases/import', [AdminCaseController::class, 'import']);
-        Route::post('/phases', [AdminPhaseController::class, 'store']);
+        Route::post('/zones', [AdminZoneController::class, 'store']);
         Route::post('/levels', [AdminLevelController::class, 'store']);
         Route::post('/evidences', [AdminEvidenceController::class, 'store']);
         Route::post('/questions', [AdminQuestionController::class, 'store']);
@@ -73,7 +73,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // PUT (Update)
         Route::put('/cases/{case}', [AdminCaseController::class, 'update']);
-        Route::put('/phases/{phase}', [AdminPhaseController::class, 'update']);
+        Route::put('/zones/{zone}', [AdminZoneController::class, 'update']);
         Route::put('/levels/{level}', [AdminLevelController::class, 'update']);
         Route::put('/evidences/{evidence}', [AdminEvidenceController::class, 'update']);
         Route::put('/questions/{question}', [AdminQuestionController::class, 'update']);
@@ -82,7 +82,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // DELETE (Destroy)
         Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']);
-        Route::delete('/phases/{phase}', [AdminPhaseController::class, 'destroy']);
+        Route::delete('/zones/{zone}', [AdminZoneController::class, 'destroy']);
         Route::delete('/levels/{level}', [AdminLevelController::class, 'destroy']);
         Route::delete('/evidences/{evidence}', [AdminEvidenceController::class, 'destroy']);
         Route::delete('/questions/{question}', [AdminQuestionController::class, 'destroy']);

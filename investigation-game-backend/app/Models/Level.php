@@ -5,33 +5,27 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Casts\Attribute; 
-use App\Enums\LevelPresentationType; 
-use App\Enums\InvestigationRequestType; 
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Enums\LevelPresentationType;
 
 class Level extends Model
 {
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
-        'phase_id', 
+        'zone_id',
         'title',
         'details',
-        'img_url', 
+        'img_url',
         'order_index',
         'is_initial',
-        'presentation_type', 
-        'required_request_id',     
+        'presentation_type',
+        'required_request_id',
     ];
 
     protected function casts(): array
     {
         return [
             'is_initial' => 'boolean',
-            'presentation_type' => LevelPresentationType::class, 
+            'presentation_type' => LevelPresentationType::class,
         ];
     }
     
@@ -50,17 +44,11 @@ class Level extends Model
         );
     }
 
-    /**
-     * A level belongs to a specific parent phase.
-     */
-    public function phase(): BelongsTo
+    public function zone(): BelongsTo
     {
-        return $this->belongsTo(Phase::class, 'phase_id');
+        return $this->belongsTo(Zone::class, 'zone_id');
     }
 
-    /**
-     * The puzzles/verdicts players must solve to clear this level.
-     */
     public function questions(): HasMany
     {
         return $this->hasMany(Question::class, 'level_id');

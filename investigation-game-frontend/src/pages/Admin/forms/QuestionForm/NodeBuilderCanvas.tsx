@@ -7,7 +7,7 @@ import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 interface CanvasContext {
   levelId: string;
   selectedCase: any;
-  selectedPhase: any;
+  selectedZone: any;
   selectedLevel: any;
   savedNodes: Question[];
 }
@@ -19,7 +19,7 @@ interface NodeBuilderCanvasProps {
 }
 
 export default function NodeBuilderCanvas({ requiredType, title, children }: NodeBuilderCanvasProps) {
-  const { levelId, selectedCase, selectedPhase, selectedLevel } = useAdminContext();
+  const { levelId, selectedCase, selectedZone, selectedLevel } = useAdminContext();
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.nodeBuilderCanvas;
 
@@ -33,12 +33,12 @@ export default function NodeBuilderCanvas({ requiredType, title, children }: Nod
             // {title}
           </h3>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
-            {t.targetingHeader(selectedCase?.title, selectedPhase?.title, selectedLevel?.title)}
+            {t.targetingHeader(selectedCase?.title, selectedZone?.title, selectedLevel?.title)}
           </span>
         </div>
 
         {/* Injecting the context down to the specific mechanic implementation */}
-        {children({ levelId, selectedCase, selectedPhase, selectedLevel, savedNodes })}
+          {children({ levelId, selectedCase, selectedZone, selectedLevel, savedNodes })}
       </div>
     </LevelBuilderGuard>
   );

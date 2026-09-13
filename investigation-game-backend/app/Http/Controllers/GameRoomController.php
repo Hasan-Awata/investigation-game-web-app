@@ -64,16 +64,24 @@ class GameRoomController extends Controller
 
     public function startLevel(Request $request, GameRoom $room, Level $level): JsonResponse
     {
+        // 1. Structural Guard: Location sweeps are persistent and stateless
+        if ($level->presentation_type === \App\Enums\LevelPresentationType::Location) {
+            return response()->json([
+                'error' => 'Invalid Action', 
+                'message' => 'Location environments are persistently accessible and do not require host authorization.'
+            ], 400);
+        }
+
         if ($request->user()->id !== $room->host_user_id) {
-            return response()->json(['error' => 'Unauthorized', 'message' => 'Only the assigned Room Host can initiate a new phase.'], 403);
+            return response()->json(['error' => 'Unauthorized', 'message' => 'Only the assigned Room Host can initiate a new encounter.'], 403);
         }
 
         if ($room->current_level_id !== null) {
-            return response()->json(['error' => 'Conflict', 'message' => 'An investigation phase is already active.'], 409);
+            return response()->json(['error' => 'Conflict', 'message' => 'An investigation encounter is already active.'], 409);
         }
 
         if ($room->completedLevels()->where('level_id', $level->id)->exists()) {
-            return response()->json(['error' => 'Conflict', 'message' => 'This phase is already solved.'], 409);
+            return response()->json(['error' => 'Conflict', 'message' => 'This encounter is already resolved.'], 409);
         }
 
         if ($level->required_request_id) {
@@ -89,7 +97,7 @@ class GameRoomController extends Controller
         $room->update(['current_level_id' => $level->id]);
         \App\Events\LevelTransitioned::dispatch($room);
 
-        return response()->json(['message' => 'Phase initiated.', 'room' => $room->load('currentLevel')], 200);
+        return response()->json(['message' => 'Encounter initiated.', 'room' => $room->load('currentLevel')], 200);
     }
 
     public function inspect(Request $request, GameRoom $room): JsonResponse
@@ -122,7 +130,7 @@ class GameRoomController extends Controller
     {
         $room->load([
             'host',
-            'gameCase.phases.levels.questions.choices',
+            'gameCase.zones.levels.questions.choices', 
             'gameCase.evidences',
             'gameCase.characters',
             'users.user',
@@ -147,15 +155,12 @@ class GameRoomController extends Controller
 
         // Pre-compile Unified Characters based on their initial state and dynamic room override
         $unlockedCharacterIds = $room->characters->where('pivot.is_unlocked', true)->pluck('id')->toArray();
-        
+
         $room->accumulated_characters = $room->gameCase->characters->filter(function ($c) use ($unlockedCharacterIds) {
             return $c->is_initial || in_array($c->id, $unlockedCharacterIds);
         })->map(function ($c) use ($room) {
-            // Apply the room-specific status override if it exists
             $roomOverride = $room->characters->firstWhere('id', $c->id);
             $c->current_status = $roomOverride ? $roomOverride->pivot->status : $c->default_status->value;
-            
-            // Mask absolute truth properties from the frontend API payload entirely for security
             unset($c->is_guilty, $c->charge);
             return $c;
         })->values();

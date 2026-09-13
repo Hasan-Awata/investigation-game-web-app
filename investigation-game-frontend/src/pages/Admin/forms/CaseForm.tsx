@@ -4,13 +4,24 @@ import { useAdminCases } from '@/pages/Admin/hooks/useAdminData';
 import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
-import { AdminRow, AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput, AdminEntryToggle } from '@/pages/Admin/components/AdminUI';
+import { AdminRow, AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput, AdminEntryToggle, AdminSelect } from '@/pages/Admin/components/AdminUI';
 import { validateCaseForm, validateImageSize, validateJsonPayload } from '@/pages/Admin/utils/validators';
 import type { GameCase } from '@/types';
 import './Shared/AdminForms.css';
 
+// 1. Dynamically read all local images inside public/Maps/
+const mapFiles = import.meta.glob('/public/Maps/*.{png,jpg,jpeg,webp}', { eager: true });
+const AVAILABLE_MAPS = [
+  { value: '', label: '-- Default Fallback Map --' },
+  ...Object.keys(mapFiles).map(fullPath => {
+    const fileName = fullPath.split('/').pop() || '';
+    const cleanLabel = fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").replace(/\b\w/g, char => char.toUpperCase()); 
+    return { value: `/Maps/${fileName}`, label: cleanLabel };
+  })
+];
+
 const initialFormState = {
-  title: '', story: '', min_player_XP: '0', XP_on_solve: '100', max_strikes: '5', rating_stars: '5.0',
+  title: '', story: '', map_url: '', min_player_XP: '0', XP_on_solve: '100', max_strikes: '5', rating_stars: '5.0',
   age_rating: 'Mature 17+', estimated_playtime: '60 Minutes', difficulty: 'Standard', tags: '',
   author_name: 'System', is_published: false, store_locally: false
 };
@@ -19,6 +30,7 @@ const bulkTemplate = {
   case_details: {
     title: "",
     story: "",
+    map_url: "",
     min_player_XP: 0,
     XP_on_solve: 500,
     max_strikes: 3,
@@ -33,7 +45,7 @@ const bulkTemplate = {
   evidences: [],
   characters: [], 
   investigation_requests: [],
-  phases: []
+  zones: []
 };
 
 export default function CaseForm() {
@@ -80,7 +92,7 @@ export default function CaseForm() {
     e.preventDefault();
     
     if (entryMode === 'json') {
-      const { valid, parsed, error } = validateJsonPayload(jsonInput, ['case_details', 'phases', 'evidences', 'characters', 'investigation_requests']);
+      const { valid, parsed, error } = validateJsonPayload(jsonInput, ['case_details', 'zones', 'evidences', 'characters', 'investigation_requests']);
       if (!valid) {
         toast.error(error!);
         return;
@@ -97,9 +109,10 @@ export default function CaseForm() {
     }
   };
 
-  const onEdit = (c: GameCase) => {
+  const onEdit = (c: GameCase | any) => {
     handleEditInit(c, (caseObj) => ({
       ...initialFormState, ...caseObj,
+      map_url: caseObj.map_url || '',
       tags: Array.isArray(caseObj.tags) ? caseObj.tags.join(', ') : (caseObj.tags || ''),
       is_published: !!caseObj.is_published,
       store_locally: !!caseObj.store_locally
@@ -144,7 +157,17 @@ export default function CaseForm() {
         {entryMode === 'form' ? (
           <>
             <AdminCheckbox checked={formData.is_published} onChange={(e) => updateField('is_published', e.target.checked)} labelTitle={formData.is_published ? t.livePublished : t.draftClassified} description={formData.is_published ? t.liveDescription : t.draftDescription} className={formData.is_published ? 'status-live' : 'status-draft'} />
-            <AdminInput label={t.titleLabel} required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
+            
+            <AdminRow>
+              <AdminInput label={t.titleLabel} required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
+              <AdminSelect 
+                label="Regional Map Blueprint" 
+                value={formData.map_url || ''} 
+                onChange={(e) => updateField('map_url', e.target.value)} 
+                options={AVAILABLE_MAPS} 
+              />
+            </AdminRow>
+            
             <AdminTextarea label={t.storyLabel} required value={formData.story} onChange={(e) => updateField('story', e.target.value)} />
 
             <AdminRow>

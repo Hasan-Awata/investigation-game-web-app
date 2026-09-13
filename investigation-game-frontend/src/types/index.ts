@@ -65,6 +65,7 @@ export interface GameCase {
   id: number;
   title: string;
   story: string;
+  map_url?: string;
   min_player_XP: number;
   XP_on_solve: number;
   max_strikes: number; 
@@ -77,7 +78,7 @@ export interface GameCase {
   img_url?: string; 
   active_room_invite_code?: string; 
   is_published?: boolean; 
-  phases?: Phase[]; 
+  zones?: Zone[]; 
   evidences?: Evidence[]; 
   characters?: Character[];
   investigation_requests?: InvestigationRequest[];
@@ -166,13 +167,12 @@ export const LevelPresentationType = {
 
 export type LevelPresentationType = typeof LevelPresentationType[keyof typeof LevelPresentationType];
 
-export interface Phase {
+export interface Zone {
   id: number;
   case_id: number;
   title: string;
   description?: string;
   order_index: number;
-  map_url?: string;
   coord_x?: number;
   coord_y?: number;
   levels?: Level[]; 
@@ -180,7 +180,7 @@ export interface Phase {
 
 export interface Level {
   id: number;
-  phase_id: number;
+  zone_id: number;
   title: string;
   details: string;
   img_url?: string; 

@@ -5,10 +5,10 @@ import './CharacterCard.css';
 
 interface CharacterCardProps {
   character: Character;
-  sourcePool: 'unassigned' | 'guilty' | 'cleared';
+  sourcePool: 'unassigned' | 'guilty';
   isDraggable: boolean;
   isNew: boolean;
-  onDragStart: (e: React.DragEvent, characterId: number, source: 'unassigned' | 'guilty' | 'cleared') => void;
+  onDragStart: (e: React.DragEvent, characterId: number, source: 'unassigned' | 'guilty') => void;
   onInteract: (characterId: number) => void;
 }
 

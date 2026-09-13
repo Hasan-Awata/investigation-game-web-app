@@ -4,7 +4,7 @@
     "error": "خطأ في النظام:"
   },
   "admin": {
-    "dashboardTitle": "إشراف النظام // لوحة التحكم",
+    "dashboardTitle": "إشراف النظام | لوحة التحكم",
     "unauthorized": "غير مصرح لك بالدخول"
   },
   "gameRoom": {
@@ -145,20 +145,19 @@
         },
         "tab": {
           "suspectBoard": "لوحة الأشخاص موضع الاهتمام",
-          "lockWarning": "يجب إكمال جميع مراحل التحقيق الأولية قبل تقديم لائحة الاتهام النهائية.",
+          "lockWarning": "يجب اكتشاف وإكمال جميع الخيوط الأولية قبل تقديم لائحة الاتهام النهائية.",
           "indictmentRejected": "رُفضت لائحة الاتهام",
           "reassessEvidence": "إعادة تقييم الأدلة",
           "primeSuspects": "المدانون (مذنبون)",
           "dragPrimeHere": "اسحب المدانين هنا",
-          "cleared": "تمت تبرئتهم / ضحايا",
-          "dragClearedHere": "اسحب الأبرياء أو الضحايا هنا",
-          "unassigned": "أشخاص موضع اهتمام غير مصنفين",
+          "unassigned": "شخصيات ذات صلة",
           "allCategorized": "تم تصنيف جميع الأشخاص.",
           "noSuspects": "لم يتم تحديد أي أشخاص موضع اهتمام حتى الآن.",
           "filingIndictment": "جاري تقديم لائحة الاتهام...",
           "ruleAccident": "اعتبارها حادث / انتحار",
           "submitIndictment": "تقديم لائحة الاتهام النهائية",
-          "emptyPoolWarning": "* بتقديم مجموعة مدانين فارغة، فإنك تعلن عدم وقوع جريمة."
+          "emptyPoolWarning": "* بتقديم مجموعة مدانين فارغة، فإنك تعلن عدم وقوع جريمة.",
+          "uninvolvedHint": "تُعتبر الملفات المتبقية لأشخاص أبرياء أو غير متورطين."
         }
       },
       "evidence": {
@@ -169,7 +168,7 @@
           "requestApproved": "تمت الموافقة على الطلب",
           "requestDenied": "تم رفض الطلب",
           "acknowledge": "إقرار",
-          "noEvidence": "لم يتم استعادة أي أدلة لهذه المرحلة.",
+          "noEvidence": "لم يتم استعادة أي أدلة لهذا الموقع.",
           "dragAndDrop": "اسحب وأسقط الأدلة هنا",
           "unknownFile": "ملف غير معروف",
           "selectRequestType": "-- حدد نوع الطلب --",
@@ -326,7 +325,7 @@
             "chainOfCustody": "سلسلة الحيازة والأدلة",
             "submittedBy": "مُقدم الدليل:",
             "receivedDate": "تاريخ الاستلام:",
-            "ballisticParameters": "المعايير البليستيكية",
+            "ballisticParameters": "المعاملات البليستيكية",
             "caliberMfg": "العيار / الشركة المصنعة:",
             "riflingPattern": "نمط الحلزنة والخطوط:",
             "sectionFiringDistance": "4. تقدير مسافة إطلاق النار وديناميكياتها"
@@ -403,16 +402,25 @@
         }
       },
       "campaign": {
-        "unknownPhase": "مرحلة غير معروفة",
-        "noLeads": "لا توجد خيوط متاحة حالياً في هذه المرحلة.",
+        "unknownZone": "منطقة غير معروفة",
+        "unknownLead": "خيط غير مكتشف",
+        "noLeads": "لا توجد خيوط متاحة حالياً في هذه المنطقة.",
         "undiscoveredEncounter": "مواجهة غير مكتشفة",
         "hiddenPathDesc": "هذا المسار يظل مخفياً. يجب عليك استنتاج الرابط السردي الصحيح أو تحديد أدلة معينة لفتح هذا الخيط.",
         "activeInvestigation": "تحقيق نشط",
-        "hostInitiateWarning": "عند بدء التحقيق، سيتم إقفال جميع المراحل الأخرى حتى انتهاء التحقيق.",
-        "awaitingHost": "في انتظار تفويض المضيف لبدء مرحلة التحقيق هذه.",
+        "hostInitiateWarning": "عند بدء التحقيق، سيتم إقفال جميع الخيوط الأخرى حتى انتهاء التحقيق.",
+        "awaitingHost": "في انتظار تفويض المضيف لبدء مسار التحقيق هذا.",
         "lockingCoordinator": "جاري قفل المنسق...",
         "commenceInvestigation": "بدء التحقيق",
+        "warrantRequired": "مطلوب تصريح / مذكرة",
+        "gatedDesc": "هذا الموقع أو الهدف مقيد حالياً. يجب عليك تقديم الطلب الإجرائي الصحيح إلى المدعي العام للمتابعة.",
         "lead": "الخيط {{id}}",
+        "types": {
+          "standard": "قياسي",
+          "interrogation": "استجواب",
+          "location": "مسح الموقع",
+          "wiretap": "تنصت"
+        },
         "levels": {
           "interrogation": {
             "suspect": "المشتبه به",
@@ -462,14 +470,17 @@
         },
         "map": {
           "backToMap": "العودة إلى الخريطة",
+          "travelToZone": "السفر إلى المنطقة",
+          "activeLeads": "الخيوط النشطة",
           "goToLocation": "الذهاب إلى الموقع",
-          "noDescription": "لا يوجد وصف متاح لهذه المرحلة.",
-          "levelsPreview": "نظرة على المستويات",
+          "noDescription": "لا يوجد وصف متاح لهذه المنطقة.",
+          "levelsPreview": "نظرة على الخيوط",
           "closeEsc": "إغلاق ESC",
-          "phaseSysIndex": "فهرس_نظام_المرحلة {{index}}",
+          "zoneSysIndex": "فهرس_نظام_المنطقة {{index}}",
           "entriesCount": "عدد السجلات: {{count}}",
           "dataAvailable": "البيانات متاحة",
-          "restricted": "وصول مقيد"
+          "restricted": "وصول مقيد",
+          "warrantRequired": "مطلوب تصريح / مذكرة"
         }
       },
       "hooks": {
@@ -480,8 +491,8 @@
           "transmissionError": "خطأ في الإرسال",
           "evidenceRecovered": "تم استرداد أدلة",
           "evidenceRecoveredMsg": "تم تأمين {{count}} قطعة/قطع جديدة من الأدلة المادية.",
-          "phaseUnlocked": "تم فتح مرحلة",
-          "phaseUnlockedMsg": "مسار سردي جديد متاح الآن.",
+          "phaseUnlocked": "تم فتح خيط جديد",
+          "phaseUnlockedMsg": "مسار سردي جديد متاح الآن في المنطقة.",
           "personOfInterest": "شخص موضع اهتمام",
           "personOfInterestMsg": "تمت إضافة شخص موضع اهتمام جديد إلى اللوحة.",
           "casualtyIdentified": "تحديث حالة حرج",
@@ -491,7 +502,7 @@
           "proceduralApproved": "تمت الموافقة على الطلب الإجرائي",
           "proceduralApprovedMsg": "تم التصريح بملفات قضية جديدة وإضافتها إلى اللوحة.",
           "warrantExecuted": "تم تنفيذ مذكرة التفتيش",
-          "warrantExecutedMsg": "مرحلة تحقيق جديدة متاحة الآن على خارطة الطريق."
+          "warrantExecutedMsg": "خيط تحقيق جديد متاح الآن على الخريطة."
         }
       }
     }

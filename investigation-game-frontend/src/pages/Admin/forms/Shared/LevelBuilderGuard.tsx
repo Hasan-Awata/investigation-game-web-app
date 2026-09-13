@@ -8,11 +8,11 @@ interface LevelBuilderGuardProps {
 }
 
 export default function LevelBuilderGuard({ requiredType, children }: LevelBuilderGuardProps) {
-  const { caseId, levelId, selectedCase, selectedPhase, selectedLevel } = useAdminContext();
+  const { caseId, levelId, selectedCase, selectedZone, selectedLevel } = useAdminContext();
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.levelBuilderGuard;
 
-  if (!caseId || !levelId || !selectedCase || !selectedPhase || !selectedLevel) {
+  if (!caseId || !levelId || !selectedCase || !selectedZone || !selectedLevel) {
     return (
       <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
         <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', margin: '0 0 1rem 0' }}>

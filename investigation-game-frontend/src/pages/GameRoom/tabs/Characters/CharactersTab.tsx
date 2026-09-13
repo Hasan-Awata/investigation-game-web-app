@@ -6,7 +6,8 @@ import { useMutation } from '@tanstack/react-query';
 import CharacterCard from './CharacterCard';
 import './CharactersTab.css';
 
-type PoolType = 'unassigned' | 'guilty' | 'cleared';
+// Removed 'cleared' from the pool types
+type PoolType = 'unassigned' | 'guilty';
 
 export default function CharactersTab() {
   const { t } = useTranslation();
@@ -20,22 +21,15 @@ export default function CharactersTab() {
     } catch { return []; }
   });
 
-  const [clearedIds, setClearedIds] = useState<number[]>(() => {
-    try {
-      const saved = sessionStorage.getItem(`room_${room.invite_code}_cleared_characters`);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-  const initialLevels = room.game_case?.phases?.flatMap(p => p.levels || []).filter(l => l.is_initial) || [];
+  const initialLevels = room.game_case?.zones?.flatMap(z => z.levels || []).filter(l => l.is_initial) || [];
   const completedLevelIds = new Set(room.completed_levels?.map(l => l.id) || []);
   const allInitialCompleted = initialLevels.length > 0 && initialLevels.every(l => completedLevelIds.has(l.id));
 
   const guiltyPool = accumulatedCharacters.filter(c => guiltyIds.includes(c.id));
-  const clearedPool = accumulatedCharacters.filter(c => clearedIds.includes(c.id));
-  const unassignedPool = accumulatedCharacters.filter(c => !guiltyIds.includes(c.id) && !clearedIds.includes(c.id));
+  // Anyone not explicitly marked guilty is now automatically unassigned (innocent/uninvolved)
+  const unassignedPool = accumulatedCharacters.filter(c => !guiltyIds.includes(c.id));
 
   const verdictMutation = useMutation({
     mutationFn: async (submittedGuiltyIds: number[]) => {
@@ -74,16 +68,11 @@ export default function CharactersTab() {
     if (isNaN(characterId)) return;
 
     let nextGuilty = guiltyIds.filter(id => id !== characterId);
-    let nextCleared = clearedIds.filter(id => id !== characterId);
 
     if (targetPool === 'guilty') nextGuilty.push(characterId);
-    if (targetPool === 'cleared') nextCleared.push(characterId);
 
     setGuiltyIds(nextGuilty);
-    setClearedIds(nextCleared);
-
     sessionStorage.setItem(`room_${room.invite_code}_guilty_characters`, JSON.stringify(nextGuilty));
-    sessionStorage.setItem(`room_${room.invite_code}_cleared_characters`, JSON.stringify(nextCleared));
   };
 
   const handleSubmitVerdict = () => verdictMutation.mutate(guiltyIds);
@@ -93,9 +82,9 @@ export default function CharactersTab() {
     refreshRoomData();
   };
 
-  const isAllAssigned = unassignedPool.length === 0;
-  const isReadyToSubmit = allInitialCompleted && isAllAssigned;
-  const isNoFoulPlay = isAllAssigned && guiltyPool.length === 0;
+  // Submission is now allowed as soon as initial leads are completed. No need to categorize everyone.
+  const isReadyToSubmit = allInitialCompleted;
+  const isNoFoulPlay = guiltyPool.length === 0;
 
   return (
     <div className="persons-of-interest-tab-container">
@@ -122,24 +111,14 @@ export default function CharactersTab() {
             {guiltyPool.length === 0 && <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.dragPrimeHere')}</div>}
           </div>
         </div>
-
-        <div className="drop-zone innocent-zone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, 'cleared')}>
-          <div className="zone-header">
-            <h3>{t('pages.gameRoom.suspects.tab.cleared', 'Cleared / Victims')}</h3>
-            <span className="zone-counter">{clearedPool.length}</span>
-          </div>
-          <div className="zone-content">
-            {clearedPool.map(c => (
-              <CharacterCard key={c.id} character={c} sourcePool="cleared" isDraggable={true} isNew={!viewedCharacters.has(c.id)} onDragStart={handleDragStart} onInteract={markCharacterAsViewed} />
-            ))}
-            {clearedPool.length === 0 && <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.dragClearedHere')}</div>}
-          </div>
-        </div>
       </div>
 
       <div className="unassigned-pool" onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, 'unassigned')}>
         <div className="zone-header">
           <h3>{t('pages.gameRoom.suspects.tab.unassigned')}</h3>
+          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            {t('pages.gameRoom.suspects.tab.uninvolvedHint', 'Leftover profiles are considered innocent or uninvolved.')}
+          </span>
         </div>
         <div className="unassigned-grid">
           {unassignedPool.map(c => (

@@ -10,7 +10,6 @@ const handleUnauthorized = () => {
 
 /**
  * Centralized API Request Handler
- * Automatically injects headers, parses JSON, handles 401/403s, and wraps responses in the Result pattern.
  */
 const adminRequest = async <T = any>(endpoint: string, options: RequestInit): Promise<Result<T>> => {
   try {
@@ -19,7 +18,7 @@ const adminRequest = async <T = any>(endpoint: string, options: RequestInit): Pr
       headers: {
         'Accept': 'application/json',
         'Authorization': `Bearer ${getToken()}`,
-        ...options.headers, // Allows overriding specific headers if ever needed
+        ...options.headers,
       },
     });
     
@@ -40,7 +39,6 @@ const adminRequest = async <T = any>(endpoint: string, options: RequestInit): Pr
 // ==========================================
 export const fetchAdminCases = async (): Promise<Result<any[]>> => {
   const result = await adminRequest('/cases', { method: 'GET' });
-  // The API returns { cases: [...] }, so we unwrap it specifically for this endpoint
   return result.isSuccess ? success(result.value.cases) : result;
 };
 export const createAdminCase = (fd: FormData) => adminRequest('/cases', { method: 'POST', body: fd });
@@ -49,28 +47,29 @@ export const deleteAdminCase = (id: number) => adminRequest(`/cases/${id}`, { me
 export const importAdminCase = (payload: any) => adminRequest('/cases/import', { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
 
 // ==========================================
-// PHASES
+// ZONES (Formerly Phases)
 // ==========================================
-export const fetchAdminPhases = async (caseId: string | number): Promise<Result<any[]>> => {
+export const fetchAdminZones = async (caseId: string | number): Promise<Result<any[]>> => {
   if (!caseId) return success([]);
-  return await adminRequest(`/cases/${caseId}/phases`, { method: 'GET' });
+  return await adminRequest(`/cases/${caseId}/zones`, { method: 'GET' });
 };
 
-export const createAdminPhase = (fd: FormData) => adminRequest('/phases', { method: 'POST', body: fd });
-export const updateAdminPhase = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/phases/${id}`, { method: 'POST', body: fd }); };
-export const deleteAdminPhase = (id: number) => adminRequest(`/phases/${id}`, { method: 'DELETE' });
+export const createAdminZone = (fd: FormData) => adminRequest('/zones', { method: 'POST', body: fd });
+export const updateAdminZone = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/zones/${id}`, { method: 'POST', body: fd }); };
+export const deleteAdminZone = (id: number) => adminRequest(`/zones/${id}`, { method: 'DELETE' });
 
 // ==========================================
 // LEVELS
 // ==========================================
-export const fetchAdminLevels = async (phaseId: string | number): Promise<Result<any[]>> => {
-  if (!phaseId) return success([]);
-  return await adminRequest(`/phases/${phaseId}/levels`, { method: 'GET' });
+export const fetchAdminLevels = async (zoneId: string | number): Promise<Result<any[]>> => {
+  if (!zoneId) return success([]);
+  return await adminRequest(`/zones/${zoneId}/levels`, { method: 'GET' });
 };
 
 export const createAdminLevel = (fd: FormData) => adminRequest('/levels', { method: 'POST', body: fd });
 export const updateAdminLevel = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/levels/${id}`, { method: 'POST', body: fd }); };
 export const deleteAdminLevel = (id: number) => adminRequest(`/levels/${id}`, { method: 'DELETE' });
+
 // ==========================================
 // QUESTIONS (Nodes, Intercepts, Locations)
 // ==========================================

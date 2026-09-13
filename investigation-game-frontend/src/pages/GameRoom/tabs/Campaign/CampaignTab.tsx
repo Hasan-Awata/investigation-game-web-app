@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
-import type { Question, Phase, Level } from '@/types';
+import type { Question, Zone, Level } from '@/types';
 import CampaignMap from './CampaignMap';
 import LevelCard from './LevelCard';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
@@ -15,7 +15,7 @@ export default function CampaignTab() {
   const { t } = useTranslation();
   const { room } = useRoomState();
 
-  const phases: Phase[] = room.game_case?.phases || [];
+  const zones: Zone[] = room.game_case?.zones || [];
   const currentLevelId = room.current_level_id;
   const roomStatus = room.status;
 
@@ -30,68 +30,75 @@ export default function CampaignTab() {
     initiatePhase,
   } = useInvestigationPhase();
 
-  const phaseStorageKey = `room_${room.id}_active_phase`;
+  const zoneStorageKey = `room_${room.id}_active_zone`;
   const levelPreviewStorageKey = `room_${room.id}_active_level_preview`;
 
   const [selectedPreviewId, setSelectedPreviewId] = useState<number | null>(() => {
     try {
       const saved = localStorage.getItem(levelPreviewStorageKey);
-      if (saved) {
-        return parseInt(saved, 10);
-      }
+      if (saved) return parseInt(saved, 10);
     } catch { }
     return null;
   });
   
-  // Track the view state (info vs gameplay) per level for this specific player and room
   const viewStateKey = `room_${room.id}_level_view_prefs`;
   const [levelViewPrefs, setLevelViewPrefs] = useState<Record<number, boolean>>(() => {
     try {
       const saved = localStorage.getItem(viewStateKey);
       return saved ? JSON.parse(saved) : {};
-    } catch {
-      return {};
-    }
+    } catch { return {}; }
   });
 
   const unlockedLevelIds = new Set(room.unlocked_levels?.map((l: Level) => l.id) || []);
-  const sortedPhases = [...phases].sort((a: Phase, b: Phase) => a.order_index - b.order_index);
+  
+  // DEDUCE COMPLETED REQUESTS: Cross-reference the filed action log against the strict case requirements
+  const completedRequestIds = new Set(
+    room.game_case?.investigation_requests
+      ?.filter(req => {
+        const requiredEvIds = req.required_evidences?.map(e => e.id).sort().join(',') || '';
+        return room.filed_requests?.some(
+          fr => fr.request_type === req.request_type && [...fr.evidence_ids].sort().join(',') === requiredEvIds
+        );
+      })
+      .map(req => req.id) || []
+  );
 
+  const sortedZones = [...zones].sort((a: Zone, b: Zone) => a.order_index - b.order_index);
   const hasActiveLevel = currentLevelId !== null && currentLevelId !== undefined;
 
-  const activePhaseFromRoom = hasActiveLevel
-    ? sortedPhases.find(p => p.levels?.some(l => l.id === currentLevelId))
+  const activeZoneFromRoom = hasActiveLevel
+    ? sortedZones.find(z => z.levels?.some(l => l.id === currentLevelId))
     : null;
 
-  const [userSelectedPhaseId, setUserSelectedPhaseId] = useState<number | null>(() => {
+  const [userSelectedZoneId, setUserSelectedZoneId] = useState<number | null>(() => {
     try {
-      const saved = localStorage.getItem(phaseStorageKey);
+      const saved = localStorage.getItem(zoneStorageKey);
       if (saved) {
         const parsedId = parseInt(saved, 10);
-        if (sortedPhases.some(p => p.id === parsedId)) return parsedId;
+        if (sortedZones.some(z => z.id === parsedId)) return parsedId;
       }
     } catch { }
     return null;
   });
 
-  const isMapMode = !hasActiveLevel && userSelectedPhaseId === null;
+  const isMapMode = !hasActiveLevel && userSelectedZoneId === null;
 
-  const activePhaseId = hasActiveLevel && activePhaseFromRoom
-    ? activePhaseFromRoom.id
-    : userSelectedPhaseId ?? (sortedPhases.length > 0 ? sortedPhases[0].id : null);
+  const activeZoneId = hasActiveLevel && activeZoneFromRoom
+    ? activeZoneFromRoom.id
+    : userSelectedZoneId ?? (sortedZones.length > 0 ? sortedZones[0].id : null);
 
-  const handleEnterPhase = (phaseId: number) => {
-    setUserSelectedPhaseId(phaseId);
+  const handleEnterZone = (zoneId: number) => {
+    setUserSelectedZoneId(zoneId);
     setSelectedPreviewId(null);
-    localStorage.setItem(phaseStorageKey, phaseId.toString());
-    localStorage.removeItem(levelPreviewStorageKey); // Clear level selection when switching phases
+    localStorage.setItem(zoneStorageKey, zoneId.toString());
+    localStorage.removeItem(levelPreviewStorageKey);
   };
 
   const handleReturnToMap = () => {
     if (hasActiveLevel) return;
-    setUserSelectedPhaseId(null);
-    localStorage.removeItem(phaseStorageKey);
-    localStorage.removeItem(levelPreviewStorageKey); // Clear level selection when returning to map
+    setUserSelectedZoneId(null);
+    localStorage.removeItem(zoneStorageKey);
+    localStorage.removeItem(levelPreviewStorageKey);
   };
 
   const totalPlayers = room.users?.length || 1;
@@ -125,8 +132,8 @@ export default function CampaignTab() {
     return { votesCast, isResolved: !isTie, isTie, winningChoiceId: isTie ? null : winningChoiceId };
   };
 
-  const activePhaseData = sortedPhases.find((p: Phase) => p.id === activePhaseId);
-  const sortedLevels = activePhaseData?.levels ? [...activePhaseData.levels].sort((a: Level, b: Level) => a.order_index - b.order_index) : [];
+  const activeZoneData = sortedZones.find((z: Zone) => z.id === activeZoneId);
+  const sortedLevels = activeZoneData?.levels ? [...activeZoneData.levels].sort((a: Level, b: Level) => a.order_index - b.order_index) : [];
 
   const initialPreviewLevel = sortedLevels.find(l => l.is_initial || unlockedLevelIds.has(l.id)) || sortedLevels[0];
   const activePreviewLevel = sortedLevels.find(l => l.id === selectedPreviewId) || initialPreviewLevel;
@@ -137,14 +144,19 @@ export default function CampaignTab() {
   const isCurrentlyPlaying = hasActiveLevel && displayLevel?.id === currentLevelId;
   const isDisplayLevelCompleted = displayLevel && (room.completed_levels?.some((cl: Level) => cl.id === displayLevel.id) || roomStatus === 'solved');
   const displayLevelIsDiscovered = displayLevel && (displayLevel.is_initial || unlockedLevelIds.has(displayLevel.id));
-  
-  let previewStatus = 'available';
-  if (!displayLevelIsDiscovered) previewStatus = 'locked';
-  else if (isDisplayLevelCompleted) previewStatus = 'completed';
+  const isLocationSandbox = displayLevel?.presentation_type === 'location';
+  const displayLevelIsGated = displayLevelIsDiscovered && !isDisplayLevelCompleted && displayLevel?.required_request_id && !completedRequestIds.has(displayLevel.required_request_id);
+
+  let previewStatus = 'undiscovered';
+  if (isDisplayLevelCompleted || roomStatus === 'solved') previewStatus = 'completed';
+  else if (displayLevelIsGated) previewStatus = 'gated';
+  else if (displayLevelIsDiscovered) previewStatus = 'actionable';
 
   const isInfoView = displayLevel ? !!levelViewPrefs[displayLevel.id] : false;
-  const canSwap = isDisplayLevelCompleted && !isCurrentlyPlaying;
-  const showGameplay = isCurrentlyPlaying || (isDisplayLevelCompleted && !isInfoView);
+  const canSwap = (isDisplayLevelCompleted && !isCurrentlyPlaying) || isLocationSandbox;
+  const showGameplay = isLocationSandbox 
+    ? !isInfoView 
+    : isCurrentlyPlaying || (isDisplayLevelCompleted && !isInfoView);
 
   const handleSelectLevel = (levelId: number) => {
     setSelectedPreviewId(levelId);
@@ -161,24 +173,28 @@ export default function CampaignTab() {
     }
   };
 
-  const phaseDescription = activePhaseData?.description || (activePhaseData as any)?.details;
+  const zoneDescription = activeZoneData?.description;
 
   return (
     <div className="campaign-tab-wrapper">
       {isMapMode ? (
-        <CampaignMap onEnterPhase={handleEnterPhase} phases={sortedPhases} unlockedLevelIds={unlockedLevelIds} />
+        <CampaignMap
+          onEnterZone={handleEnterZone}
+          zones={sortedZones}
+          unlockedLevelIds={unlockedLevelIds}
+          mapImageUrl={room.game_case?.map_url} 
+        />
       ) : (
         <div className="campaign-roadmap-container">
           <div className="split-screen-layout">
-            {/* Left Column: Level List with Title at the top */}
             <div className="level-list-column">
               
               <div className="phase-info-sidebar">
-                <h2 className="phase-sidebar-title tactical-glitch" data-text={activePhaseData?.title || t('pages.gameRoom.campaign.unknownPhase')}>
-                  {activePhaseData?.title || t('pages.gameRoom.campaign.unknownPhase')}
+                <h2 className="phase-sidebar-title tactical-glitch" data-text={activeZoneData?.title || t('pages.gameRoom.campaign.unknownZone', 'UNKNOWN DISTRICT')}>
+                  {activeZoneData?.title || t('pages.gameRoom.campaign.unknownZone', 'UNKNOWN DISTRICT')}
                 </h2>
-                {phaseDescription && (
-                  <p className="phase-sidebar-desc">{phaseDescription}</p>
+                {zoneDescription && (
+                  <p className="phase-sidebar-desc">{zoneDescription}</p>
                 )}
               </div>
 
@@ -188,16 +204,18 @@ export default function CampaignTab() {
               {sortedLevels.map((level: Level) => {
                 const isDiscovered = level.is_initial || unlockedLevelIds.has(level.id);
                 const isCompleted = room.completed_levels?.some((cl: Level) => cl.id === level.id);
+                const isGated = isDiscovered && !isCompleted && level.required_request_id && !completedRequestIds.has(level.required_request_id);
                 
-                let status = 'available';
-                if (!isDiscovered) status = 'locked';
-                else if (roomStatus === 'solved' || isCompleted) status = 'completed';
+                let status: 'undiscovered' | 'gated' | 'actionable' | 'completed' = 'undiscovered';
+                if (isCompleted || roomStatus === 'solved') status = 'completed';
+                else if (isGated) status = 'gated';
+                else if (isDiscovered) status = 'actionable';
 
                 if (hasActiveLevel && level.id !== currentLevelId) {
-                  status = 'locked';
+                  status = status === 'gated' ? 'gated' : 'undiscovered'; // Lock visual out
                 }
 
-                const displayTitle = isDiscovered ? level.title : t('pages.gameRoom.campaign.undiscoveredEncounter');
+                const displayTitle = isDiscovered ? level.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD');
 
                 return (
                   <LevelCard
@@ -207,13 +225,12 @@ export default function CampaignTab() {
                     isSelected={displayLevel?.id === level.id}
                     displayTitle={displayTitle}
                     onSelect={() => {
-                        if (status !== 'locked') handleSelectLevel(level.id);
+                        if (status !== 'undiscovered') handleSelectLevel(level.id);
                     }}
                   />
                 );
               })}
 
-              {/* Unique Return to Map Card */}
               <div 
                 className={`return-map-card ${hasActiveLevel ? 'locked' : ''}`}
                 onClick={() => {
@@ -233,19 +250,21 @@ export default function CampaignTab() {
               </div>
             </div>
 
-            {/* Right Column: Active Preview / Gameplay */}
             {displayLevel && (
               <div className="preview-column">
                 
                 <div 
-                  className={`preview-bg-layer ${showGameplay ? 'blurred' : ''}`} 
-                  style={{ backgroundImage: `url(${displayLevelIsDiscovered ? (displayLevel.img_url || '/placeholder-crime-scene.jpg') : ''})` }}
+                  className={`preview-bg-layer ${showGameplay || previewStatus === 'gated' ? 'blurred' : ''}`} 
+                  style={{ 
+                    backgroundImage: `url(${displayLevelIsDiscovered ? (displayLevel.img_url || '/placeholder-crime-scene.jpg') : ''})`,
+                    filter: previewStatus === 'gated' ? 'grayscale(100%) blur(12px) brightness(0.2)' : undefined
+                  }}
                 />
                 
-                <div className={`preview-overlay ${showGameplay ? 'hidden' : ''}`}></div>
+                <div className={`preview-overlay ${(showGameplay || previewStatus === 'gated') ? 'hidden' : ''}`}></div>
 
                 <div className="top-right-actions">
-                  {canSwap && (
+                  {canSwap && previewStatus !== 'gated' && (
                     <button
                       className="swap-view-btn"
                       onClick={toggleViewState}
@@ -257,7 +276,13 @@ export default function CampaignTab() {
                     </button>
                   )}
 
-                  {previewStatus === 'available' && displayLevelIsDiscovered && !showGameplay && (
+                  {previewStatus === 'gated' && (
+                    <p className="host-warning-text" style={{ color: 'var(--accent-crimson)', borderColor: 'rgba(163, 50, 50, 0.4)' }}>
+                      {t('pages.gameRoom.campaign.warrantRequired', 'WARRANT REQUIRED')}
+                    </p>
+                  )}
+
+                  {previewStatus === 'actionable' && !showGameplay && !isLocationSandbox && (
                     <>
                       <p className="host-warning-text">
                         {isHost ? t('pages.gameRoom.campaign.hostInitiateWarning') : t('pages.gameRoom.campaign.awaitingHost')}
@@ -276,11 +301,22 @@ export default function CampaignTab() {
                 </div>
 
                 <div className="preview-content-layer">
-                  {!showGameplay ? (
+                  {previewStatus === 'gated' ? (
+                    <div className="info-view">
+                      <div className="preview-content-box">
+                        <h3 className="preview-title" style={{ color: 'var(--text-secondary)' }}>
+                          {displayLevel.title}
+                        </h3>
+                        <p className="preview-desc" style={{ color: 'var(--text-secondary)' }}>
+                          {t('pages.gameRoom.campaign.gatedDesc', 'This location or subject is currently restricted. You must file the correct procedural request with the DA to proceed.')}
+                        </p>
+                      </div>
+                    </div>
+                  ) : !showGameplay ? (
                     <div className="info-view">
                       <div className="preview-content-box">
                         <h3 className="preview-title">
-                          {displayLevelIsDiscovered ? displayLevel.title : t('pages.gameRoom.campaign.undiscoveredEncounter')}
+                          {displayLevelIsDiscovered ? displayLevel.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')}
                         </h3>
                         <p className="preview-desc">
                           {displayLevelIsDiscovered ? displayLevel.details : t('pages.gameRoom.campaign.hiddenPathDesc')}
@@ -292,7 +328,7 @@ export default function CampaignTab() {
                       {displayLevel.presentation_type === 'interrogation' ? (
                         <InterrogationPhase getQuestionConsensus={getQuestionConsensus} handleSubmitTheory={handleSubmitTheory} isHost={isHost} isSubmitting={isSubmitting} level={displayLevel} status={isCurrentlyPlaying ? 'active' : 'completed'} totalPlayers={totalPlayers} />
                       ) : displayLevel.presentation_type === 'location' ? (
-                        <LocationPhase handleSubmitTheory={handleSubmitTheory} isHost={isHost} isSubmitting={isSubmitting} level={displayLevel} status={isCurrentlyPlaying ? 'active' : 'completed'} />
+                        <LocationPhase level={displayLevel} isHost={isHost} />
                       ) : displayLevel.presentation_type === 'wiretap' ? (
                         <WiretapPhase getQuestionConsensus={getQuestionConsensus} handleSubmitTheory={handleSubmitTheory} isHost={isHost} isSubmitting={isSubmitting} level={displayLevel} status={isCurrentlyPlaying ? 'active' : 'completed'} totalPlayers={totalPlayers} />
                       ) : null}

@@ -17,10 +17,9 @@
 }
 
 .verdict-zones {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 3rem;
-  height: max-content;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   margin-top: 1rem;
 }
 
@@ -29,6 +28,8 @@
   flex-direction: column;
   transition: all 0.2s ease;
   height: max-content;
+  width: 100%;
+  max-width: 800px; /* Constrains the guilty board so it doesn't stretch awkwardly */
 }
 
 .zone-header {
@@ -49,7 +50,6 @@
 }
 
 .guilty-zone .zone-header h3 { color: #ff5252; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
-.innocent-zone .zone-header h3 { color: #69f0ae; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
 
 .zone-counter {
   font-family: var(--font-mono);
@@ -100,10 +100,6 @@
 
 .guilty-zone .zone-content .character-card::before {
   background: radial-gradient(circle at 35% 35%, #ff5252, #8a0000);
-}
-
-.innocent-zone .zone-content .character-card::before {
-  background: radial-gradient(circle at 35% 35%, #69f0ae, #00600f);
 }
 
 /* Messy Board Scatter */
@@ -194,10 +190,4 @@
   text-align: center;
   letter-spacing: 0.05em;
   text-shadow: 0 1px 2px rgba(0,0,0,0.8);
-}
-
-@media (max-width: 768px) {
-  .verdict-zones {
-    grid-template-columns: 1fr;
-  }
 }

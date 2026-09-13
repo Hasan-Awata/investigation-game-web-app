@@ -10,13 +10,10 @@ import './LocationPhase.css';
 
 interface LocationPhaseProps {
   level: Level;
-  status: string;
   isHost: boolean;
-  isSubmitting: boolean;
-  handleSubmitTheory: (e: React.MouseEvent) => void;
 }
 
-export default function LocationPhase({ level, status, isHost, isSubmitting, handleSubmitTheory }: LocationPhaseProps) {
+export default function LocationPhase({ level }: LocationPhaseProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { room, accumulatedEvidences } = useRoomState();
@@ -53,9 +50,8 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
   const [scale, setScale] = useState(1);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [lastMouse, setLastMouse] = useState({ x: 0, y: 0 }); // Tracks delta movement to prevent sticky edges
+  const [lastMouse, setLastMouse] = useState({ x: 0, y: 0 });
   
-  // Ref to measure the image bounds against the screen
   const wrapperRef = useRef<HTMLDivElement>(null);
 
   const storageKeyBase = `inv_loc_state_${room.id}_${level.id}`;
@@ -129,7 +125,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 
   if (!level.questions) return null;
 
-  const isCompleted = status === 'completed';
   const visibleQuestionIds = new Set<number>();
 
   const lockedBehindChoiceIds = new Set<number>();
@@ -160,19 +155,16 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     });
   });
 
-  const displayQuestions = isCompleted
-    ? level.questions
-    : level.questions.filter(q =>
-        visibleQuestionIds.has(q.id) &&
-        (q.assigned_user_id === currentUserId ||
-         q.assigned_user_id === undefined ||
-         q.assigned_user_id === null)
-      );
+  const displayQuestions = level.questions.filter(q =>
+    visibleQuestionIds.has(q.id) &&
+    (q.assigned_user_id === currentUserId ||
+     q.assigned_user_id === undefined ||
+     q.assigned_user_id === null)
+  );
 
   const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice) => {
     e.stopPropagation();
 
-    // Prevent click actions if the user was just trying to pan/drag the image
     if (isDragging) return;
 
     const isAlreadyDiscovered = foundPoints.has(choice.id) || clickedDeadEnds.has(choice.id) || room.votes?.some((v: any) => v.choice_id === choice.id);
@@ -186,8 +178,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
       });
       return; 
     }
-
-    if (status !== 'active') return;
 
     const hasUnlocks = choice.outcomes && (
       (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) ||
@@ -217,7 +207,7 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
           icon: 'https://api.iconify.design/ph:map-pin-line-duotone.svg?color=%235a8a9e'
         });
       }
-      handleSelectChoice(e, qId, choice, status);
+      handleSelectChoice(e, qId, choice, 'active');
     }
   };
 
@@ -227,13 +217,11 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     setPosition({ x: 0, y: 0 });
   };
 
-  // --- BOUNDARY CALCULATION ---
   const clampPosition = (targetX: number, targetY: number, currentScale: number) => {
     if (!wrapperRef.current) return { x: targetX, y: targetY };
 
     const { clientWidth, clientHeight } = wrapperRef.current;
     
-    // Calculate the maximum allowed movement from the center
     const maxX = Math.max(0, (clientWidth * currentScale - window.innerWidth) / 2);
     const maxY = Math.max(0, (clientHeight * currentScale - window.innerHeight) / 2);
 
@@ -243,18 +231,16 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     };
   };
 
-  // --- ZOOM & PAN EVENT HANDLERS ---
   const handleWheel = (e: React.WheelEvent) => {
     const zoomSensitivity = 0.005;
     const delta = e.deltaY * -zoomSensitivity;
-    const newScale = Math.min(Math.max(1, scale + delta), 5); // Clamped between 1x and 5x
+    const newScale = Math.min(Math.max(1, scale + delta), 5);
     
     setScale(newScale);
 
     if (newScale === 1) {
       setPosition({ x: 0, y: 0 });
     } else {
-      // Clamp position in case zooming out forces the image out of bounds
       setPosition(prev => clampPosition(prev.x, prev.y, newScale));
     }
   };
@@ -268,17 +254,13 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isDragging && scale > 1) {
-      // Frame-by-frame delta movement
       const deltaX = e.clientX - lastMouse.x;
       const deltaY = e.clientY - lastMouse.y;
       
       const newX = position.x + deltaX;
       const newY = position.y + deltaY;
 
-      // Ensure we don't drift past the black borders
       setPosition(clampPosition(newX, newY, scale));
-      
-      // Update last mouse position for the next frame
       setLastMouse({ x: e.clientX, y: e.clientY });
     }
   };
@@ -339,6 +321,8 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
 
             const isSelected = localVotes[activeQuestion.id] === choice.id || foundPoints.has(choice.id) || room.votes?.some((v: any) => v.choice_id === choice.id);
             const isDeadEndClicked = clickedDeadEnds.has(choice.id);
+            
+            // STRICT FILTER CHECK
             const isNarrativeLocked = checkIsLockedByNarrative(choice);
             const isDiscovered = isSelected || isDeadEndClicked;
 
@@ -350,8 +334,10 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
             }
 
             const isBubbleActive = activeBubbles.has(choice.id);
-            const isInteractable = (status === 'active' && !isNarrativeLocked) || isDiscovered;
-            const shouldRender = (status === 'active' && !isNarrativeLocked) || isDiscovered; 
+            
+            // If the element does not meet evidence prerequisites, it completely vanishes
+            const isInteractable = !isNarrativeLocked || isDiscovered;
+            const shouldRender = !isNarrativeLocked || isDiscovered; 
 
             return (
               <div
@@ -392,9 +378,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
     document.body
   ) : null;
 
-  const hasGlobalInteraction = level.questions?.some(q => room.votes?.some((v: any) => v.question_id === q.id));
-  const hasInteracted = foundPoints.size > 0 || clickedDeadEnds.size > 0 || hasGlobalInteraction;
-
   return (
     <div className="location-phase-wrapper" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
       {displayQuestions.map(q => (
@@ -413,25 +396,6 @@ export default function LocationPhase({ level, status, isHost, isSubmitting, han
           <p className="location-hint">{q.text || t('pages.gameRoom.campaign.levels.location.enterViewerHint')}</p>
         </div>
       ))}
-
-      {status === 'active' && (
-        <div style={{ gridColumn: '1 / -1', marginTop: '1rem', display: 'flex', justifyContent: 'center' }}>
-          {isHost ? (
-            <button
-              className="btn-primary"
-              disabled={!hasInteracted || isSubmitting}
-              onClick={handleSubmitTheory}
-              style={{ padding: '1rem 3rem', width: 'auto' }}
-            >
-              {isSubmitting ? t('pages.gameRoom.campaign.levels.location.processing') : t('pages.gameRoom.campaign.levels.location.leaveLocation')}
-            </button>
-          ) : (
-            <div style={{ padding: '1rem', background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', borderRadius: '4px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', fontSize: '0.85rem', width: '100%', textAlign: 'center' }}>
-              {t('pages.gameRoom.campaign.levels.location.awaitingHost')}
-            </div>
-          )}
-        </div>
-      )}
 
       {fullScreenViewer}
     </div>

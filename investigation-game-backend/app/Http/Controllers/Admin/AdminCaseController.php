@@ -174,7 +174,7 @@ class AdminCaseController extends Controller
             'evidences' => 'present|array',
             'characters' => 'present|array',
             'investigation_requests' => 'present|array',
-            'phases' => 'present|array',
+            'zones' => 'present|array',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -236,30 +236,30 @@ class AdminCaseController extends Controller
                 }
             }
 
-            // PASS 3: Phases and Levels (Ignoring gatekeeper requests for now)
-            $levelDataWithRefs = []; // Memory cache to update required_request_id later
-            $phasesDataArray = [];   // Memory cache to process questions later
+            // PASS 3: Zones and Levels 
+            $levelDataWithRefs = []; 
+            $zonesDataArray = [];   
 
-            foreach ($validated['phases'] as $phaseData) {
-                $phase = \App\Models\Phase::create([
+            foreach ($validated['zones'] as $zoneData) {
+                $zone = \App\Models\Zone::create([
                     'case_id' => $case->id,
-                    'title' => $phaseData['title'],
-                    'description' => $phaseData['description'] ?? null,
-                    'order_index' => $phaseData['order_index'],
-                    'map_url' => $phaseData['map_url'] ?? null,
-                    'coord_x' => $phaseData['coord_x'] ?? null,
-                    'coord_y' => $phaseData['coord_y'] ?? null,
+                    'title' => $zoneData['title'],
+                    'description' => $zoneData['description'] ?? null,
+                    'order_index' => $zoneData['order_index'],
+                    'map_url' => $zoneData['map_url'] ?? null,
+                    'coord_x' => $zoneData['coord_x'] ?? null,
+                    'coord_y' => $zoneData['coord_y'] ?? null,
                 ]);
 
-                foreach ($phaseData['levels'] as $lvlData) {
+                foreach ($zoneData['levels'] as $lvlData) {
                     $level = \App\Models\Level::create([
-                        'phase_id' => $phase->id,
+                        'zone_id' => $zone->id,
                         'title' => $lvlData['title'],
                         'details' => $lvlData['details'],
                         'order_index' => $lvlData['order_index'],
                         'is_initial' => $lvlData['is_initial'] ?? false,
                         'presentation_type' => $lvlData['presentation_type'],
-                        'required_request_id' => null, // Defers mapping to avoid circular logic
+                        'required_request_id' => null, 
                     ]);
 
                     if (isset($lvlData['ref_id'])) {
@@ -271,7 +271,7 @@ class AdminCaseController extends Controller
                         'req_ref' => $lvlData['required_request_ref'] ?? null,
                     ];
 
-                    $phasesDataArray[] = [
+                    $zonesDataArray[] = [
                         'level_id' => $level->id,
                         'nodes' => $lvlData['nodes'] ?? []
                     ];
@@ -307,7 +307,7 @@ class AdminCaseController extends Controller
             }
 
             // PASS 6: Questions and Choices
-            foreach ($phasesDataArray as $ldata) {
+            foreach ($zonesDataArray as $ldata) {
                 $nodeIndexMap = []; // Maps JSON node array index to actual question DB ID
 
                 // Sub-Pass A: Insert Questions First (to generate IDs for dialogue trees)

@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Phase extends Model
+class Zone extends Model
 {
     protected $fillable = [
         'case_id',
@@ -25,6 +25,6 @@ class Phase extends Model
 
     public function levels(): HasMany
     {
-        return $this->hasMany(Level::class, 'phase_id');
+        return $this->hasMany(Level::class, 'zone_id');
     }
 }

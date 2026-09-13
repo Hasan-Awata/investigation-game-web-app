@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext';
 import { useTargeting } from '@/context/TargetingContext';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
-import type { Evidence, Level, Phase, Character } from '@/types';
+import type { Evidence, Level, Zone, Character } from '@/types';
 import './ChoiceEditorCard.css';
 
 export interface DraftChoice {
@@ -23,7 +23,7 @@ export interface DraftChoice {
 }
 
 export interface LevelWithPhase extends Level {
-  phase?: Phase;
+  zone?: Zone;
   phase_title?: string;
 }
 
@@ -57,7 +57,7 @@ export default function ChoiceEditorCard({
   if (!selectedCase) return null;
 
   const availableEvidence = selectedCase.evidences || [];
-  const availableLevels = selectedCase.phases?.flatMap(p => p.levels || []) || [];
+  const availableLevels = selectedCase.zones?.flatMap(z => z.levels || []) || [];
   const availableCharacters = selectedCase.characters || [];
 
   const updateOutcomes = <K extends keyof NonNullable<DraftChoice['outcomes']>>(

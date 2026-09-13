@@ -4,7 +4,7 @@ import './LevelCard.css';
 
 interface LevelCardProps {
   level: Level;
-  status: string;
+  status: 'undiscovered' | 'gated' | 'actionable' | 'completed';
   isSelected: boolean;
   displayTitle: string;
   onSelect: () => void;
@@ -53,13 +53,17 @@ export default function LevelCard({
       className={`level-list-item ${status} ${isSelected ? 'selected' : ''}`}
       onClick={onSelect}
     >
+      {status === 'gated' && (
+        <div className="warrant-overlay">{t('pages.gameRoom.campaign.warrantRequired', 'WARRANT REQUIRED')}</div>
+      )}
+      
       <div className="list-item-content">
         <div className="level-icon-container">
-          {getLevelIcon(level.presentation_type)}
+          {status === 'undiscovered' ? '❓' : getLevelIcon(level.presentation_type)}
         </div>
         <div className="list-item-title-area">
           <span className="node-phase">
-            {t('pages.gameRoom.campaign.lead', { id: level.order_index.toString().padStart(3, '0') })}
+            {t(`pages.gameRoom.campaign.types.${level.presentation_type || 'standard'}`)}
           </span>
           <h4 className="list-item-title">{displayTitle}</h4>
         </div>

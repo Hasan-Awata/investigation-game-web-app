@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next';
-import type { Phase } from '@/types';
-import './PhaseCard.css';
+import type { Zone } from '@/types';
+import './ZoneCard.css';
 
-interface PhaseCardProps {
-  phase: Phase;
+interface ZoneCardProps {
+  zone: Zone;
   unlockedLevelIds: Set<number>;
   onClose: () => void;
-  onEnter: (phaseId: number) => void;
+  onEnter: (zoneId: number) => void;
 }
 
 const getLevelIcon = (type?: string) => {
@@ -38,30 +38,28 @@ const getLevelIcon = (type?: string) => {
   }
 };
 
-export default function PhaseCard({ phase, unlockedLevelIds, onClose, onEnter }: PhaseCardProps) {
+export default function ZoneCard({ zone, unlockedLevelIds, onClose, onEnter }: ZoneCardProps) {
   const { t } = useTranslation();
 
-  const levels = phase.levels ? [...phase.levels].sort((a, b) => a.order_index - b.order_index) : [];
+  const levels = zone.levels ? [...zone.levels].sort((a, b) => a.order_index - b.order_index) : [];
 
   return (
-    <div className="phase-card-overlay" onClick={onClose}>
-      <div className="phase-card-content glass-panel" onClick={e => e.stopPropagation()}>
+    <div className="zone-card-overlay" onClick={onClose}>
+      <div className="zone-card-content glass-panel" onClick={e => e.stopPropagation()}>
 
-        <button className="close-btn" onClick={onClose} title="Close">
-          ✕
-        </button>
+        <button className="close-btn" onClick={onClose} title="Close">✕</button>
 
-        <div className="phase-card-header">
-          <h2 className="phase-card-title">{phase.title}</h2>
+        <div className="zone-card-header">
+          <h2 className="zone-card-title">{zone.title}</h2>
         </div>
 
-        <p className="phase-card-desc">
-          {phase.description || t('pages.gameRoom.campaign.map.noDescription')}
+        <p className="zone-card-desc">
+          {zone.description || t('pages.gameRoom.campaign.map.noDescription')}
         </p>
 
-        <div className="phase-card-levels-container">
+        <div className="zone-card-levels-container">
           <div className="levels-heading-wrapper">
-            <h4 className="levels-heading">{t('pages.gameRoom.campaign.map.levelsPreview')}</h4>
+            <h4 className="levels-heading">{t('pages.gameRoom.campaign.map.activeLeads', 'Active Leads')}</h4>
             <span className="levels-count">
               {t('pages.gameRoom.campaign.map.entriesCount', { count: levels.length })}
             </span>
@@ -70,17 +68,29 @@ export default function PhaseCard({ phase, unlockedLevelIds, onClose, onEnter }:
           <ul className="levels-preview-list">
             {levels.map(level => {
               const isDiscovered = level.is_initial || unlockedLevelIds.has(level.id);
+              const isGated = isDiscovered && level.required_request_id; 
+
+              let stateClass = 'undiscovered';
+              if (isDiscovered) {
+                stateClass = isGated ? 'gated' : 'actionable';
+              }
+
               return (
-                <li key={level.id} className={`level-preview-item ${isDiscovered ? 'unlocked' : 'locked'}`}>
+                <li key={level.id} className={`level-preview-item ${stateClass}`}>
                   <div className="level-preview-icon">
-                    {isDiscovered ? getLevelIcon(level.presentation_type) : '🔒'}
+                    {isDiscovered ? getLevelIcon(level.presentation_type) : '❓'}
                   </div>
                   <div className="level-data">
                     <span className="level-title">
-                      {isDiscovered ? level.title : t('pages.gameRoom.campaign.undiscoveredEncounter')}
+                      {isDiscovered ? level.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')}
                     </span>
                     <span className="level-status-text">
-                      {isDiscovered ? t('pages.gameRoom.campaign.map.dataAvailable') : t('pages.gameRoom.campaign.map.restricted')}
+                      {isGated 
+                        ? t('pages.gameRoom.campaign.map.warrantRequired', 'WARRANT REQUIRED') 
+                        : isDiscovered 
+                          ? t('pages.gameRoom.campaign.map.dataAvailable') 
+                          : t('pages.gameRoom.campaign.map.restricted')
+                      }
                     </span>
                   </div>
                 </li>
@@ -89,9 +99,9 @@ export default function PhaseCard({ phase, unlockedLevelIds, onClose, onEnter }:
           </ul>
         </div>
 
-        <div className="phase-card-actions">
-          <button className="btn-primary" onClick={() => onEnter(phase.id)} style={{ width: '100%' }}>
-            {t('pages.gameRoom.campaign.map.goToLocation')}
+        <div className="zone-card-actions">
+          <button className="btn-primary" onClick={() => onEnter(zone.id)} style={{ width: '100%' }}>
+            {t('pages.gameRoom.campaign.map.travelToZone', 'Travel to Zone')}
           </button>
         </div>
       </div>

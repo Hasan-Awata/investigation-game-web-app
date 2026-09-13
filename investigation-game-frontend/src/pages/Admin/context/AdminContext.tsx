@@ -1,21 +1,21 @@
 import { useEffect } from 'react';
 import { createContext, useContext, useState, useMemo, useCallback, type ReactNode } from 'react';
-import { useAdminCases, useAdminPhases, useAdminLevels } from '@/pages/Admin/hooks/useAdminData';
-import type { GameCase, Phase, Level } from '@/types';
+import { useAdminCases, useAdminZones, useAdminLevels } from '@/pages/Admin/hooks/useAdminData';
+import type { GameCase, Zone, Level } from '@/types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 
 interface AdminContextState {
   caseId: string;
-  phaseId: string;
+  zoneId: string;
   levelId: string;
   setCaseId: (id: string) => void;
-  setPhaseId: (id: string) => void;
+  setZoneId: (id: string) => void;
   setLevelId: (id: string) => void;
 
   cases: GameCase[];
   selectedCase: GameCase | undefined;
-  availablePhases: Phase[];
-  selectedPhase: Phase | undefined;
+  availableZones: Zone[];
+  selectedZone: Zone | undefined;
   availableLevels: Level[];
   selectedLevel: Level | undefined;
 
@@ -46,27 +46,27 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   // Local state for dropdown selections
   const [caseId, setCaseId] = useState<string>('');
-  const [phaseId, setPhaseId] = useState<string>('');
+  const [zoneId, setZoneId] = useState<string>('');
   const [levelId, setLevelId] = useState<string>('');
 
   // Granular Data Fetching
   const { data: cases = [], isLoading: isCasesLoading, error: casesError } = useAdminCases();
-  const { data: availablePhases = [], isLoading: isPhasesLoading, error: phasesError } = useAdminPhases(caseId);
-  const { data: availableLevels = [], isLoading: isLevelsLoading, error: levelsError } = useAdminLevels(phaseId);
+  const { data: availableZones = [], isLoading: isZonesLoading, error: zonesError } = useAdminZones(caseId);
+  const { data: availableLevels = [], isLoading: isLevelsLoading, error: levelsError } = useAdminLevels(zoneId);
 
   // Cascading state handlers memoized to maintain stable reference equality
   const handleSetCaseId = useCallback((id: string) => {
     if (isDirty && !window.confirm(t.switchCaseConfirm)) return;
     setIsDirty(false);
     setCaseId(id);
-    setPhaseId('');
+    setZoneId('');
     setLevelId('');
   }, [isDirty, t]);
 
-  const handleSetPhaseId = useCallback((id: string) => {
-    if (isDirty && !window.confirm(t.switchPhaseConfirm)) return;
+  const handleSetZoneId = useCallback((id: string) => {
+    if (isDirty && !window.confirm(t.switchZoneConfirm)) return;
     setIsDirty(false);
-    setPhaseId(id);
+    setZoneId(id);
     setLevelId('');
   }, [isDirty, t]);
 
@@ -78,26 +78,26 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
   // Derived Data (Memoized to prevent unnecessary recalculations)
   const selectedCase = useMemo(() => cases.find(c => c.id.toString() === caseId), [cases, caseId]);
-  const selectedPhase = useMemo(() => availablePhases.find(p => p.id.toString() === phaseId), [availablePhases, phaseId]);
+  const selectedZone = useMemo(() => availableZones.find(z => z.id.toString() === zoneId), [availableZones, zoneId]);
   const selectedLevel = useMemo(() => availableLevels.find(l => l.id.toString() === levelId), [availableLevels, levelId]);
 
   // Aggregate loading and error states
-  const isLoading = isCasesLoading || isPhasesLoading || isLevelsLoading;
-  const error = (casesError || phasesError || levelsError) as Error | null;
+  const isLoading = isCasesLoading || isZonesLoading || isLevelsLoading;
+  const error = (casesError || zonesError || levelsError) as Error | null;
 
   // The Provider value is strictly memoized.
   // It will ONLY trigger consumer re-renders when a dependency genuinely updates.
   const value = useMemo(() => ({
     caseId,
-    phaseId,
+    zoneId,
     levelId,
     setCaseId: handleSetCaseId,
-    setPhaseId: handleSetPhaseId,
+    setZoneId: handleSetZoneId,
     setLevelId: handleSetLevelId,
     cases,
     selectedCase,
-    availablePhases,
-    selectedPhase,
+    availableZones,
+    selectedZone,
     availableLevels,
     selectedLevel,
     isLoading,
@@ -106,15 +106,15 @@ export function AdminProvider({ children }: { children: ReactNode }) {
     setIsDirty
   }), [
     caseId,
-    phaseId,
+    zoneId,
     levelId,
     handleSetCaseId,
-    handleSetPhaseId,
+    handleSetZoneId,
     handleSetLevelId,
     cases,
     selectedCase,
-    availablePhases,
-    selectedPhase,
+    availableZones,
+    selectedZone,
     availableLevels,
     selectedLevel,
     isLoading,

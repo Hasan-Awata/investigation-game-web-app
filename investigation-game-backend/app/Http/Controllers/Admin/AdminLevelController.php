@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\MediaService;
 use App\Models\Level;
-use App\Models\Phase;
+use App\Models\Zone;
 use App\Enums\LevelPresentationType;
 use Illuminate\Validation\Rules\Enum;
 use Illuminate\Http\Request;
@@ -18,7 +18,7 @@ class AdminLevelController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'phase_id' => 'required|exists:phases,id',
+            'zone_id' => 'required|exists:zones,id',
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
@@ -29,13 +29,11 @@ class AdminLevelController extends Controller
         ]);
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-
-        $caseTitle = Phase::with('gameCase')->where('id', $validated['phase_id'])->first()?->gameCase?->title ?? 'General';
-
+        $caseTitle = Zone::with('gameCase')->where('id', $validated['zone_id'])->first()?->gameCase?->title ?? 'General';
         $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'Levels', $storeLocally);
 
         $level = Level::create([
-            'phase_id' => $validated['phase_id'],
+            'zone_id' => $validated['zone_id'],
             'title' => $validated['title'],
             'details' => $validated['details'],
             'order_index' => $validated['order_index'],
@@ -45,10 +43,7 @@ class AdminLevelController extends Controller
             'img_url' => $imageUrl,
         ]);
 
-        return response()->json([
-            'message' => 'Level created successfully.',
-            'level' => $level
-        ], 201);
+        return response()->json(['message' => 'Level created successfully.', 'level' => $level], 201);
     }
 
     public function update(Request $request, $id): JsonResponse
@@ -56,7 +51,7 @@ class AdminLevelController extends Controller
         $level = Level::findOrFail($id);
 
         $validated = $request->validate([
-            'phase_id' => 'required|exists:phases,id',
+            'zone_id' => 'required|exists:zones,id',
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
@@ -67,10 +62,10 @@ class AdminLevelController extends Controller
         ]);
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-        $caseTitle = Phase::with('gameCase')->where('id', $validated['phase_id'])->first()?->gameCase?->title ?? 'General';
+        $caseTitle = Zone::with('gameCase')->where('id', $validated['zone_id'])->first()?->gameCase?->title ?? 'General';
 
         $updateData = [
-            'phase_id' => $validated['phase_id'],
+            'zone_id' => $validated['zone_id'],
             'title' => $validated['title'],
             'details' => $validated['details'],
             'order_index' => $validated['order_index'],
@@ -97,10 +92,10 @@ class AdminLevelController extends Controller
         return response()->json(['message' => 'Level deleted.'], 200);
     }
 
-    public function indexByPhase($phaseId): \Illuminate\Http\JsonResponse
+    public function indexByZone($zoneId): JsonResponse
     {
         $levels = Level::with(['questions.choices'])
-            ->where('phase_id', $phaseId)
+            ->where('zone_id', $zoneId)
             ->orderBy('order_index', 'asc')
             ->get();
 

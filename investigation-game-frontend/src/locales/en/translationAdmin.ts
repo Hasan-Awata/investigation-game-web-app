@@ -5,15 +5,15 @@ export const translations = {
     systemError: (msg: string) => `System Error: ${msg}`,
     activeCaseLabel: "[ ACTIVE CASE DIRECTORY ]",
     globalDatabaseOption: "-- Global Database --",
-    activePhaseLabel: "[ ACTIVE PHASE ]",
-    allPhasesOption: "-- All Phases --",
+    activeZoneLabel: "[ ACTIVE ZONE ]",
+    allZonesOption: "-- All Zones --",
     activeLevelLabel: "[ ACTIVE LEVEL ]",
     allLevelsOption: "-- All Levels --",
     narrativeHierarchyGroup: "Narrative Hierarchy",
     nodeBuildersGroup: "Node Builders",
     databaseAssetsGroup: "Database Assets",
     casesTab: "📁 Cases (Root)",
-    phasesTab: "📑 Phases (Chapters)",
+    zonesTab: "📍 Zones (Districts)",
     levelsTab: "📌 Levels (Encounters)",
     interrogationTab: "💬 Interrogation Tree",
     locationTab: "🎯 Location Sweeps",
@@ -37,7 +37,7 @@ export const translations = {
   context: {
     adminContext: {
     switchCaseConfirm: "You have unsaved changes. Discard and switch cases?",
-    switchPhaseConfirm: "You have unsaved changes. Discard and switch phases?",
+    switchZoneConfirm: "You have unsaved changes. Discard and switch zones?",
     switchLevelConfirm: "You have unsaved changes. Discard and switch levels?"
     }
   },
@@ -115,7 +115,7 @@ export const translations = {
       puzzleHint: "Players must submit ALL selected evidence items in the tray to get approval. (Hold Ctrl/Cmd to multi-select).",
       rewardEvidenceLabel: "[ THE REWARD ] Unlocks Evidence",
       noEvidenceReward: "-- No Evidence Reward --",
-      rewardLevelLabel: "[ THE REWARD ] Unlocks Phase/Level",
+      rewardLevelLabel: "[ THE REWARD ] Unlocks Lead/Level",
       noLevelReward: "-- No Level Reward --",
       processingData: "Processing Data...",
       updateProtocol: "Update Protocol",
@@ -129,18 +129,18 @@ export const translations = {
     },
     levelForm: {
       entityName: "Level",
-      missingContextTitle: "[ MISSING CONTEXT: TARGET PHASE REQUIRED ]",
-      missingContextDesc: "Please select a Case and a Phase from the sidebar to manage Levels.",
+      missingContextTitle: "[ MISSING CONTEXT: TARGET ZONE REQUIRED ]",
+      missingContextDesc: "Please select a Case and a Zone from the sidebar to manage Levels.",
       interrogationOption: "Suspect Interrogation",
       locationOption: "Location Sweep",
       wiretapOption: "Communications Wiretap",
       noRequirementOption: "-- No Requirement --",
-      orderIndexLabel: "Phase Order Index",
+      orderIndexLabel: "Zone Order Index",
       presentationFormatLabel: "Presentation Format",
       gatekeeperLabel: "Required Combo (Gatekeeper)",
-      initialPhaseLabel: "Initial Phase",
-      initialPhaseDesc: "Visible on the roadmap immediately. (Uncheck if it must be unlocked via a specific choice).",
-      levelTitleLabel: "Level Title",
+      initialLevelLabel: "Initial Lead",
+      initialLevelDesc: "Visible on the roadmap immediately. (Uncheck if it must be unlocked via a specific choice).",
+      levelTitleLabel: "Level / Lead Title",
       levelDetailsLabel: "Level Details (Objectives)",
       bgImageLabel: "Location / Background Image",
       bgImageEditSuffix: "(Leave blank to keep existing)",
@@ -150,30 +150,30 @@ export const translations = {
       processingData: "Processing Data...",
       updateLevel: "Update Level",
       commitLevel: "Commit Level to Database",
-      emptyMessage: "No levels assigned to this phase.",
-      phaseLevelsTitle: (phaseTitle: string) => `Levels in Phase: ${phaseTitle}`,
+      emptyMessage: "No levels assigned to this zone.",
+      zoneLevelsTitle: (zoneTitle: string) => `Levels in Zone: ${zoneTitle}`,
       deleteConfirm: (title: string) => `Are you absolutely sure you want to delete "${title}"? All nested questions and media will be wiped permanently.`,
-      targetContextHeader: (caseTitle: string, phaseTitle: string) => `Targeting: ${caseTitle} > ${phaseTitle}`
+      targetContextHeader: (caseTitle: string, zoneTitle: string) => `Targeting: ${caseTitle} > ${zoneTitle}`
     },
-    phaseForm: {
-      entityName: "Phase",
+    zoneForm: {
+      entityName: "Zone",
       missingContextTitle: "[ MISSING CONTEXT: NO CASE SELECTED ]",
-      missingContextDesc: "Please select a Target Case from the Global Directory in the sidebar to manage its Phases.",
-      orderIndexLabel: "Chronological Order Index",
-      titleLabel: "Phase Title (e.g. 'The Setup', 'The Alibi')",
+      missingContextDesc: "Please select a Target Case from the Global Directory in the sidebar to manage its Zones.",
+      orderIndexLabel: "Geographical Order Index",
+      titleLabel: "Zone Title (e.g. 'Downtown', 'Industrial District')",
       descriptionLabel: "Description (Optional Narrative Fluff)",
       processingData: "Processing Data...",
-      updatePhase: "Update Phase",
-      commitPhase: "Commit Phase",
-      emptyMessage: "No phases assigned to this case.",
-      manageTitle: (caseTitle: string) => `Active Phases in ${caseTitle}`,
-      deleteConfirm: (title: string) => `Are you absolutely sure you want to delete the "${title}" phase? All levels and questions inside it will be orphaned or deleted.`,
+      updateZone: "Update Zone",
+      commitZone: "Commit Zone",
+      emptyMessage: "No zones assigned to this case.",
+      manageTitle: (caseTitle: string) => `Active Zones in ${caseTitle}`,
+      deleteConfirm: (title: string) => `Are you absolutely sure you want to delete the "${title}" zone? All levels and questions inside it will be orphaned or deleted.`,
       targetCaseHeader: (title: string) => `Targeting Case: ${title}`,
       mapUrlLabel: "Campaign Map",
       mapUrlPlaceholder: "-- Select Map --",
-      targetingBanner: "⚠️ TARGETING MATRIX ENGAGED: Click map to lock phase location.",
+      targetingBanner: "⚠️ TARGETING MATRIX ENGAGED: Click map to lock zone location.",
       cancelTargetBtn: "Cancel",
-      mapCoordinateBtn: "Map Phase Coordinate",
+      mapCoordinateBtn: "Map Zone Coordinate",
       coordinateLabel: "Current Coordinates:",
     },
     characterForm: {
@@ -242,6 +242,7 @@ export const translations = {
       selectForensicPlaceholder: "-- Select Forensic Classification --",
       selectDocPlaceholder: "-- Select Document Classification --",
       officialTranscriptLabel: "Official Transcript",
+      docPhoneRecords: "Telecom / Phone Records",
       autopsy: {
         victimNameLabel: "Victim Name",
         victimNamePlaceholder: "e.g., John Doe",
@@ -379,11 +380,27 @@ export const translations = {
   trace: {
     materialLabel: "Material Composition",
     originLabel: "Identified Origin Source"
+  },
+  phoneRecords: {
+    subscriberLabel: "Subscriber Name",
+    phoneLabel: "Phone Number",
+    carrierLabel: "Carrier / Network",
+    periodLabel: "Statement Period",
+    logsHeader: "Call & SMS Logs",
+    addLogBtn: "+ Add Log Entry",
+    timePlaceholder: "e.g., 2023-10-14 14:32",
+    contactPlaceholder: "Contact Number",
+    durationPlaceholder: "e.g., 04:12",
+    typeIncoming: "Incoming",
+    typeOutgoing: "Outgoing",
+    typeMissed: "Missed",
+    typeSms: "SMS",
+    emptyLogsMsg: "No call logs added yet."
   }
     },
     levelBuilderGuard: {
       missingContextTitle: "[ MISSING CONTEXT: TARGET LEVEL REQUIRED ]",
-      missingContextDesc: (type: string = "") => `Please select a Case, Phase, and Level from the sidebar to map ${type} data.`,
+      missingContextDesc: (type: string = "") => `Please select a Case, Zone, and Level from the sidebar to map ${type} data.`,
       mismatchTitle: "[ INVALID CONTEXT: LEVEL TYPE MISMATCH ]",
       mismatchDesc: (currentType: string = "", requiredType: string = "") => `The currently selected level is configured for '${currentType}'. You cannot build ${requiredType} layouts here. Please select a '${requiredType}' level from the sidebar.`
     },
@@ -446,7 +463,7 @@ export const translations = {
     commitInterceptBtn: "Commit Intercept"
   },
   nodeBuilderCanvas: {
-    targetingHeader: (caseTitle: string = '', phaseTitle: string = '', levelTitle: string = '') => `Targeting: ${caseTitle} > ${phaseTitle} > ${levelTitle}`
+    targetingHeader: (caseTitle: string = '', zoneTitle: string = '', levelTitle: string = '') => `Targeting: ${caseTitle} > ${zoneTitle} > ${levelTitle}`
   }
   }
 };

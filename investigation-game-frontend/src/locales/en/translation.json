@@ -4,7 +4,7 @@
     "error": "System Error:"
   },
   "admin": {
-    "dashboardTitle": "System Oversight // Admin Root",
+    "dashboardTitle": "System Oversight | Admin Root",
     "unauthorized": "Unauthorized access"
   },
   "gameRoom": {

@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchAdminCases, fetchAdminPhases, fetchAdminLevels } from '@/services/adminApi';
-import type { GameCase, Phase, Level } from '@/types';
+import { fetchAdminCases, fetchAdminZones, fetchAdminLevels } from '@/services/adminApi';
+import type { GameCase, Zone, Level } from '@/types';
 
 // 1. Fetch Top-Level Cases
 export function useAdminCases() {
@@ -15,11 +15,11 @@ export function useAdminCases() {
 }
 
 // 2. Fetch Phases (Only triggers when a Case is selected)
-export function useAdminPhases(caseId: string) {
-  return useQuery<Phase[]>({
-    queryKey: ['adminPhases', caseId],
+export function useAdminZones(caseId: string) {
+  return useQuery<Zone[]>({
+    queryKey: ['adminZones', caseId],
     queryFn: async () => {
-      const result = await fetchAdminPhases(caseId);
+      const result = await fetchAdminZones(caseId);
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
@@ -27,15 +27,15 @@ export function useAdminPhases(caseId: string) {
   });
 }
 
-// 3. Fetch Levels & Nodes (Only triggers when a Phase is selected)
-export function useAdminLevels(phaseId: string) {
+// 3. Fetch Levels & Nodes (Only triggers when a Zone is selected)
+export function useAdminLevels(zoneId: string) {
   return useQuery<Level[]>({
-    queryKey: ['adminLevels', phaseId],
+    queryKey: ['adminLevels', zoneId],
     queryFn: async () => {
-      const result = await fetchAdminLevels(phaseId);
+      const result = await fetchAdminLevels(zoneId);
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
-    enabled: !!phaseId, // TanStack Query Guard: Prevents execution until phaseId exists
+    enabled: !!zoneId, // TanStack Query Guard: Prevents execution until zoneId exists
   });
 }

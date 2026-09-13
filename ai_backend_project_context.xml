@@ -36,10 +36,11 @@
 │   │   │   │   ├── AdminEvidenceController.php
 │   │   │   │   ├── AdminInvestigationRequestController.php
 │   │   │   │   ├── AdminLevelController.php
-│   │   │   │   ├── AdminPhaseController.php
 │   │   │   │   ├── AdminQuestionController.php
 │   │   │   │   ├── AdminSuspectController.php
-│   │   │   │   └── AdminVictimController.php
+│   │   │   │   ├── AdminVictimController.php
+│   │   │   │   └── AdminZoneController.php
+│   │   │   ├── AdminCharacterController.php
 │   │   │   ├── AssessmentController.php
 │   │   │   ├── AuthController.php
 │   │   │   ├── CaseController.php
@@ -59,15 +60,13 @@
 │   │   ├── GameRoom.php
 │   │   ├── InvestigationRequest.php
 │   │   ├── Level.php
-│   │   ├── Phase.php
 │   │   ├── Question.php
 │   │   ├── RoomFiledRequest.php
 │   │   ├── RoomInspection.php
 │   │   ├── RoomUser.php
 │   │   ├── RoomVote.php
-│   │   ├── Suspect.php
 │   │   ├── User.php
-│   │   └── Victim.php
+│   │   └── Zone.php
 │   ├── Providers
 │   │   └── AppServiceProvider.php
 │   ├── Services
@@ -155,7 +154,9 @@
 │   │   ├── 2026_08_19_112215_refactor_evidences_for_json_metadata.php
 │   │   ├── 2026_08_28_104024_create_room_state_tracking_tables.php
 │   │   ├── 2026_09_05_105623_add_map_coordinates_to_phases_table.php
-│   │   └── 2026_09_12_090854_refactor_people_to_characters.php
+│   │   ├── 2026_09_12_090854_refactor_people_to_characters.php
+│   │   ├── 2026_09_13_091113_rename_phases_to_zones.php
+│   │   └── 2026_09_13_142320_move_map_url_to_cases_table.php
 │   ├── schema
 │   └── seeders
 │       └── DatabaseSeeder.php
@@ -850,6 +851,107 @@ class WiretapTriggered implements ShouldBroadcastNow
 }
 </file>
 
+<file path="app/Http/Controllers/AdminCharacterController.php">
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Services\MediaService;
+use App\Models\Character;
+use App\Models\GameCase;
+use App\Enums\CharacterStatus;
+use App\Enums\CharacterCharge;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Validation\Rules\Enum;
+
+class AdminCharacterController extends Controller
+{
+    public function __construct(private readonly MediaService $mediaService) {}
+
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'case_id' => 'required|exists:cases,id',
+            'name' => 'required|string|max:255',
+            'background' => 'nullable|string',
+            'is_initial' => 'required|boolean',
+            'is_guilty' => 'required|boolean',
+            'charge' => ['nullable', new Enum(CharacterCharge::class)],
+            'default_status' => ['required', new Enum(CharacterStatus::class)],
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'store_locally' => 'required|boolean',
+        ]);
+
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
+
+        $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'Characters', $storeLocally);
+
+        $character = Character::create([
+            'case_id' => $validated['case_id'],
+            'name' => $validated['name'],
+            'background' => $validated['background'] ?? null,
+            'is_initial' => filter_var($validated['is_initial'], FILTER_VALIDATE_BOOLEAN),
+            'is_guilty' => filter_var($validated['is_guilty'], FILTER_VALIDATE_BOOLEAN),
+            'charge' => $validated['charge'] ?? null,
+            'default_status' => $validated['default_status'],
+            'img_url' => $imageUrl,
+        ]);
+
+        return response()->json(['message' => 'Character added successfully.', 'character' => $character], 201);
+    }
+
+    public function update(Request $request, $id): JsonResponse
+    {
+        $character = Character::findOrFail($id);
+
+        $validated = $request->validate([
+            'case_id' => 'required|exists:cases,id',
+            'name' => 'required|string|max:255',
+            'background' => 'nullable|string',
+            'is_initial' => 'required|boolean',
+            'is_guilty' => 'required|boolean',
+            'charge' => ['nullable', new Enum(CharacterCharge::class)],
+            'default_status' => ['required', new Enum(CharacterStatus::class)],
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'store_locally' => 'required|boolean',
+        ]);
+
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
+
+        $updateData = [
+            'case_id' => $validated['case_id'],
+            'name' => $validated['name'],
+            'background' => $validated['background'] ?? null,
+            'is_initial' => filter_var($validated['is_initial'], FILTER_VALIDATE_BOOLEAN),
+            'is_guilty' => filter_var($validated['is_guilty'], FILTER_VALIDATE_BOOLEAN),
+            'charge' => $validated['charge'] ?? null,
+            'default_status' => $validated['default_status'],
+        ];
+
+        if ($request->hasFile('image')) {
+            $this->mediaService->delete($character->getRawOriginal('img_url'));
+            $updateData['img_url'] = $this->mediaService->store($request->file('image'), $caseTitle, 'Characters', $storeLocally);
+        }
+
+        $character->update($updateData);
+
+        return response()->json(['message' => 'Character profile updated.', 'character' => $character], 200);
+    }
+
+    public function destroy($id): JsonResponse
+    {
+        $character = Character::findOrFail($id);
+        $this->mediaService->delete($character->getRawOriginal('img_url'));
+        $character->delete();
+        return response()->json(['message' => 'Character deleted.'], 200);
+    }
+}
+</file>
+
 <file path="app/Http/Controllers/AssessmentController.php">
 <?php
 
@@ -1113,16 +1215,24 @@ class GameRoomController extends Controller
 
     public function startLevel(Request $request, GameRoom $room, Level $level): JsonResponse
     {
+        // 1. Structural Guard: Location sweeps are persistent and stateless
+        if ($level->presentation_type === \App\Enums\LevelPresentationType::Location) {
+            return response()->json([
+                'error' => 'Invalid Action',
+                'message' => 'Location environments are persistently accessible and do not require host authorization.'
+            ], 400);
+        }
+
         if ($request->user()->id !== $room->host_user_id) {
-            return response()->json(['error' => 'Unauthorized', 'message' => 'Only the assigned Room Host can initiate a new phase.'], 403);
+            return response()->json(['error' => 'Unauthorized', 'message' => 'Only the assigned Room Host can initiate a new encounter.'], 403);
         }
 
         if ($room->current_level_id !== null) {
-            return response()->json(['error' => 'Conflict', 'message' => 'An investigation phase is already active.'], 409);
+            return response()->json(['error' => 'Conflict', 'message' => 'An investigation encounter is already active.'], 409);
         }
 
         if ($room->completedLevels()->where('level_id', $level->id)->exists()) {
-            return response()->json(['error' => 'Conflict', 'message' => 'This phase is already solved.'], 409);
+            return response()->json(['error' => 'Conflict', 'message' => 'This encounter is already resolved.'], 409);
         }
 
         if ($level->required_request_id) {
@@ -1138,7 +1248,7 @@ class GameRoomController extends Controller
         $room->update(['current_level_id' => $level->id]);
         \App\Events\LevelTransitioned::dispatch($room);
 
-        return response()->json(['message' => 'Phase initiated.', 'room' => $room->load('currentLevel')], 200);
+        return response()->json(['message' => 'Encounter initiated.', 'room' => $room->load('currentLevel')], 200);
     }
 
     public function inspect(Request $request, GameRoom $room): JsonResponse
@@ -1171,7 +1281,7 @@ class GameRoomController extends Controller
     {
         $room->load([
             'host',
-            'gameCase.phases.levels.questions.choices',
+            'gameCase.zones.levels.questions.choices',
             'gameCase.evidences',
             'gameCase.characters',
             'users.user',
@@ -1200,11 +1310,8 @@ class GameRoomController extends Controller
         $room->accumulated_characters = $room->gameCase->characters->filter(function ($c) use ($unlockedCharacterIds) {
             return $c->is_initial || in_array($c->id, $unlockedCharacterIds);
         })->map(function ($c) use ($room) {
-            // Apply the room-specific status override if it exists
             $roomOverride = $room->characters->firstWhere('id', $c->id);
             $c->current_status = $roomOverride ? $roomOverride->pivot->status : $c->default_status->value;
-
-            // Mask absolute truth properties from the frontend API payload entirely for security
             unset($c->is_guilty, $c->charge);
             return $c;
         })->values();
@@ -1461,8 +1568,7 @@ class AdminCaseController extends Controller
     {
         $cases = GameCase::with([
             'evidences',
-            'suspects',
-            'victims',
+            'characters',
             'investigationRequests.requiredEvidences'
         ])
         ->orderBy('created_at', 'desc')
@@ -1526,12 +1632,12 @@ class AdminCaseController extends Controller
     public function destroy($id): JsonResponse
     {
         // Eager load all related entities that contain media attachments
-        $case = GameCase::with(['levels.questions', 'evidences', 'suspects', 'victims'])->findOrFail($id);
+        $case = GameCase::with(['levels.questions', 'evidences', 'characters'])->findOrFail($id);
 
         // 1. Delete Case Cover Image
         $this->mediaService->delete($case->getRawOriginal('img_url'));
 
-        // 2. Delete Evidence Media (Now attached directly to the Case)
+        // 2. Delete Evidence Media
         foreach ($case->evidences as $evidence) {
             $this->mediaService->delete($evidence->getRawOriginal('img_url'));
             $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
@@ -1547,14 +1653,9 @@ class AdminCaseController extends Controller
             }
         }
 
-        // 4. Delete Suspect Media
-        foreach ($case->suspects as $suspect) {
-            $this->mediaService->delete($suspect->getRawOriginal('img_url'));
-        }
-
-        // 5. Delete Victim Media
-        foreach ($case->victims as $victim) {
-            $this->mediaService->delete($victim->getRawOriginal('img_url'));
+        // 4. Delete Character Media
+        foreach ($case->characters as $character) {
+            $this->mediaService->delete($character->getRawOriginal('img_url'));
         }
 
         // Database cascadeOnDelete handles the actual row removals
@@ -1571,10 +1672,9 @@ class AdminCaseController extends Controller
         $validated = $request->validate([
             'case_details' => 'required|array',
             'evidences' => 'present|array',
-            'suspects' => 'present|array',
-            'victims' => 'present|array',
+            'characters' => 'present|array',
             'investigation_requests' => 'present|array',
-            'phases' => 'present|array',
+            'zones' => 'present|array',
         ]);
 
         return DB::transaction(function () use ($validated) {
@@ -1598,14 +1698,13 @@ class AdminCaseController extends Controller
             // Dictionaries to map the JSON ref_id strings to the actual database IDs generated
             $refMaps = [
                 'evidence' => [],
-                'suspect' => [],
-                'victim' => [],
+                'character' => [],
                 'level' => [],
                 'request' => [],
                 'choice' => [],
             ];
 
-            // PASS 2: Base Entities (Evidences, Suspects, Victims)
+            // PASS 2: Base Entities (Evidences, Characters)
             foreach ($validated['evidences'] as $evData) {
                 $evidence = \App\Models\Evidence::create([
                     'case_id' => $case->id,
@@ -1622,55 +1721,45 @@ class AdminCaseController extends Controller
                 }
             }
 
-            foreach ($validated['suspects'] as $susData) {
-                $suspect = \App\Models\Suspect::create([
+            foreach ($validated['characters'] as $charData) {
+                $character = \App\Models\Character::create([
                     'case_id' => $case->id,
-                    'name' => $susData['name'],
-                    'background' => $susData['background'] ?? null,
-                    'is_initial' => $susData['is_initial'] ?? false,
-                    'is_guilty' => $susData['is_guilty'] ?? false,
+                    'name' => $charData['name'],
+                    'background' => $charData['background'] ?? null,
+                    'is_initial' => $charData['is_initial'] ?? false,
+                    'is_guilty' => $charData['is_guilty'] ?? false,
+                    'charge' => $charData['charge'] ?? null,
+                    'default_status' => $charData['default_status'] ?? 'available',
                 ]);
-                if (isset($susData['ref_id'])) {
-                    $refMaps['suspect'][$susData['ref_id']] = $suspect->id;
+                if (isset($charData['ref_id'])) {
+                    $refMaps['character'][$charData['ref_id']] = $character->id;
                 }
             }
 
-            foreach ($validated['victims'] as $vicData) {
-                $victim = \App\Models\Victim::create([
-                    'case_id' => $case->id,
-                    'name' => $vicData['name'],
-                    'background' => $vicData['background'] ?? null,
-                    'is_initial' => $vicData['is_initial'] ?? true,
-                ]);
-                if (isset($vicData['ref_id'])) {
-                    $refMaps['victim'][$vicData['ref_id']] = $victim->id;
-                }
-            }
+            // PASS 3: Zones and Levels
+            $levelDataWithRefs = [];
+            $zonesDataArray = [];
 
-            // PASS 3: Phases and Levels (Ignoring gatekeeper requests for now)
-            $levelDataWithRefs = []; // Memory cache to update required_request_id later
-            $phasesDataArray = [];   // Memory cache to process questions later
-
-            foreach ($validated['phases'] as $phaseData) {
-                $phase = \App\Models\Phase::create([
+            foreach ($validated['zones'] as $zoneData) {
+                $zone = \App\Models\Zone::create([
                     'case_id' => $case->id,
-                    'title' => $phaseData['title'],
-                    'description' => $phaseData['description'] ?? null,
-                    'order_index' => $phaseData['order_index'],
-                    'map_url' => $phaseData['map_url'] ?? null,
-                    'coord_x' => $phaseData['coord_x'] ?? null,
-                    'coord_y' => $phaseData['coord_y'] ?? null,
+                    'title' => $zoneData['title'],
+                    'description' => $zoneData['description'] ?? null,
+                    'order_index' => $zoneData['order_index'],
+                    'map_url' => $zoneData['map_url'] ?? null,
+                    'coord_x' => $zoneData['coord_x'] ?? null,
+                    'coord_y' => $zoneData['coord_y'] ?? null,
                 ]);
 
-                foreach ($phaseData['levels'] as $lvlData) {
+                foreach ($zoneData['levels'] as $lvlData) {
                     $level = \App\Models\Level::create([
-                        'phase_id' => $phase->id,
+                        'zone_id' => $zone->id,
                         'title' => $lvlData['title'],
                         'details' => $lvlData['details'],
                         'order_index' => $lvlData['order_index'],
                         'is_initial' => $lvlData['is_initial'] ?? false,
                         'presentation_type' => $lvlData['presentation_type'],
-                        'required_request_id' => null, // Defers mapping to avoid circular logic
+                        'required_request_id' => null,
                     ]);
 
                     if (isset($lvlData['ref_id'])) {
@@ -1682,7 +1771,7 @@ class AdminCaseController extends Controller
                         'req_ref' => $lvlData['required_request_ref'] ?? null,
                     ];
 
-                    $phasesDataArray[] = [
+                    $zonesDataArray[] = [
                         'level_id' => $level->id,
                         'nodes' => $lvlData['nodes'] ?? []
                     ];
@@ -1718,7 +1807,7 @@ class AdminCaseController extends Controller
             }
 
             // PASS 6: Questions and Choices
-            foreach ($phasesDataArray as $ldata) {
+            foreach ($zonesDataArray as $ldata) {
                 $nodeIndexMap = []; // Maps JSON node array index to actual question DB ID
 
                 // Sub-Pass A: Insert Questions First (to generate IDs for dialogue trees)
@@ -1752,9 +1841,23 @@ class AdminCaseController extends Controller
                         };
 
                         if (!empty($outcomes['unlock_evidence_refs'])) $mappedOutcomes['unlock_evidence'] = $mapRefs($outcomes['unlock_evidence_refs'], 'evidence');
-                        if (!empty($outcomes['unlock_suspect_refs'])) $mappedOutcomes['unlock_suspects'] = $mapRefs($outcomes['unlock_suspect_refs'], 'suspect');
-                        if (!empty($outcomes['unlock_victims_refs'])) $mappedOutcomes['unlock_victims'] = $mapRefs($outcomes['unlock_victims_refs'], 'victim');
                         if (!empty($outcomes['unlock_levels_refs'])) $mappedOutcomes['unlock_levels'] = $mapRefs($outcomes['unlock_levels_refs'], 'level');
+
+                        // Map the dynamic character updates array
+                        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {
+                            $mappedCharUpdates = [];
+                            foreach ($outcomes['character_updates'] as $update) {
+                                if (isset($update['ref_id']) && isset($refMaps['character'][$update['ref_id']])) {
+                                    $mappedUpdate = ['id' => $refMaps['character'][$update['ref_id']]];
+                                    if (isset($update['is_unlocked'])) $mappedUpdate['is_unlocked'] = $update['is_unlocked'];
+                                    if (isset($update['status'])) $mappedUpdate['status'] = $update['status'];
+                                    $mappedCharUpdates[] = $mappedUpdate;
+                                }
+                            }
+                            if (!empty($mappedCharUpdates)) {
+                                $mappedOutcomes['character_updates'] = $mappedCharUpdates;
+                            }
+                        }
 
                         // Build Requirements Array
                         $mappedReqs = [];
@@ -2011,7 +2114,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\MediaService;
 use App\Models\Level;
-use App\Models\Phase;
+use App\Models\Zone;
 use App\Enums\LevelPresentationType;
 use Illuminate\Validation\Rules\Enum;
 use Illuminate\Http\Request;
@@ -2024,7 +2127,7 @@ class AdminLevelController extends Controller
     public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'phase_id' => 'required|exists:phases,id',
+            'zone_id' => 'required|exists:zones,id',
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
@@ -2035,13 +2138,11 @@ class AdminLevelController extends Controller
         ]);
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-
-        $caseTitle = Phase::with('gameCase')->where('id', $validated['phase_id'])->first()?->gameCase?->title ?? 'General';
-
+        $caseTitle = Zone::with('gameCase')->where('id', $validated['zone_id'])->first()?->gameCase?->title ?? 'General';
         $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'Levels', $storeLocally);
 
         $level = Level::create([
-            'phase_id' => $validated['phase_id'],
+            'zone_id' => $validated['zone_id'],
             'title' => $validated['title'],
             'details' => $validated['details'],
             'order_index' => $validated['order_index'],
@@ -2051,10 +2152,7 @@ class AdminLevelController extends Controller
             'img_url' => $imageUrl,
         ]);
 
-        return response()->json([
-            'message' => 'Level created successfully.',
-            'level' => $level
-        ], 201);
+        return response()->json(['message' => 'Level created successfully.', 'level' => $level], 201);
     }
 
     public function update(Request $request, $id): JsonResponse
@@ -2062,7 +2160,7 @@ class AdminLevelController extends Controller
         $level = Level::findOrFail($id);
 
         $validated = $request->validate([
-            'phase_id' => 'required|exists:phases,id',
+            'zone_id' => 'required|exists:zones,id',
             'title' => 'required|string|max:255',
             'details' => 'required|string',
             'order_index' => 'required|integer|min:1',
@@ -2073,10 +2171,10 @@ class AdminLevelController extends Controller
         ]);
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-        $caseTitle = Phase::with('gameCase')->where('id', $validated['phase_id'])->first()?->gameCase?->title ?? 'General';
+        $caseTitle = Zone::with('gameCase')->where('id', $validated['zone_id'])->first()?->gameCase?->title ?? 'General';
 
         $updateData = [
-            'phase_id' => $validated['phase_id'],
+            'zone_id' => $validated['zone_id'],
             'title' => $validated['title'],
             'details' => $validated['details'],
             'order_index' => $validated['order_index'],
@@ -2103,80 +2201,14 @@ class AdminLevelController extends Controller
         return response()->json(['message' => 'Level deleted.'], 200);
     }
 
-    public function indexByPhase($phaseId): \Illuminate\Http\JsonResponse
+    public function indexByZone($zoneId): JsonResponse
     {
         $levels = Level::with(['questions.choices'])
-            ->where('phase_id', $phaseId)
+            ->where('zone_id', $zoneId)
             ->orderBy('order_index', 'asc')
             ->get();
 
         return response()->json($levels, 200);
-    }
-}
-</file>
-
-<file path="app/Http/Controllers/Admin/AdminPhaseController.php">
-<?php
-
-namespace App\Http\Controllers\Admin;
-
-use App\Http\Controllers\Controller;
-use App\Models\Phase;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
-
-class AdminPhaseController extends Controller
-{
-    public function store(Request $request): JsonResponse
-    {
-        $validated = $request->validate([
-            'case_id' => 'required|exists:cases,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'order_index' => 'required|integer|min:1',
-            'map_url'     => 'nullable|string',
-            'coord_x'     => 'nullable|numeric|required_with:map_url',
-            'coord_y'     => 'nullable|numeric|required_with:map_url',
-        ]);
-
-        $phase = Phase::create($validated);
-
-        return response()->json([
-            'message' => 'Phase created successfully.',
-            'phase' => $phase
-        ], 201);
-    }
-
-    public function update(Request $request, $id): JsonResponse
-    {
-        $phase = Phase::findOrFail($id);
-        $validated = $request->validate([
-            'case_id' => 'required|exists:cases,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'order_index' => 'required|integer|min:1',
-            'map_url'     => 'nullable|string',
-            'coord_x'     => 'nullable|numeric|required_with:map_url',
-            'coord_y'     => 'nullable|numeric|required_with:map_url',
-        ]);
-        $phase->update($validated);
-        return response()->json(['message' => 'Phase updated.', 'phase' => $phase], 200);
-    }
-
-    public function destroy($id): JsonResponse
-    {
-        $phase = Phase::findOrFail($id);
-        $phase->delete();
-        return response()->json(['message' => 'Phase deleted.'], 200);
-    }
-
-    public function indexByCase($caseId): \Illuminate\Http\JsonResponse
-    {
-        $phases = Phase::where('case_id', $caseId)
-            ->orderBy('order_index', 'asc')
-            ->get();
-
-        return response()->json($phases, 200);
     }
 }
 </file>
@@ -2504,6 +2536,74 @@ class AdminVictimController extends Controller
 }
 </file>
 
+<file path="app/Http/Controllers/Admin/AdminZoneController.php">
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\Zone;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+class AdminZoneController extends Controller
+{
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'case_id' => 'required|exists:cases,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'order_index' => 'required|integer|min:1',
+            'map_url'     => 'nullable|string',
+            'coord_x'     => 'nullable|numeric|required_with:map_url',
+            'coord_y'     => 'nullable|numeric|required_with:map_url',
+        ]);
+
+        $zone = Zone::create($validated);
+
+        return response()->json([
+            'message' => 'Zone created successfully.',
+            'zone' => $zone
+        ], 201);
+    }
+
+    public function update(Request $request, $id): JsonResponse
+    {
+        $zone = Zone::findOrFail($id);
+        $validated = $request->validate([
+            'case_id' => 'required|exists:cases,id',
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
+            'order_index' => 'required|integer|min:1',
+            'map_url'     => 'nullable|string',
+            'coord_x'     => 'nullable|numeric|required_with:map_url',
+            'coord_y'     => 'nullable|numeric|required_with:map_url',
+        ]);
+
+        $zone->update($validated);
+        return response()->json(['message' => 'Zone updated.', 'zone' => $zone], 200);
+    }
+
+    public function destroy($id): JsonResponse
+    {
+        $zone = Zone::findOrFail($id);
+        $zone->delete();
+        return response()->json(['message' => 'Zone deleted.'], 200);
+    }
+
+    public function indexByCase($caseId): JsonResponse
+    {
+        $zones = Zone::with(['levels.questions.choices'])
+            ->where('case_id', $caseId)
+            ->orderBy('order_index', 'asc')
+            ->get();
+
+        return response()->json($zones, 200);
+    }
+}
+</file>
+
 <file path="app/Http/Middleware/IsAdmin.php">
 <?php
 
@@ -2693,17 +2793,8 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class GameCase extends Model
 {
-    /**
-     * The table associated with the model.
-     * Required because the model is GameCase but the table is 'cases'.
-     */
     protected $table = 'cases';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
         'title',
         'story',
@@ -2728,17 +2819,14 @@ class GameCase extends Model
         ];
     }
 
-    /**
-     * A case is divided into sequential levels.
-     */
     public function levels(): HasManyThrough
     {
-    return $this->hasManyThrough(Level::class, Phase::class, 'case_id', 'phase_id');
+        return $this->hasManyThrough(Level::class, Zone::class, 'case_id', 'zone_id');
     }
 
-    public function phases(): HasMany
+    public function zones(): HasMany
     {
-        return $this->hasMany(Phase::class, 'case_id');
+        return $this->hasMany(Zone::class, 'case_id');
     }
 
     public function evidences(): HasMany
@@ -2751,17 +2839,11 @@ class GameCase extends Model
         return $this->hasMany(InvestigationRequest::class, 'case_id');
     }
 
-    /**
-     * A case can have multiple multiplayer rooms instantiated from it.
-     */
     public function rooms(): HasMany
     {
         return $this->hasMany(GameRoom::class, 'case_id');
     }
 
-    /**
-     * Users who have played or solved this case, tracked via the case_user pivot table.
-     */
     public function users(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'case_user', 'case_id', 'user_id')
@@ -2779,11 +2861,9 @@ class GameCase extends Model
         return Attribute::make(
             get: function ($value) {
                 if (!$value) return null;
-                // If it's already a full URL (Cloudinary, S3, etc.), return it as-is
                 if (filter_var($value, FILTER_VALIDATE_URL)) {
                     return $value;
                 }
-                // Otherwise, prepend the backend host for local storage paths
                 return config('app.url') . $value;
             }
         );
@@ -2906,17 +2986,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use App\Enums\LevelPresentationType;
-use App\Enums\InvestigationRequestType;
 
 class Level extends Model
 {
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
     protected $fillable = [
-        'phase_id',
+        'zone_id',
         'title',
         'details',
         'img_url',
@@ -2949,17 +3023,11 @@ class Level extends Model
         );
     }
 
-    /**
-     * A level belongs to a specific parent phase.
-     */
-    public function phase(): BelongsTo
+    public function zone(): BelongsTo
     {
-        return $this->belongsTo(Phase::class, 'phase_id');
+        return $this->belongsTo(Zone::class, 'zone_id');
     }
 
-    /**
-     * The puzzles/verdicts players must solve to clear this level.
-     */
     public function questions(): HasMany
     {
         return $this->hasMany(Question::class, 'level_id');
@@ -2968,39 +3036,6 @@ class Level extends Model
     public function requiredRequest(): BelongsTo
     {
         return $this->belongsTo(InvestigationRequest::class, 'required_request_id');
-    }
-}
-</file>
-
-<file path="app/Models/Phase.php">
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-
-class Phase extends Model
-{
-    protected $fillable = [
-        'case_id',
-        'title',
-        'description',
-        'order_index',
-        'map_url',
-        'coord_x',
-        'coord_y'
-    ];
-
-    public function gameCase(): BelongsTo
-    {
-        return $this->belongsTo(GameCase::class, 'case_id');
-    }
-
-    public function levels(): HasMany
-    {
-        return $this->hasMany(Level::class, 'phase_id');
     }
 }
 </file>
@@ -3157,54 +3192,6 @@ class RoomVote extends Model
 }
 </file>
 
-<file path="app/Models/Suspect.php">
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Casts\Attribute;
-
-class Suspect extends Model
-{
-    protected $fillable = [
-        'case_id',
-        'name',
-        'background',
-        'img_url',
-        'is_initial',
-        'is_guilty',
-    ];
-
-    protected function casts(): array
-    {
-        return [
-            'is_initial' => 'boolean',
-            'is_guilty' => 'boolean',
-        ];
-    }
-
-    protected function imgUrl(): Attribute
-    {
-        return Attribute::make(
-            get: function ($value) {
-                if (!$value) return null;
-                if (filter_var($value, FILTER_VALIDATE_URL)) {
-                    return $value;
-                }
-                return config('app.url') . $value;
-            }
-        );
-    }
-
-    public function gameCase(): BelongsTo
-    {
-        return $this->belongsTo(GameCase::class, 'case_id');
-    }
-}
-</file>
-
 <file path="app/Models/User.php">
 <?php
 
@@ -3260,42 +3247,35 @@ class User extends Authenticatable
 }
 </file>
 
-<file path="app/Models/Victim.php">
+<file path="app/Models/Zone.php">
 <?php
 
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Casts\Attribute;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Victim extends Model
+class Zone extends Model
 {
     protected $fillable = [
-        'case_id', 'name', 'background', 'img_url', 'is_initial',
+        'case_id',
+        'title',
+        'description',
+        'order_index',
+        'map_url',
+        'coord_x',
+        'coord_y'
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'is_initial' => 'boolean',
-        ];
-    }
-
-    protected function imgUrl(): Attribute
-    {
-        return Attribute::make(
-            get: function ($value) {
-                if (!$value) return null;
-                if (filter_var($value, FILTER_VALIDATE_URL)) return $value;
-                return config('app.url') . $value;
-            }
-        );
-    }
 
     public function gameCase(): BelongsTo
     {
         return $this->belongsTo(GameCase::class, 'case_id');
+    }
+
+    public function levels(): HasMany
+    {
+        return $this->hasMany(Level::class, 'zone_id');
     }
 }
 </file>
@@ -7387,6 +7367,88 @@ return new class extends Migration {
 };
 </file>
 
+<file path="database/migrations/2026_09_13_091113_rename_phases_to_zones.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        // 1. Drop the existing foreign key constraint
+        Schema::table('levels', function (Blueprint $table) {
+            $table->dropForeign(['phase_id']);
+        });
+
+        // 2. Rename the parent table
+        Schema::rename('phases', 'zones');
+
+        // 3. Rename the column and re-establish the foreign key constraint
+        Schema::table('levels', function (Blueprint $table) {
+            $table->renameColumn('phase_id', 'zone_id');
+            $table->foreign('zone_id')->references('id')->on('zones')->cascadeOnDelete();
+        });
+    }
+
+    public function down(): void {
+        Schema::table('levels', function (Blueprint $table) {
+            $table->dropForeign(['zone_id']);
+        });
+
+        Schema::rename('zones', 'phases');
+
+        Schema::table('levels', function (Blueprint $table) {
+            $table->renameColumn('zone_id', 'phase_id');
+            $table->foreign('phase_id')->references('id')->on('phases')->cascadeOnDelete();
+        });
+    }
+};
+</file>
+
+<file path="database/migrations/2026_09_13_142320_move_map_url_to_cases_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('cases', function (Blueprint $table) {
+            $table->string('map_url')->nullable()->after('story');
+        });
+
+        Schema::table('zones', function (Blueprint $table) {
+            if (Schema::hasColumn('zones', 'map_url')) {
+                $table->dropColumn('map_url');
+            }
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('zones', function (Blueprint $table) {
+            $table->string('map_url')->nullable();
+        });
+
+        Schema::table('cases', function (Blueprint $table) {
+            if (Schema::hasColumn('cases', 'map_url')) {
+                $table->dropColumn('map_url');
+            }
+        });
+    }
+};
+</file>
+
 <file path="database/seeders/DatabaseSeeder.php">
 <?php
 
@@ -7446,12 +7508,11 @@ use App\Http\Controllers\InvestigationRequestController;
 use App\Http\Controllers\SuspectVerdictController;
 use App\Http\Controllers\WiretapController;
 use App\Http\Controllers\Admin\AdminCaseController;
-use App\Http\Controllers\Admin\AdminPhaseController;
+use App\Http\Controllers\Admin\AdminZoneController;
 use App\Http\Controllers\Admin\AdminLevelController;
 use App\Http\Controllers\Admin\AdminEvidenceController;
 use App\Http\Controllers\Admin\AdminQuestionController;
-use App\Http\Controllers\Admin\AdminSuspectController;
-use App\Http\Controllers\Admin\AdminVictimController;
+use App\Http\Controllers\Admin\AdminCharacterController;
 use App\Http\Controllers\Admin\AdminInvestigationRequestController;
 use App\Http\Middleware\IsAdmin;
 
@@ -7494,38 +7555,35 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware([IsAdmin::class])->prefix('admin')->group(function () {
         // GET (Fetch) Granular Endpoints
         Route::get('/cases', [AdminCaseController::class, 'index']);
-        Route::get('/cases/{caseId}/phases', [AdminPhaseController::class, 'indexByCase']);
-        Route::get('/phases/{phaseId}/levels', [AdminLevelController::class, 'indexByPhase']);
+        Route::get('/cases/{caseId}/zones', [AdminZoneController::class, 'indexByCase']);
+        Route::get('/zones/{zoneId}/levels', [AdminLevelController::class, 'indexByZone']);
 
         // POST (Create)
         Route::post('/cases', [AdminCaseController::class, 'store']);
         Route::post('/cases/import', [AdminCaseController::class, 'import']);
-        Route::post('/phases', [AdminPhaseController::class, 'store']);
+        Route::post('/zones', [AdminZoneController::class, 'store']);
         Route::post('/levels', [AdminLevelController::class, 'store']);
         Route::post('/evidences', [AdminEvidenceController::class, 'store']);
         Route::post('/questions', [AdminQuestionController::class, 'store']);
-        Route::post('/suspects', [AdminSuspectController::class, 'store']);
-        Route::post('/victims', [AdminVictimController::class, 'store']);
+        Route::post('/characters', [AdminCharacterController::class, 'store']);
         Route::post('/investigation-requests', [AdminInvestigationRequestController::class, 'store']);
 
         // PUT (Update)
         Route::put('/cases/{case}', [AdminCaseController::class, 'update']);
-        Route::put('/phases/{phase}', [AdminPhaseController::class, 'update']);
+        Route::put('/zones/{zone}', [AdminZoneController::class, 'update']);
         Route::put('/levels/{level}', [AdminLevelController::class, 'update']);
         Route::put('/evidences/{evidence}', [AdminEvidenceController::class, 'update']);
         Route::put('/questions/{question}', [AdminQuestionController::class, 'update']);
-        Route::put('/suspects/{suspect}', [AdminSuspectController::class, 'update']);
-        Route::put('/victims/{victim}', [AdminVictimController::class, 'update']);
+        Route::put('/characters/{character}', [AdminCharacterController::class, 'update']);
         Route::put('/investigation-requests/{request}', [AdminInvestigationRequestController::class, 'update']);
 
         // DELETE (Destroy)
         Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']);
-        Route::delete('/phases/{phase}', [AdminPhaseController::class, 'destroy']);
+        Route::delete('/zones/{zone}', [AdminZoneController::class, 'destroy']);
         Route::delete('/levels/{level}', [AdminLevelController::class, 'destroy']);
         Route::delete('/evidences/{evidence}', [AdminEvidenceController::class, 'destroy']);
         Route::delete('/questions/{question}', [AdminQuestionController::class, 'destroy']);
-        Route::delete('/suspects/{suspect}', [AdminSuspectController::class, 'destroy']);
-        Route::delete('/victims/{victim}', [AdminVictimController::class, 'destroy']);
+        Route::delete('/characters/{character}', [AdminCharacterController::class, 'destroy']);
         Route::delete('/investigation-requests/{request}', [AdminInvestigationRequestController::class, 'destroy']);
     });
 });

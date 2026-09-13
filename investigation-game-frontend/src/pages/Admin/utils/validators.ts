@@ -4,11 +4,11 @@ export const validateCaseForm = (data: { max_strikes: string | number; rating_st
   return null;
 };
 
-export const validatePhaseForm = (data: { order_index: string | number; map_url?: string; coord_x?: string | number; coord_y?: string | number }) => {
+export const validateZoneForm = (data: { order_index: string | number; coord_x?: string | number; coord_y?: string | number }) => {
   if (Number(data.order_index) < 1) return 'Order index must be at least 1.';
   
-  if (data.map_url && (!data.coord_x || !data.coord_y)) {
-    return 'Coordinates must be mapped when a map is selected.';
+  if ((data.coord_x && !data.coord_y) || (!data.coord_x && data.coord_y)) {
+    return 'Both X and Y coordinates must be provided to set a map location.';
   }
   
   return null;
@@ -20,7 +20,8 @@ export const validateInvestigationRequestForm = (data: { required_evidence_ids: 
   return null;
 };
 
-export const validateLevelForm = (data: { order_index: string | number }) => {
+export const validateLevelForm = (data: { order_index: string | number; zone_id?: string | number }) => {
+  if (!data.zone_id) return 'You must assign this lead to a specific Zone.';
   if (Number(data.order_index) < 1) return 'Order index must be at least 1.';
   return null;
 };

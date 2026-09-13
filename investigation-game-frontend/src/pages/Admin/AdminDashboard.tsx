@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AdminProvider, useAdminContext } from '@/pages/Admin/context/AdminContext';
 
 import CaseForm from './forms/CaseForm';
-import PhaseForm from './forms/PhaseForm';
+import ZoneForm from './forms/ZoneForm';
 import LevelForm from './forms/LevelForm';
 import EvidenceForm from './forms/EvidenceForm';
 import CharacterForm from './forms/CharacterForm'; 
@@ -13,7 +13,7 @@ import InvestigationRequestForm from './forms/InvestigationRequestForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import './AdminDashboard.css';
 
-type AdminTab = 'cases' | 'phases' | 'levels' | 'interrogation' | 'location' | 'wiretap' | 'evidences' | 'characters' | 'requests';
+type AdminTab = 'cases' | 'zones' | 'levels' | 'interrogation' | 'location' | 'wiretap' | 'evidences' | 'characters' | 'requests';
 
 function AdminDashboardContent() {
   const [activeTab, setActiveTab] = useState<AdminTab>('cases');
@@ -21,8 +21,8 @@ function AdminDashboardContent() {
   const t = adminT.adminDashboard;
   
   const {
-    isLoading, error, cases, availablePhases, availableLevels,
-    caseId, setCaseId, phaseId, setPhaseId, levelId, setLevelId,
+    isLoading, error, cases, availableZones, availableLevels,
+    caseId, setCaseId, zoneId, setZoneId, levelId, setLevelId,
     isDirty, setIsDirty
   } = useAdminContext();
 
@@ -66,16 +66,16 @@ function AdminDashboardContent() {
           </div>
           
           <div className="form-group" style={{ gap: '0.25rem' }}>
-            <label style={{ color: 'var(--accent-amber)', fontSize: '0.75rem' }}>{t.activePhaseLabel}</label>
-            <select className="admin-input" style={{ padding: '0.5rem' }} value={phaseId} onChange={(e) => setPhaseId(e.target.value)} disabled={!caseId}>
-              <option value="">{t.allPhasesOption}</option>
-              {availablePhases.map(p => <option key={p.id} value={p.id}>{p.order_index}: {p.title}</option>)}
+            <label style={{ color: 'var(--accent-amber)', fontSize: '0.75rem' }}>{t.activeZoneLabel || 'ACTIVE ZONE'}</label>
+            <select className="admin-input" style={{ padding: '0.5rem' }} value={zoneId} onChange={(e) => setZoneId(e.target.value)} disabled={!caseId}>
+              <option value="">{t.allZonesOption || '-- ALL ZONES --'}</option>
+              {availableZones.map(z => <option key={z.id} value={z.id}>{z.order_index}: {z.title}</option>)}
             </select>
           </div>
 
           <div className="form-group" style={{ gap: '0.25rem' }}>
             <label style={{ color: 'var(--accent-amber)', fontSize: '0.75rem' }}>{t.activeLevelLabel}</label>
-            <select className="admin-input" style={{ padding: '0.5rem' }} value={levelId} onChange={(e) => setLevelId(e.target.value)} disabled={!phaseId}>
+            <select className="admin-input" style={{ padding: '0.5rem' }} value={levelId} onChange={(e) => setLevelId(e.target.value)} disabled={!zoneId}>
               <option value="">{t.allLevelsOption}</option>
               {availableLevels.map(l => <option key={l.id} value={l.id}>{l.order_index}: {l.title} ({l.presentation_type})</option>)}
             </select>
@@ -87,7 +87,7 @@ function AdminDashboardContent() {
           <h4 className="admin-nav-group-title">{t.narrativeHierarchyGroup}</h4>
           <nav className="admin-nav-menu">
             <button className={`admin-tab-btn ${activeTab === 'cases' ? 'active' : ''}`} onClick={() => handleTabChange('cases')}>{t.casesTab}</button>
-            <button className={`admin-tab-btn ${activeTab === 'phases' ? 'active' : ''}`} onClick={() => handleTabChange('phases')}>{t.phasesTab}</button>
+            <button className={`admin-tab-btn ${activeTab === 'zones' ? 'active' : ''}`} onClick={() => handleTabChange('zones')}>{t.zonesTab || 'ZONES'}</button>
             <button className={`admin-tab-btn ${activeTab === 'levels' ? 'active' : ''}`} onClick={() => handleTabChange('levels')}>{t.levelsTab}</button>
           </nav>
         </div>
@@ -114,7 +114,7 @@ function AdminDashboardContent() {
       {/* MAIN WORKSPACE */}
       <main className="admin-workspace">
         {activeTab === 'cases' && <CaseForm />}
-        {activeTab === 'phases' && <PhaseForm />}
+        {activeTab === 'zones' && <ZoneForm />}
         {activeTab === 'levels' && <LevelForm />}
         {activeTab === 'interrogation' && <AdminInterrogationBuilder />}
         {activeTab === 'location' && <AdminLocationBuilder />}

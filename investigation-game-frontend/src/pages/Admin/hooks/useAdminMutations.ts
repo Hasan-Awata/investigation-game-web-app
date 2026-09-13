@@ -4,12 +4,12 @@ import * as adminApi from '@/services/adminApi';
 
 export type AdminEntityType =
   | 'case'
-  | 'phase'
+  | 'zone'
   | 'level'
   | 'question'
   | 'evidence'
   | 'request'
-  | 'character'; 
+  | 'character';
 
 interface ApiMethods {
   create: (fd: FormData) => Promise<any>;
@@ -24,7 +24,7 @@ export function useAdminMutations(entityType: AdminEntityType) {
 
   const apiMap: Record<AdminEntityType, ApiMethods> = {
     'case': { create: adminApi.createAdminCase, update: adminApi.updateAdminCase, del: adminApi.deleteAdminCase, import: adminApi.importAdminCase, name: 'Case' },
-    'phase': { create: adminApi.createAdminPhase, update: adminApi.updateAdminPhase, del: adminApi.deleteAdminPhase, name: 'Phase' },
+    'zone': { create: adminApi.createAdminZone, update: adminApi.updateAdminZone, del: adminApi.deleteAdminZone, name: 'Zone' },
     'level': { create: adminApi.createAdminLevel, update: adminApi.updateAdminLevel, del: adminApi.deleteAdminLevel, name: 'Level' },
     'question': { create: adminApi.createAdminQuestion, update: adminApi.updateAdminQuestion, del: adminApi.deleteAdminQuestion, name: 'Node' },
     'evidence': { create: adminApi.createAdminEvidence, update: adminApi.updateAdminEvidence, del: adminApi.deleteAdminEvidence, name: 'Evidence' },
