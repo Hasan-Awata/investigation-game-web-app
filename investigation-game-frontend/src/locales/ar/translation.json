@@ -100,12 +100,12 @@
         "tabs": {
           "caseDetails": "تفاصيل القضية",
           "evidences": "الأدلة",
-          "suspects": "المشتبه بهم",
+          "personsOfInterest": "الأشخاص",
           "campaign": "الحملة",
           "returnToMenu": "مغادرة الجلسة"
         },
         "notifications": {
-          "newCasualty": "ضحية جديدة",
+          "newCasualty": "حالة وفاة مؤكدة",
           "unreadIntel": "معلومات جديدة"
         }
       },
@@ -132,6 +132,9 @@
         "identificationCode": "رمز التعريف: ضحية-",
         "noBackground": "لا توجد معلومات خلفية متاحة في السجلات الرسمية."
       },
+      "characters": {
+        "deceased": "متوفى"
+      },
       "suspects": {
         "card": {
           "viewIntel": "عرض المعلومات الخلفية",
@@ -141,21 +144,21 @@
           "pid": "رقم-"
         },
         "tab": {
-          "suspectBoard": "لوحة المشتبه بهم",
+          "suspectBoard": "لوحة الأشخاص موضع الاهتمام",
           "lockWarning": "يجب إكمال جميع مراحل التحقيق الأولية قبل تقديم لائحة الاتهام النهائية.",
           "indictmentRejected": "رُفضت لائحة الاتهام",
           "reassessEvidence": "إعادة تقييم الأدلة",
-          "primeSuspects": "المشتبه بهم الرئيسيون (مذنبون)",
-          "dragPrimeHere": "اسحب المشتبه بهم الرئيسيين هنا",
-          "cleared": "تمت تبرئتهم (أبرياء)",
-          "dragClearedHere": "اسحب المشتبه بهم المبرئين هنا",
+          "primeSuspects": "المدانون (مذنبون)",
+          "dragPrimeHere": "اسحب المدانين هنا",
+          "cleared": "تمت تبرئتهم / ضحايا",
+          "dragClearedHere": "اسحب الأبرياء أو الضحايا هنا",
           "unassigned": "أشخاص موضع اهتمام غير مصنفين",
-          "allCategorized": "تم تصنيف جميع المشتبه بهم.",
-          "noSuspects": "لم يتم تحديد أي مشتبه بهم حتى الآن.",
+          "allCategorized": "تم تصنيف جميع الأشخاص.",
+          "noSuspects": "لم يتم تحديد أي أشخاص موضع اهتمام حتى الآن.",
           "filingIndictment": "جاري تقديم لائحة الاتهام...",
           "ruleAccident": "اعتبارها حادث / انتحار",
           "submitIndictment": "تقديم لائحة الاتهام النهائية",
-          "emptyPoolWarning": "* بتقديم مجموعة مذنبين فارغة، فإنك تعلن عدم وقوع جريمة."
+          "emptyPoolWarning": "* بتقديم مجموعة مدانين فارغة، فإنك تعلن عدم وقوع جريمة."
         }
       },
       "evidence": {
@@ -480,9 +483,9 @@
           "phaseUnlocked": "تم فتح مرحلة",
           "phaseUnlockedMsg": "مسار سردي جديد متاح الآن.",
           "personOfInterest": "شخص موضع اهتمام",
-          "personOfInterestMsg": "تمت إضافة مشتبه به جديد إلى اللوحة.",
-          "casualtyIdentified": "تم تحديد هوية الضحية",
-          "casualtyIdentifiedMsg": "تم التحقق من تفاصيل الضحية الجديدة."
+          "personOfInterestMsg": "تمت إضافة شخص موضع اهتمام جديد إلى اللوحة.",
+          "casualtyIdentified": "تحديث حالة حرج",
+          "casualtyIdentifiedMsg": "تم تأكيد وفاة شخص موضع اهتمام."
         },
         "request": {
           "proceduralApproved": "تمت الموافقة على الطلب الإجرائي",

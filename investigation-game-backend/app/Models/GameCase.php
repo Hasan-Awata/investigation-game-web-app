@@ -26,7 +26,7 @@ class GameCase extends Model
         'story',
         'min_player_XP',
         'XP_on_solve',
-        'max_strikes', 
+        'max_strikes',
         'img_url',
         'rating_stars',
         'age_rating',
@@ -34,7 +34,7 @@ class GameCase extends Model
         'difficulty',
         'tags',
         'author_name',
-        'is_published', 
+        'is_published',
     ];
 
     protected function casts(): array
@@ -86,14 +86,9 @@ class GameCase extends Model
             ->withTimestamps();
     }
 
-    public function suspects(): HasMany
+    public function characters(): HasMany
     {
-        return $this->hasMany(Suspect::class, 'case_id');
-    }
-    
-    public function victims(): HasMany
-    { 
-        return $this->hasMany(Victim::class, 'case_id');
+        return $this->hasMany(Character::class, 'case_id');
     }
 
     protected function imgUrl(): Attribute

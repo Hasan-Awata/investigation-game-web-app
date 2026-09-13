@@ -92,9 +92,6 @@ class GameRoomController extends Controller
         return response()->json(['message' => 'Phase initiated.', 'room' => $room->load('currentLevel')], 200);
     }
 
-    /**
-     * Server authoritative tracking for Location sweeps.
-     */
     public function inspect(Request $request, GameRoom $room): JsonResponse
     {
         $validated = $request->validate([
@@ -104,11 +101,9 @@ class GameRoomController extends Controller
         $choice = Choice::findOrFail($validated['choice_id']);
         $outcomes = $choice->outcomes ?? [];
 
-        // The backend deterministically calculates if this yields zero clues
         $isDeadEnd = empty($outcomes['unlock_evidence'])
             && empty($outcomes['unlock_levels'])
-            && empty($outcomes['unlock_suspects'])
-            && empty($outcomes['unlock_victims'])
+            && empty($outcomes['character_updates'])
             && empty($outcomes['next_question_id']);
 
         $inspection = RoomInspection::firstOrCreate([
@@ -129,15 +124,13 @@ class GameRoomController extends Controller
             'host',
             'gameCase.phases.levels.questions.choices',
             'gameCase.evidences',
-            'gameCase.suspects',
+            'gameCase.characters',
             'users.user',
             'currentLevel.questions.choices',
             'unlockedEvidences',
             'unlockedLevels',
-            'unlockedSuspects',
             'completedLevels',
-            'gameCase.victims',
-            'unlockedVictims',
+            'characters',
             'playedWiretaps',
             'votes',
             'inspections',
@@ -146,22 +139,25 @@ class GameRoomController extends Controller
 
         $this->roomService->distributeLocationQuestions($room);
 
-        // --- SERVER-SIDE PRE-COMPILATION ---
-        // Offloads heavy array mapping/filtering from the React Client to the Server.
-
+        // Pre-compile evidences
         $unlockedEvidenceIds = $room->unlockedEvidences->pluck('id')->toArray();
         $room->accumulated_evidences = $room->gameCase->evidences->filter(function ($e) use ($unlockedEvidenceIds) {
             return $e->is_initial || in_array($e->id, $unlockedEvidenceIds);
         })->values();
 
-        $unlockedSuspectIds = $room->unlockedSuspects->pluck('id')->toArray();
-        $room->accumulated_suspects = $room->gameCase->suspects->filter(function ($s) use ($unlockedSuspectIds) {
-            return $s->is_initial || in_array($s->id, $unlockedSuspectIds);
-        })->values();
-
-        $unlockedVictimIds = $room->unlockedVictims->pluck('id')->toArray();
-        $room->accumulated_victims = $room->gameCase->victims->filter(function ($v) use ($unlockedVictimIds) {
-            return $v->is_initial || in_array($v->id, $unlockedVictimIds);
+        // Pre-compile Unified Characters based on their initial state and dynamic room override
+        $unlockedCharacterIds = $room->characters->where('pivot.is_unlocked', true)->pluck('id')->toArray();
+        
+        $room->accumulated_characters = $room->gameCase->characters->filter(function ($c) use ($unlockedCharacterIds) {
+            return $c->is_initial || in_array($c->id, $unlockedCharacterIds);
+        })->map(function ($c) use ($room) {
+            // Apply the room-specific status override if it exists
+            $roomOverride = $room->characters->firstWhere('id', $c->id);
+            $c->current_status = $roomOverride ? $roomOverride->pivot->status : $c->default_status->value;
+            
+            // Mask absolute truth properties from the frontend API payload entirely for security
+            unset($c->is_guilty, $c->charge);
+            return $c;
         })->values();
 
         return response()->json(['room' => $room], 200);

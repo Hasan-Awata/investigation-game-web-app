@@ -151,20 +151,24 @@ export function useInvestigationPhase() {
         icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e'
       });
     }
-    if (choice.outcomes?.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) {
-      addGlobalToast({
-        type: 'suspect', 
-        title: t('pages.gameRoom.hooks.phase.personOfInterest'), 
-        message: t('pages.gameRoom.hooks.phase.personOfInterestMsg'),
-        icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232'
-      });
-    }
-    if (choice.outcomes?.unlock_victims && choice.outcomes.unlock_victims.length > 0) {
-      addGlobalToast({
-        type: 'victim', 
-        title: t('pages.gameRoom.hooks.phase.casualtyIdentified'), 
-        message: t('pages.gameRoom.hooks.phase.casualtyIdentifiedMsg'),
-        icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91'
+    if (choice.outcomes?.character_updates && choice.outcomes.character_updates.length > 0) {
+      choice.outcomes.character_updates.forEach((update: any) => {
+        if (update.is_unlocked) {
+          addGlobalToast({
+            type: 'character', // Custom type for styling
+            title: t('pages.gameRoom.hooks.phase.personOfInterest'),
+            message: t('pages.gameRoom.hooks.phase.personOfInterestMsg'),
+            icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232'
+          });
+        }
+        if (update.status === 'deceased') {
+          addGlobalToast({
+            type: 'system',
+            title: t('pages.gameRoom.hooks.phase.casualtyIdentified', 'Critical Update'),
+            message: t('pages.gameRoom.hooks.phase.casualtyIdentifiedMsg', 'A person of interest has been confirmed deceased.'),
+            icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91'
+          });
+        }
       });
     }
 

@@ -31,8 +31,7 @@ const bulkTemplate = {
     is_published: false
   },
   evidences: [],
-  suspects: [],
-  victims: [],
+  characters: [], 
   investigation_requests: [],
   phases: []
 };
@@ -81,7 +80,7 @@ export default function CaseForm() {
     e.preventDefault();
     
     if (entryMode === 'json') {
-      const { valid, parsed, error } = validateJsonPayload(jsonInput, ['case_details', 'phases', 'evidences', 'suspects', 'victims', 'investigation_requests']);
+      const { valid, parsed, error } = validateJsonPayload(jsonInput, ['case_details', 'phases', 'evidences', 'characters', 'investigation_requests']);
       if (!valid) {
         toast.error(error!);
         return;

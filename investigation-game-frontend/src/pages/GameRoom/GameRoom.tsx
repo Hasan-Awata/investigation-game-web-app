@@ -5,7 +5,7 @@ import { useGameRoom } from '@/hooks/useGameRoom';
 import { useViewedItems } from '@/hooks/useViewedItems';
 import { RoomDataProvider, RoomUIProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
 import GameRoomLayout from './GameRoomLayout';
-import type { GameRoom, Evidence, Suspect, Victim, Level } from '@/types';
+import type { GameRoom, Evidence, Character, Level } from '@/types';
 import './GameRoom.css';
 
 // --- ENRICHED PAYLOAD TYPINGS ---
@@ -34,8 +34,7 @@ interface VoteLockedInPayload {
 interface ItemsUnlockedPayload {
   unlocked_evidences?: Evidence[];
   unlocked_levels?: Level[];
-  unlocked_suspects?: Suspect[];
-  unlocked_victims?: Victim[];
+  character_updates?: any[];
   strikes?: number;
 }
 
@@ -54,15 +53,13 @@ export default function GameRoom() {
     isLoading,
     error,
     accumulatedEvidences,
-    accumulatedSuspects,
-    accumulatedVictims,
+    accumulatedCharacters,
     refreshRoomData,
     patchRoomData
   } = useGameRoom(inviteCode);
 
   const { viewedItems: viewedEvidences, markItemAsViewed: markEvidenceAsViewed } = useViewedItems(room?.invite_code, 'evidence');
-  const { viewedItems: viewedSuspects, markItemAsViewed: markSuspectAsViewed } = useViewedItems(room?.invite_code, 'suspects');
-  const { viewedItems: viewedVictims, markItemAsViewed: markVictimAsViewed } = useViewedItems(room?.invite_code, 'victims');
+  const { viewedItems: viewedCharacters, markItemAsViewed: markCharacterAsViewed } = useViewedItems(room?.invite_code, 'characters');
 
   const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
   const [finalStats, setFinalStats] = useState<any>(room?.final_stats || null);
@@ -167,19 +164,40 @@ export default function GameRoom() {
     // 4. Discovery Engine (ItemsUnlocked)
     channel.listen('ItemsUnlocked', (e: ItemsUnlockedPayload) => {
       patchRoomData((oldRoom: GameRoom) => {
+        
+        // Process character updates dynamically
+        let updatedCharacters = [...(oldRoom.accumulated_characters || [])];
+        
+        if (e.character_updates && e.character_updates.length > 0) {
+          e.character_updates.forEach(update => {
+            const index = updatedCharacters.findIndex(c => c.id === update.character_id || c.id === update.id);
+            if (index !== -1) {
+              // Patch the existing character's status or visibility
+              updatedCharacters[index] = {
+                ...updatedCharacters[index],
+                current_status: update.status ?? updatedCharacters[index].current_status,
+              };
+              // If it's newly unlocked, we ensure it's processed correctly by the UI
+              if (update.is_unlocked) {
+                 // In a full implementation, you might ensure they are marked visible in a local state or rely on the backend pre-compilation
+                 updatedCharacters[index].is_initial = true; // Force visibility patch
+              }
+            } else if (update.is_unlocked) {
+              // Edge case: If the backend sends a completely new character object
+              updatedCharacters.push(update as Character);
+            }
+          });
+        }
+
         return {
           ...oldRoom,
           unlocked_evidences: patchArray(oldRoom.unlocked_evidences, e.unlocked_evidences),
           accumulated_evidences: patchArray(oldRoom.accumulated_evidences, e.unlocked_evidences),
-          
+
           unlocked_levels: patchArray(oldRoom.unlocked_levels, e.unlocked_levels),
-          
-          unlocked_suspects: patchArray(oldRoom.unlocked_suspects, e.unlocked_suspects),
-          accumulated_suspects: patchArray(oldRoom.accumulated_suspects, e.unlocked_suspects),
-          
-          unlocked_victims: patchArray(oldRoom.unlocked_victims, e.unlocked_victims),
-          accumulated_victims: patchArray(oldRoom.accumulated_victims, e.unlocked_victims),
-          
+
+          accumulated_characters: updatedCharacters, // Apply the patched character array
+
           strikes: e.strikes !== undefined ? e.strikes : oldRoom.strikes
         };
       });
@@ -246,14 +264,12 @@ export default function GameRoom() {
     <RoomDataProvider
       room={room}
       accumulatedEvidences={accumulatedEvidences}
-      accumulatedSuspects={accumulatedSuspects}
-      accumulatedVictims={accumulatedVictims}
+      accumulatedCharacters={accumulatedCharacters}
       refreshRoomData={refreshRoomData}
     >
       <RoomUIProvider
         viewedEvidences={viewedEvidences} markEvidenceAsViewed={markEvidenceAsViewed}
-        viewedSuspects={viewedSuspects} markSuspectAsViewed={markSuspectAsViewed}
-        viewedVictims={viewedVictims} markVictimAsViewed={markVictimAsViewed}
+        viewedCharacters={viewedCharacters} markCharacterAsViewed={markCharacterAsViewed}
         setGameOverData={setGameOverData} addGlobalToast={addGlobalToast}
         globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback}
       >

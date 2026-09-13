@@ -5,8 +5,7 @@ import CaseForm from './forms/CaseForm';
 import PhaseForm from './forms/PhaseForm';
 import LevelForm from './forms/LevelForm';
 import EvidenceForm from './forms/EvidenceForm';
-import SuspectForm from './forms/SuspectForm'; 
-import VictimForm from './forms/VictimForm'; 
+import CharacterForm from './forms/CharacterForm'; 
 import AdminInterrogationBuilder from './forms/QuestionForm/AdminInterrogationBuilder';
 import AdminLocationBuilder from './forms/QuestionForm/AdminLocationBuilder';
 import AdminWiretapBuilder from './forms/QuestionForm/AdminWiretapBuilder'; 
@@ -14,7 +13,7 @@ import InvestigationRequestForm from './forms/InvestigationRequestForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import './AdminDashboard.css';
 
-type AdminTab = 'cases' | 'phases' | 'levels' | 'interrogation' | 'location' | 'wiretap' | 'evidences' | 'suspects' | 'victims' | 'requests';
+type AdminTab = 'cases' | 'phases' | 'levels' | 'interrogation' | 'location' | 'wiretap' | 'evidences' | 'characters' | 'requests';
 
 function AdminDashboardContent() {
   const [activeTab, setActiveTab] = useState<AdminTab>('cases');
@@ -106,8 +105,7 @@ function AdminDashboardContent() {
           <h4 className="admin-nav-group-title">{t.databaseAssetsGroup}</h4>
           <nav className="admin-nav-menu">
             <button className={`admin-tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => handleTabChange('evidences')}>{t.evidencesTab}</button>
-            <button className={`admin-tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} onClick={() => handleTabChange('suspects')}>{t.suspectsTab}</button>
-            <button className={`admin-tab-btn ${activeTab === 'victims' ? 'active' : ''}`} onClick={() => handleTabChange('victims')}>{t.victimsTab}</button>
+            <button className={`admin-tab-btn ${activeTab === 'characters' ? 'active' : ''}`} onClick={() => handleTabChange('characters')}>{t.charactersTab}</button>
             <button className={`admin-tab-btn ${activeTab === 'requests' ? 'active' : ''}`} onClick={() => handleTabChange('requests')}>{t.requestsTab}</button>
           </nav>
         </div>
@@ -122,8 +120,7 @@ function AdminDashboardContent() {
         {activeTab === 'location' && <AdminLocationBuilder />}
         {activeTab === 'wiretap' && <AdminWiretapBuilder />}
         {activeTab === 'evidences' && <EvidenceForm />}
-        {activeTab === 'suspects' && <SuspectForm />}
-        {activeTab === 'victims' && <VictimForm />}
+        {activeTab === 'characters' && <CharacterForm />}
         {activeTab === 'requests' && <InvestigationRequestForm />}
       </main>
     </div>

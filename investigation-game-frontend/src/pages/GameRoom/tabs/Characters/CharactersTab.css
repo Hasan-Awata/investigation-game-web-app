@@ -1,14 +1,13 @@
-.suspects-tab-container {
+.persons-of-interest-tab-container {
   display: flex;
   flex-direction: column;
   gap: 2rem;
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem;
-  
-  /* The original dark tactical wall background */
+
   background-color: #1a1b1e;
-  background-image: 
+  background-image:
     radial-gradient(rgba(255, 255, 255, 0.03) 2px, transparent 2px),
     radial-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
   background-size: 30px 30px, 12px 12px;
@@ -21,7 +20,7 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 3rem;
-  height: max-content; 
+  height: max-content;
   margin-top: 1rem;
 }
 
@@ -29,7 +28,7 @@
   display: flex;
   flex-direction: column;
   transition: all 0.2s ease;
-  height: max-content; 
+  height: max-content;
 }
 
 .zone-header {
@@ -66,7 +65,7 @@
   flex-wrap: wrap;
   gap: 1.5rem;
   align-content: flex-start;
-  min-height: 250px; 
+  min-height: 250px;
 }
 
 .zone-placeholder {
@@ -83,7 +82,8 @@
   text-shadow: 0 1px 2px rgba(0,0,0,0.8);
 }
 
-.zone-content .suspect-card::before {
+/* Zone Push-Pins */
+.zone-content .character-card::before {
   content: '';
   position: absolute;
   top: -12px;
@@ -98,20 +98,21 @@
   pointer-events: none;
 }
 
-.guilty-zone .zone-content .suspect-card::before {
+.guilty-zone .zone-content .character-card::before {
   background: radial-gradient(circle at 35% 35%, #ff5252, #8a0000);
 }
 
-.innocent-zone .zone-content .suspect-card::before {
+.innocent-zone .zone-content .character-card::before {
   background: radial-gradient(circle at 35% 35%, #69f0ae, #00600f);
 }
 
-.zone-content .suspect-card:nth-child(4n + 1) { transform: rotate(-3deg) translateY(4px); }
-.zone-content .suspect-card:nth-child(4n + 2) { transform: rotate(4deg) translateY(-2px); }
-.zone-content .suspect-card:nth-child(4n + 3) { transform: rotate(-1deg) translateY(6px); }
-.zone-content .suspect-card:nth-child(4n + 4) { transform: rotate(2deg) translateY(-4px); }
+/* Messy Board Scatter */
+.zone-content .character-card:nth-child(4n + 1) { transform: rotate(-3deg) translateY(4px); }
+.zone-content .character-card:nth-child(4n + 2) { transform: rotate(4deg) translateY(-2px); }
+.zone-content .character-card:nth-child(4n + 3) { transform: rotate(-1deg) translateY(6px); }
+.zone-content .character-card:nth-child(4n + 4) { transform: rotate(2deg) translateY(-4px); }
 
-.zone-content .suspect-card:active {
+.zone-content .character-card:active {
   transform: scale(1.05) rotate(0deg);
   z-index: 30;
 }

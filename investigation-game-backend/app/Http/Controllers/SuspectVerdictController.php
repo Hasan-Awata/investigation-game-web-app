@@ -23,11 +23,11 @@ class SuspectVerdictController extends Controller
         }
 
         $validated = $request->validate([
-            'guilty_suspect_ids' => 'present|array',
-            'guilty_suspect_ids.*' => 'integer|exists:suspects,id'
+            'guilty_character_ids' => 'present|array',
+            'guilty_character_ids.*' => 'integer|exists:characters,id'
         ]);
 
-        $result = $this->assessmentService->evaluateFinalVerdict($room, $validated['guilty_suspect_ids']);
+        $result = $this->assessmentService->evaluateFinalVerdict($room, $validated['guilty_character_ids']);
 
         if ($result->isFailure()) {
             return response()->json([

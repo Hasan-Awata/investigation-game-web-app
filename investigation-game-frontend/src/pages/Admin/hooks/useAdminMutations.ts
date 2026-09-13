@@ -9,22 +9,19 @@ export type AdminEntityType =
   | 'question'
   | 'evidence'
   | 'request'
-  | 'suspect'
-  | 'victim';
+  | 'character'; 
 
-// 1. Define the strict interface contract 
 interface ApiMethods {
   create: (fd: FormData) => Promise<any>;
   update: (id: number, fd: FormData) => Promise<any>;
   del: (id: number) => Promise<any>;
-  import?: (payload: any) => Promise<any>; // Marked as optional
+  import?: (payload: any) => Promise<any>;
   name: string;
 }
 
 export function useAdminMutations(entityType: AdminEntityType) {
   const queryClient = useQueryClient();
 
-  // 2. Explicitly type the map to satisfy TypeScript
   const apiMap: Record<AdminEntityType, ApiMethods> = {
     'case': { create: adminApi.createAdminCase, update: adminApi.updateAdminCase, del: adminApi.deleteAdminCase, import: adminApi.importAdminCase, name: 'Case' },
     'phase': { create: adminApi.createAdminPhase, update: adminApi.updateAdminPhase, del: adminApi.deleteAdminPhase, name: 'Phase' },
@@ -32,8 +29,7 @@ export function useAdminMutations(entityType: AdminEntityType) {
     'question': { create: adminApi.createAdminQuestion, update: adminApi.updateAdminQuestion, del: adminApi.deleteAdminQuestion, name: 'Node' },
     'evidence': { create: adminApi.createAdminEvidence, update: adminApi.updateAdminEvidence, del: adminApi.deleteAdminEvidence, name: 'Evidence' },
     'request': { create: adminApi.createAdminInvestigationRequest, update: adminApi.updateAdminInvestigationRequest, del: adminApi.deleteAdminInvestigationRequest, name: 'Request protocol' },
-    'suspect': { create: adminApi.createAdminSuspect, update: adminApi.updateAdminSuspect, del: adminApi.deleteAdminSuspect, name: 'Suspect' },
-    'victim': { create: adminApi.createAdminVictim, update: adminApi.updateAdminVictim, del: adminApi.deleteAdminVictim, name: 'Victim' },
+    'character': { create: adminApi.createAdminCharacter, update: adminApi.updateAdminCharacter, del: adminApi.deleteAdminCharacter, name: 'Character' },
   };
 
   const methods = apiMap[entityType];
@@ -79,7 +75,6 @@ export function useAdminMutations(entityType: AdminEntityType) {
 
   const importMutation = useMutation({
     mutationFn: async (payload: any) => {
-      // TypeScript now safely narrows the type because of the interface
       if (!methods.import) throw new Error(`Bulk import is not supported for ${methods.name}.`);
       const result = await methods.import(payload);
       if (!result.isSuccess) throw new Error(result.errorMessage);

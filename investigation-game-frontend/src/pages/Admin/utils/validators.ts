@@ -32,13 +32,8 @@ export const validateEvidenceForm = (data: { evidence_type: string; sub_type: st
   return null;
 };
 
-export const validateSuspectForm = (data: { name: string }) => {
-  if (!data.name.trim()) return 'Suspect name cannot be empty.';
-  return null;
-};
-
-export const validateVictimForm = (data: { name: string }) => {
-  if (!data.name.trim()) return 'Victim name cannot be empty.';
+export const validateCharacterForm = (data: { name: string }) => {
+  if (!data.name.trim()) return 'Character name cannot be empty.';
   return null;
 };
 

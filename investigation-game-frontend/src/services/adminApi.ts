@@ -93,15 +93,8 @@ export const updateAdminInvestigationRequest = (id: number, fd: FormData) => { f
 export const deleteAdminInvestigationRequest = (id: number) => adminRequest(`/investigation-requests/${id}`, { method: 'DELETE' });
 
 // ==========================================
-// SUSPECTS
+// CHARACTERS
 // ==========================================
-export const createAdminSuspect = (fd: FormData) => adminRequest('/suspects', { method: 'POST', body: fd });
-export const updateAdminSuspect = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/suspects/${id}`, { method: 'POST', body: fd }); };
-export const deleteAdminSuspect = (id: number) => adminRequest(`/suspects/${id}`, { method: 'DELETE' });
-
-// ==========================================
-// VICTIMS
-// ==========================================
-export const createAdminVictim = (fd: FormData) => adminRequest('/victims', { method: 'POST', body: fd });
-export const updateAdminVictim = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/victims/${id}`, { method: 'POST', body: fd }); };
-export const deleteAdminVictim = (id: number) => adminRequest(`/victims/${id}`, { method: 'DELETE' });
+export const createAdminCharacter = (fd: FormData) => adminRequest('/characters', { method: 'POST', body: fd });
+export const updateAdminCharacter = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/characters/${id}`, { method: 'POST', body: fd }); };
+export const deleteAdminCharacter = (id: number) => adminRequest(`/characters/${id}`, { method: 'DELETE' });

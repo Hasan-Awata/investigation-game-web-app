@@ -1,10 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 
-// Define the allowed entities so TypeScript strictly guards your scaling
-type TrackableEntity = 'evidence' | 'suspects' | 'locations' | 'victims';
+type TrackableEntity = 'evidence' | 'characters' | 'locations';
 
 export function useViewedItems(roomKey: string | number | undefined, entityType: TrackableEntity) {
-  // Use the roomKey in the namespace
   const storageKey = roomKey ? `room_${roomKey}_viewed_${entityType}` : null;
 
   const [viewedItems, setViewedItems] = useState<Set<number>>(() => {
@@ -27,13 +25,13 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
     if (!storageKey) return;
 
     setViewedItems(prev => {
-      if (prev.has(id)) return prev; 
-      
+      if (prev.has(id)) return prev;
+
       const nextViewed = new Set(prev);
       nextViewed.add(id);
-      
+
       sessionStorage.setItem(storageKey, JSON.stringify(Array.from(nextViewed)));
-      
+
       return nextViewed;
     });
   }, [storageKey]);

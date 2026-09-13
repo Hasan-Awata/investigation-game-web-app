@@ -18,8 +18,7 @@ class ItemsUnlocked implements ShouldBroadcastNow
         public readonly GameRoom $room,
         public readonly ?Collection $unlockedEvidences = null,
         public readonly ?Collection $unlockedLevels = null,
-        public readonly ?Collection $unlockedSuspects = null,
-        public readonly ?Collection $unlockedVictims = null,
+        public readonly ?array $characterUpdates = null,
         public readonly ?int $strikes = null
     ) {}
 
@@ -35,8 +34,7 @@ class ItemsUnlocked implements ShouldBroadcastNow
         return [
             'unlocked_evidences' => $this->unlockedEvidences ? $this->unlockedEvidences->toArray() : [],
             'unlocked_levels' => $this->unlockedLevels ? $this->unlockedLevels->toArray() : [],
-            'unlocked_suspects' => $this->unlockedSuspects ? $this->unlockedSuspects->toArray() : [],
-            'unlocked_victims' => $this->unlockedVictims ? $this->unlockedVictims->toArray() : [],
+            'character_updates' => $this->characterUpdates ?? [],
             'strikes' => $this->strikes,
         ];
     }

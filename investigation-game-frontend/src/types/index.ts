@@ -18,23 +18,37 @@ export interface RoomUser {
   user?: User; 
 }
 
-export interface Suspect {
-  id: number;
-  case_id: number;
-  name: string;
-  background?: string;
-  img_url?: string;
-  is_initial: boolean;
-  is_guilty: boolean;
-}
+export const CharacterStatus = {
+  Available: 'available',
+  Deceased: 'deceased',
+  Fled: 'fled',
+  Incarcerated: 'incarcerated'
+} as const;
 
-export interface Victim {
+export type CharacterStatus = typeof CharacterStatus[keyof typeof CharacterStatus];
+
+export const CharacterCharge = {
+  Murder: 'murder',
+  Fraud: 'fraud',
+  Conspiracy: 'conspiracy',
+  Blackmail: 'blackmail',
+  Theft: 'theft',
+  Accomplice: 'accomplice'
+} as const;
+
+export type CharacterCharge = typeof CharacterCharge[keyof typeof CharacterCharge];
+
+export interface Character {
   id: number;
   case_id: number;
   name: string;
   background?: string;
   img_url?: string;
   is_initial: boolean;
+  is_guilty?: boolean;
+  charge?: CharacterCharge | string;
+  default_status: CharacterStatus | string;
+  current_status?: string;
 }
 
 export const CaseUserStatus = {
@@ -65,8 +79,7 @@ export interface GameCase {
   is_published?: boolean; 
   phases?: Phase[]; 
   evidences?: Evidence[]; 
-  suspects?: Suspect[];
-  victims?: Victim[];
+  characters?: Character[];
   investigation_requests?: InvestigationRequest[];
   user_status?: CaseUserStatus | null; 
 }
@@ -107,16 +120,14 @@ export interface GameRoom {
   current_level?: Level;
   unlocked_evidences?: Evidence[]; 
   unlocked_levels?: Level[];
-  unlocked_suspects?: Suspect[];
-  unlocked_victims?: Victim[];
+  characters?: Character[];
   completed_levels?: Level[];
   votes?: RoomVote[];
   played_wiretaps?: Question[];
   inspections?: RoomInspection[];
   filed_requests?: FiledRequest[];
   accumulated_evidences?: Evidence[];
-  accumulated_suspects?: Suspect[];
-  accumulated_victims?: Victim[];
+  accumulated_characters?: Character[];
 }
 
 export interface FinalStats {

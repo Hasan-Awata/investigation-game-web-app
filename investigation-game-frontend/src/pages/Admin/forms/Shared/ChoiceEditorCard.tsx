@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext';
 import { useTargeting } from '@/context/TargetingContext';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
-import type { Evidence, Level, Phase, Suspect, Victim } from '@/types';
+import type { Evidence, Level, Phase, Character } from '@/types';
 import './ChoiceEditorCard.css';
 
 export interface DraftChoice {
@@ -11,8 +11,7 @@ export interface DraftChoice {
   outcomes?: {
     unlock_evidence?: number[];
     unlock_levels?: number[];
-    unlock_suspects?: number[];
-    unlock_victims?: number[];
+    character_updates?: { id: number; is_unlocked?: boolean; status?: string }[];
     next_question_id?: number | null;
     gives_strike?: boolean;
     feedback?: string;
@@ -59,8 +58,7 @@ export default function ChoiceEditorCard({
 
   const availableEvidence = selectedCase.evidences || [];
   const availableLevels = selectedCase.phases?.flatMap(p => p.levels || []) || [];
-  const availableSuspects = selectedCase.suspects || [];
-  const availableVictims = selectedCase.victims || [];
+  const availableCharacters = selectedCase.characters || [];
 
   const updateOutcomes = <K extends keyof NonNullable<DraftChoice['outcomes']>>(
     key: K,
@@ -78,9 +76,21 @@ export default function ChoiceEditorCard({
 
   const unlockedEv = choice.outcomes?.unlock_evidence?.map(String) || [];
   const unlockedLv = choice.outcomes?.unlock_levels?.map(String) || [];
-  const unlockedSu = choice.outcomes?.unlock_suspects?.map(String) || [];
-  const unlockedVi = choice.outcomes?.unlock_victims?.map(String) || [];
   const reqEv = choice.requirements?.required_evidence?.map(String) || [];
+
+  const unlockedCh = choice.outcomes?.character_updates?.filter(u => u.is_unlocked).map(u => String(u.id)) || [];
+  const deceasedCh = choice.outcomes?.character_updates?.filter(u => u.status === 'deceased').map(u => String(u.id)) || [];
+
+  const handleCharacterUpdate = (newUnlockedIds: number[], newDeceasedIds: number[]) => {
+    const updatesMap = new Map();
+    newUnlockedIds.forEach(id => updatesMap.set(id, { id, is_unlocked: true }));
+    newDeceasedIds.forEach(id => {
+        const existing = updatesMap.get(id) || { id };
+        existing.status = 'deceased';
+        updatesMap.set(id, existing);
+    });
+    updateOutcomes('character_updates', Array.from(updatesMap.values()));
+  };
 
   const hasCoords = choice.text.includes('|') && !choice.text.startsWith('|');
   const coordPreview = hasCoords ? choice.text.split('|')[0].trim() : null;
@@ -185,19 +195,15 @@ export default function ChoiceEditorCard({
 
             <div className="admin-form-row">
               <div className="form-group">
-                <label>{t.unlockSuspectsLabel}</label>
-                <select multiple className="admin-input" value={unlockedSu} onChange={(e) => updateOutcomes('unlock_suspects', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
-                  {availableSuspects.map((su: Suspect) => (
-                    <option key={su.id} value={su.id.toString()}>{su.name}</option>
-                  ))}
+                <label>{t.unlockCharactersLabel || 'Unlock Characters'}</label>
+                <select multiple className="admin-input" value={unlockedCh} onChange={(e) => handleCharacterUpdate(Array.from(e.target.selectedOptions, opt => Number(opt.value)), deceasedCh.map(Number))}>
+                  {availableCharacters.map((c: Character) => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label>{t.unlockVictimsLabel}</label>
-                <select multiple className="admin-input" value={unlockedVi} onChange={(e) => updateOutcomes('unlock_victims', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
-                  {availableVictims.map((vi: Victim) => (
-                    <option key={vi.id} value={vi.id.toString()}>{vi.name}</option>
-                  ))}
+                <label style={{ color: 'var(--accent-crimson)' }}>{t.markDeceasedLabel || 'Report as Deceased'}</label>
+                <select multiple className="admin-input" value={deceasedCh} onChange={(e) => handleCharacterUpdate(unlockedCh.map(Number), Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
+                  {availableCharacters.map((c: Character) => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
                 </select>
               </div>
             </div>

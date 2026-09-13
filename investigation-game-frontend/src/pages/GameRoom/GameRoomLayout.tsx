@@ -1,18 +1,18 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { useNavigate } from 'react-router-dom'; 
+import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useRoomData, useRoomUI } from '@/context/RoomContext';
 import type { ToastNotification } from '@/context/RoomContext';
 import { leaveRoom } from '@/services/api';
 import CaseDetailsTab from './tabs/CaseDetails/CaseDetailsTab';
 import EvidenceBoardTab from './tabs/EvidenceBoard/EvidenceBoardTab';
-import SuspectsTab from './tabs/Suspects/SuspectsTab';
+import PersonsOfInterestTab from './tabs/Characters/CharactersTab';
 import CampaignTab from './tabs/Campaign/CampaignTab';
 import AgentNotepad from '@/components/AgentNotepad/AgentNotepad';
 import GameEndOverlay from './components/GameEndOverlay';
 
-type Tab = 'details' | 'evidences' | 'campaign' | 'suspects';
+type Tab = 'details' | 'evidences' | 'campaign' | 'characters';
 
 interface GameRoomLayoutProps {
   resolutionMessage: string | null;
@@ -21,20 +21,20 @@ interface GameRoomLayoutProps {
 }
 
 export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }: GameRoomLayoutProps) {
-  const navigate = useNavigate(); 
+  const navigate = useNavigate();
   const { t } = useTranslation();
-  const { room, accumulatedEvidences, accumulatedSuspects, accumulatedVictims } = useRoomData();
-  const { viewedEvidences, viewedSuspects, viewedVictims, globalFeedback, setGlobalFeedback } = useRoomUI();
+  const { room, accumulatedEvidences, accumulatedCharacters } = useRoomData();
+  const { viewedEvidences, viewedCharacters, globalFeedback, setGlobalFeedback } = useRoomUI();
 
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [isCopied, setIsCopied] = useState(false);
   const [showExitWarning, setShowExitWarning] = useState(false);
-  const [isLeaving, setIsLeaving] = useState(false); 
+  const [isLeaving, setIsLeaving] = useState(false);
 
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = ''; // Required by modern browsers to trigger the warning
+      e.returnValue = ''; 
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
@@ -54,29 +54,23 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
   const handleLeaveSession = async () => {
     if (!room) return;
     setIsLeaving(true);
-    
-    // Attempt graceful disconnect
+
     await leaveRoom(room.id);
-    
-    // Nuke specific session storage data on exit
+
     Object.keys(sessionStorage).forEach(key => {
       if (key.includes(`room_${room.invite_code}`) || key.includes(`room_${room.id}`)) {
         sessionStorage.removeItem(key);
       }
     });
 
-    // Hard redirect to the main menu
     navigate('/');
   };
 
   const hasUnreadEvidence = accumulatedEvidences.some(evidence => !viewedEvidences.has(evidence.id));
-  const hasUnreadSuspects = accumulatedSuspects.some(suspect => !viewedSuspects.has(suspect.id));
-  const hasUnreadVictims = accumulatedVictims?.some(victim => !viewedVictims.has(victim.id));
+  const hasUnreadCharacters = accumulatedCharacters.some(character => !viewedCharacters.has(character.id));
 
   return (
     <div className="game-room-layout">
-
-      {/* 1. THE NEW GLOBAL MODAL */}
       {globalFeedback && (
         <div className="feedback-modal-overlay" style={{ zIndex: 9999 }}>
           <div className={`feedback-modal-content ${globalFeedback.type}`}>
@@ -99,7 +93,6 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
         </div>
       )}
 
-      {/* NEW: EXIT WARNING MODAL */}
       {showExitWarning && (
         <div className="feedback-modal-overlay" style={{ zIndex: 9999 }}>
           <div className="feedback-modal-content error">
@@ -119,9 +112,9 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
               <button className="btn-secondary" onClick={() => setShowExitWarning(false)}>
                 {t('pages.gameRoom.layout.stay', 'Maintain Connection')}
               </button>
-              <button 
-                className="btn-primary" 
-                style={{ background: 'var(--accent-crimson)', borderColor: 'var(--accent-crimson)', color: 'var(--bg-dark)' }} 
+              <button
+                className="btn-primary"
+                style={{ background: 'var(--accent-crimson)', borderColor: 'var(--accent-crimson)', color: 'var(--bg-dark)' }}
                 onClick={handleLeaveSession}
                 disabled={isLeaving}
               >
@@ -132,7 +125,6 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
         </div>
       )}
 
-      {/* 2. GLOBAL TOAST RENDERER */}
       {createPortal(
         <div className="toast-container">
           {toasts.map((toast) => (
@@ -214,15 +206,14 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
           <nav className="tab-navigation">
             <button className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} onClick={() => setActiveTab('details')}>
               {t('pages.gameRoom.layout.tabs.caseDetails')}
-              {hasUnreadVictims && <div className="unread-indicator" style={{ top: '12px', insetInlineEnd: '15px', width: '12px', height: '12px' }} title={t('pages.gameRoom.layout.tabs.newCasualty')}></div>}
             </button>
             <button className={`tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => setActiveTab('evidences')}>
               {t('pages.gameRoom.layout.tabs.evidences')}
               {hasUnreadEvidence && <div className="unread-indicator" style={{ top: '12px', insetInlineEnd: '15px', width: '12px', height: '12px' }} title={t('pages.gameRoom.layout.tabs.unreadIntel')}></div>}
             </button>
-            <button className={`tab-btn ${activeTab === 'suspects' ? 'active' : ''}`} onClick={() => setActiveTab('suspects')}>
-              {t('pages.gameRoom.layout.tabs.suspects')}
-              {hasUnreadSuspects && <div className="unread-indicator" style={{ top: '12px', insetInlineEnd: '15px', width: '12px', height: '12px' }} title={t('pages.gameRoom.layout.tabs.unreadIntel')}></div>}
+            <button className={`tab-btn ${activeTab === 'characters' ? 'active' : ''}`} onClick={() => setActiveTab('characters')}>
+              {t('pages.gameRoom.layout.tabs.personsOfInterest', 'Persons of Interest')}
+              {hasUnreadCharacters && <div className="unread-indicator" style={{ top: '12px', insetInlineEnd: '15px', width: '12px', height: '12px' }} title={t('pages.gameRoom.layout.tabs.unreadIntel')}></div>}
             </button>
             <button className={`tab-btn ${activeTab === 'campaign' ? 'active' : ''}`} onClick={() => setActiveTab('campaign')}>
               {t('pages.gameRoom.layout.tabs.campaign')}
@@ -236,7 +227,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
         <div className="tab-content-area">
           {activeTab === 'details' && <CaseDetailsTab />}
           {activeTab === 'evidences' && <EvidenceBoardTab />}
-          {activeTab === 'suspects' && <SuspectsTab />}
+          {activeTab === 'characters' && <PersonsOfInterestTab />}
           {activeTab === 'campaign' && <CampaignTab />}
         </div>
       </main>

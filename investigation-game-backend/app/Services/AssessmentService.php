@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\GameRoom;
 use App\Models\Choice;
 use App\Models\User;
+use App\Models\Character;
 use Illuminate\Support\Facades\DB;
 use App\Support\Result;
 use App\Events\LevelTransitioned;
@@ -24,8 +25,7 @@ class AssessmentService
             if (!$level) {
                 return Result::failure("No active phase to evaluate. This phase may have already been submitted.");
             }
-            
-            // Eager load `choice` to resolve the N+1 loop flaw
+
             $votes = \App\Models\RoomVote::with('choice')->where('room_id', $room->id)
                 ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
                 ->get();
@@ -37,15 +37,14 @@ class AssessmentService
                 if ($givesStrike) {
                     $room->increment('strikes');
                     $room->refresh();
-                    
-                    // Seamlessly broadcast the specific strike update 
-                    ItemsUnlocked::dispatch($room, null, null, null, null, $room->strikes);
+
+                    ItemsUnlocked::dispatch($room, null, null, null, $room->strikes);
 
                     if ($room->strikes >= $room->gameCase->max_strikes) {
-                        $totalGuilty = \App\Models\Suspect::where('case_id', $room->case_id)->where('is_guilty', true)->count();
+                        $totalGuilty = Character::where('case_id', $room->case_id)->where('is_guilty', true)->count();
                         $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
 
-                        $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
+                        $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
                         $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
                         LevelTransitioned::dispatch($room, 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.', $stats);
 
@@ -91,12 +90,12 @@ class AssessmentService
         });
     }
 
-    public function evaluateFinalVerdict(GameRoom $room, array $submittedSuspectIds): Result
+    public function evaluateFinalVerdict(GameRoom $room, array $submittedCharacterIds): Result
     {
-        return DB::transaction(function () use ($room, $submittedSuspectIds) {
+        return DB::transaction(function () use ($room, $submittedCharacterIds) {
             $case = $room->gameCase;
 
-            if ($room->status !== \App\Enums\RoomStatus::Active) {
+            if ($room->status !== RoomStatus::Active) {
                 return Result::failure("This investigation has already been concluded.");
             }
 
@@ -108,12 +107,12 @@ class AssessmentService
             $allPossessedEvidence = array_unique(array_merge($unlockedEvidenceIds, $initialEvidenceIds));
 
             $missingVital = array_diff($vitalEvidenceIds, $allPossessedEvidence);
-            $totalGuiltyCount = \App\Models\Suspect::where('case_id', $case->id)->where('is_guilty', true)->count();
+            $totalGuiltyCount = Character::where('case_id', $case->id)->where('is_guilty', true)->count();
 
             if (!empty($missingVital)) {
                 $stats = $this->generateFinalStats($room, 0, 0, $totalGuiltyCount, 0);
-                $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
-                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedNoProof->value, 0);
+                $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedNoProof->value, 0);
 
                 $message = 'INSTANT FAILURE: The DA threw out the case due to lack of definitive proof. You failed to uncover vital evidence.';
                 LevelTransitioned::dispatch($room, $message, $stats);
@@ -125,24 +124,24 @@ class AssessmentService
                 ]);
             }
 
-            $trueGuiltyIds = \App\Models\Suspect::where('case_id', $case->id)->where('is_guilty', true)->pluck('id')->toArray();
+            $trueGuiltyIds = Character::where('case_id', $case->id)->where('is_guilty', true)->pluck('id')->toArray();
 
-            $innocentsSubmitted = array_diff($submittedSuspectIds, $trueGuiltyIds);
-            $missedGuilty = array_diff($trueGuiltyIds, $submittedSuspectIds);
-            $correctGuesses = array_intersect($submittedSuspectIds, $trueGuiltyIds);
+            $innocentsSubmitted = array_diff($submittedCharacterIds, $trueGuiltyIds);
+            $missedGuilty = array_diff($trueGuiltyIds, $submittedCharacterIds);
+            $correctGuesses = array_intersect($submittedCharacterIds, $trueGuiltyIds);
 
             $innocentMessage = "";
             if (count($innocentsSubmitted) > 0) {
-                $innocentNames = \App\Models\Suspect::whereIn('id', $innocentsSubmitted)->pluck('name')->toArray();
+                $innocentNames = Character::whereIn('id', $innocentsSubmitted)->pluck('name')->toArray();
                 $verb = count($innocentNames) > 1 ? "were" : "was";
                 $innocentMessage = " " . implode(', ', $innocentNames) . " {$verb} found innocent.";
             }
 
             if ($totalGuiltyCount === 0) {
-                if (count($submittedSuspectIds) === 0) {
+                if (count($submittedCharacterIds) === 0) {
                     $stats = $this->generateFinalStats($room, $case->XP_on_solve, 0, 0, 0);
-                    $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
-                    $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
+                    $room->update(['status' => RoomStatus::Solved, 'final_stats' => $stats]);
+                    $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
 
                     $message = 'PERFECT WIN: You successfully proved that no foul play was involved. Case closed.';
                     LevelTransitioned::dispatch($room, $message, $stats);
@@ -156,14 +155,14 @@ class AssessmentService
                 } else {
                     $room->increment('strikes');
                     $room->refresh();
-                    ItemsUnlocked::dispatch($room, null, null, null, null, $room->strikes);
-                    
+                    ItemsUnlocked::dispatch($room, null, null, null, $room->strikes);
+
                     $maxStrikes = $case->max_strikes;
 
                     if ($room->strikes >= $maxStrikes) {
                         $stats = $this->generateFinalStats($room, 0, 0, 0, count($innocentsSubmitted));
-                        $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
-                        $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedStrikes->value, 0);
+                        $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
+                        $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
 
                         $message = 'DEPARTMENT THRESHOLD EXCEEDED. You accused innocent people of a fabricated crime. The DA has pulled your mandate.' . $innocentMessage;
                         LevelTransitioned::dispatch($room, $message, $stats);
@@ -187,8 +186,8 @@ class AssessmentService
 
             if (count($missedGuilty) === 0 && count($innocentsSubmitted) === 0) {
                 $stats = $this->generateFinalStats($room, $case->XP_on_solve, count($correctGuesses), $totalGuiltyCount, 0);
-                $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
-                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
+                $room->update(['status' => RoomStatus::Solved, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
 
                 $message = 'PERFECT WIN: You successfully identified all perpetrators with irrefutable proof. Case closed.';
                 LevelTransitioned::dispatch($room, $message, $stats);
@@ -203,7 +202,7 @@ class AssessmentService
 
             if (count($missedGuilty) === 0 && count($innocentsSubmitted) > 0) {
                 $innocentsAccusedCount = count($innocentsSubmitted);
-                $totalInnocentsInCase = \App\Models\Suspect::where('case_id', $case->id)->where('is_guilty', false)->count();
+                $totalInnocentsInCase = Character::where('case_id', $case->id)->where('is_guilty', false)->count();
                 $deductionPerInnocent = $totalInnocentsInCase > 0 ? (int) ceil(100 / $totalInnocentsInCase) : 100;
                 $totalDeduction = min(100, $deductionPerInnocent * $innocentsAccusedCount);
                 $multiplier = max(0, 100 - $totalDeduction) / 100;
@@ -211,8 +210,8 @@ class AssessmentService
                 $xpPayload = (int) floor($case->XP_on_solve * $multiplier);
                 $stats = $this->generateFinalStats($room, $xpPayload, count($correctGuesses), $totalGuiltyCount, $innocentsAccusedCount);
 
-                $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
-                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPartial->value, $xpPayload);
+                $room->update(['status' => RoomStatus::Solved, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPartial->value, $xpPayload);
 
                 $message = 'PARTIAL WIN: You successfully caught all perpetrators, but collateral damage was done.' . $innocentMessage;
                 LevelTransitioned::dispatch($room, $message, $stats);
@@ -225,15 +224,15 @@ class AssessmentService
                 ]);
             }
 
-            $initialSuspectIds = \App\Models\Suspect::where('case_id', $case->id)->where('is_initial', true)->pluck('id')->toArray();
-            $unlockedSuspectIds = $room->unlockedSuspects()->pluck('suspects.id')->toArray();
-            $possessedSuspectIds = array_unique(array_merge($initialSuspectIds, $unlockedSuspectIds));
-            $unpossessedMissedGuilty = array_diff($missedGuilty, $possessedSuspectIds);
+            $initialCharacterIds = Character::where('case_id', $case->id)->where('is_initial', true)->pluck('id')->toArray();
+            $unlockedCharacterIds = $room->characters()->wherePivot('is_unlocked', true)->pluck('characters.id')->toArray();
+            $possessedCharacterIds = array_unique(array_merge($initialCharacterIds, $unlockedCharacterIds));
+            $unpossessedMissedGuilty = array_diff($missedGuilty, $possessedCharacterIds);
 
             if (count($unpossessedMissedGuilty) > 0) {
                 $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
-                $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
-                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedIncomplete->value, 0);
+                $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedIncomplete->value, 0);
 
                 $message = 'INSTANT FAILURE: The true masterminds were never even on your radar. The remaining guilty people have escaped.' . $innocentMessage;
                 LevelTransitioned::dispatch($room, $message, $stats);
@@ -246,14 +245,14 @@ class AssessmentService
             } else {
                 $room->increment('strikes');
                 $room->refresh();
-                ItemsUnlocked::dispatch($room, null, null, null, null, $room->strikes);
+                ItemsUnlocked::dispatch($room, null, null, null, $room->strikes);
 
                 $maxStrikes = $case->max_strikes;
 
                 if ($room->strikes >= $maxStrikes) {
                     $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
-                    $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
-                    $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedStrikes->value, 0);
+                    $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
+                    $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
 
                     $message = 'DEPARTMENT THRESHOLD EXCEEDED. You failed to indict the correct suspects. The DA has pulled your mandate.' . $innocentMessage;
                     LevelTransitioned::dispatch($room, $message, $stats);
@@ -294,8 +293,8 @@ class AssessmentService
                 $actualXpToAward = $xpGained;
             } else {
                 $isPreviousWin = in_array($previousStatus, [
-                    \App\Enums\CaseUserStatus::SolvedPerfect->value,
-                    \App\Enums\CaseUserStatus::SolvedPartial->value
+                    CaseUserStatus::SolvedPerfect->value,
+                    CaseUserStatus::SolvedPartial->value
                 ]);
 
                 if ($isPreviousWin) {
@@ -313,15 +312,15 @@ class AssessmentService
                 $protectFromDowngrade = false;
 
                 $isNewFail = in_array($finalStatus, [
-                    \App\Enums\CaseUserStatus::FailedNoProof->value,
-                    \App\Enums\CaseUserStatus::FailedIncomplete->value,
-                    \App\Enums\CaseUserStatus::FailedStrikes->value
+                    CaseUserStatus::FailedNoProof->value,
+                    CaseUserStatus::FailedIncomplete->value,
+                    CaseUserStatus::FailedStrikes->value
                 ]);
 
-                if ($previousStatus === \App\Enums\CaseUserStatus::SolvedPerfect->value) {
+                if ($previousStatus === CaseUserStatus::SolvedPerfect->value) {
                     $protectFromDowngrade = true;
                 }
-                elseif ($previousStatus === \App\Enums\CaseUserStatus::SolvedPartial->value && $isNewFail) {
+                elseif ($previousStatus === CaseUserStatus::SolvedPartial->value && $isNewFail) {
                     $protectFromDowngrade = true;
                 }
 

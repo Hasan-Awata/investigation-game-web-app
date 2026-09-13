@@ -190,9 +190,9 @@ export const initiatePhase = async (roomId: number, levelId: number): Promise<Re
 };
 
 export const submitSuspectVerdict = async (
-  roomId: number, 
-  guiltySuspectIds: number[]
-): Promise<Result<{ status: string; message: string; room?: GameRoom; stats?: any }>> => {  
+  roomId: number,
+  guiltyCharacterIds: number[]
+): Promise<Result<{ status: string; message: string; room?: GameRoom; stats?: any }>> => {
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/suspects/submit`, {
       method: 'POST',
@@ -201,9 +201,9 @@ export const submitSuspectVerdict = async (
         'Accept': 'application/json',
         'Authorization': `Bearer ${getToken()}`
       },
-      body: JSON.stringify({ guilty_suspect_ids: guiltySuspectIds })
+      body: JSON.stringify({ guilty_character_ids: guiltyCharacterIds })
     });
-    
+
     if (!response.ok) {
       if (response.status === 401) handleUnauthorized();
       const data = await response.json().catch(() => null);

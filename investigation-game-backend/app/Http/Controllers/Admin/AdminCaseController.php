@@ -7,7 +7,7 @@ use App\Services\MediaService;
 use App\Models\GameCase;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\DB; 
+use Illuminate\Support\Facades\DB;
 
 class AdminCaseController extends Controller
 {
@@ -68,8 +68,7 @@ class AdminCaseController extends Controller
     {
         $cases = GameCase::with([
             'evidences',
-            'suspects',
-            'victims',
+            'characters',
             'investigationRequests.requiredEvidences'
         ])
         ->orderBy('created_at', 'desc')
@@ -133,12 +132,12 @@ class AdminCaseController extends Controller
     public function destroy($id): JsonResponse
     {
         // Eager load all related entities that contain media attachments
-        $case = GameCase::with(['levels.questions', 'evidences', 'suspects', 'victims'])->findOrFail($id);
+        $case = GameCase::with(['levels.questions', 'evidences', 'characters'])->findOrFail($id);
 
         // 1. Delete Case Cover Image
         $this->mediaService->delete($case->getRawOriginal('img_url'));
 
-        // 2. Delete Evidence Media (Now attached directly to the Case)
+        // 2. Delete Evidence Media
         foreach ($case->evidences as $evidence) {
             $this->mediaService->delete($evidence->getRawOriginal('img_url'));
             $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
@@ -154,14 +153,9 @@ class AdminCaseController extends Controller
             }
         }
 
-        // 4. Delete Suspect Media
-        foreach ($case->suspects as $suspect) {
-            $this->mediaService->delete($suspect->getRawOriginal('img_url'));
-        }
-
-        // 5. Delete Victim Media
-        foreach ($case->victims as $victim) {
-            $this->mediaService->delete($victim->getRawOriginal('img_url'));
+        // 4. Delete Character Media
+        foreach ($case->characters as $character) {
+            $this->mediaService->delete($character->getRawOriginal('img_url'));
         }
 
         // Database cascadeOnDelete handles the actual row removals
@@ -178,8 +172,7 @@ class AdminCaseController extends Controller
         $validated = $request->validate([
             'case_details' => 'required|array',
             'evidences' => 'present|array',
-            'suspects' => 'present|array',
-            'victims' => 'present|array',
+            'characters' => 'present|array',
             'investigation_requests' => 'present|array',
             'phases' => 'present|array',
         ]);
@@ -205,14 +198,13 @@ class AdminCaseController extends Controller
             // Dictionaries to map the JSON ref_id strings to the actual database IDs generated
             $refMaps = [
                 'evidence' => [],
-                'suspect' => [],
-                'victim' => [],
+                'character' => [],
                 'level' => [],
                 'request' => [],
                 'choice' => [],
             ];
 
-            // PASS 2: Base Entities (Evidences, Suspects, Victims)
+            // PASS 2: Base Entities (Evidences, Characters)
             foreach ($validated['evidences'] as $evData) {
                 $evidence = \App\Models\Evidence::create([
                     'case_id' => $case->id,
@@ -229,28 +221,18 @@ class AdminCaseController extends Controller
                 }
             }
 
-            foreach ($validated['suspects'] as $susData) {
-                $suspect = \App\Models\Suspect::create([
+            foreach ($validated['characters'] as $charData) {
+                $character = \App\Models\Character::create([
                     'case_id' => $case->id,
-                    'name' => $susData['name'],
-                    'background' => $susData['background'] ?? null,
-                    'is_initial' => $susData['is_initial'] ?? false,
-                    'is_guilty' => $susData['is_guilty'] ?? false,
+                    'name' => $charData['name'],
+                    'background' => $charData['background'] ?? null,
+                    'is_initial' => $charData['is_initial'] ?? false,
+                    'is_guilty' => $charData['is_guilty'] ?? false,
+                    'charge' => $charData['charge'] ?? null,
+                    'default_status' => $charData['default_status'] ?? 'available',
                 ]);
-                if (isset($susData['ref_id'])) {
-                    $refMaps['suspect'][$susData['ref_id']] = $suspect->id;
-                }
-            }
-
-            foreach ($validated['victims'] as $vicData) {
-                $victim = \App\Models\Victim::create([
-                    'case_id' => $case->id,
-                    'name' => $vicData['name'],
-                    'background' => $vicData['background'] ?? null,
-                    'is_initial' => $vicData['is_initial'] ?? true,
-                ]);
-                if (isset($vicData['ref_id'])) {
-                    $refMaps['victim'][$vicData['ref_id']] = $victim->id;
+                if (isset($charData['ref_id'])) {
+                    $refMaps['character'][$charData['ref_id']] = $character->id;
                 }
             }
 
@@ -283,7 +265,7 @@ class AdminCaseController extends Controller
                     if (isset($lvlData['ref_id'])) {
                         $refMaps['level'][$lvlData['ref_id']] = $level->id;
                     }
-                    
+
                     $levelDataWithRefs[] = [
                         'level_id' => $level->id,
                         'req_ref' => $lvlData['required_request_ref'] ?? null,
@@ -304,7 +286,7 @@ class AdminCaseController extends Controller
                     'unlocks_evidence_id' => isset($reqData['unlocks_evidence_ref']) && isset($refMaps['evidence'][$reqData['unlocks_evidence_ref']]) ? $refMaps['evidence'][$reqData['unlocks_evidence_ref']] : null,
                     'unlocks_level_id' => isset($reqData['unlocks_level_ref']) && isset($refMaps['level'][$reqData['unlocks_level_ref']]) ? $refMaps['level'][$reqData['unlocks_level_ref']] : null,
                 ]);
-                
+
                 if (isset($reqData['ref_id'])) {
                     $refMaps['request'][$reqData['ref_id']] = $req->id;
                 }
@@ -359,9 +341,23 @@ class AdminCaseController extends Controller
                         };
 
                         if (!empty($outcomes['unlock_evidence_refs'])) $mappedOutcomes['unlock_evidence'] = $mapRefs($outcomes['unlock_evidence_refs'], 'evidence');
-                        if (!empty($outcomes['unlock_suspect_refs'])) $mappedOutcomes['unlock_suspects'] = $mapRefs($outcomes['unlock_suspect_refs'], 'suspect');
-                        if (!empty($outcomes['unlock_victims_refs'])) $mappedOutcomes['unlock_victims'] = $mapRefs($outcomes['unlock_victims_refs'], 'victim');
                         if (!empty($outcomes['unlock_levels_refs'])) $mappedOutcomes['unlock_levels'] = $mapRefs($outcomes['unlock_levels_refs'], 'level');
+                        
+                        // Map the dynamic character updates array
+                        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {
+                            $mappedCharUpdates = [];
+                            foreach ($outcomes['character_updates'] as $update) {
+                                if (isset($update['ref_id']) && isset($refMaps['character'][$update['ref_id']])) {
+                                    $mappedUpdate = ['id' => $refMaps['character'][$update['ref_id']]];
+                                    if (isset($update['is_unlocked'])) $mappedUpdate['is_unlocked'] = $update['is_unlocked'];
+                                    if (isset($update['status'])) $mappedUpdate['status'] = $update['status'];
+                                    $mappedCharUpdates[] = $mappedUpdate;
+                                }
+                            }
+                            if (!empty($mappedCharUpdates)) {
+                                $mappedOutcomes['character_updates'] = $mappedCharUpdates;
+                            }
+                        }
 
                         // Build Requirements Array
                         $mappedReqs = [];

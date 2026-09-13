@@ -15,6 +15,8 @@
 ├── app
 │   ├── Enums
 │   │   ├── CaseUserStatus.php
+│   │   ├── CharacterCharge.php
+│   │   ├── CharacterStatus.php
 │   │   ├── EvidenceType.php
 │   │   ├── InvestigationRequestType.php
 │   │   ├── LevelPresentationType.php
@@ -50,6 +52,7 @@
 │   │   └── Middleware
 │   │       └── IsAdmin.php
 │   ├── Models
+│   │   ├── Character.php
 │   │   ├── Choice.php
 │   │   ├── Evidence.php
 │   │   ├── GameCase.php
@@ -151,7 +154,8 @@
 │   │   ├── 2026_08_14_185138_drop_is_mandatory_from_questions_table.php
 │   │   ├── 2026_08_19_112215_refactor_evidences_for_json_metadata.php
 │   │   ├── 2026_08_28_104024_create_room_state_tracking_tables.php
-│   │   └── 2026_09_05_105623_add_map_coordinates_to_phases_table.php
+│   │   ├── 2026_09_05_105623_add_map_coordinates_to_phases_table.php
+│   │   └── 2026_09_12_090854_refactor_people_to_characters.php
 │   ├── schema
 │   └── seeders
 │       └── DatabaseSeeder.php
@@ -457,6 +461,36 @@ enum CaseUserStatus: string
 }
 </file>
 
+<file path="app/Enums/CharacterCharge.php">
+<?php
+
+namespace App\Enums;
+
+enum CharacterCharge: string
+{
+    case Murder = 'murder';
+    case Fraud = 'fraud';
+    case Conspiracy = 'conspiracy';
+    case Blackmail = 'blackmail';
+    case Theft = 'theft';
+    case Accomplice = 'accomplice';
+}
+</file>
+
+<file path="app/Enums/CharacterStatus.php">
+<?php
+
+namespace App\Enums;
+
+enum CharacterStatus: string
+{
+    case Available = 'available';
+    case Deceased = 'deceased';
+    case Fled = 'fled';
+    case Incarcerated = 'incarcerated';
+}
+</file>
+
 <file path="app/Enums/EvidenceType.php">
 <?php
 
@@ -606,8 +640,7 @@ class ItemsUnlocked implements ShouldBroadcastNow
         public readonly GameRoom $room,
         public readonly ?Collection $unlockedEvidences = null,
         public readonly ?Collection $unlockedLevels = null,
-        public readonly ?Collection $unlockedSuspects = null,
-        public readonly ?Collection $unlockedVictims = null,
+        public readonly ?array $characterUpdates = null,
         public readonly ?int $strikes = null
     ) {}
 
@@ -623,8 +656,7 @@ class ItemsUnlocked implements ShouldBroadcastNow
         return [
             'unlocked_evidences' => $this->unlockedEvidences ? $this->unlockedEvidences->toArray() : [],
             'unlocked_levels' => $this->unlockedLevels ? $this->unlockedLevels->toArray() : [],
-            'unlocked_suspects' => $this->unlockedSuspects ? $this->unlockedSuspects->toArray() : [],
-            'unlocked_victims' => $this->unlockedVictims ? $this->unlockedVictims->toArray() : [],
+            'character_updates' => $this->characterUpdates ?? [],
             'strikes' => $this->strikes,
         ];
     }
@@ -1109,9 +1141,6 @@ class GameRoomController extends Controller
         return response()->json(['message' => 'Phase initiated.', 'room' => $room->load('currentLevel')], 200);
     }
 
-    /**
-     * Server authoritative tracking for Location sweeps.
-     */
     public function inspect(Request $request, GameRoom $room): JsonResponse
     {
         $validated = $request->validate([
@@ -1121,11 +1150,9 @@ class GameRoomController extends Controller
         $choice = Choice::findOrFail($validated['choice_id']);
         $outcomes = $choice->outcomes ?? [];
 
-        // The backend deterministically calculates if this yields zero clues
         $isDeadEnd = empty($outcomes['unlock_evidence'])
             && empty($outcomes['unlock_levels'])
-            && empty($outcomes['unlock_suspects'])
-            && empty($outcomes['unlock_victims'])
+            && empty($outcomes['character_updates'])
             && empty($outcomes['next_question_id']);
 
         $inspection = RoomInspection::firstOrCreate([
@@ -1146,15 +1173,13 @@ class GameRoomController extends Controller
             'host',
             'gameCase.phases.levels.questions.choices',
             'gameCase.evidences',
-            'gameCase.suspects',
+            'gameCase.characters',
             'users.user',
             'currentLevel.questions.choices',
             'unlockedEvidences',
             'unlockedLevels',
-            'unlockedSuspects',
             'completedLevels',
-            'gameCase.victims',
-            'unlockedVictims',
+            'characters',
             'playedWiretaps',
             'votes',
             'inspections',
@@ -1163,22 +1188,25 @@ class GameRoomController extends Controller
 
         $this->roomService->distributeLocationQuestions($room);
 
-        // --- SERVER-SIDE PRE-COMPILATION ---
-        // Offloads heavy array mapping/filtering from the React Client to the Server.
-
+        // Pre-compile evidences
         $unlockedEvidenceIds = $room->unlockedEvidences->pluck('id')->toArray();
         $room->accumulated_evidences = $room->gameCase->evidences->filter(function ($e) use ($unlockedEvidenceIds) {
             return $e->is_initial || in_array($e->id, $unlockedEvidenceIds);
         })->values();
 
-        $unlockedSuspectIds = $room->unlockedSuspects->pluck('id')->toArray();
-        $room->accumulated_suspects = $room->gameCase->suspects->filter(function ($s) use ($unlockedSuspectIds) {
-            return $s->is_initial || in_array($s->id, $unlockedSuspectIds);
-        })->values();
+        // Pre-compile Unified Characters based on their initial state and dynamic room override
+        $unlockedCharacterIds = $room->characters->where('pivot.is_unlocked', true)->pluck('id')->toArray();
 
-        $unlockedVictimIds = $room->unlockedVictims->pluck('id')->toArray();
-        $room->accumulated_victims = $room->gameCase->victims->filter(function ($v) use ($unlockedVictimIds) {
-            return $v->is_initial || in_array($v->id, $unlockedVictimIds);
+        $room->accumulated_characters = $room->gameCase->characters->filter(function ($c) use ($unlockedCharacterIds) {
+            return $c->is_initial || in_array($c->id, $unlockedCharacterIds);
+        })->map(function ($c) use ($room) {
+            // Apply the room-specific status override if it exists
+            $roomOverride = $room->characters->firstWhere('id', $c->id);
+            $c->current_status = $roomOverride ? $roomOverride->pivot->status : $c->default_status->value;
+
+            // Mask absolute truth properties from the frontend API payload entirely for security
+            unset($c->is_guilty, $c->charge);
+            return $c;
         })->values();
 
         return response()->json(['room' => $room], 200);
@@ -1257,11 +1285,11 @@ class SuspectVerdictController extends Controller
         }
 
         $validated = $request->validate([
-            'guilty_suspect_ids' => 'present|array',
-            'guilty_suspect_ids.*' => 'integer|exists:suspects,id'
+            'guilty_character_ids' => 'present|array',
+            'guilty_character_ids.*' => 'integer|exists:characters,id'
         ]);
 
-        $result = $this->assessmentService->evaluateFinalVerdict($room, $validated['guilty_suspect_ids']);
+        $result = $this->assessmentService->evaluateFinalVerdict($room, $validated['guilty_character_ids']);
 
         if ($result->isFailure()) {
             return response()->json([
@@ -1497,17 +1525,21 @@ class AdminCaseController extends Controller
 
     public function destroy($id): JsonResponse
     {
-        $case = GameCase::with(['levels.questions', 'evidences'])->findOrFail($id);
+        // Eager load all related entities that contain media attachments
+        $case = GameCase::with(['levels.questions', 'evidences', 'suspects', 'victims'])->findOrFail($id);
 
+        // 1. Delete Case Cover Image
         $this->mediaService->delete($case->getRawOriginal('img_url'));
 
+        // 2. Delete Evidence Media (Now attached directly to the Case)
+        foreach ($case->evidences as $evidence) {
+            $this->mediaService->delete($evidence->getRawOriginal('img_url'));
+            $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
+        }
+
+        // 3. Delete Level and Question Media
         foreach ($case->levels as $level) {
             $this->mediaService->delete($level->getRawOriginal('img_url'));
-
-            foreach ($level->evidences as $evidence) {
-                $this->mediaService->delete($evidence->getRawOriginal('img_url'));
-                $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
-            }
 
             foreach ($level->questions as $question) {
                 $this->mediaService->delete($question->getRawOriginal('img_url'));
@@ -1515,6 +1547,17 @@ class AdminCaseController extends Controller
             }
         }
 
+        // 4. Delete Suspect Media
+        foreach ($case->suspects as $suspect) {
+            $this->mediaService->delete($suspect->getRawOriginal('img_url'));
+        }
+
+        // 5. Delete Victim Media
+        foreach ($case->victims as $victim) {
+            $this->mediaService->delete($victim->getRawOriginal('img_url'));
+        }
+
+        // Database cascadeOnDelete handles the actual row removals
         $case->delete();
 
         return response()->json(['message' => 'Case and all associated media completely wiped.'], 200);
@@ -2483,6 +2526,58 @@ class IsAdmin
 }
 </file>
 
+<file path="app/Models/Character.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Casts\Attribute;
+use App\Enums\CharacterStatus;
+use App\Enums\CharacterCharge;
+
+class Character extends Model
+{
+    protected $fillable = [
+        'case_id',
+        'name',
+        'background',
+        'img_url',
+        'is_initial',
+        'is_guilty',
+        'charge',
+        'default_status',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'is_initial' => 'boolean',
+            'is_guilty' => 'boolean',
+            'charge' => CharacterCharge::class,
+            'default_status' => CharacterStatus::class,
+        ];
+    }
+
+    protected function imgUrl(): Attribute
+    {
+        return Attribute::make(
+            get: function ($value) {
+                if (!$value) return null;
+                if (filter_var($value, FILTER_VALIDATE_URL)) return $value;
+                return config('app.url') . $value;
+            }
+        );
+    }
+
+    public function gameCase(): BelongsTo
+    {
+        return $this->belongsTo(GameCase::class, 'case_id');
+    }
+}
+</file>
+
 <file path="app/Models/Choice.php">
 <?php
 
@@ -2674,14 +2769,9 @@ class GameCase extends Model
             ->withTimestamps();
     }
 
-    public function suspects(): HasMany
+    public function characters(): HasMany
     {
-        return $this->hasMany(Suspect::class, 'case_id');
-    }
-
-    public function victims(): HasMany
-    {
-        return $this->hasMany(Victim::class, 'case_id');
+        return $this->hasMany(Character::class, 'case_id');
     }
 
     protected function imgUrl(): Attribute
@@ -2709,6 +2799,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use App\Enums\RoomStatus;
 
 class GameRoom extends Model
@@ -2746,11 +2837,15 @@ class GameRoom extends Model
 
     public function unlockedEvidences() { return $this->belongsToMany(Evidence::class, 'room_evidences', 'room_id', 'evidence_id')->withTimestamps(); }
     public function unlockedLevels() { return $this->belongsToMany(Level::class, 'room_unlocked_levels', 'room_id', 'level_id')->withTimestamps(); }
-    public function unlockedSuspects() { return $this->belongsToMany(Suspect::class, 'room_suspects', 'room_id', 'suspect_id')->withTimestamps(); }
     public function completedLevels() { return $this->belongsToMany(Level::class, 'room_completed_levels', 'room_id', 'level_id')->withTimestamps(); }
     public function completedRequests() { return $this->belongsToMany(InvestigationRequest::class, 'room_investigation_requests', 'room_id', 'request_id')->withTimestamps(); }
-    public function unlockedVictims() { return $this->belongsToMany(Victim::class, 'room_victims', 'room_id', 'victim_id')->withTimestamps(); }
     public function playedWiretaps() { return $this->belongsToMany(Question::class, 'room_played_wiretaps', 'room_id', 'question_id')->withTimestamps(); }
+
+    public function characters(): BelongsToMany {
+        return $this->belongsToMany(Character::class, 'room_characters', 'room_id', 'character_id')
+            ->withPivot('status', 'is_unlocked')
+            ->withTimestamps();
+    }
 }
 </file>
 
@@ -3240,6 +3335,7 @@ namespace App\Services;
 use App\Models\GameRoom;
 use App\Models\Choice;
 use App\Models\User;
+use App\Models\Character;
 use Illuminate\Support\Facades\DB;
 use App\Support\Result;
 use App\Events\LevelTransitioned;
@@ -3260,7 +3356,6 @@ class AssessmentService
                 return Result::failure("No active phase to evaluate. This phase may have already been submitted.");
             }
 
-            // Eager load `choice` to resolve the N+1 loop flaw
             $votes = \App\Models\RoomVote::with('choice')->where('room_id', $room->id)
                 ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
                 ->get();
@@ -3273,14 +3368,13 @@ class AssessmentService
                     $room->increment('strikes');
                     $room->refresh();
 
-                    // Seamlessly broadcast the specific strike update
-                    ItemsUnlocked::dispatch($room, null, null, null, null, $room->strikes);
+                    ItemsUnlocked::dispatch($room, null, null, null, $room->strikes);
 
                     if ($room->strikes >= $room->gameCase->max_strikes) {
-                        $totalGuilty = \App\Models\Suspect::where('case_id', $room->case_id)->where('is_guilty', true)->count();
+                        $totalGuilty = Character::where('case_id', $room->case_id)->where('is_guilty', true)->count();
                         $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
 
-                        $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
+                        $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
                         $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
                         LevelTransitioned::dispatch($room, 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.', $stats);
 
@@ -3326,12 +3420,12 @@ class AssessmentService
         });
     }
 
-    public function evaluateFinalVerdict(GameRoom $room, array $submittedSuspectIds): Result
+    public function evaluateFinalVerdict(GameRoom $room, array $submittedCharacterIds): Result
     {
-        return DB::transaction(function () use ($room, $submittedSuspectIds) {
+        return DB::transaction(function () use ($room, $submittedCharacterIds) {
             $case = $room->gameCase;
 
-            if ($room->status !== \App\Enums\RoomStatus::Active) {
+            if ($room->status !== RoomStatus::Active) {
                 return Result::failure("This investigation has already been concluded.");
             }
 
@@ -3343,12 +3437,12 @@ class AssessmentService
             $allPossessedEvidence = array_unique(array_merge($unlockedEvidenceIds, $initialEvidenceIds));
 
             $missingVital = array_diff($vitalEvidenceIds, $allPossessedEvidence);
-            $totalGuiltyCount = \App\Models\Suspect::where('case_id', $case->id)->where('is_guilty', true)->count();
+            $totalGuiltyCount = Character::where('case_id', $case->id)->where('is_guilty', true)->count();
 
             if (!empty($missingVital)) {
                 $stats = $this->generateFinalStats($room, 0, 0, $totalGuiltyCount, 0);
-                $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
-                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedNoProof->value, 0);
+                $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedNoProof->value, 0);
 
                 $message = 'INSTANT FAILURE: The DA threw out the case due to lack of definitive proof. You failed to uncover vital evidence.';
                 LevelTransitioned::dispatch($room, $message, $stats);
@@ -3360,24 +3454,24 @@ class AssessmentService
                 ]);
             }
 
-            $trueGuiltyIds = \App\Models\Suspect::where('case_id', $case->id)->where('is_guilty', true)->pluck('id')->toArray();
+            $trueGuiltyIds = Character::where('case_id', $case->id)->where('is_guilty', true)->pluck('id')->toArray();
 
-            $innocentsSubmitted = array_diff($submittedSuspectIds, $trueGuiltyIds);
-            $missedGuilty = array_diff($trueGuiltyIds, $submittedSuspectIds);
-            $correctGuesses = array_intersect($submittedSuspectIds, $trueGuiltyIds);
+            $innocentsSubmitted = array_diff($submittedCharacterIds, $trueGuiltyIds);
+            $missedGuilty = array_diff($trueGuiltyIds, $submittedCharacterIds);
+            $correctGuesses = array_intersect($submittedCharacterIds, $trueGuiltyIds);
 
             $innocentMessage = "";
             if (count($innocentsSubmitted) > 0) {
-                $innocentNames = \App\Models\Suspect::whereIn('id', $innocentsSubmitted)->pluck('name')->toArray();
+                $innocentNames = Character::whereIn('id', $innocentsSubmitted)->pluck('name')->toArray();
                 $verb = count($innocentNames) > 1 ? "were" : "was";
                 $innocentMessage = " " . implode(', ', $innocentNames) . " {$verb} found innocent.";
             }
 
             if ($totalGuiltyCount === 0) {
-                if (count($submittedSuspectIds) === 0) {
+                if (count($submittedCharacterIds) === 0) {
                     $stats = $this->generateFinalStats($room, $case->XP_on_solve, 0, 0, 0);
-                    $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
-                    $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
+                    $room->update(['status' => RoomStatus::Solved, 'final_stats' => $stats]);
+                    $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
 
                     $message = 'PERFECT WIN: You successfully proved that no foul play was involved. Case closed.';
                     LevelTransitioned::dispatch($room, $message, $stats);
@@ -3391,14 +3485,14 @@ class AssessmentService
                 } else {
                     $room->increment('strikes');
                     $room->refresh();
-                    ItemsUnlocked::dispatch($room, null, null, null, null, $room->strikes);
+                    ItemsUnlocked::dispatch($room, null, null, null, $room->strikes);
 
                     $maxStrikes = $case->max_strikes;
 
                     if ($room->strikes >= $maxStrikes) {
                         $stats = $this->generateFinalStats($room, 0, 0, 0, count($innocentsSubmitted));
-                        $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
-                        $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedStrikes->value, 0);
+                        $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
+                        $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
 
                         $message = 'DEPARTMENT THRESHOLD EXCEEDED. You accused innocent people of a fabricated crime. The DA has pulled your mandate.' . $innocentMessage;
                         LevelTransitioned::dispatch($room, $message, $stats);
@@ -3422,8 +3516,8 @@ class AssessmentService
 
             if (count($missedGuilty) === 0 && count($innocentsSubmitted) === 0) {
                 $stats = $this->generateFinalStats($room, $case->XP_on_solve, count($correctGuesses), $totalGuiltyCount, 0);
-                $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
-                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
+                $room->update(['status' => RoomStatus::Solved, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
 
                 $message = 'PERFECT WIN: You successfully identified all perpetrators with irrefutable proof. Case closed.';
                 LevelTransitioned::dispatch($room, $message, $stats);
@@ -3438,7 +3532,7 @@ class AssessmentService
 
             if (count($missedGuilty) === 0 && count($innocentsSubmitted) > 0) {
                 $innocentsAccusedCount = count($innocentsSubmitted);
-                $totalInnocentsInCase = \App\Models\Suspect::where('case_id', $case->id)->where('is_guilty', false)->count();
+                $totalInnocentsInCase = Character::where('case_id', $case->id)->where('is_guilty', false)->count();
                 $deductionPerInnocent = $totalInnocentsInCase > 0 ? (int) ceil(100 / $totalInnocentsInCase) : 100;
                 $totalDeduction = min(100, $deductionPerInnocent * $innocentsAccusedCount);
                 $multiplier = max(0, 100 - $totalDeduction) / 100;
@@ -3446,8 +3540,8 @@ class AssessmentService
                 $xpPayload = (int) floor($case->XP_on_solve * $multiplier);
                 $stats = $this->generateFinalStats($room, $xpPayload, count($correctGuesses), $totalGuiltyCount, $innocentsAccusedCount);
 
-                $room->update(['status' => \App\Enums\RoomStatus::Solved, 'final_stats' => $stats]);
-                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::SolvedPartial->value, $xpPayload);
+                $room->update(['status' => RoomStatus::Solved, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPartial->value, $xpPayload);
 
                 $message = 'PARTIAL WIN: You successfully caught all perpetrators, but collateral damage was done.' . $innocentMessage;
                 LevelTransitioned::dispatch($room, $message, $stats);
@@ -3460,15 +3554,15 @@ class AssessmentService
                 ]);
             }
 
-            $initialSuspectIds = \App\Models\Suspect::where('case_id', $case->id)->where('is_initial', true)->pluck('id')->toArray();
-            $unlockedSuspectIds = $room->unlockedSuspects()->pluck('suspects.id')->toArray();
-            $possessedSuspectIds = array_unique(array_merge($initialSuspectIds, $unlockedSuspectIds));
-            $unpossessedMissedGuilty = array_diff($missedGuilty, $possessedSuspectIds);
+            $initialCharacterIds = Character::where('case_id', $case->id)->where('is_initial', true)->pluck('id')->toArray();
+            $unlockedCharacterIds = $room->characters()->wherePivot('is_unlocked', true)->pluck('characters.id')->toArray();
+            $possessedCharacterIds = array_unique(array_merge($initialCharacterIds, $unlockedCharacterIds));
+            $unpossessedMissedGuilty = array_diff($missedGuilty, $possessedCharacterIds);
 
             if (count($unpossessedMissedGuilty) > 0) {
                 $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
-                $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
-                $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedIncomplete->value, 0);
+                $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
+                $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedIncomplete->value, 0);
 
                 $message = 'INSTANT FAILURE: The true masterminds were never even on your radar. The remaining guilty people have escaped.' . $innocentMessage;
                 LevelTransitioned::dispatch($room, $message, $stats);
@@ -3481,14 +3575,14 @@ class AssessmentService
             } else {
                 $room->increment('strikes');
                 $room->refresh();
-                ItemsUnlocked::dispatch($room, null, null, null, null, $room->strikes);
+                ItemsUnlocked::dispatch($room, null, null, null, $room->strikes);
 
                 $maxStrikes = $case->max_strikes;
 
                 if ($room->strikes >= $maxStrikes) {
                     $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
-                    $room->update(['status' => \App\Enums\RoomStatus::Failed, 'final_stats' => $stats]);
-                    $this->finalizeCaseForParticipants($room, \App\Enums\CaseUserStatus::FailedStrikes->value, 0);
+                    $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
+                    $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
 
                     $message = 'DEPARTMENT THRESHOLD EXCEEDED. You failed to indict the correct suspects. The DA has pulled your mandate.' . $innocentMessage;
                     LevelTransitioned::dispatch($room, $message, $stats);
@@ -3529,8 +3623,8 @@ class AssessmentService
                 $actualXpToAward = $xpGained;
             } else {
                 $isPreviousWin = in_array($previousStatus, [
-                    \App\Enums\CaseUserStatus::SolvedPerfect->value,
-                    \App\Enums\CaseUserStatus::SolvedPartial->value
+                    CaseUserStatus::SolvedPerfect->value,
+                    CaseUserStatus::SolvedPartial->value
                 ]);
 
                 if ($isPreviousWin) {
@@ -3548,15 +3642,15 @@ class AssessmentService
                 $protectFromDowngrade = false;
 
                 $isNewFail = in_array($finalStatus, [
-                    \App\Enums\CaseUserStatus::FailedNoProof->value,
-                    \App\Enums\CaseUserStatus::FailedIncomplete->value,
-                    \App\Enums\CaseUserStatus::FailedStrikes->value
+                    CaseUserStatus::FailedNoProof->value,
+                    CaseUserStatus::FailedIncomplete->value,
+                    CaseUserStatus::FailedStrikes->value
                 ]);
 
-                if ($previousStatus === \App\Enums\CaseUserStatus::SolvedPerfect->value) {
+                if ($previousStatus === CaseUserStatus::SolvedPerfect->value) {
                     $protectFromDowngrade = true;
                 }
-                elseif ($previousStatus === \App\Enums\CaseUserStatus::SolvedPartial->value && $isNewFail) {
+                elseif ($previousStatus === CaseUserStatus::SolvedPartial->value && $isNewFail) {
                     $protectFromDowngrade = true;
                 }
 
@@ -3979,8 +4073,7 @@ use App\Models\RoomVote;
 use App\Models\User;
 use App\Models\Evidence;
 use App\Models\Level;
-use App\Models\Suspect;
-use App\Models\Victim;
+use Illuminate\Support\Facades\DB;
 use App\Support\Result;
 use App\Events\VoteLockedIn;
 use App\Events\ItemsUnlocked;
@@ -4010,12 +4103,10 @@ class VotingService
 
         $unlockedEvidences = collect();
         $unlockedLevels = collect();
-        $unlockedSuspects = collect();
-        $unlockedVictims = collect();
+        $appliedCharacterUpdates = [];
 
         $outcomes = $choice->outcomes ?? [];
 
-        // Eager load models to pass exactly what the frontend cache needs (avoids N+1)
         if (!empty($outcomes['unlock_evidence']) && is_array($outcomes['unlock_evidence'])) {
             $unlockedEvidences = Evidence::whereIn('id', $outcomes['unlock_evidence'])->get();
             if ($unlockedEvidences->isNotEmpty()) {
@@ -4030,30 +4121,32 @@ class VotingService
             }
         }
 
-        if (!empty($outcomes['unlock_suspects']) && is_array($outcomes['unlock_suspects'])) {
-            $unlockedSuspects = Suspect::whereIn('id', $outcomes['unlock_suspects'])->get();
-            if ($unlockedSuspects->isNotEmpty()) {
-                $room->unlockedSuspects()->syncWithoutDetaching($unlockedSuspects->pluck('id')->toArray());
-            }
-        }
+        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {
+            foreach ($outcomes['character_updates'] as $update) {
+                if (!isset($update['id'])) continue;
 
-        if (!empty($outcomes['unlock_victims']) && is_array($outcomes['unlock_victims'])) {
-            $unlockedVictims = Victim::whereIn('id', $outcomes['unlock_victims'])->get();
-            if ($unlockedVictims->isNotEmpty()) {
-                $room->unlockedVictims()->syncWithoutDetaching($unlockedVictims->pluck('id')->toArray());
+                $dataToUpdate = [];
+                if (isset($update['status'])) $dataToUpdate['status'] = $update['status'];
+                if (isset($update['is_unlocked'])) $dataToUpdate['is_unlocked'] = $update['is_unlocked'];
+
+                if (!empty($dataToUpdate)) {
+                    $room->characters()->syncWithoutDetaching([
+                        $update['id'] => $dataToUpdate
+                    ]);
+
+                    $appliedCharacterUpdates[] = array_merge(['character_id' => $update['id']], $dataToUpdate);
+                }
             }
         }
 
         VoteLockedIn::dispatch($room, $vote);
 
-        // Blanket Broadcast for the new ItemsUnlocked engine
-        if ($unlockedEvidences->isNotEmpty() || $unlockedLevels->isNotEmpty() || $unlockedSuspects->isNotEmpty() || $unlockedVictims->isNotEmpty()) {
+        if ($unlockedEvidences->isNotEmpty() || $unlockedLevels->isNotEmpty() || !empty($appliedCharacterUpdates)) {
             ItemsUnlocked::dispatch(
                 $room,
                 $unlockedEvidences->isNotEmpty() ? $unlockedEvidences : null,
                 $unlockedLevels->isNotEmpty() ? $unlockedLevels : null,
-                $unlockedSuspects->isNotEmpty() ? $unlockedSuspects : null,
-                $unlockedVictims->isNotEmpty() ? $unlockedVictims : null,
+                !empty($appliedCharacterUpdates) ? $appliedCharacterUpdates : null,
                 null
             );
         }
@@ -4063,8 +4156,7 @@ class VotingService
             'unlocked' => [
                 'evidence' => $unlockedEvidences->toArray(),
                 'levels' => $unlockedLevels->toArray(),
-                'suspects' => $unlockedSuspects->toArray(),
-                'victims' => $unlockedVictims->toArray()
+                'character_updates' => $appliedCharacterUpdates
             ]
         ]);
     }
@@ -7245,6 +7337,52 @@ return new class extends Migration
         Schema::table('phases', function (Blueprint $table) {
             $table->dropColumn(['map_url', 'coord_x', 'coord_y']);
         });
+    }
+};
+</file>
+
+<file path="database/migrations/2026_09_12_090854_refactor_people_to_characters.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void {
+        Schema::dropIfExists('room_suspects');
+        Schema::dropIfExists('room_victims');
+        Schema::dropIfExists('suspects');
+        Schema::dropIfExists('victims');
+
+        Schema::create('characters', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('case_id')->constrained('cases')->cascadeOnDelete();
+            $table->string('name');
+            $table->text('background')->nullable();
+            $table->string('img_url')->nullable();
+            $table->boolean('is_initial')->default(false);
+            $table->boolean('is_guilty')->default(false);
+            $table->string('charge')->nullable();
+            $table->string('default_status')->default('available');
+            $table->timestamps();
+        });
+
+        Schema::create('room_characters', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('room_id')->constrained('game_rooms')->cascadeOnDelete();
+            $table->foreignId('character_id')->constrained('characters')->cascadeOnDelete();
+            $table->string('status');
+            $table->boolean('is_unlocked')->default(true);
+            $table->timestamps();
+
+            $table->unique(['room_id', 'character_id']);
+        });
+    }
+
+    public function down(): void {
+        Schema::dropIfExists('room_characters');
+        Schema::dropIfExists('characters');
     }
 };
 </file>

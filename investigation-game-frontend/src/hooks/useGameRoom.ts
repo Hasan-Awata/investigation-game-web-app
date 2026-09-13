@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { joinRoom, fetchRoomState } from '@/services/api';
-import type { GameRoom, Evidence, Suspect, Victim } from '@/types';
+import type { GameRoom, Evidence, Character } from '@/types';
 
 export function useGameRoom(inviteCode: string | undefined) {
   const { t } = useTranslation();
@@ -36,14 +36,12 @@ export function useGameRoom(inviteCode: string | undefined) {
     enabled: !!inviteCode,
   });
 
-  // Handle the side-effect purely based on successful data resolution
   useEffect(() => {
     if (room?.id && inviteCode) {
       sessionStorage.setItem(`active_room_id_for_${inviteCode}`, room.id.toString());
     }
   }, [room?.id, inviteCode]);
 
-  // Expose a pure cache patching function to enforce the "Zero-Refetch" rule
   const patchRoomData = (updater: (oldRoom: GameRoom) => GameRoom) => {
     if (inviteCode) {
       queryClient.setQueryData(['gameRoom', inviteCode], (oldData: GameRoom | undefined) => {
@@ -53,18 +51,15 @@ export function useGameRoom(inviteCode: string | undefined) {
     }
   };
 
-  // 🚀 SERVER IS AUTHORITATIVE: Render constraints stripped. Arrays assigned directly.
   const accumulatedEvidences: Evidence[] = room?.accumulated_evidences || [];
-  const accumulatedSuspects: Suspect[] = room?.accumulated_suspects || [];
-  const accumulatedVictims: Victim[] = room?.accumulated_victims || [];
+  const accumulatedCharacters: Character[] = room?.accumulated_characters || [];
 
   return {
     room,
     isLoading,
     error: error instanceof Error ? error.message : null,
     accumulatedEvidences,
-    accumulatedSuspects,
-    accumulatedVictims,
+    accumulatedCharacters,
     refreshRoomData: async () => { await refetch(); },
     patchRoomData
   };

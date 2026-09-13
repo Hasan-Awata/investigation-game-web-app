@@ -6,8 +6,7 @@ export interface ChoiceOutcomes {
   gives_strike: boolean;
   unlock_evidence: number[];
   unlock_levels: number[];
-  unlock_suspects: number[];
-  unlock_victims: number[];
+  character_updates: { id: number; is_unlocked?: boolean; status?: string }[];
 }
 
 export interface ChoiceRequirements {
@@ -19,7 +18,7 @@ export const defaultRequirements = (): ChoiceRequirements => ({ required_evidenc
 
 export const defaultOutcomes = (): ChoiceOutcomes => ({
   feedback: '', next_question_id: null, gives_strike: false,
-  unlock_evidence: [], unlock_levels: [], unlock_suspects: [], unlock_victims: [],
+  unlock_evidence: [], unlock_levels: [], character_updates: [],
 });
 
 const appendToFormData = (fd: FormData, rootKey: string, obj: any) => {
@@ -49,8 +48,7 @@ export const appendChoicesToFormData = (formData: FormData, choices: any[]) => {
     if (choice.outcomes?.next_question_id) cleanOutcomes.next_question_id = Number(choice.outcomes.next_question_id);
     if (choice.outcomes?.unlock_evidence?.length > 0) cleanOutcomes.unlock_evidence = choice.outcomes.unlock_evidence.map(Number);
     if (choice.outcomes?.unlock_levels?.length > 0) cleanOutcomes.unlock_levels = choice.outcomes.unlock_levels.map(Number);
-    if (choice.outcomes?.unlock_suspects?.length > 0) cleanOutcomes.unlock_suspects = choice.outcomes.unlock_suspects.map(Number);
-    if (choice.outcomes?.unlock_victims?.length > 0) cleanOutcomes.unlock_victims = choice.outcomes.unlock_victims.map(Number);
+    if (choice.outcomes?.character_updates?.length > 0) cleanOutcomes.character_updates = choice.outcomes.character_updates;
     if (Object.keys(cleanOutcomes).length > 0) appendToFormData(formData, `choices[${i}][outcomes]`, cleanOutcomes);
   }
 };

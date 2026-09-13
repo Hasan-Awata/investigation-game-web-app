@@ -9,8 +9,7 @@ use App\Models\RoomVote;
 use App\Models\User;
 use App\Models\Evidence;
 use App\Models\Level;
-use App\Models\Suspect;
-use App\Models\Victim;
+use Illuminate\Support\Facades\DB;
 use App\Support\Result;
 use App\Events\VoteLockedIn;
 use App\Events\ItemsUnlocked;
@@ -40,12 +39,10 @@ class VotingService
 
         $unlockedEvidences = collect();
         $unlockedLevels = collect();
-        $unlockedSuspects = collect();
-        $unlockedVictims = collect();
+        $appliedCharacterUpdates = [];
 
         $outcomes = $choice->outcomes ?? [];
 
-        // Eager load models to pass exactly what the frontend cache needs (avoids N+1)
         if (!empty($outcomes['unlock_evidence']) && is_array($outcomes['unlock_evidence'])) {
             $unlockedEvidences = Evidence::whereIn('id', $outcomes['unlock_evidence'])->get();
             if ($unlockedEvidences->isNotEmpty()) {
@@ -60,30 +57,32 @@ class VotingService
             }
         }
 
-        if (!empty($outcomes['unlock_suspects']) && is_array($outcomes['unlock_suspects'])) {
-            $unlockedSuspects = Suspect::whereIn('id', $outcomes['unlock_suspects'])->get();
-            if ($unlockedSuspects->isNotEmpty()) {
-                $room->unlockedSuspects()->syncWithoutDetaching($unlockedSuspects->pluck('id')->toArray());
-            }
-        }
+        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {
+            foreach ($outcomes['character_updates'] as $update) {
+                if (!isset($update['id'])) continue;
 
-        if (!empty($outcomes['unlock_victims']) && is_array($outcomes['unlock_victims'])) {
-            $unlockedVictims = Victim::whereIn('id', $outcomes['unlock_victims'])->get();
-            if ($unlockedVictims->isNotEmpty()) {
-                $room->unlockedVictims()->syncWithoutDetaching($unlockedVictims->pluck('id')->toArray());
+                $dataToUpdate = [];
+                if (isset($update['status'])) $dataToUpdate['status'] = $update['status'];
+                if (isset($update['is_unlocked'])) $dataToUpdate['is_unlocked'] = $update['is_unlocked'];
+
+                if (!empty($dataToUpdate)) {
+                    $room->characters()->syncWithoutDetaching([
+                        $update['id'] => $dataToUpdate
+                    ]);
+                    
+                    $appliedCharacterUpdates[] = array_merge(['character_id' => $update['id']], $dataToUpdate);
+                }
             }
         }
 
         VoteLockedIn::dispatch($room, $vote);
 
-        // Blanket Broadcast for the new ItemsUnlocked engine
-        if ($unlockedEvidences->isNotEmpty() || $unlockedLevels->isNotEmpty() || $unlockedSuspects->isNotEmpty() || $unlockedVictims->isNotEmpty()) {
+        if ($unlockedEvidences->isNotEmpty() || $unlockedLevels->isNotEmpty() || !empty($appliedCharacterUpdates)) {
             ItemsUnlocked::dispatch(
-                $room, 
+                $room,
                 $unlockedEvidences->isNotEmpty() ? $unlockedEvidences : null,
                 $unlockedLevels->isNotEmpty() ? $unlockedLevels : null,
-                $unlockedSuspects->isNotEmpty() ? $unlockedSuspects : null,
-                $unlockedVictims->isNotEmpty() ? $unlockedVictims : null,
+                !empty($appliedCharacterUpdates) ? $appliedCharacterUpdates : null,
                 null
             );
         }
@@ -93,8 +92,7 @@ class VotingService
             'unlocked' => [
                 'evidence' => $unlockedEvidences->toArray(),
                 'levels' => $unlockedLevels->toArray(),
-                'suspects' => $unlockedSuspects->toArray(),
-                'victims' => $unlockedVictims->toArray()
+                'character_updates' => $appliedCharacterUpdates
             ]
         ]);
     }
