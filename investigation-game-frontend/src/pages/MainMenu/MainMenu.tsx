@@ -5,8 +5,8 @@ import { useTranslation } from 'react-i18next';
 import type { GameCase, User } from '@/types';
 import { fetchCases } from '@/services/api';
 import { logout } from '@/services/auth';
-import CaseBriefingModal from '@/components/CaseBriefingModal/CaseBriefingModal';
-import CaseCard from '@/components/CaseCard/CaseCard';
+import CaseBriefingModal from '@/pages/MainMenu/CaseBriefingModal/CaseBriefingModal';
+import CaseCard from '@/pages/MainMenu/CaseCard/CaseCard';
 import styles from './MainMenu.module.css';
 
 export default function MainMenu() {

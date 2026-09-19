@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
@@ -11,7 +11,7 @@ import WiretapPhase from './Levels/Wiretap/WiretapPhase';
 import '../SharedOverlay.css';
 import './CampaignTab.css';
 
-export default function CampaignTab() {
+const CampaignTab = () => {
   const { t } = useTranslation();
   const { room } = useRoomState();
 
@@ -343,3 +343,5 @@ export default function CampaignTab() {
     </div>
   );
 }
+
+export default React.memo(CampaignTab);

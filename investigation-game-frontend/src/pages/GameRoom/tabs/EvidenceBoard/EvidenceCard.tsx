@@ -27,8 +27,10 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
   const SpecificEvidenceComponent = EvidenceComponents[evidence.evidence_type];
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: evidence.id,
-    data: { evidence },
+    id: evidence.id, // Keep this as the raw ID so addToTray(active.id) still works in the layout
+    data: { 
+      type: 'EVIDENCE' // <--- This tells the layout router what is being dragged
+    }
   });
 
   if (!SpecificEvidenceComponent) {

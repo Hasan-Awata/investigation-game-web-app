@@ -1,10 +1,11 @@
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoomData } from '../../../../context/RoomContext';
 import type { GameCase } from '../../../../types';
 import '../SharedOverlay.css';
 import './CaseDetailsTab.css';
 
-export default function CaseDetailsTab() {
+const CaseDetailsTab = () => {
   const { t } = useTranslation();
   const { room } = useRoomData();
 
@@ -54,3 +55,5 @@ export default function CaseDetailsTab() {
     </div>
   );
 }
+
+export default React.memo(CaseDetailsTab);

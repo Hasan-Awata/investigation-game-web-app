@@ -1,91 +1,44 @@
-import { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDroppable } from '@dnd-kit/core';
 import { useRoomData, useRoomUI } from '@/context/RoomContext';
-import { submitSuspectVerdict } from '@/services/api';
-import { useMutation } from '@tanstack/react-query';
 import CharacterCard from './CharacterCard';
 import styles from './CharactersTab.module.css';
 
-type PoolType = 'unassigned' | 'guilty';
+interface CharactersTabProps {
+  guiltyIds: number[];
+  isSubmitting: boolean;
+  feedback: any;
+  submitVerdict: () => void;
+  clearFeedback: () => void;
+}
 
-export default function CharactersTab() {
+const CharactersTab = React.memo(({ guiltyIds, isSubmitting, feedback, submitVerdict, clearFeedback }: CharactersTabProps) => {
   const { t } = useTranslation();
-  const { room, accumulatedCharacters, refreshRoomData } = useRoomData();
-  const { viewedCharacters, markCharacterAsViewed, setGameOverData } = useRoomUI();
+  const { room, accumulatedCharacters } = useRoomData();
+  const { viewedCharacters, markCharacterAsViewed } = useRoomUI();
 
-  const [guiltyIds, setGuiltyIds] = useState<number[]>(() => {
-    try {
-      const saved = sessionStorage.getItem(`room_${room.invite_code}_guilty_characters`);
-      return saved ? JSON.parse(saved) : [];
-    } catch { return []; }
-  });
-
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  // Create Dropzones
+  const { isOver: isOverGuilty, setNodeRef: setGuiltyRef } = useDroppable({ id: 'guilty-zone' });
+  const { isOver: isOverUnassigned, setNodeRef: setUnassignedRef } = useDroppable({ id: 'unassigned-zone' });
 
   const initialLevels = room.game_case?.zones?.flatMap(z => z.levels || []).filter(l => l.is_initial) || [];
   const completedLevelIds = new Set(room.completed_levels?.map(l => l.id) || []);
   const allInitialCompleted = initialLevels.length > 0 && initialLevels.every(l => completedLevelIds.has(l.id));
 
-  const guiltyPool = accumulatedCharacters.filter(c => guiltyIds.includes(c.id));
+  // 1. The Fix: Map strictly off the guiltyIds array to preserve player drop order
+  const guiltyPool = guiltyIds
+    .map(id => accumulatedCharacters.find(c => c.id === id))
+    .filter((c): c is NonNullable<typeof c> => c !== undefined);
+
+  // 2. Unassigned pool can remain natively ordered
   const unassignedPool = accumulatedCharacters.filter(c => !guiltyIds.includes(c.id));
-
-  const verdictMutation = useMutation({
-    mutationFn: async (submittedGuiltyIds: number[]) => {
-      const result = await submitSuspectVerdict(room.id, submittedGuiltyIds);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    },
-    onSuccess: (data) => {
-      if (data.status === 'failed') {
-        setFeedback({ type: 'error', message: data.message });
-        refreshRoomData();
-      } else {
-        Object.keys(sessionStorage).forEach(key => {
-          if (key.includes(`room_${room.invite_code}`) || key.includes(`room_${room.id}`)) {
-            sessionStorage.removeItem(key);
-          }
-        });
-        setGameOverData(data.message, data.stats);
-        refreshRoomData();
-      }
-    },
-    onError: (error: Error) => {
-      setFeedback({ type: 'error', message: error.message });
-    }
-  });
-
-  const handleDragStart = (e: React.DragEvent, characterId: number, source: PoolType) => {
-    e.dataTransfer.setData('characterId', characterId.toString());
-    e.dataTransfer.setData('sourcePool', source);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetPool: PoolType) => {
-    e.preventDefault();
-
-    const characterId = parseInt(e.dataTransfer.getData('characterId'));
-    if (isNaN(characterId)) return;
-
-    let nextGuilty = guiltyIds.filter(id => id !== characterId);
-
-    if (targetPool === 'guilty') nextGuilty.push(characterId);
-
-    setGuiltyIds(nextGuilty);
-    sessionStorage.setItem(`room_${room.invite_code}_guilty_characters`, JSON.stringify(nextGuilty));
-  };
-
-  const handleSubmitVerdict = () => verdictMutation.mutate(guiltyIds);
-
-  const clearFeedback = () => {
-    setFeedback(null);
-    refreshRoomData();
-  };
 
   const isReadyToSubmit = allInitialCompleted;
   const isNoFoulPlay = guiltyPool.length === 0;
 
   return (
     <div className={styles.tabContainer}>
-      {/* Kept global class for the feedback modal to match GameRoom layout conventions */}
       {feedback && (
         <div className="feedback-modal-overlay">
           <div className={`feedback-modal-content ${feedback.type}`}>
@@ -97,11 +50,7 @@ export default function CharactersTab() {
       )}
 
       <div className={styles.verdictZones}>
-        <div 
-          className={`${styles.dropZone} ${styles.guiltyZone}`} 
-          onDragOver={(e) => e.preventDefault()} 
-          onDrop={(e) => handleDrop(e, 'guilty')}
-        >
+        <div ref={setGuiltyRef} className={`${styles.dropZone} ${styles.guiltyZone} ${isOverGuilty ? styles.isDragOver : ''}`}>
           <div className={styles.zoneHeader}>
             <h3 className={styles.guiltyHeaderTitle}>{t('pages.gameRoom.suspects.tab.primeSuspects')}</h3>
             <span className={styles.zoneCounter}>{guiltyPool.length}</span>
@@ -109,7 +58,7 @@ export default function CharactersTab() {
           <div className={styles.zoneContent}>
             {guiltyPool.map((c, index) => (
               <div key={c.id} className={styles.boardScatterItem} style={{ '--scatter-index': index } as React.CSSProperties}>
-                <CharacterCard character={c} sourcePool="guilty" isDraggable={true} isNew={!viewedCharacters.has(c.id)} onDragStart={handleDragStart} onInteract={markCharacterAsViewed} />
+                <CharacterCard character={c} sourcePool="guilty" isDraggable={true} isNew={!viewedCharacters.has(c.id)} onInteract={markCharacterAsViewed} />
               </div>
             ))}
             {guiltyPool.length === 0 && <div className={styles.zonePlaceholder}>{t('pages.gameRoom.suspects.tab.dragPrimeHere')}</div>}
@@ -117,11 +66,7 @@ export default function CharactersTab() {
         </div>
       </div>
 
-      <div 
-        className={styles.unassignedPool} 
-        onDragOver={(e) => e.preventDefault()} 
-        onDrop={(e) => handleDrop(e, 'unassigned')}
-      >
+      <div ref={setUnassignedRef} className={`${styles.unassignedPool} ${isOverUnassigned ? styles.isDragOver : ''}`}>
         <div className={styles.zoneHeader}>
           <h3>{t('pages.gameRoom.suspects.tab.unassigned')}</h3>
           <span className={styles.unassignedHint}>
@@ -130,7 +75,7 @@ export default function CharactersTab() {
         </div>
         <div className={styles.unassignedGrid}>
           {unassignedPool.map(c => (
-            <CharacterCard key={c.id} character={c} sourcePool="unassigned" isDraggable={true} isNew={!viewedCharacters.has(c.id)} onDragStart={handleDragStart} onInteract={markCharacterAsViewed} />
+            <CharacterCard key={c.id} character={c} sourcePool="unassigned" isDraggable={true} isNew={!viewedCharacters.has(c.id)} onInteract={markCharacterAsViewed} />
           ))}
           {unassignedPool.length === 0 && accumulatedCharacters.length > 0 && <div className={styles.zonePlaceholder}>{t('pages.gameRoom.suspects.tab.allCategorized')}</div>}
           {accumulatedCharacters.length === 0 && <div className={styles.zonePlaceholder}>{t('pages.gameRoom.suspects.tab.noSuspects', 'No persons of interest identified.')}</div>}
@@ -140,19 +85,20 @@ export default function CharactersTab() {
       <div className={styles.submitContainer}>
         <button
           className={`${styles.submitBtn} ${isNoFoulPlay ? styles.submitBtnNeutral : styles.submitBtnCrimson}`}
-          disabled={!isReadyToSubmit || verdictMutation.isPending}
-          onClick={handleSubmitVerdict}
+          disabled={!isReadyToSubmit || isSubmitting}
+          onClick={submitVerdict}
         >
-          {verdictMutation.isPending
+          {isSubmitting
             ? t('pages.gameRoom.suspects.tab.filingIndictment')
             : isNoFoulPlay
               ? t('pages.gameRoom.suspects.tab.ruleAccident')
               : t('pages.gameRoom.suspects.tab.submitIndictment')}
         </button>
-
         {isReadyToSubmit && isNoFoulPlay && <span className={styles.warningTextNeutral}>{t('pages.gameRoom.suspects.tab.emptyPoolWarning')}</span>}
         {!allInitialCompleted && <span className={styles.warningTextLocked}>{t('pages.gameRoom.suspects.tab.lockWarning')}</span>}
       </div>
     </div>
   );
-}
+});
+
+export default CharactersTab;

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useDraggable } from '@dnd-kit/core';
 import type { Character } from '@/types';
 import styles from './CharacterCard.module.css';
 
@@ -8,22 +9,23 @@ interface CharacterCardProps {
   sourcePool: 'unassigned' | 'guilty';
   isDraggable: boolean;
   isNew: boolean;
-  onDragStart: (e: React.DragEvent, characterId: number, source: 'unassigned' | 'guilty') => void;
   onInteract: (characterId: number) => void;
 }
 
-export default function CharacterCard({ character, sourcePool, isDraggable, isNew, onDragStart, onInteract }: CharacterCardProps) {
+export default function CharacterCard({ character, sourcePool, isDraggable, isNew, onInteract }: CharacterCardProps) {
   const { t } = useTranslation();
-  const [isDragging, setIsDragging] = useState(false);
   const [showIntel, setShowIntel] = useState(false);
-
   const isDeceased = character.current_status === 'deceased';
 
-  const handleDragStart = (e: React.DragEvent) => {
-    e.stopPropagation();
-    onDragStart(e, character.id, sourcePool);
-    setTimeout(() => setIsDragging(true), 0);
-  };
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `character-${character.id}`,
+    disabled: !isDraggable || showIntel,
+    data: { 
+      type: 'CHARACTER', // Critical for the router
+      characterId: character.id,
+      sourcePool 
+    }
+  });
 
   const toggleIntel = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -32,11 +34,12 @@ export default function CharacterCard({ character, sourcePool, isDraggable, isNe
 
   return (
     <div
+      ref={setNodeRef}
+      {...listeners}
+      {...attributes}
       className={`${styles.characterCard} ${isDragging ? styles.isDragging : ''} ${isDeceased ? styles.isDeceased : ''} ${sourcePool === 'guilty' ? styles.inGuiltyZone : ''}`}
-      draggable={isDraggable && !showIntel} 
-      onDragStart={handleDragStart}
-      onDragEnd={(e) => { e.stopPropagation(); setIsDragging(false); }}
       onMouseEnter={() => onInteract(character.id)}
+      style={{ opacity: isDragging ? 0.4 : 1, touchAction: 'none' }}
     >
       {isDeceased && (
         <div className={styles.deceasedOverlay}>
@@ -48,7 +51,7 @@ export default function CharacterCard({ character, sourcePool, isDraggable, isNe
 
       <button
         className={styles.intelToggleBtn}
-        onClick={toggleIntel}
+        onPointerDownCapture={(e) => { e.stopPropagation(); toggleIntel(e); }}
         title={showIntel ? t('pages.gameRoom.suspects.card.closeIntel') : t('pages.gameRoom.suspects.card.viewIntel')}
       >
         {showIntel ? '✕' : 'ℹ'}
@@ -72,6 +75,28 @@ export default function CharacterCard({ character, sourcePool, isDraggable, isNe
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+export function CharacterCardOverlay({ character, sourcePool }: { character: Character, sourcePool: 'unassigned' | 'guilty' }) {
+  const { t } = useTranslation();
+  const isDeceased = character.current_status === 'deceased';
+
+  return (
+    <div className={`${styles.characterCard} ${isDeceased ? styles.isDeceased : ''} ${sourcePool === 'guilty' ? styles.inGuiltyZone : ''}`}>
+      {isDeceased && (
+        <div className={styles.deceasedOverlay}>
+          <span className={styles.deceasedStamp}>{t('pages.gameRoom.characters.deceased', 'DECEASED')}</span>
+        </div>
+      )}
+      <div
+        className={styles.characterMugshot}
+        style={{ backgroundImage: `url(${character.img_url || '/placeholder-mugshot.jpg'})` }}
+      />
+      <div className={styles.characterInfo}>
+        <h4 className={styles.characterName} title={character.name}>{character.name}</h4>
+      </div>
     </div>
   );
 }

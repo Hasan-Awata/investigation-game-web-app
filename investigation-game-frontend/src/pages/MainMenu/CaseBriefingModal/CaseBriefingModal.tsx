@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import '@/i18n';
-import type { GameCase } from '../../types';
-import { CaseUserStatus } from '../../types';
-import { createRoom } from '../../services/api';
+import type { GameCase } from '../../../types';
+import { CaseUserStatus } from '../../../types';
+import { createRoom } from '../../../services/api';
 import styles from './CaseBriefingModal.module.css';
 
 interface CaseBriefingModalProps {

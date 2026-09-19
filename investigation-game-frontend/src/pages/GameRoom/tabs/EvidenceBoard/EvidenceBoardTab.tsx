@@ -1,25 +1,11 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { 
-  DndContext, 
-  DragOverlay, 
-  PointerSensor, 
-  TouchSensor, 
-  useSensor, 
-  useSensors, 
-  defaultDropAnimationSideEffects
-} from '@dnd-kit/core';
-import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
-
 import { useRoomData, useRoomUI } from '@/context/RoomContext';
-import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
 import type { Evidence } from '@/types';
-import EvidenceCard, { EvidenceCardOverlay } from './EvidenceCard';
+import EvidenceCard from './EvidenceCard';
 import EvidenceModal from './EvidenceModal';
-import ProceduralRequestTray from './ProceduralRequestTray';
 import styles from './EvidenceBoardTab.module.css';
 
-// MEMOIZATION: This severs the render cascade entirely. 
 const EvidenceGrid = React.memo(({ 
   evidences, 
   viewedEvidences, 
@@ -46,136 +32,36 @@ const EvidenceGrid = React.memo(({
 
 export default function EvidenceBoardTab() {
   const { t } = useTranslation();
-  const { room, accumulatedEvidences, refreshRoomData } = useRoomData();
+  const { accumulatedEvidences } = useRoomData();
   const { viewedEvidences, markEvidenceAsViewed } = useRoomUI();
-
   const [inspectedEvidence, setInspectedEvidence] = useState<Evidence | null>(null);
-  
-  // Track dragging state for the DragOverlay
-  const [activeDragId, setActiveDragId] = useState<number | null>(null);
 
-  const {
-    trayEvidences,
-    requestType,
-    setRequestType,
-    addToTray,
-    removeFromTray,
-    isSubmitting,
-    feedback,
-    toasts,
-    clearFeedback,
-    submitRequest,
-    filedRequests
-  } = useInvestigationRequest(room, refreshRoomData);
-
-  // Wrapped in useCallback to preserve strict equality for React.memo
   const handleInspect = useCallback((evidence: Evidence) => {
     setInspectedEvidence(evidence);
     markEvidenceAsViewed(evidence.id);
   }, [markEvidenceAsViewed]);
 
-  // Configure Sensors for hybrid touch/mouse support without overriding clicks
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: { distance: 5 }, // Allows standard clicks to pass through
-    }),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 150, tolerance: 5 }, // Optimizes for mobile tapping vs swiping
-    })
-  );
-
-  const handleDragStart = (event: DragStartEvent) => {
-    setActiveDragId(event.active.id as number);
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    // If the evidence was dropped over the 'procedural-tray' droppable area
-    if (over && over.id === 'procedural-tray') {
-      addToTray(active.id as number);
-    }
-    
-    setActiveDragId(null);
-  };
-
-  const activeEvidence = useMemo(() => 
-    accumulatedEvidences.find((ev) => ev.id === activeDragId), 
-  [accumulatedEvidences, activeDragId]);
-
   return (
-    <DndContext 
-      sensors={sensors} 
-      onDragStart={handleDragStart} 
-      onDragEnd={handleDragEnd}
-    >
-      <div className={styles.evidenceBoardContainer}>
-        <header className={styles.boardHeader}>
-          <span className={styles.boardMeta}>{t('pages.gameRoom.evidence.board.subtitle')}</span>
-        </header>
+    <div className={styles.evidenceBoardContainer}>
+      <header className={styles.boardHeader}>
+        <span className={styles.boardMeta}>{t('pages.gameRoom.evidence.board.subtitle')}</span>
+      </header>
 
-        {feedback && (
-          <div className="feedback-modal-overlay" style={{ zIndex: 1000 }}>
-            <div className={`feedback-modal-content ${feedback.type}`}>
-              <h3 className="feedback-title">
-                {feedback.type === 'success' ? t('pages.gameRoom.evidence.board.requestApproved') : t('pages.gameRoom.evidence.board.requestDenied')}
-              </h3>
-              <p className="feedback-message">{feedback.message}</p>
-              <button className="btn-secondary mt-1" onClick={clearFeedback}>{t('pages.gameRoom.evidence.board.acknowledge')}</button>
-            </div>
+      <div className={styles.evidenceWorkspace}>
+        {accumulatedEvidences.length === 0 ? (
+          <div className="terminal-text" style={{ textAlign: 'center' }}>
+            {t('pages.gameRoom.evidence.board.noEvidence')}
           </div>
+        ) : (
+          <EvidenceGrid 
+            evidences={accumulatedEvidences} 
+            viewedEvidences={viewedEvidences} 
+            onInspect={handleInspect} 
+          />
         )}
-
-        <div className="toast-container">
-          {toasts.map((toast) => (
-            <div key={toast.id} className="system-toast-notification">
-              <div className="toast-icon pulse-icon">
-                <img src={toast.icon} alt={toast.type} className="toast-svg-graphic" />
-              </div>
-              <div className="toast-text-block">
-                <span className="toast-header">{toast.title}</span>
-                <p className="toast-message">{toast.message}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className={styles.evidenceWorkspace}>
-          {accumulatedEvidences.length === 0 ? (
-            <div className="terminal-text" style={{ textAlign: 'center' }}>
-              {t('pages.gameRoom.evidence.board.noEvidence')}
-            </div>
-          ) : (
-            <EvidenceGrid 
-              evidences={accumulatedEvidences} 
-              viewedEvidences={viewedEvidences} 
-              onInspect={handleInspect} 
-            />
-          )}
-        </div>
-
-        <ProceduralRequestTray
-          accumulatedEvidences={accumulatedEvidences}
-          trayEvidences={trayEvidences}
-          requestType={requestType}
-          setRequestType={setRequestType}
-          addToTray={addToTray}
-          removeFromTray={removeFromTray}
-          isSubmitting={isSubmitting}
-          submitRequest={submitRequest}
-          filedRequests={filedRequests}
-        />
-
-        <EvidenceModal evidence={inspectedEvidence} onClose={() => setInspectedEvidence(null)} />
       </div>
 
-      <DragOverlay dropAnimation={{
-        sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
-        duration: 250,
-        easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-      }}>
-        {activeEvidence ? <EvidenceCardOverlay evidence={activeEvidence} /> : null}
-      </DragOverlay>
-    </DndContext>
+      <EvidenceModal evidence={inspectedEvidence} onClose={() => setInspectedEvidence(null)} />
+    </div>
   );
 }

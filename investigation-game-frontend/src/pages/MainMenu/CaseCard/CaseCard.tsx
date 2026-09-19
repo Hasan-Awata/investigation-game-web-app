@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import type { GameCase } from '../../types';
-import { CaseUserStatus } from '../../types';
+import type { GameCase } from '../../../types';
+import { CaseUserStatus } from '../../../types';
 import '@/i18n';
 import './CaseCard.css';
 
