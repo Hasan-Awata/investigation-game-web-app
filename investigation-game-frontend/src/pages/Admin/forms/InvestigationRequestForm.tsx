@@ -45,7 +45,7 @@ export default function InvestigationRequestForm() {
     }));
   };
 
-  const allCaseLevels: Level[] = selectedCase.phases?.flatMap(p => p.levels || []) || [];
+  const allCaseLevels: Level[] = selectedCase.zones?.flatMap(p => p.levels || []) || [];
 
   return (
     <EntityDashboard<InvestigationRequest>

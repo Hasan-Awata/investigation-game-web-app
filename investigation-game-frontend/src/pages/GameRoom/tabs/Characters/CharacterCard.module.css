@@ -1,0 +1,225 @@
+/* =========================================
+   SLEEK PREMIUM MYSTERY: CHARACTER CARD MODULE
+   ========================================= */
+
+.characterCard {
+  width: 160px;
+  background: var(--bg-panel, #161619);
+  border: 1px solid rgba(var(--border-light-rgb, 255, 255, 255), 0.1);
+  border-radius: 14px;
+  cursor: grab;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease, filter 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
+  position: relative;
+  /* Changed from hidden to visible so the push-pin isn't cut off */
+  overflow: visible; 
+  transform: translateZ(0);
+}
+
+.characterCard:active {
+  cursor: grabbing;
+  transform: scale(1.05) translateZ(0);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.6);
+  z-index: 50;
+}
+
+.isDragging {
+  opacity: 0.2;
+}
+
+/* --- DECEASED VISUAL OVERLAY (Frosted Glass Style) --- */
+.isDeceased .characterMugshot {
+  filter: grayscale(100%) brightness(0.7);
+}
+
+.deceasedOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(4px) grayscale(80%);
+  -webkit-backdrop-filter: blur(4px) grayscale(80%);
+  pointer-events: none;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 13px; /* Keep overlay inside borders */
+}
+
+/* Matching the Authentic Rubber Stamp from CaseCard */
+.deceasedStamp {
+  font-family: var(--font-mono, monospace);
+  color: var(--accent-crimson, #ff4444);
+  border: 3px double var(--accent-crimson, #ff4444);
+  border-radius: 6px;
+  padding: 0.35rem 0.75rem;
+  font-size: 1.15rem;
+  font-weight: 800;
+  transform: rotate(-15deg);
+  letter-spacing: 0.15em;
+  background: transparent;
+  pointer-events: none;
+  z-index: 12;
+  filter: drop-shadow(0 0 10px rgba(255, 68, 68, 0.4));
+  text-shadow: 0 0 4px rgba(255, 68, 68, 0.5);
+}
+
+/* --- BASE STYLES --- */
+.characterMugshot {
+  width: 100%;
+  height: 160px;
+  background-color: rgba(0, 0, 0, 0.4);
+  background-size: cover;
+  background-position: center;
+  border-bottom: 1px solid rgba(var(--border-light-rgb, 255, 255, 255), 0.05);
+  /* Explicit border radius to prevent corners bleeding since parent is now overflow: visible */
+  border-top-left-radius: 13px; 
+  border-top-right-radius: 13px;
+  transition: filter 0.3s ease;
+}
+
+.characterInfo {
+  padding: 0.75rem;
+  text-align: center;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center; /* Ensures name is perfectly centered horizontally */
+  z-index: 3;
+  background: var(--bg-dark, #0a0a0c);
+  /* Explicit border radius to prevent corners bleeding */
+  border-bottom-left-radius: 13px;
+  border-bottom-right-radius: 13px;
+}
+
+.characterName {
+  margin: 0; /* Removed bottom margin to perfectly center vertically */
+  font-size: 0.95rem;
+  font-family: var(--font-primary, sans-serif);
+  color: var(--text-primary, #ffffff);
+  white-space: pre-line;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 600;
+  text-align: center;
+}
+
+/* --- INTEL TOGGLE BUTTON --- */
+.intelToggleBtn {
+  position: absolute;
+  top: 0.5rem;
+  inset-inline-start: 0.5rem;
+  z-index: 10;
+  background: rgba(var(--bg-dark-rgb, 0, 0, 0), 0.6);
+  border: 1px solid rgba(var(--border-light-rgb, 255, 255, 255), 0.2);
+  color: var(--accent-cyan, #00ffff);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.9rem;
+  font-weight: bold;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+}
+
+.intelToggleBtn:hover {
+  background: var(--accent-cyan, #00ffff);
+  color: var(--bg-dark, #0a0a0c);
+  border-color: var(--accent-cyan, #00ffff);
+  box-shadow: 0 0 10px rgba(var(--accent-cyan-rgb, 0, 255, 255), 0.4);
+  transform: scale(1.1);
+}
+
+/* --- INTEL OVERLAY (Frosted) --- */
+.intelOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(var(--bg-dark-rgb, 10, 10, 12), 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 3rem 1rem 1rem 1rem;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  z-index: 5;
+  animation: fadeIn 0.2s ease-out;
+  cursor: default;
+  border-radius: 13px; /* Keep overlay inside borders */
+}
+
+.intelOverlay::-webkit-scrollbar {
+  width: 4px;
+}
+.intelOverlay::-webkit-scrollbar-track {
+  background: transparent;
+}
+.intelOverlay::-webkit-scrollbar-thumb {
+  background: rgba(var(--accent-cyan-rgb, 0, 255, 255), 0.3);
+  border-radius: 4px;
+}
+
+.intelHeader {
+  margin: 0 0 0.5rem 0;
+  font-family: var(--font-mono, monospace);
+  color: var(--accent-amber, #ffb800);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px dashed rgba(var(--border-light-rgb, 255, 255, 255), 0.15);
+  padding-bottom: 0.35rem;
+}
+
+.intelText {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #a1a1aa);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  text-align: start;
+}
+
+/* --- BOARD PUSH PINS (Only when in guilty zone) --- */
+.inGuiltyZone::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ff5252, #8a0000);
+  box-shadow: -2px 4px 6px rgba(0, 0, 0, 0.6), inset -2px -2px 4px rgba(0,0,0,0.4);
+  z-index: 20;
+  pointer-events: none;
+}
+
+/* --- UNREAD SHINE MECHANIC --- */
+.unreadIndicator {
+  display: none;
+}
+
+.characterCard:has(.unreadIndicator) {
+  animation: characterShine 1.5s infinite alternate ease-in-out;
+  z-index: 5;
+}
+
+@keyframes characterShine {
+  0% { box-shadow: 0 0 4px rgba(var(--accent-amber-rgb, 255, 184, 0), 0.3); }
+  100% { box-shadow: 0 0 16px rgba(var(--accent-amber-rgb, 255, 184, 0), 0.8); border-color: var(--accent-amber); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

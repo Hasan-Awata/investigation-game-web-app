@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { Zone } from '@/types';
-import './ZoneCard.css';
+import styles from './ZoneCard.module.css';
 
 interface ZoneCardProps {
   zone: Zone;
@@ -44,47 +44,47 @@ export default function ZoneCard({ zone, unlockedLevelIds, onClose, onEnter }: Z
   const levels = zone.levels ? [...zone.levels].sort((a, b) => a.order_index - b.order_index) : [];
 
   return (
-    <div className="zone-card-overlay" onClick={onClose}>
-      <div className="zone-card-content glass-panel" onClick={e => e.stopPropagation()}>
+    <div className={styles.modalBackdrop} onClick={onClose}>
+      <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
+        
+        <button className={styles.closeBtn} onClick={onClose} title="Close">✕</button>
 
-        <button className="close-btn" onClick={onClose} title="Close">✕</button>
-
-        <div className="zone-card-header">
-          <h2 className="zone-card-title">{zone.title}</h2>
+        <div className={styles.zoneHeader}>
+          <h2 className={styles.zoneTitle}>{zone.title}</h2>
         </div>
 
-        <p className="zone-card-desc">
+        <p className={styles.zoneDesc}>
           {zone.description || t('pages.gameRoom.campaign.map.noDescription')}
         </p>
 
-        <div className="zone-card-levels-container">
-          <div className="levels-heading-wrapper">
-            <h4 className="levels-heading">{t('pages.gameRoom.campaign.map.activeLeads', 'Active Leads')}</h4>
-            <span className="levels-count">
+        <div className={styles.levelsContainer}>
+          <div className={styles.levelsHeaderWrapper}>
+            <h4 className={styles.levelsHeading}>{t('pages.gameRoom.campaign.map.activeLeads', 'Active Leads')}</h4>
+            <span className={styles.levelsCount}>
               {t('pages.gameRoom.campaign.map.entriesCount', { count: levels.length })}
             </span>
           </div>
 
-          <ul className="levels-preview-list">
+          <ul className={styles.levelsList}>
             {levels.map(level => {
               const isDiscovered = level.is_initial || unlockedLevelIds.has(level.id);
               const isGated = isDiscovered && level.required_request_id; 
 
-              let stateClass = 'undiscovered';
+              let stateClass = styles.undiscovered;
               if (isDiscovered) {
-                stateClass = isGated ? 'gated' : 'actionable';
+                stateClass = isGated ? styles.gated : styles.actionable;
               }
 
               return (
-                <li key={level.id} className={`level-preview-item ${stateClass}`}>
-                  <div className="level-preview-icon">
+                <li key={level.id} className={`${styles.levelItem} ${stateClass}`}>
+                  <div className={styles.levelIcon}>
                     {isDiscovered ? getLevelIcon(level.presentation_type) : '❓'}
                   </div>
-                  <div className="level-data">
-                    <span className="level-title">
+                  <div className={styles.levelData}>
+                    <span className={styles.levelTitle}>
                       {isDiscovered ? level.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')}
                     </span>
-                    <span className="level-status-text">
+                    <span className={styles.levelStatusText}>
                       {isGated 
                         ? t('pages.gameRoom.campaign.map.warrantRequired', 'WARRANT REQUIRED') 
                         : isDiscovered 
@@ -99,8 +99,8 @@ export default function ZoneCard({ zone, unlockedLevelIds, onClose, onEnter }: Z
           </ul>
         </div>
 
-        <div className="zone-card-actions">
-          <button className="btn-primary" onClick={() => onEnter(zone.id)} style={{ width: '100%' }}>
+        <div className={styles.zoneActions}>
+          <button className={styles.btnPrimary} onClick={() => onEnter(zone.id)}>
             {t('pages.gameRoom.campaign.map.travelToZone', 'Travel to Zone')}
           </button>
         </div>

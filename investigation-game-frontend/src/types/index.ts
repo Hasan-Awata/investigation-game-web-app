@@ -58,6 +58,7 @@ export const CaseUserStatus = {
   FailedIncomplete: 'failed_incomplete',
   FailedStrikes: 'failed_strikes',
 } as const;
+
 // 2. Extract the values into a TypeScript type of the exact same name
 export type CaseUserStatus = typeof CaseUserStatus[keyof typeof CaseUserStatus];
 

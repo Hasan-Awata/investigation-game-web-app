@@ -4,9 +4,8 @@ import { useRoomData, useRoomUI } from '@/context/RoomContext';
 import { submitSuspectVerdict } from '@/services/api';
 import { useMutation } from '@tanstack/react-query';
 import CharacterCard from './CharacterCard';
-import './CharactersTab.css';
+import styles from './CharactersTab.module.css';
 
-// Removed 'cleared' from the pool types
 type PoolType = 'unassigned' | 'guilty';
 
 export default function CharactersTab() {
@@ -28,7 +27,6 @@ export default function CharactersTab() {
   const allInitialCompleted = initialLevels.length > 0 && initialLevels.every(l => completedLevelIds.has(l.id));
 
   const guiltyPool = accumulatedCharacters.filter(c => guiltyIds.includes(c.id));
-  // Anyone not explicitly marked guilty is now automatically unassigned (innocent/uninvolved)
   const unassignedPool = accumulatedCharacters.filter(c => !guiltyIds.includes(c.id));
 
   const verdictMutation = useMutation({
@@ -82,12 +80,12 @@ export default function CharactersTab() {
     refreshRoomData();
   };
 
-  // Submission is now allowed as soon as initial leads are completed. No need to categorize everyone.
   const isReadyToSubmit = allInitialCompleted;
   const isNoFoulPlay = guiltyPool.length === 0;
 
   return (
-    <div className="persons-of-interest-tab-container">
+    <div className={styles.tabContainer}>
+      {/* Kept global class for the feedback modal to match GameRoom layout conventions */}
       {feedback && (
         <div className="feedback-modal-overlay">
           <div className={`feedback-modal-content ${feedback.type}`}>
@@ -98,40 +96,50 @@ export default function CharactersTab() {
         </div>
       )}
 
-      <div className="verdict-zones">
-        <div className="drop-zone guilty-zone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, 'guilty')}>
-          <div className="zone-header">
-            <h3>{t('pages.gameRoom.suspects.tab.primeSuspects')}</h3>
-            <span className="zone-counter">{guiltyPool.length}</span>
+      <div className={styles.verdictZones}>
+        <div 
+          className={`${styles.dropZone} ${styles.guiltyZone}`} 
+          onDragOver={(e) => e.preventDefault()} 
+          onDrop={(e) => handleDrop(e, 'guilty')}
+        >
+          <div className={styles.zoneHeader}>
+            <h3 className={styles.guiltyHeaderTitle}>{t('pages.gameRoom.suspects.tab.primeSuspects')}</h3>
+            <span className={styles.zoneCounter}>{guiltyPool.length}</span>
           </div>
-          <div className="zone-content">
-            {guiltyPool.map(c => (
-              <CharacterCard key={c.id} character={c} sourcePool="guilty" isDraggable={true} isNew={!viewedCharacters.has(c.id)} onDragStart={handleDragStart} onInteract={markCharacterAsViewed} />
+          <div className={styles.zoneContent}>
+            {guiltyPool.map((c, index) => (
+              <div key={c.id} className={styles.boardScatterItem} style={{ '--scatter-index': index } as React.CSSProperties}>
+                <CharacterCard character={c} sourcePool="guilty" isDraggable={true} isNew={!viewedCharacters.has(c.id)} onDragStart={handleDragStart} onInteract={markCharacterAsViewed} />
+              </div>
             ))}
-            {guiltyPool.length === 0 && <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.dragPrimeHere')}</div>}
+            {guiltyPool.length === 0 && <div className={styles.zonePlaceholder}>{t('pages.gameRoom.suspects.tab.dragPrimeHere')}</div>}
           </div>
         </div>
       </div>
 
-      <div className="unassigned-pool" onDragOver={(e) => e.preventDefault()} onDrop={(e) => handleDrop(e, 'unassigned')}>
-        <div className="zone-header">
+      <div 
+        className={styles.unassignedPool} 
+        onDragOver={(e) => e.preventDefault()} 
+        onDrop={(e) => handleDrop(e, 'unassigned')}
+      >
+        <div className={styles.zoneHeader}>
           <h3>{t('pages.gameRoom.suspects.tab.unassigned')}</h3>
-          <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+          <span className={styles.unassignedHint}>
             {t('pages.gameRoom.suspects.tab.uninvolvedHint', 'Leftover profiles are considered innocent or uninvolved.')}
           </span>
         </div>
-        <div className="unassigned-grid">
+        <div className={styles.unassignedGrid}>
           {unassignedPool.map(c => (
             <CharacterCard key={c.id} character={c} sourcePool="unassigned" isDraggable={true} isNew={!viewedCharacters.has(c.id)} onDragStart={handleDragStart} onInteract={markCharacterAsViewed} />
           ))}
-          {unassignedPool.length === 0 && accumulatedCharacters.length > 0 && <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.allCategorized')}</div>}
-          {accumulatedCharacters.length === 0 && <div className="zone-placeholder">{t('pages.gameRoom.suspects.tab.noSuspects', 'No persons of interest identified.')}</div>}
+          {unassignedPool.length === 0 && accumulatedCharacters.length > 0 && <div className={styles.zonePlaceholder}>{t('pages.gameRoom.suspects.tab.allCategorized')}</div>}
+          {accumulatedCharacters.length === 0 && <div className={styles.zonePlaceholder}>{t('pages.gameRoom.suspects.tab.noSuspects', 'No persons of interest identified.')}</div>}
         </div>
       </div>
 
-      <div className="submit-verdict-container" style={{ flexDirection: 'column', gap: '1rem' }}>
+      <div className={styles.submitContainer}>
         <button
-          className={`btn-primary final-verdict-btn ${isNoFoulPlay ? 'no-foul-play' : ''}`}
+          className={`${styles.submitBtn} ${isNoFoulPlay ? styles.submitBtnNeutral : styles.submitBtnCrimson}`}
           disabled={!isReadyToSubmit || verdictMutation.isPending}
           onClick={handleSubmitVerdict}
         >
@@ -142,8 +150,8 @@ export default function CharactersTab() {
               : t('pages.gameRoom.suspects.tab.submitIndictment')}
         </button>
 
-        {isReadyToSubmit && isNoFoulPlay && <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{t('pages.gameRoom.suspects.tab.emptyPoolWarning')}</span>}
-        {!allInitialCompleted && <span className="lock-warning-text">{t('pages.gameRoom.suspects.tab.lockWarning')}</span>}
+        {isReadyToSubmit && isNoFoulPlay && <span className={styles.warningTextNeutral}>{t('pages.gameRoom.suspects.tab.emptyPoolWarning')}</span>}
+        {!allInitialCompleted && <span className={styles.warningTextLocked}>{t('pages.gameRoom.suspects.tab.lockWarning')}</span>}
       </div>
     </div>
   );

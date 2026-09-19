@@ -19,12 +19,13 @@
 ├── package.json
 ├── src
 │   ├── App.tsx
+│   ├── DESIGN.md
 │   ├── components
 │   │   ├── AgentNotepad
 │   │   │   ├── AgentNotepad.css
 │   │   │   └── AgentNotepad.tsx
 │   │   ├── CaseBriefingModal
-│   │   │   ├── CaseBriefingModal.css
+│   │   │   ├── CaseBriefingModal.module.css
 │   │   │   └── CaseBriefingModal.tsx
 │   │   ├── CaseCard
 │   │   │   ├── CaseCard.css
@@ -172,7 +173,6 @@
 │   │   │       │       └── ViewersContainer.tsx
 │   │   │       └── SharedOverlay.css
 │   │   └── MainMenu
-│   │       ├── MainMenu.css
 │   │       └── MainMenu.tsx
 │   ├── services
 │   │   ├── adminApi.ts
@@ -882,7 +882,7 @@ import '@/i18n';
 import type { GameCase } from '../../types';
 import { CaseUserStatus } from '../../types';
 import { createRoom } from '../../services/api';
-import './CaseBriefingModal.css';
+import styles from './CaseBriefingModal.module.css';
 
 interface CaseBriefingModalProps {
   gameCase: GameCase;
@@ -925,19 +925,18 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
     primaryButtonText = t('components.caseBriefing.replayCase');
   }
 
-  // Determine dynamic classes instead of inline color strings
   let rewardText = `${gameCase.XP_on_solve} ${t('components.caseBriefing.xp')}`;
-  let rewardClass = 'reward-standard';
+  let rewardClass = styles.rewardStandard;
 
   if (userStatus === CaseUserStatus.SolvedPerfect) {
     rewardText = `0 ${t('components.caseBriefing.xp')} ${t('components.caseBriefing.perfectReplay')}`;
-    rewardClass = 'reward-neutral';
+    rewardClass = styles.rewardNeutral;
   } else if (userStatus === CaseUserStatus.SolvedPartial) {
     rewardText = `0 ${t('components.caseBriefing.xp')} ${t('components.caseBriefing.partialReplay')}`;
-    rewardClass = 'reward-neutral';
+    rewardClass = styles.rewardNeutral;
   } else if (isFailed) {
     rewardText = `${Math.floor(gameCase.XP_on_solve / 2)} ${t('components.caseBriefing.xp')} ${t('components.caseBriefing.penaltyAllowance')}`;
-    rewardClass = 'reward-penalty';
+    rewardClass = styles.rewardPenalty;
   }
 
   const renderStars = (rating: number) => {
@@ -945,85 +944,117 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
     for (let i = 1; i <= 5; i++) {
       const isActive = i <= Math.round(rating);
       stars.push(
-        <span key={i} className={`star-icon ${isActive ? 'active' : 'inactive'}`}>★</span>
+        <span key={i} className={`${styles.starIcon} ${isActive ? styles.active : styles.inactive}`}>★</span>
       );
     }
     return stars;
   };
 
+  const heroStyle = gameCase.img_url
+    ? { backgroundImage: `url(${gameCase.img_url})` }
+    : {};
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
-        <button className="close-btn" onClick={onClose} disabled={isLoading}>✕</button>
+    <div className={styles.modalBackdrop} onClick={onClose}>
+      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+        <button className={styles.closeBtn} onClick={onClose} disabled={isLoading} title="Close">✕</button>
 
-        <div className="modal-header">
-          <h2 className="modal-title">{gameCase.title}</h2>
-          <div className="modal-author">{t('components.caseBriefing.authoredBy')} {gameCase.author_name || t('components.caseBriefing.system')}</div>
-        </div>
-
-        <div className="modal-dossier-layout">
-          <div className="modal-story-container">
-            <div className="dossier-tags">
-              {gameCase.tags?.map((tag, idx) => (
-                <span key={idx} className="dossier-tag-pill">{tag}</span>
-              ))}
+        {/* Immersive Hero Header */}
+        <div className={styles.heroHeader} style={heroStyle}>
+          <div className={styles.heroGradientOverlay}></div>
+          <div className={styles.heroContent}>
+            <div className={styles.modalAuthor}>
+              {t('components.caseBriefing.authoredBy')} {gameCase.author_name || t('components.caseBriefing.system')}
             </div>
-            <p className="modal-story-text">{gameCase.story}</p>
-          </div>
-
-          <div className="modal-metadata-sidebar">
-            <div className="meta-block">
-              <span className="meta-label">{t('components.caseBriefing.playerRating')}</span>
-              <div className="meta-value">
-                {renderStars(gameCase.rating_stars || 0)}
-                <span className="rating-number">({gameCase.rating_stars || 'N/A'})</span>
+            <h2 className={styles.modalTitle}>{gameCase.title}</h2>
+            {gameCase.tags && gameCase.tags.length > 0 && (
+              <div className={styles.dossierTags}>
+                {gameCase.tags.map((tag, idx) => (
+                  <span key={idx} className={styles.dossierTagPill}>{tag}</span>
+                ))}
               </div>
-            </div>
-
-            <div className="meta-block">
-              <span className="meta-label">{t('components.caseBriefing.difficulty')}</span>
-              <div className="meta-value difficulty-value">{gameCase.difficulty || t('components.caseBriefing.standard')}</div>
-            </div>
-
-            <div className="meta-block">
-              <span className="meta-label">{t('components.caseBriefing.estPlaytime')}</span>
-              <div className="meta-value">{gameCase.estimated_playtime || t('components.caseBriefing.unknown')}</div>
-            </div>
-
-            <div className="meta-block">
-              <span className="meta-label">{t('components.caseBriefing.advisory')}</span>
-              <div className="meta-value advisory-badge">{gameCase.age_rating || t('components.caseBriefing.unrated')}</div>
-            </div>
-
-            <div className="meta-block requirements-block">
-              <span className="meta-label">{t('components.caseBriefing.accessRequirements')}</span>
-              <div className="modal-badges column-layout">
-                <span className="badge">{t('components.caseBriefing.minXp')} {gameCase.min_player_XP}</span>
-                <span className={`badge reward ${rewardClass}`}>
-                  {t('components.caseBriefing.reward')} {rewardText}
-                </span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
 
-        {error && <div className="terminal-text error modal-error-message">{error}</div>}
+        {/* Modal Body */}
+        <div className={styles.modalBody}>
+          <div className={styles.modalStoryContainer}>
+            <p>{gameCase.story}</p>
+          </div>
 
-        <div className="modal-actions">
-          <button className="btn-primary" onClick={handleStartSession} disabled={isLoading}>
-            {primaryButtonText}
-          </button>
+          {/* Sleek Metadata Bento Grid & Redesigned Clearance Banner */}
+          <div className={styles.metadataGrid}>
 
-          {showContinue && (
-            <button
-              className="btn-secondary continue-btn"
-              onClick={() => navigate(`/room/${activeInviteCode}`)}
-              disabled={isLoading}
-            >
-              {t('components.caseBriefing.continueInvestigation')}
+            {/* Rating Card */}
+            <div className={styles.metaCard}>
+              <span className={styles.metaLabel}>{t('components.caseBriefing.playerRating')}</span>
+              <div className={styles.metaValue}>
+                <div className={styles.starContainer}>
+                  {renderStars(gameCase.rating_stars || 0)}
+                </div>
+                <span className={styles.ratingNumber}>({gameCase.rating_stars || 'N/A'})</span>
+              </div>
+            </div>
+
+            {/* Difficulty Card */}
+            <div className={styles.metaCard}>
+              <span className={styles.metaLabel}>{t('components.caseBriefing.difficulty')}</span>
+              <div className={`${styles.metaValue} ${styles.difficultyValue}`}>
+                {gameCase.difficulty || t('components.caseBriefing.standard')}
+              </div>
+            </div>
+
+            {/* Playtime Card */}
+            <div className={styles.metaCard}>
+              <span className={styles.metaLabel}>{t('components.caseBriefing.estPlaytime')}</span>
+              <div className={styles.metaValue}>
+                {gameCase.estimated_playtime || t('components.caseBriefing.unknown')}
+              </div>
+            </div>
+
+            {/* Advisory Card */}
+            <div className={styles.metaCard}>
+              <span className={styles.metaLabel}>{t('components.caseBriefing.advisory')}</span>
+              <div className={styles.metaValue}>
+                <span className={styles.advisoryBadge}>{gameCase.age_rating || t('components.caseBriefing.unrated')}</span>
+              </div>
+            </div>
+
+            {/* Redesigned Clearance & Rewards Banner */}
+            <div className={styles.clearanceBanner}>
+              <div className={styles.clearanceItem}>
+                <span className={styles.clearanceKey}>{t('components.caseBriefing.accessRequirements')}:</span>
+                <span className={styles.badge}>{gameCase.min_player_XP} {t('components.caseBriefing.xp')}</span>
+              </div>
+              <div className={styles.clearanceItem}>
+                <span className={styles.clearanceKey}>{t('components.caseBriefing.reward')}:</span>
+                <span className={`${styles.badge} ${rewardClass}`}>{rewardText}</span>
+              </div>
+            </div>
+
+          </div>
+
+          {error && <div className={styles.modalErrorMessage}>{error}</div>}
+
+          {/* Action Deck with Pill CTAs & High Contrast Text */}
+          <div className={styles.modalActions}>
+            <button className={styles.btnPrimary} onClick={handleStartSession} disabled={isLoading}>
+              {primaryButtonText}
             </button>
-          )}
+
+            {showContinue && (
+              <button
+                className={`${styles.btnSecondary} ${styles.continueBtn}`}
+                onClick={() => navigate(`/room/${activeInviteCode}`)}
+                disabled={isLoading}
+              >
+                {t('components.caseBriefing.continueInvestigation')}
+              </button>
+            )}
+          </div>
         </div>
+
       </div>
     </div>
   );
@@ -2568,7 +2599,7 @@ export default function CampaignMap({ zones, unlockedLevelIds, onEnterZone, mapI
           <TransformComponent wrapperClass="map-transform-wrapper" contentClass="map-transform-content">
             <div className="custom-map-canvas">
               <img
-                src={mapImageUrl || 'Maps/tactical-damascus-blueprint.png'}
+                src={mapImageUrl || '/Maps/tactical-damascus-blueprint.png'}
                 alt="Tactical Region Map"
                 className="custom-map-image"
                 onLoad={() => {
@@ -2813,7 +2844,7 @@ export default function CampaignTab() {
           onEnterZone={handleEnterZone}
           zones={sortedZones}
           unlockedLevelIds={unlockedLevelIds}
-          mapImageUrl={(room.game_case as any)?.map_url}
+          mapImageUrl={room.game_case?.map_url}
         />
       ) : (
         <div className="campaign-roadmap-container">
@@ -7227,15 +7258,14 @@ export default TraceAnalysisViewer;
 <file path="src/pages/MainMenu/MainMenu.tsx">
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { GameCase, User } from '@/types';
+import { CaseUserStatus } from '@/types';
 import { fetchCases } from '@/services/api';
-import CaseCard from '@/components/CaseCard/CaseCard';
-import { useQueryClient } from '@tanstack/react-query';
 import { logout } from '@/services/auth';
 import CaseBriefingModal from '@/components/CaseBriefingModal/CaseBriefingModal';
-import './MainMenu.css';
+import styles from './MainMenu.module.css';
 
 export default function MainMenu() {
   const navigate = useNavigate();
@@ -7257,13 +7287,8 @@ export default function MainMenu() {
       const result = await fetchCases();
       if (!result.isSuccess) throw new Error(result.errorMessage);
 
-      // 1. Silently update the browser's cache so it persists on refresh
       localStorage.setItem('auth_user', JSON.stringify(result.value.user));
-
-      // 2. Update the local React state to instantly re-render the XP badge
       setUser(result.value.user);
-
-      // 3. Return the cases to populate the grid
       return result.value.cases;
     }
   });
@@ -7277,57 +7302,145 @@ export default function MainMenu() {
   if (isLoading) return <div className="terminal-text">{t('pages.mainMenu.decrypting')}</div>;
   if (error) return <div className="terminal-text error">{error instanceof Error ? error.message : t('pages.mainMenu.failedToLoad')}</div>;
 
+  const heroCase = cases.length > 0 ? cases[0] : null;
+  const rosterCases = cases.length > 1 ? cases.slice(1) : [];
+
+  const getCaseStatusInfo = (gameCase: GameCase) => {
+    const isSolved = gameCase.user_status === CaseUserStatus.SolvedPerfect ||
+                     gameCase.user_status === CaseUserStatus.SolvedPartial;
+    const isFailed = gameCase.user_status === CaseUserStatus.FailedNoProof ||
+                     gameCase.user_status === CaseUserStatus.FailedIncomplete ||
+                     gameCase.user_status === CaseUserStatus.FailedStrikes;
+    return { isSolved, isFailed };
+  };
+
   return (
-    <div className="main-menu-container">
-
-      {/* 1. The New Upper Bar */}
-      <div className="upper-bar">
-        {user && (
-          <div className="user-profile-widget">
-            <span className="user-greeting">
-              {t('pages.mainMenu.agent')} <span className="user-name-highlight">{user.username}</span>
-            </span>
-            <span className="xp-badge">{user.XP} {t('pages.mainMenu.xp')}</span>
-            <button className="logout-btn" onClick={handleLogout}>{t('pages.mainMenu.logout')}</button>
-          </div>
-        )}
-      </div>
-
-      {/* 2. Existing Header */}
-      <header className="menu-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 className="agency-title">{t('pages.mainMenu.activeInvestigations')}</h1>
-          <p className="agency-subtitle">{t('pages.mainMenu.selectDossier')}</p>
+    <div className={styles.mainMenuContainer}>
+      {/* 1. Floating Glass Header */}
+      <nav className={styles.floatingHeader}>
+        <div className={styles.brandArea}>
+          <h2 className={styles.brandTitle}>{t('pages.mainMenu.activeInvestigations')}</h2>
         </div>
 
-        {user?.is_admin && (
-          <button
-            className="btn-secondary"
-            onClick={() => navigate('/admin')}
-            style={{
-              borderColor: 'var(--accent-crimson)',
-              color: 'var(--accent-crimson)',
-              flex: 'none',
-              padding: '0.75rem 1.5rem',
-              height: 'fit-content'
-            }}
-          >
-            {t('pages.mainMenu.systemOversight')}
-          </button>
-        )}
-      </header>
+        <div className={styles.headerActions}>
+          {user?.is_admin && (
+            <button
+              className={styles.adminBtn}
+              onClick={() => navigate('/admin')}
+            >
+              {t('pages.mainMenu.systemOversight')}
+            </button>
+          )}
 
-      {/* 3. The Cases Grid */}
-      <div className="cases-grid">
-        {cases.map((gameCase) => (
-          <div key={gameCase.id} onClick={() => setSelectedCase(gameCase)}>
-            <CaseCard
-              gameCase={gameCase}
-              imageUrl={gameCase.img_url || '/placeholder-crime-scene.jpg'}
-            />
+          {user && (
+            <div className={styles.userProfileWidget}>
+              <span className={styles.userGreeting}>
+                {t('pages.mainMenu.agent')} <span className={styles.userNameHighlight}>{user.username}</span>
+              </span>
+              <span className={styles.xpBadge}>{user.XP} {t('pages.mainMenu.xp')}</span>
+              <button className={styles.logoutBtn} onClick={handleLogout}>{t('pages.mainMenu.logout')}</button>
+            </div>
+          )}
+        </div>
+      </nav>
+
+      {/* 2. Cinematic Hero Section (First Case) */}
+      {heroCase && (
+        <section
+          className={styles.cinematicHero}
+          onClick={() => setSelectedCase(heroCase)}
+        >
+          <div
+            className={styles.heroBackground}
+            style={{ backgroundImage: `url(${heroCase.img_url || '/placeholder-crime-scene.jpg'})` }}
+          />
+          <div className={styles.heroGradientOverlay} />
+
+          <div className={styles.heroContent}>
+            <div className={styles.heroEyebrow}>
+              <span>★ {t('pages.mainMenu.featuredDossier') || 'Priority Investigation'}</span>
+            </div>
+
+            <h1 className={styles.heroTitle}>{heroCase.title}</h1>
+
+            <p className={styles.heroDescription}>
+              {heroCase.story}
+            </p>
+
+            <div className={styles.heroMeta}>
+              <span className="badge">{t('components.caseCard.minXp')} {heroCase.min_player_XP}</span>
+              <span className="badge reward">{t('components.caseCard.reward')} {heroCase.XP_on_solve} {t('components.caseCard.xp')}</span>
+            </div>
+
+            <div>
+              <button
+                className={styles.heroActionBtn}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setSelectedCase(heroCase);
+                }}
+              >
+                {t('components.caseBriefingModal.examineEvidence') || 'Access Dossier'} →
+              </button>
+            </div>
           </div>
-        ))}
-      </div>
+        </section>
+      )}
+
+      {/* 3. Roster Cards (Remaining Cases) */}
+      {rosterCases.length > 0 && (
+        <section className={styles.rosterSection}>
+          <div className={styles.sectionHeader}>
+            <h3 className={styles.sectionTitle}>{t('pages.mainMenu.activeInvestigations')}</h3>
+            <p className={styles.sectionSubtitle}>{t('pages.mainMenu.selectDossier')}</p>
+          </div>
+
+          <div className={styles.casesGrid}>
+            {rosterCases.map((gameCase) => {
+              const { isSolved, isFailed } = getCaseStatusInfo(gameCase);
+              return (
+                <div
+                  key={gameCase.id}
+                  className={styles.caseCardWrapper}
+                  onClick={() => setSelectedCase(gameCase)}
+                >
+                  <div className={styles.rosterCard}>
+                    <div
+                      className={styles.rosterCardBg}
+                      style={{ backgroundImage: `url(${gameCase.img_url || '/placeholder-crime-scene.jpg'})` }}
+                    />
+                    <div className={styles.rosterCardOverlay} />
+
+                    {isSolved && (
+                      <div className={styles.stampContainer}>
+                        <span className={styles.stampBadge}>{t('components.caseCard.caseClosed')}</span>
+                      </div>
+                    )}
+
+                    {isFailed && (
+                      <div className={styles.stampContainer}>
+                        <span className={`${styles.stampBadge} ${styles.stampBadgeFailed}`}>
+                          {t('components.caseCard.failed')}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className={styles.rosterCardBadges}>
+                      <span className="badge">{t('components.caseCard.minXp')} {gameCase.min_player_XP}</span>
+                      <span className="badge reward">{t('components.caseCard.reward')} {gameCase.XP_on_solve} {t('components.caseCard.xp')}</span>
+                    </div>
+
+                    <div className={styles.rosterCardContent}>
+                      <h4 className={styles.rosterCardTitle}>{gameCase.title}</h4>
+                      <p className={styles.rosterCardSnippet}>{gameCase.story}</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {selectedCase && (
         <CaseBriefingModal
@@ -7898,6 +8011,7 @@ export interface GameCase {
   id: number;
   title: string;
   story: string;
+  map_url?: string;
   min_player_XP: number;
   XP_on_solve: number;
   max_strikes: number;
@@ -8005,7 +8119,6 @@ export interface Zone {
   title: string;
   description?: string;
   order_index: number;
-  map_url?: string;
   coord_x?: number;
   coord_y?: number;
   levels?: Level[];

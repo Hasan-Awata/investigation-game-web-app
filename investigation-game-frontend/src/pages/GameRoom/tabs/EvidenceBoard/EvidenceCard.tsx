@@ -6,8 +6,7 @@ import TestimonyEvidence from './EvidenceVariants/TestimonyEvidence';
 import AudioEvidence from './EvidenceVariants/AudioEvidence';
 import ImageEvidence from './EvidenceVariants/ImageEvidence';
 import ForensicEvidence from './EvidenceVariants/ForensicEvidence';
-import './EvidenceBoardTab.css';
-import './EvidenceCard.css';
+import styles from './EvidenceCard.module.css';
 
 const EvidenceComponents: Record<string, React.FC<{ evidence: Evidence }>> = {
   document: DocumentEvidence,
@@ -42,11 +41,10 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`evidence-card-wrapper item-${index % 5} ${isDragging ? 'is-dragging' : ''}`}
+      className={`${styles.evidenceCardWrapper} ${styles[`item${index % 5}`]} ${isDragging ? styles.isDragging : ''}`}
       onClick={() => onInspect(evidence)}
-      style={{ opacity: isDragging ? 0.3 : 1, touchAction: 'none' }}
     >
-      {isNew && <div className="unread-indicator" title="Unread Intel"></div>}
+      {isNew && <div className={styles.unreadIndicator} title="Unread Intel"></div>}
       <SpecificEvidenceComponent evidence={evidence} />
     </div>
   );
@@ -61,7 +59,7 @@ export function EvidenceCardOverlay({ evidence }: { evidence: Evidence }) {
   if (!SpecificEvidenceComponent) return null;
 
   return (
-    <div className="evidence-card-wrapper overlay-clone" style={{ cursor: 'grabbing', transform: 'scale(1.05)', boxShadow: '0 20px 40px rgba(0,0,0,0.4)' }}>
+    <div className={`${styles.evidenceCardWrapper} ${styles.overlayClone}`}>
       <SpecificEvidenceComponent evidence={evidence} />
     </div>
   );

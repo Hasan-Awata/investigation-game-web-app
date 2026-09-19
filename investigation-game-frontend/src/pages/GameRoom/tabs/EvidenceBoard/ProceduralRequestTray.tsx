@@ -4,7 +4,7 @@ import { useDroppable } from '@dnd-kit/core';
 import { InvestigationRequestType } from '@/types';
 import type { Evidence } from '@/types';
 import type { FiledRequest } from '@/hooks/useInvestigationRequest';
-import './ProceduralRequestTray.css';
+import styles from './ProceduralRequestTray.module.css';
 
 interface ProceduralRequestTrayProps {
   accumulatedEvidences: Evidence[];
@@ -31,36 +31,33 @@ export default function ProceduralRequestTray({
   const { t } = useTranslation();
   const [showArchive, setShowArchive] = useState(false);
 
-  // Register the dropzone with dnd-kit
   const { isOver, setNodeRef } = useDroppable({
     id: 'procedural-tray'
   });
 
   return (
-    <div className="filing-tray glass-panel">
-      <div className="tray-header">
+    <div className={`${styles.filingTray} glass-panel`}>
+      <div className={styles.trayHeader}>
         <span className="forensic-icon">⚖️</span>
         <h3>{t('pages.gameRoom.evidence.board.proceduralTrayTitle')}</h3>
       </div>
 
-      <div className="tray-layout">
-        {/* Bind the droppable ref to the dropzone area */}
+      <div className={styles.trayLayout}>
         <div 
           ref={setNodeRef} 
-          className={`tray-dropzone ${isOver ? 'is-drag-over' : ''}`}
-          style={{ backgroundColor: isOver ? 'rgba(255, 255, 255, 0.15)' : 'transparent', transition: 'background-color 0.2s ease' }}
+          className={`${styles.trayDropzone} ${isOver ? styles.isDragOver : ''}`}
         >
           {trayEvidences.length === 0 ? (
-            <span className="tray-placeholder">{t('pages.gameRoom.evidence.board.dragAndDrop')}</span>
+            <span className={styles.trayPlaceholder}>{t('pages.gameRoom.evidence.board.dragAndDrop')}</span>
           ) : (
-            <div className="tray-items">
+            <div className={styles.trayItems}>
               {trayEvidences.map(id => {
                 const ev = accumulatedEvidences.find(e => e.id === id);
                 return (
-                  <div key={id} className="tray-item-pill">
-                    <span className="tray-item-id">EX-{id.toString().padStart(3, '0')}</span>
-                    <span className="tray-item-title">{ev?.title || t('pages.gameRoom.evidence.board.unknownFile')}</span>
-                    <button className="tray-item-remove" onClick={() => removeFromTray(id)}>×</button>
+                  <div key={id} className={styles.trayItemPill}>
+                    <span className={styles.trayItemId}>EX-{id.toString().padStart(3, '0')}</span>
+                    <span className={styles.trayItemTitle}>{ev?.title || t('pages.gameRoom.evidence.board.unknownFile')}</span>
+                    <button className={styles.trayItemRemove} onClick={() => removeFromTray(id)}>×</button>
                   </div>
                 );
               })}
@@ -68,9 +65,9 @@ export default function ProceduralRequestTray({
           )}
         </div>
 
-        <div className="tray-actions">
+        <div className={styles.trayActions}>
           <select
-            className="admin-input tray-select"
+            className={`admin-input ${styles.traySelect}`}
             value={requestType}
             onChange={(e) => setRequestType(e.target.value)}
           >
@@ -83,7 +80,7 @@ export default function ProceduralRequestTray({
           </select>
 
           <button
-            className="btn-primary tray-submit-btn"
+            className={`btn-primary ${styles.traySubmitBtn}`}
             disabled={trayEvidences.length < 2 || !requestType || isSubmitting}
             onClick={() => submitRequest()}
           >
@@ -92,26 +89,26 @@ export default function ProceduralRequestTray({
         </div>
       </div>
 
-      <div className="tray-footer-actions">
-        <button className="archive-toggle-btn" onClick={() => setShowArchive(!showArchive)}>
+      <div className={styles.trayFooterActions}>
+        <button className={styles.archiveToggleBtn} onClick={() => setShowArchive(!showArchive)}>
           📁 {showArchive ? t('pages.gameRoom.evidence.board.hideFiled') : `${t('pages.gameRoom.evidence.board.viewFiled')} (${filedRequests.length})`}
         </button>
       </div>
 
       {showArchive && (
-        <div className="filed-requests-drawer">
+        <div className={styles.filedRequestsDrawer}>
           {filedRequests.length === 0 ? (
             <div style={{ fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)', textAlign: 'center', padding: '0.5rem' }}>
               {t('pages.gameRoom.evidence.board.noRequestsFiled')}
             </div>
           ) : (
             filedRequests.map(req => (
-              <div key={req.id} className="filed-request-row">
-                <div className="filed-request-info">
-                  <span className="filed-request-type">
+              <div key={req.id} className={styles.filedRequestRow}>
+                <div className={styles.filedRequestInfo}>
+                  <span className={styles.filedRequestType}>
                     {t(`pages.gameRoom.evidence.board.requestTypes.${req.request_type}`)}
                   </span>
-                  <span className="filed-request-meta">
+                  <span className={styles.filedRequestMeta}>
                     {t('pages.gameRoom.evidence.board.crossReferenced')} {req.evidence_ids.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
                   </span>
                 </div>
@@ -119,7 +116,7 @@ export default function ProceduralRequestTray({
                   <span style={{ color: 'var(--text-secondary)', fontSize: '0.7rem' }}>
                     {new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </span>
-                  <span className="filed-request-status">{t('pages.gameRoom.evidence.board.approvedStatus')}</span>
+                  <span className={styles.filedRequestStatus}>{t('pages.gameRoom.evidence.board.approvedStatus')}</span>
                 </div>
               </div>
             ))

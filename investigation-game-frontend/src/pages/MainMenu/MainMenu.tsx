@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { GameCase, User } from '@/types';
 import { fetchCases } from '@/services/api';
-import CaseCard from '@/components/CaseCard/CaseCard';
-import { useQueryClient } from '@tanstack/react-query';
 import { logout } from '@/services/auth';
 import CaseBriefingModal from '@/components/CaseBriefingModal/CaseBriefingModal';
-import './MainMenu.css';
+import CaseCard from '@/components/CaseCard/CaseCard';
+import styles from './MainMenu.module.css';
 
 export default function MainMenu() {
   const navigate = useNavigate();
@@ -30,13 +29,8 @@ export default function MainMenu() {
       const result = await fetchCases();
       if (!result.isSuccess) throw new Error(result.errorMessage);
 
-      // 1. Silently update the browser's cache so it persists on refresh
       localStorage.setItem('auth_user', JSON.stringify(result.value.user));
-
-      // 2. Update the local React state to instantly re-render the XP badge
       setUser(result.value.user);
-
-      // 3. Return the cases to populate the grid
       return result.value.cases;
     }
   });
@@ -51,56 +45,56 @@ export default function MainMenu() {
   if (error) return <div className="terminal-text error">{error instanceof Error ? error.message : t('pages.mainMenu.failedToLoad')}</div>;
 
   return (
-    <div className="main-menu-container">
+    <div className={styles.mainMenuContainer}>
+      
+      {/* 1. Navbar - Inspired exactly by the reference image */}
+      <header className={styles.headerWrapper}>
+        <nav className={styles.navbar}>
+          <div className={styles.navLinks}>
+            {user && (
+              <>
+                <span className={styles.navText}>
+                  <span className={styles.highlight}>{user.username}</span>
+                </span>
+                <span className={`${styles.navText} ${styles.xpText}`}>
+                  {user.XP} {t('pages.mainMenu.xp')}
+                </span>
+              </>
+            )}
 
-      {/* 1. The New Upper Bar */}
-      <div className="upper-bar">
-        {user && (
-          <div className="user-profile-widget">
-            <span className="user-greeting">
-              {t('pages.mainMenu.agent')} <span className="user-name-highlight">{user.username}</span>
-            </span>
-            <span className="xp-badge">{user.XP} {t('pages.mainMenu.xp')}</span>
-            <button className="logout-btn" onClick={handleLogout}>{t('pages.mainMenu.logout')}</button>
+            {user?.is_admin && (
+              <button className={styles.navLinkBtn} onClick={() => navigate('/admin')}>
+                {t('pages.mainMenu.systemOversight')}
+              </button>
+            )}
           </div>
-        )}
-      </div>
 
-      {/* 2. Existing Header */}
-      <header className="menu-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 className="agency-title">{t('pages.mainMenu.activeInvestigations')}</h1>
-          <p className="agency-subtitle">{t('pages.mainMenu.selectDossier')}</p>
-        </div>
-
-        {user?.is_admin && (
-          <button
-            className="btn-secondary"
-            onClick={() => navigate('/admin')}
-            style={{
-              borderColor: 'var(--accent-crimson)',
-              color: 'var(--accent-crimson)',
-              flex: 'none',
-              padding: '0.75rem 1.5rem',
-              height: 'fit-content'
-            }}
-          >
-            {t('pages.mainMenu.systemOversight')}
-          </button>
-        )}
+          {user && (
+            <button className={styles.actionBlockBtn} onClick={handleLogout}>
+              {t('pages.mainMenu.logout')}
+            </button>
+          )}
+        </nav>
       </header>
 
-      {/* 3. The Cases Grid */}
-      <div className="cases-grid">
-        {cases.map((gameCase) => (
-          <div key={gameCase.id} onClick={() => setSelectedCase(gameCase)}>
-            <CaseCard
-              gameCase={gameCase}
-              imageUrl={gameCase.img_url || '/placeholder-crime-scene.jpg'}
-            />
-          </div>
-        ))}
-      </div>
+      {/* 2. Cases Roster Grid */}
+      <main className={styles.rosterSection}>
+        <div className={styles.casesGrid}>
+          {cases.map((gameCase: GameCase) => (
+            <div
+              key={gameCase.id}
+              className={styles.caseCardWrapper}
+              onClick={() => setSelectedCase(gameCase)}
+            >
+              <CaseCard 
+                gameCase={gameCase} 
+                imageUrl={gameCase.img_url} 
+                userXp={user?.XP || 0}
+              />
+            </div>
+          ))}
+        </div>
+      </main>
 
       {selectedCase && (
         <CaseBriefingModal

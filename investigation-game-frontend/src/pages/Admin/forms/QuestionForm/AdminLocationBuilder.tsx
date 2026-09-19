@@ -15,7 +15,7 @@ export default function AdminLocationBuilder() {
   const t = adminT.forms.locationBuilder;
 
   const { state, setters, actions, status } = useNodeBuilder();
-  const { activeCoordinateTarget, setActiveCoordinateTarget, handleImageClick } = useCoordinateMapper(state.choices, setters.setChoices);
+  const { activeCoordinateTarget, setActiveCoordinateTarget, handleCoordinateSelect } = useCoordinateMapper(state.choices, setters.setChoices);
 
   const handleCreateNewScene = () => {
     actions.clearForm();
@@ -69,7 +69,7 @@ export default function AdminLocationBuilder() {
                 state={state} setters={setters} status={status} previews={{ image: previewUrl }}
                 actions={{ registerFileRef: actions.registerFileRef, handleSubmit, handleCancel: actions.clearForm }}
                 setImage={setImage} activeCoordinateTarget={activeCoordinateTarget} setActiveCoordinateTarget={setActiveCoordinateTarget}
-                handleImageClick={handleImageClick}
+                handleCoordinateSelect={handleCoordinateSelect}
               />
             )}
           </>

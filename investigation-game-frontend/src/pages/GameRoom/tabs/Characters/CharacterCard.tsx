@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Character } from '@/types';
-import './CharacterCard.css';
+import styles from './CharacterCard.module.css';
 
 interface CharacterCardProps {
   character: Character;
@@ -32,40 +32,43 @@ export default function CharacterCard({ character, sourcePool, isDraggable, isNe
 
   return (
     <div
-      className={`character-card ${isDragging ? 'is-dragging' : ''} ${isDeceased ? 'is-deceased' : ''}`}
+      className={`${styles.characterCard} ${isDragging ? styles.isDragging : ''} ${isDeceased ? styles.isDeceased : ''} ${sourcePool === 'guilty' ? styles.inGuiltyZone : ''}`}
       draggable={isDraggable && !showIntel} 
       onDragStart={handleDragStart}
       onDragEnd={(e) => { e.stopPropagation(); setIsDragging(false); }}
       onMouseEnter={() => onInteract(character.id)}
     >
-      {isDeceased && !showIntel && (
-        <div className="deceased-stamp">{t('pages.gameRoom.characters.deceased', 'DECEASED')}</div>
+      {isDeceased && (
+        <div className={styles.deceasedOverlay}>
+          {!showIntel && (
+            <span className={styles.deceasedStamp}>{t('pages.gameRoom.characters.deceased', 'DECEASED')}</span>
+          )}
+        </div>
       )}
 
       <button
-        className="intel-toggle-btn"
+        className={styles.intelToggleBtn}
         onClick={toggleIntel}
         title={showIntel ? t('pages.gameRoom.suspects.card.closeIntel') : t('pages.gameRoom.suspects.card.viewIntel')}
       >
         {showIntel ? '✕' : 'ℹ'}
       </button>
 
-      {isNew && <div className="unread-indicator" title="Unread Intel"></div>}
+      {isNew && <div className={styles.unreadIndicator} title="Unread Intel"></div>}
 
       {showIntel ? (
-        <div className="character-intel-overlay" onPointerDownCapture={(e) => e.stopPropagation()}>
-          <h5 className="intel-header">{t('pages.gameRoom.suspects.card.backgroundIntel')}</h5>
-          <p className="intel-text">{character.background || t('pages.gameRoom.suspects.card.noBackground')}</p>
+        <div className={styles.intelOverlay} onPointerDownCapture={(e) => e.stopPropagation()}>
+          <h5 className={styles.intelHeader}>{t('pages.gameRoom.suspects.card.backgroundIntel')}</h5>
+          <p className={styles.intelText}>{character.background || t('pages.gameRoom.suspects.card.noBackground')}</p>
         </div>
       ) : (
         <>
           <div
-            className="character-mugshot"
+            className={styles.characterMugshot}
             style={{ backgroundImage: `url(${character.img_url || '/placeholder-mugshot.jpg'})` }}
           />
-          <div className="character-info">
-            <h4 className="character-name" title={character.name}>{character.name}</h4>
-            <span className="character-id">{t('pages.gameRoom.suspects.card.pid', 'PID-')}{character.id.toString().padStart(4, '0')}</span>
+          <div className={styles.characterInfo}>
+            <h4 className={styles.characterName} title={character.name}>{character.name}</h4>
           </div>
         </>
       )}

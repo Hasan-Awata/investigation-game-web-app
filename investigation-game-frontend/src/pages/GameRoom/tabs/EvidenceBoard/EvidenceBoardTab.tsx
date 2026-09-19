@@ -17,7 +17,7 @@ import type { Evidence } from '@/types';
 import EvidenceCard, { EvidenceCardOverlay } from './EvidenceCard';
 import EvidenceModal from './EvidenceModal';
 import ProceduralRequestTray from './ProceduralRequestTray';
-import './EvidenceBoardTab.css';
+import styles from './EvidenceBoardTab.module.css';
 
 // MEMOIZATION: This severs the render cascade entirely. 
 const EvidenceGrid = React.memo(({ 
@@ -30,7 +30,7 @@ const EvidenceGrid = React.memo(({
   onInspect: (evidence: Evidence) => void;
 }) => {
   return (
-    <div className="evidence-scatter-grid">
+    <div className={styles.evidenceScatterGrid}>
       {evidences.map((evidence, index) => (
         <EvidenceCard
           key={evidence.id}
@@ -109,9 +109,9 @@ export default function EvidenceBoardTab() {
       onDragStart={handleDragStart} 
       onDragEnd={handleDragEnd}
     >
-      <div className="evidence-board-container">
-        <header className="board-header">
-          <span className="board-meta">{t('pages.gameRoom.evidence.board.subtitle')}</span>
+      <div className={styles.evidenceBoardContainer}>
+        <header className={styles.boardHeader}>
+          <span className={styles.boardMeta}>{t('pages.gameRoom.evidence.board.subtitle')}</span>
         </header>
 
         {feedback && (
@@ -140,9 +140,11 @@ export default function EvidenceBoardTab() {
           ))}
         </div>
 
-        <div className="acrylic-workspace">
+        <div className={styles.evidenceWorkspace}>
           {accumulatedEvidences.length === 0 ? (
-            <div className="terminal-text">{t('pages.gameRoom.evidence.board.noEvidence')}</div>
+            <div className="terminal-text" style={{ textAlign: 'center' }}>
+              {t('pages.gameRoom.evidence.board.noEvidence')}
+            </div>
           ) : (
             <EvidenceGrid 
               evidences={accumulatedEvidences} 
@@ -167,7 +169,6 @@ export default function EvidenceBoardTab() {
         <EvidenceModal evidence={inspectedEvidence} onClose={() => setInspectedEvidence(null)} />
       </div>
 
-      {/* Renders the dragged clone seamlessly mapped to the user's cursor */}
       <DragOverlay dropAnimation={{
         sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
         duration: 250,

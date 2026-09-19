@@ -2,7 +2,8 @@
   position: relative;
   width: 100%;
   min-height: 600px;
-  height: calc(100vh - 180px);
+  height: 100vh;
+  margin: 0; 
   overflow: hidden;
   background-color: #0a0a0a;
   box-sizing: border-box;
@@ -12,7 +13,7 @@
 
 @media all and (display-mode: fullscreen) {
   .campaign-map-container {
-    height: calc(100vh - 100px); 
+    height: 100vh; 
   }
 }
 
@@ -104,5 +105,12 @@
 
 .map-pin-wrapper:hover .pin-tooltip {
   opacity: 1;
-  transform: translateY(0); /* Pops up into its final position */
+  transform: translateY(0);
+}
+
+@media (max-width: 1000px) {
+  .campaign-map-container {
+    margin-top: 0; 
+    height: 100vh; 
+  }
 }

@@ -34,3 +34,10 @@ auth.json
 /.env
 /.env.local 
 /.env.production
+
+# AI
+.claude/
+.gemini/
+.impeccable/
+ai_project_context.xmpl
+ai_backend_project_context.xmpl

@@ -2,8 +2,11 @@
   /* Keep the dark bases, but make them richer */
   --bg-dark: #0a0b0d; 
   --bg-panel: #141518;
+  --charcoal: #141518;
+  --slate: #5a8a9e;
   --text-primary: #e0e0e0;
   --text-secondary: #8a8d91;
+  --text-third: #0a0b0d;
   
   /* Muted, tactical accents instead of neon */
   --accent-cyan: #5a8a9e;     /* Slate blue instead of neon cyan */

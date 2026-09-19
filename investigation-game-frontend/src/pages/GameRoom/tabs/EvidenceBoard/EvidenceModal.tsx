@@ -4,7 +4,7 @@ import DocumentViewer from './Viewers/DocumentViewer';
 import TestimonyViewer from './Viewers/TestimonyViewer';
 import MediaViewer from './Viewers/MediaViewer';
 import ErrorBoundary from '@/components/ErrorBoundary';
-import './EvidenceModal.css';
+import styles from './EvidenceModal.module.css';
 
 interface EvidenceModalProps {
   evidence: Evidence | null;
@@ -15,7 +15,6 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
   if (!evidence) return null;
 
   const renderEvidenceContent = () => {
-    // Component Map: O(1) lookup and adheres to the Open/Closed Principle
     const ViewerComponents: Record<string, React.ElementType> = {
       forensic: ForensicViewer,
       document: DocumentViewer,
@@ -27,7 +26,6 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
     const Viewer = ViewerComponents[evidence.evidence_type];
 
     if (!Viewer) {
-      // Triggers our new localized ErrorBoundary if the payload type is garbage
       throw new Error(`Unrecognized evidence classification type: ${evidence.evidence_type}`);
     }
 
@@ -35,19 +33,18 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
   };
 
   return (
-    <div className="evidence-modal-overlay" onClick={onClose}>
-      <div className="evidence-modal-content glass-panel" onClick={(e) => e.stopPropagation()}>
+    <div className={styles.evidenceModalOverlay} onClick={onClose}>
+      <div className={`${styles.evidenceModalContent} glass-panel`} onClick={(e) => e.stopPropagation()}>
 
-        <header className="modal-header">
-          <div className="modal-meta">
-            <span className="evidence-id">EX-{evidence.id.toString().padStart(3, '0')}</span>
-            <span className="evidence-type-badge">{evidence.evidence_type}</span>
+        <header className={styles.modalHeader}>
+          <div className={styles.modalMeta}>
+            <span className={styles.evidenceId}>EX-{evidence.id.toString().padStart(3, '0')}</span>
+            <span className={styles.evidenceTypeBadge}>{evidence.evidence_type}</span>
           </div>
-          <button className="modal-close-btn" onClick={onClose} title="Close File">×</button>
+          <button className={styles.modalCloseBtn} onClick={onClose} title="Close File">×</button>
         </header>
 
-        {/* Dynamic Inner Viewer - Wrapped in a Localized Error Boundary */}
-        <div className="modal-body">
+        <div className={styles.modalBody}>
           <ErrorBoundary 
             isLocal={true} 
             fallbackMessage={`Evidence metadata payload for EX-${evidence.id.toString().padStart(3, '0')} is corrupted or malformed. Asset viewing aborted.`}

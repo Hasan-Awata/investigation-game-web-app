@@ -1,80 +1,141 @@
 .case-card {
-  position: relative;
-  aspect-ratio: 1 / 1;
-  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  border-radius: 22px; 
   overflow: hidden;
-  background-color: var(--bg-panel);
+  background-color: var(--bg-dark);
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   border: var(--border-thin);
+  /* Prevents sub-pixel rendering glitches during the Y-axis translation */
+  transform: translateZ(0); 
 }
 
 .case-card:hover {
-  transform: translateY(-8px);
+  transform: translateY(-8px) translateZ(0);
   box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--accent-cyan);
+  border-color: var(--accent-cyan);
+}
+
+.case-card-hero {
+  position: relative;
+  width: 100%;
+  height: 250px; /* Increased to give the image more vertical space */
+  flex-shrink: 0;
+  overflow: hidden;
+  background-color: var(--bg-dark);
+  z-index: 1;
 }
 
 .case-card-background {
+  /* -1px inset prevents white edges from bleeding during scale animation */
   position: absolute;
-  top: 0;
-  /* CHANGED: Logical start positioning */
-  inset-inline-start: 0; 
-  width: 100%;
-  height: 100%;
+  inset: -1px;
   background-size: cover;
   background-position: center;
   transition: transform 0.5s ease;
+  will-change: transform;
 }
 
 .case-card:hover .case-card-background {
-  transform: scale(1.05);
+  transform: scale(1.05) translateZ(0);
 }
 
+/* Fades smoothly into the solid background of the content area */
 .case-card-overlay {
   position: absolute;
-  top: 0;
-  /* CHANGED: Logical start positioning */
-  inset-inline-start: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   background: linear-gradient(
     to bottom,
-    rgba(var(--bg-dark-rgb), 0.1) 0%,
-    rgba(var(--bg-dark-rgb), 0.6) 50%,
-    rgba(var(--bg-dark-rgb), 0.95) 100%
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.5) 60%,
+    var(--bg-dark) 100% 
   );
-}
-
-.case-card-badges {
-  position: absolute;
-  top: 1rem;
-  /* CHANGED: Logical end positioning instead of 'right' */
-  inset-inline-end: 1rem; 
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  align-items: flex-end;
+  /* Prevents the overlay from blocking interactions or glitching on hover */
+  pointer-events: none;
+  transform: translateZ(0);
 }
 
 .case-card-content {
-  position: absolute;
-  bottom: 0;
-  inset-inline-start: 0; 
-  width: 100%;
-  padding: 1.5rem;
-  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  padding: 1.5rem; 
+  flex-grow: 1;
+  position: relative;
+  z-index: 2;
+  background-color: var(--bg-dark); 
+  margin-top: -2px; 
 }
 
 .case-title {
-  margin: 0;
-  font-size: 1.25rem;
+  margin: 0 0 0.5rem 0;
+  font-size: 1.35rem;
   font-weight: 600;
   line-height: 1.2;
-  text-align: start; 
+  text-align: start;
+  color: var(--text-primary);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
 
-.case-card.is-solved .case-card-background {
+/* Metadata Row Styling Matched to CaseBriefingModal */
+.metadataRow {
+  display: flex;
+  align-items: center;
+  column-gap: 1.5rem;
+  row-gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.metadataItem {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-secondary, #a1a1aa);
+  font-family: var(--font-primary, sans-serif);
+  font-size: 0.9rem;
+  font-weight: 400;
+}
+
+.metadataIcon {
+  width: 1.1rem;
+  height: 1.1rem;
+  opacity: 0.75;
+}
+
+.metaValueHighlightMono {
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+}
+
+.rewardStandard {
+  color: var(--accent-amber, #ffb800);
+}
+
+.case-story {
+  margin: 0 0 1.5rem 0;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--text-secondary, #cccccc);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3; 
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-align: start;
+}
+
+/* =========================================
+   STATUS OVERLAYS (Solved / Failed)
+   ========================================= */
+
+.case-card.is-solved .case-card-background,
+.case-card.is-failed .case-card-background {
   filter: grayscale(80%) brightness(0.6);
+}
+
+.case-card.is-locked {
+  opacity: 0.85;
 }
 
 .solved-stamp-container {
@@ -85,11 +146,11 @@
   justify-content: center;
   z-index: 10;
   pointer-events: none;
-  background: rgba(var(--accent-cyan-rgb), 0.05);
+  background: rgba(var(--bg-dark-rgb, 0, 0, 0), 0.4); 
 }
 
 .solved-stamp {
-  font-family: var(--font-mono);
+  font-family: var(--font-mono, monospace);
   color: var(--accent-cyan);
   border: 3px solid var(--accent-cyan);
   padding: 0.5rem 1.5rem;
@@ -97,7 +158,14 @@
   font-weight: 700;
   transform: rotate(-15deg);
   letter-spacing: 0.3em;
-  background: rgba(var(--bg-dark-rgb), 0.9);
-  box-shadow: 0 0 20px rgba(var(--accent-cyan-rgb), 0.2);
-  text-shadow: 0 0 10px rgba(var(--accent-cyan-rgb), 0.5);
+  background: rgba(var(--bg-dark-rgb, 0, 0, 0), 0.9);
+  box-shadow: 0 0 20px rgba(var(--accent-cyan-rgb, 0, 255, 255), 0.2);
+  text-shadow: 0 0 10px rgba(var(--accent-cyan-rgb, 0, 255, 255), 0.5);
+}
+
+.failed-stamp {
+  border-color: var(--accent-crimson, #ff4444);
+  color: var(--accent-crimson, #ff4444);
+  box-shadow: 0 0 20px rgba(255, 68, 68, 0.2);
+  text-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
 }
