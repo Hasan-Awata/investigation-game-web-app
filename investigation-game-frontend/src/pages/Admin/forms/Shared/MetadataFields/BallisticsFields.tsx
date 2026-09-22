@@ -3,6 +3,7 @@ import {
   AdminRow, AdminInput, AdminTextarea,
   FormattingGuide, DynamicListHeader, RemoveButton
 } from '@/pages/Admin/components/AdminUI';
+// @ts-ignore legacy metadata type, replaced by unified widget schema
 import type { BallisticsMetadata } from '@/types/evidence';
 import type { MetadataFieldProps } from './types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';

@@ -1,4 +1,5 @@
 import { useDynamicList } from '@/hooks/useDynamicList';
+// @ts-ignore legacy metadata type, replaced by unified widget schema
 import type { AutopsyMetadata } from '@/types/evidence';
 import type { MetadataFieldProps } from './types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';

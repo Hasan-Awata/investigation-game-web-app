@@ -1,0 +1,48 @@
+.wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.9rem;
+  color: var(--text-primary, #1a1a1a);
+}
+
+.table th,
+.table td {
+  padding: 0.85rem 1rem;
+  text-align: start;
+  border-bottom: 1px solid var(--border-thin, #1a1a1a);
+}
+
+.table th {
+  background-color: #1a1a1a;
+  color: #ffffff;
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.05em;
+  border-bottom: none;
+}
+
+.table tr:nth-child(even) td {
+  background-color: #f8fafc;
+}
+
+/* Flip alignment for RTL */
+[dir='rtl'] .table th,
+[dir='rtl'] .table td {
+  text-align: right;
+}
+
+.empty-message {
+  margin: 0;
+  padding: 1.5rem;
+  text-align: center;
+  font-style: italic;
+  font-family: var(--font-primary, sans-serif);
+  color: var(--text-secondary, #666);
+}

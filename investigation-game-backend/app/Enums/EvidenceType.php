@@ -9,6 +9,8 @@ enum EvidenceType: string
     case Audio = 'audio';
     case Image = 'image';
     case Forensic = 'forensic';
+    case Digital = 'digital';
+    case Ballistics = 'ballistics';
 
     /**
      * Optional: You can add helper methods right inside the enum
@@ -22,6 +24,8 @@ enum EvidenceType: string
             self::Audio => 'Audio Recording',
             self::Image => 'Photographic Evidence',
             self::Forensic => 'Forensic Report',
+            self::Digital => 'Digital Forensics',
+            self::Ballistics => 'Ballistics Analysis',
         };
     }
 }

@@ -22,8 +22,8 @@ class AdminEvidenceController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
-            'sub_type' => 'nullable|string',
-            'metadata' => 'nullable|string',
+            'theme' => 'nullable|string',
+            'pages' => 'nullable|string',
             'is_initial' => 'required|boolean',
             'is_vital_for_conviction' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
@@ -37,9 +37,9 @@ class AdminEvidenceController extends Controller
         $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'Evidences', $storeLocally);
         $audioUrl = $this->mediaService->store($request->file('audio'), $caseTitle, 'Evidences', $storeLocally);
 
-        $metadataPayload = null;
-        if (!empty($validated['metadata'])) {
-            $metadataPayload = json_decode($validated['metadata'], true);
+        $pagesPayload = null;
+        if (!empty($validated['pages'])) {
+            $pagesPayload = json_decode($validated['pages'], true);
         }
 
         $evidence = Evidence::create([
@@ -47,8 +47,8 @@ class AdminEvidenceController extends Controller
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'evidence_type' => $validated['evidence_type'],
-            'sub_type' => $validated['sub_type'] ?? null,
-            'metadata' => $metadataPayload,
+            'theme' => $validated['theme'] ?? null,
+            'pages' => $pagesPayload,
             'is_initial' => $validated['is_initial'],
             'is_vital_for_conviction' => $validated['is_vital_for_conviction'],
             'img_url' => $imageUrl,
@@ -67,8 +67,8 @@ class AdminEvidenceController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'evidence_type' => ['required', new Enum(EvidenceType::class)],
-            'sub_type' => 'nullable|string',
-            'metadata' => 'nullable|string',
+            'theme' => 'nullable|string',
+            'pages' => 'nullable|string',
             'is_initial' => 'required|boolean',
             'is_vital_for_conviction' => 'required|boolean',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
@@ -79,9 +79,9 @@ class AdminEvidenceController extends Controller
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
         $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
 
-        $metadataPayload = null;
-        if (!empty($validated['metadata'])) {
-            $metadataPayload = json_decode($validated['metadata'], true);
+        $pagesPayload = null;
+        if (!empty($validated['pages'])) {
+            $pagesPayload = json_decode($validated['pages'], true);
         }
 
         $updateData = [
@@ -89,8 +89,8 @@ class AdminEvidenceController extends Controller
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'evidence_type' => $validated['evidence_type'],
-            'sub_type' => $validated['sub_type'] ?? null,
-            'metadata' => $metadataPayload,
+            'theme' => $validated['theme'] ?? null,
+            'pages' => $pagesPayload,
             'is_initial' => $validated['is_initial'],
             'is_vital_for_conviction' => $validated['is_vital_for_conviction'],
         ];

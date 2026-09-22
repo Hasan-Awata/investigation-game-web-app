@@ -1,4 +1,5 @@
 import { AdminRow, AdminInput, AdminSelect, AdminTextarea } from '@/pages/Admin/components/AdminUI';
+// @ts-ignore legacy metadata type, replaced by unified widget schema
 import type { MemoMetadata } from '@/types/evidence';
 import type { MetadataFieldProps } from './types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';

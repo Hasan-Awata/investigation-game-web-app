@@ -1,0 +1,104 @@
+/* Physical manila folder card on the board. */
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: fit-content;
+}
+
+.folder {
+  position: relative;
+  width: 193px;
+  aspect-ratio: 4 / 3;
+}
+
+/* Top-left folder tab */
+.tab {
+  position: absolute;
+  inset-block-start: -1px;
+  inset-inline-start: -1px;
+  width: 42%;
+  height: 24%;
+  background: #c9a868;
+  border: 1px solid #a3834f;
+  border-block-end: none;
+  border-start-start-radius: 6px;
+  border-start-end-radius: 0;
+  border-end-start-radius: 0;
+  z-index: 1;
+}
+
+.tab::after {
+  content: '';
+  position: absolute;
+  inset-block-end: 12%;
+  inset-inline-start: 14%;
+  width: 20%;
+  height: 12%;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+}
+
+.folderFace {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, #dbc08a 0%, #d4b57e 55%, #c4a369 100%);
+  border: 1px solid #a3834f;
+  border-start-start-radius: 4px;
+  border-start-end-radius: 8px;
+  border-end-start-radius: 8px;
+  border-end-end-radius: 8px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6), 0 4px 6px rgba(0, 0, 0, 0.4);
+  padding-block: 12%;
+  padding-inline: 10%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.fileLines {
+  display: flex;
+  flex-direction: column;
+  gap: 10%;
+  width: 72%;
+}
+
+.fileLine {
+  height: 0.25em;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 1em;
+}
+
+.fileLine:nth-child(2) {
+  width: 85%;
+}
+
+.fileLine:nth-child(3) {
+  width: 60%;
+}
+
+/* Floating label below the physical card */
+.meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.3em;
+  margin-block-start: 0.6em;
+  max-width: 220px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62em;
+  letter-spacing: 0.12em;
+  color: #c9a868;
+}
+
+.title {
+  margin: 0;
+  font-size: 1em;
+  color: var(--text-primary, #f2f2f2);
+  text-align: center;
+}

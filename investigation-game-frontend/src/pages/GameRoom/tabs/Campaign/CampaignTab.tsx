@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
@@ -49,21 +49,30 @@ const CampaignTab = () => {
     } catch { return {}; }
   });
 
-  const unlockedLevelIds = new Set(room.unlocked_levels?.map((l: Level) => l.id) || []);
+  const unlockedLevelIds = useMemo(
+    () => new Set(room.unlocked_levels?.map((l: Level) => l.id) || []),
+    [room.unlocked_levels]
+  );
   
   // DEDUCE COMPLETED REQUESTS: Cross-reference the filed action log against the strict case requirements
-  const completedRequestIds = new Set(
-    room.game_case?.investigation_requests
-      ?.filter(req => {
-        const requiredEvIds = req.required_evidences?.map(e => e.id).sort().join(',') || '';
-        return room.filed_requests?.some(
-          fr => fr.request_type === req.request_type && [...fr.evidence_ids].sort().join(',') === requiredEvIds
-        );
-      })
-      .map(req => req.id) || []
+  const completedRequestIds = useMemo(
+    () => new Set(
+      room.game_case?.investigation_requests
+        ?.filter(req => {
+          const requiredEvIds = req.required_evidences?.map(e => e.id).sort().join(',') || '';
+          return room.filed_requests?.some(
+            fr => fr.request_type === req.request_type && [...fr.evidence_ids].sort().join(',') === requiredEvIds
+          );
+        })
+        .map(req => req.id) || []
+    ),
+    [room.game_case?.investigation_requests, room.filed_requests]
   );
 
-  const sortedZones = [...zones].sort((a: Zone, b: Zone) => a.order_index - b.order_index);
+  const sortedZones = useMemo(
+    () => [...zones].sort((a: Zone, b: Zone) => a.order_index - b.order_index),
+    [room.game_case?.zones]
+  );
   const hasActiveLevel = currentLevelId !== null && currentLevelId !== undefined;
 
   const activeZoneFromRoom = hasActiveLevel
@@ -103,7 +112,7 @@ const CampaignTab = () => {
 
   const totalPlayers = room.users?.length || 1;
 
-  const getQuestionConsensus = (question: Question) => {
+  const getQuestionConsensus = useCallback((question: Question) => {
     const tally: Record<number, number> = {};
     let votesCast = 0;
     const participants = room.users || [];
@@ -130,7 +139,7 @@ const CampaignTab = () => {
       else if (weight === maxWeight) { isTie = true; }
     }
     return { votesCast, isResolved: !isTie, isTie, winningChoiceId: isTie ? null : winningChoiceId };
-  };
+  }, [room.votes, room.users, totalPlayers]);
 
   const activeZoneData = sortedZones.find((z: Zone) => z.id === activeZoneId);
   const sortedLevels = activeZoneData?.levels ? [...activeZoneData.levels].sort((a: Level, b: Level) => a.order_index - b.order_index) : [];

@@ -216,8 +216,8 @@ class AdminCaseController extends Controller
                     'title' => $evData['title'],
                     'description' => $evData['description'] ?? null,
                     'evidence_type' => $evData['evidence_type'],
-                    'sub_type' => $evData['sub_type'] ?? null,
-                    'metadata' => $evData['metadata'] ?? null,
+                    'theme' => $evData['theme'] ?? null,
+                    'pages' => $evData['pages'] ?? null,
                     'is_initial' => $evData['is_initial'] ?? false,
                     'is_vital_for_conviction' => $evData['is_vital_for_conviction'] ?? false,
                 ]);

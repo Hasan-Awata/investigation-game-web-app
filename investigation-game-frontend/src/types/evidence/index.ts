@@ -1,41 +1,56 @@
-import type { BaseEvidence } from './base';
-import type { ForensicEvidence } from './forensic';
-import type { DocumentEvidence } from './document';
+export const EvidenceType = {
+  Document: 'document',
+  Forensic: 'forensic',
+  Testimony: 'testimony',
+  Image: 'image',
+  Audio: 'audio',
+  Digital: 'digital',
+  Ballistics: 'ballistics'
+} as const;
 
-export * from './base';
-export * from './forensic';
-export * from './document';
+export type EvidenceType = typeof EvidenceType[keyof typeof EvidenceType];
 
-// 1. STRICT TESTIMONY TYPE
-export interface TranscriptLine {
-  type: 'q' | 'a';
-  speaker: string;
-  text: string;
+export const WidgetType = {
+  DataGrid: 'DataGrid',
+  SignaturePad: 'SignaturePad',
+  TextParagraph: 'TextParagraph',
+  RawHtml: 'RawHtml',
+  KeyValueGrid: 'KeyValueGrid',
+  CalloutBox: 'CalloutBox',
+  StampOverlay: 'StampOverlay',
+  Barcode: 'Barcode',
+  TranscriptLog: 'TranscriptLog',
+  AutopsyDiagram: 'AutopsyDiagram',
+  SpectralGraph: 'SpectralGraph',
+  DnaBands: 'DnaBands',
+  TerminalBlock: 'TerminalBlock'
+} as const;
+
+export type WidgetType = typeof WidgetType[keyof typeof WidgetType];
+
+export interface WidgetBlock {
+  id: string | number;
+  type: WidgetType;
+  props: Record<string, any>;
 }
 
-export interface TestimonyMetadata {
-  agency?: string;
-  title?: string;
-  date?: string;
-  case_number?: string;
-  subject_name?: string;
-  interviewer?: string;
-  context?: string;
-  transcript?: TranscriptLine[] | string; 
+export interface WidgetPage {
+  id: string | number;
+  blocks: WidgetBlock[];
 }
 
-export interface TestimonyEvidence extends BaseEvidence {
-  evidence_type: 'testimony';
-  sub_type?: null;
-  metadata: TestimonyMetadata;
+export interface Evidence {
+  id: number;
+  case_id: number;
+  title: string;
+  description?: string | null;
+  evidence_type: EvidenceType;
+  theme?: string | null;
+  pages?: WidgetPage[] | null;
+  is_initial: boolean;
+  is_vital_for_conviction: boolean;
+  img_url?: string | null;
+  audio_url?: string | null;
+  created_at?: string;
+  updated_at?: string;
 }
-
-// 2. STRICT MEDIA TYPE (For Audio & Images)
-export interface MediaEvidence extends BaseEvidence {
-  evidence_type: 'image' | 'audio';
-  sub_type?: null;
-  metadata?: Record<string, unknown> | null; 
-}
-
-// 3. THE MASTER TYPE
-export type Evidence = ForensicEvidence | DocumentEvidence | TestimonyEvidence | MediaEvidence;

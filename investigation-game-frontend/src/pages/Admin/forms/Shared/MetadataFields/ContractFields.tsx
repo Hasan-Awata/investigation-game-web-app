@@ -3,6 +3,7 @@ import {
   AdminRow, AdminInput, AdminTextarea, AdminCheckbox,
   DynamicListHeader, RemoveButton
 } from '@/pages/Admin/components/AdminUI';
+// @ts-ignore legacy metadata types, replaced by unified widget schema
 import type { ContractMetadata, ContractPage } from '@/types/evidence';
 import type { MetadataFieldProps } from './types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';

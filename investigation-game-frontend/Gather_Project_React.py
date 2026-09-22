@@ -155,7 +155,7 @@ if __name__ == "__main__":
     gather_project_code(
         project_root, 
         output_filename, 
-        include_styles=False, 
+        include_styles=True, 
         include_admin_files=False, 
         include_translation_files=False, 
         only_css_files=False

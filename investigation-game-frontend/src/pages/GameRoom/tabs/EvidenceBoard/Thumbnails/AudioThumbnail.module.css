@@ -1,0 +1,199 @@
+/* Physical microcassette recorder card on the board. */
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: fit-content;
+}
+
+/* --- THEME CONTROL PANEL --- */
+.cassette {
+  --cassette-plastic: #26282a;
+  --cassette-ink: #d8d8d8;
+  --tape-color: #3b2818;
+  /* --------------------------- */
+  position: relative;
+  width: 208px;
+  min-height: 110px;
+  background: var(--cassette-plastic);
+  border: 1px solid #1a1b1c;
+  border-radius: 8px;
+  padding-block: 10px;
+  padding-inline: 12px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6), 0 4px 6px rgba(0, 0, 0, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.09);
+}
+
+/* 1. TOP AREA (Printed directly on the plastic) */
+.cassetteTopArea {
+  width: 100%;
+  padding-block: 0 52px; /* Leaves room for the window below */
+  padding-inline: 4px;
+}
+
+.labelHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-block-end: 1px solid rgba(255, 255, 255, 0.1);
+  padding-block-end: 6px;
+  margin-block-end: 6px;
+}
+
+/* Pulsing red speaker glyph */
+.audioIcon {
+  position: relative;
+  width: 0.7em;
+  height: 0.55em;
+  background: #e74c3c;
+  clip-path: polygon(0 22%, 35% 22%, 70% 0, 70% 100%, 35% 78%, 0 78%);
+  animation: pulse 2s infinite;
+}
+
+.audioIcon::after {
+  content: '';
+  position: absolute;
+  inset-inline-end: -0.45em;
+  inset-block-start: 0;
+  width: 0.55em;
+  height: 0.55em;
+  border: 0.12em solid #e74c3c;
+  border-inline-start: none;
+  border-radius: 0 60% 60% 0;
+  box-sizing: border-box;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.tapeIndicator {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6rem;
+  font-weight: 900;
+  color: #777;
+  letter-spacing: 0.12em;
+}
+
+/* 2. THE TAPE WINDOW */
+.window {
+  position: absolute;
+  inset-block-start: 45%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%);
+  width: 125px;
+  height: 42px;
+  background: #0a0a0a;
+  border: 2px solid #1c1d1f;
+  border-radius: 20px;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.9), 0 1px 2px rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-inline: 13px;
+  box-sizing: border-box;
+  z-index: 5;
+}
+
+/* Magnetic tape stretched between the spools */
+.window::before {
+  content: '';
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline: 13px;
+  height: 18px;
+  background: var(--tape-color);
+  transform: translateY(-50%);
+  z-index: 1;
+}
+
+.reel {
+  width: 26px;
+  height: 26px;
+  background: repeating-conic-gradient(#ccc 0 30deg, #999 30deg 60deg);
+  border-radius: 50%;
+  position: relative;
+  z-index: 2;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+}
+
+.leftReel {
+  border: 4px solid var(--tape-color);
+  box-sizing: border-box;
+}
+
+.rightReel {
+  border: 1px solid var(--tape-color);
+  box-sizing: border-box;
+}
+
+/* 3. CASSSETTE BOTTOM & TAPE LABEL */
+.cassetteBottom {
+  margin-block-start: auto;
+  width: 85%;
+  min-height: 30px;
+  background: #18191a;
+  border-radius: 4px 4px 0 0;
+  position: relative;
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.screwLeft,
+.screwRight {
+  position: absolute;
+  inset-block-start: 50%;
+  width: 6px;
+  height: 6px;
+  background: #111;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.8), 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.screwLeft {
+  inset-inline-start: -12px;
+}
+
+.screwRight {
+  inset-inline-end: -12px;
+}
+
+/* Floating label below the physical card */
+.meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.3em;
+  margin-block-start: 0.6em;
+  max-width: 220px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62em;
+  letter-spacing: 0.12em;
+  color: #c9b77b;
+}
+
+.title {
+  margin: 0;
+  font-size: 1em;
+  color: var(--text-primary, #f2f2f2);
+  text-align: center;
+}

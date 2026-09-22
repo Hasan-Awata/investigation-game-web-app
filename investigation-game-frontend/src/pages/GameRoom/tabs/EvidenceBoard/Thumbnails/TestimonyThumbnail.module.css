@@ -1,0 +1,113 @@
+/* Portrait stack of papers as the physical card. */
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: fit-content;
+}
+
+.stack {
+  position: relative;
+  width: 154px;
+  aspect-ratio: 3 / 4;
+}
+
+.sheet {
+  position: absolute;
+  inset-inline-start: 8%;
+  width: 84%;
+  height: 84%;
+  background: #f5f2e9;
+  border: 1px solid #cfc9ba;
+  border-radius: 2px;
+}
+
+.sheetBack {
+  inset-block-start: 2%;
+  transform: rotate(3deg);
+}
+
+.sheetMid {
+  inset-block-start: 9%;
+  transform: rotate(-2deg);
+}
+
+.sheetFront {
+  inset-block-start: 14%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 9%;
+  padding-block: 14%;
+  padding-inline: 12%;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6), 0 4px 6px rgba(0, 0, 0, 0.4);
+}
+
+.scriptLine {
+  height: 0.25em;
+  width: 100%;
+  background: rgba(26, 26, 26, 0.16);
+  border-radius: 1em;
+}
+
+.scriptLine:nth-child(2) {
+  width: 80%;
+}
+
+.scriptLine:nth-child(3) {
+  width: 55%;
+}
+
+.stamp {
+  align-self: flex-end;
+  margin-block-start: auto;
+  font-family: var(--font-serif, serif);
+  font-size: 0.5em;
+  font-weight: 900;
+  letter-spacing: 0.18em;
+  color: rgba(163, 50, 50, 0.85);
+  border: 2px double rgba(163, 50, 50, 0.8);
+  border-radius: 3px;
+  padding-block: 0.15em;
+  padding-inline: 0.4em;
+  transform: rotate(-8deg);
+  text-transform: uppercase;
+}
+
+.paperclip {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: 15%;
+  width: 14%;
+  height: 24%;
+  border: 0.2em solid #9aa2ab;
+  border-radius: 50% 50% 10% 10%;
+  transform: rotate(-12deg);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Floating label below the physical card */
+.meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.3em;
+  margin-block-start: 0.3em;
+  max-width: 220px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62em;
+  letter-spacing: 0.12em;
+  color: #e07a7a;
+}
+
+.title {
+  margin: 0;
+  font-size: 1em;
+  color: var(--text-primary, #f2f2f2);
+  text-align: center;
+}

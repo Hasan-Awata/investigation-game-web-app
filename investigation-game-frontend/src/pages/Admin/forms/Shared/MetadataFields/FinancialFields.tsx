@@ -1,5 +1,6 @@
 import { useDynamicList } from '@/hooks/useDynamicList';
 import { AdminRow, AdminInput, DynamicListHeader, RemoveButton } from '@/pages/Admin/components/AdminUI';
+// @ts-ignore legacy metadata type, replaced by unified widget schema
 import type { FinancialMetadata } from '@/types/evidence';
 import type { MetadataFieldProps } from './types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';

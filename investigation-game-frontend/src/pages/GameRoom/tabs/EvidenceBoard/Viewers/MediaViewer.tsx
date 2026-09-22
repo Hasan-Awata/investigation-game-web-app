@@ -4,10 +4,8 @@ import type { Evidence } from '@/types/evidence';
 import ViewersContainer from './ViewersContainer';
 import './MediaViewer.css';
 
-type MediaEvidence = Extract<Evidence, { evidence_type: 'image' | 'audio' }>;
-
 interface MediaViewerProps {
-  evidence: MediaEvidence;
+  evidence: Evidence;
 }
 
 const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
@@ -15,7 +13,7 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [isImageLoaded, setIsImageLoaded] = useState<boolean>(false);
   
-  const mediaUrl = evidence.img_url || (evidence.metadata as Record<string, any>)?.url;
+  const mediaUrl = evidence.img_url || evidence.audio_url;
 
   useEffect(() => {
     if (evidence.evidence_type !== 'image' || !mediaUrl) return;

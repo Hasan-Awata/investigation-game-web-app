@@ -1,0 +1,45 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 1rem;
+  background: #0b0f14;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+}
+
+.graph {
+  width: 100%;
+  height: 180px;
+  background: #0b0f14;
+}
+
+.grid-line {
+  stroke: rgba(255, 255, 255, 0.15);
+  stroke-width: 0.5;
+  stroke-dasharray: 2 2;
+}
+
+.data-line-primary {
+  fill: none;
+  stroke: var(--accent-cyan, #62d6e0);
+  stroke-width: 0.8;
+  stroke-linecap: round;
+}
+
+.data-line-secondary {
+  fill: none;
+  stroke: var(--accent-amber, #d8a13a);
+  stroke-width: 0.6;
+  stroke-linecap: round;
+  opacity: 0.7;
+}
+
+.axisLabels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
+  color: var(--text-secondary, #999);
+}

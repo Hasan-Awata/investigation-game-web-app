@@ -1,20 +1,16 @@
-import React from 'react';
+import type { FC } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import type { Evidence } from '@/types';
-import DocumentEvidence from './EvidenceVariants/DocumentEvidence';
-import TestimonyEvidence from './EvidenceVariants/TestimonyEvidence';
-import AudioEvidence from './EvidenceVariants/AudioEvidence';
-import ImageEvidence from './EvidenceVariants/ImageEvidence';
-import ForensicEvidence from './EvidenceVariants/ForensicEvidence';
+import type { Evidence, EvidenceType } from '@/types/evidence';
+import {
+  AudioThumbnail,
+  BallisticsThumbnail,
+  DigitalThumbnail,
+  DocumentThumbnail,
+  ForensicThumbnail,
+  ImageThumbnail,
+  TestimonyThumbnail,
+} from './Thumbnails';
 import styles from './EvidenceCard.module.css';
-
-const EvidenceComponents: Record<string, React.FC<{ evidence: Evidence }>> = {
-  document: DocumentEvidence,
-  testimony: TestimonyEvidence,
-  audio: AudioEvidence,
-  image: ImageEvidence,
-  forensic: ForensicEvidence,
-};
 
 interface EvidenceCardProps {
   evidence: Evidence;
@@ -23,20 +19,27 @@ interface EvidenceCardProps {
   onInspect: (evidence: Evidence) => void;
 }
 
-export default function EvidenceCard({ evidence, index, isNew, onInspect }: EvidenceCardProps) {
-  const SpecificEvidenceComponent = EvidenceComponents[evidence.evidence_type];
+type ThumbnailComponent = FC<{ evidence: Evidence }>;
 
+const ThumbnailRegistry: Partial<Record<EvidenceType, ThumbnailComponent>> = {
+  document: DocumentThumbnail,
+  testimony: TestimonyThumbnail,
+  image: ImageThumbnail,
+  audio: AudioThumbnail,
+  forensic: ForensicThumbnail,
+  digital: DigitalThumbnail,
+  ballistics: BallisticsThumbnail,
+};
+
+export default function EvidenceCard({ evidence, index, isNew, onInspect }: EvidenceCardProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: evidence.id, // Keep this as the raw ID so addToTray(active.id) still works in the layout
-    data: { 
-      type: 'EVIDENCE' // <--- This tells the layout router what is being dragged
-    }
+    data: {
+      type: 'EVIDENCE', // <--- This tells the layout router what is being dragged
+    },
   });
 
-  if (!SpecificEvidenceComponent) {
-    console.warn(`System Error: Unknown evidence type encountered -> ${evidence.evidence_type}`);
-    return null;
-  }
+  const Thumbnail = ThumbnailRegistry[evidence.evidence_type] ?? DocumentThumbnail;
 
   return (
     <div
@@ -47,7 +50,7 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
       onClick={() => onInspect(evidence)}
     >
       {isNew && <div className={styles.unreadIndicator} title="Unread Intel"></div>}
-      <SpecificEvidenceComponent evidence={evidence} />
+      <Thumbnail evidence={evidence} />
     </div>
   );
 }
@@ -57,12 +60,11 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
 // Keeps the component pure and prevents hook-duplication errors in dnd-kit.
 // ----------------------------------------------------------------------
 export function EvidenceCardOverlay({ evidence }: { evidence: Evidence }) {
-  const SpecificEvidenceComponent = EvidenceComponents[evidence.evidence_type];
-  if (!SpecificEvidenceComponent) return null;
+  const Thumbnail = ThumbnailRegistry[evidence.evidence_type] ?? DocumentThumbnail;
 
   return (
     <div className={`${styles.evidenceCardWrapper} ${styles.overlayClone}`}>
-      <SpecificEvidenceComponent evidence={evidence} />
+      <Thumbnail evidence={evidence} />
     </div>
   );
 }

@@ -1,0 +1,65 @@
+.container {
+  position: relative;
+  margin-bottom: 3rem;
+  min-height: 300px;
+  padding: 1rem;
+  padding-inline-start: 0;
+}
+
+.watermark {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 50%;
+  transform: translate(-50%, -50%) rotate(-30deg);
+  font-family: var(--font-serif, serif);
+  font-size: 6rem;
+  font-weight: 900;
+  color: rgba(0, 0, 0, 0.03);
+  pointer-events: none;
+  z-index: 0;
+  letter-spacing: 0.2em;
+  white-space: nowrap;
+}
+
+[dir='rtl'] .watermark {
+  transform: translate(50%, -50%) rotate(30deg);
+}
+
+.content {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-serif, serif);
+  font-size: 1.15rem;
+  line-height: 1.8;
+  color: #1a1a1a;
+}
+
+.transcript-line {
+  margin-bottom: 0.5rem;
+}
+
+.speaker-tag {
+  font-weight: 900;
+  margin-inline-end: 0.5rem;
+}
+
+.transcript-q {
+  margin-top: 1rem;
+  padding-inline-start: 1rem;
+  border-inline-start: 2px solid rgba(26, 79, 139, 0.3);
+}
+
+.transcript-q .speaker-tag {
+  color: #1a4f8b;
+}
+
+.transcript-a {
+  margin-bottom: 1rem;
+  padding-inline-start: 1rem;
+  border-inline-start: 2px solid rgba(163, 50, 50, 0.3);
+  background: rgba(163, 50, 50, 0.02);
+}
+
+.transcript-a .speaker-tag {
+  color: #a33232;
+}

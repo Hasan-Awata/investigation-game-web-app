@@ -1,0 +1,98 @@
+/* Physical evidence bag as the card. */
+.root {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: fit-content;
+}
+
+.bag {
+  position: relative;
+  width: 193px;
+  aspect-ratio: 4 / 3;
+  background: rgba(235, 235, 230, 0.09);
+  border: 1px dashed rgba(235, 235, 230, 0.55);
+  border-radius: 4px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.6), 0 4px 6px rgba(0, 0, 0, 0.4);
+  padding: 6%;
+}
+
+/* Adhesive tape seal across the top */
+.seal {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #e8c269, #d5a93f);
+  border-block-end: 1px solid #b5892c;
+  border-radius: 4px 4px 0 0;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  padding-block: 0.25em;
+}
+
+.sealText {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.42em;
+  font-weight: 700;
+  letter-spacing: 0.34em;
+  color: #3a2a05;
+  text-transform: uppercase;
+}
+
+/* Single shell casing lying in the bag */
+.shellCase {
+  position: absolute;
+  inset-block-start: 26%;
+  inset-inline-end: 8%;
+  width: 12%;
+  height: 42%;
+  background: linear-gradient(90deg, #9c7436, #d8b062 40%, #8a6832 60%, #b5914a);
+  border: 1px solid #6a5326;
+  border-radius: 45% 45% 30% 30%;
+  transform: rotate(20deg);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), inset 0 0.2em 0.2em rgba(255, 255, 255, 0.25);
+}
+
+.barcode {
+  position: absolute;
+  inset-block-end: 12%;
+  inset-inline: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 0.14em;
+}
+
+.bar {
+  width: 0.16em;
+  background: #222;
+  border-radius: 1px;
+}
+
+/* Floating label below the physical card */
+.meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.3em;
+  margin-block-start: 0.6em;
+  max-width: 220px;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9);
+}
+
+.badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62em;
+  letter-spacing: 0.12em;
+  color: #e8c269;
+}
+
+.title {
+  margin: 0;
+  font-size: 1em;
+  color: var(--text-primary, #f2f2f2);
+  text-align: center;
+}
