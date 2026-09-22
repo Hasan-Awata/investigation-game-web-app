@@ -49,7 +49,6 @@ export default function ProceduralRequestTray({
               const ev = accumulatedEvidences.find(e => e.id === id);
               return (
                 <div key={id} className={styles.trayItemPill}>
-                  <span className={styles.trayItemId}>EX-{id.toString().padStart(3, '0')}</span>
                   <span className={styles.trayItemTitle}>{ev?.title || t('pages.gameRoom.evidence.board.unknownFile')}</span>
                   <button className={styles.trayItemRemove} onClick={() => removeFromTray(id)}>✕</button>
                 </div>

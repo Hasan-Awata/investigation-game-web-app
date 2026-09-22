@@ -69,12 +69,25 @@ export default function AdminLocationForm({
 
         <div className="qf-choices-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
           {state.choices.map((choice, index) => (
-            <ChoiceEditorCard key={choice.id || index} index={index} choice={choice} updateChoice={(updated) => setters.setChoices(state.choices.map(c => c.id === choice.id ? updated : c))} removeChoice={() => setters.setChoices(state.choices.filter(c => c.id !== choice.id))} />
+            <ChoiceEditorCard 
+              key={choice.id || index} 
+              index={index} 
+              choice={choice} 
+              updateChoice={(updated) => setters.setChoices(state.choices.map(c => c.id === choice.id ? updated : c))} 
+              removeChoice={() => setters.setChoices(state.choices.filter(c => c.id !== choice.id))}
+              isTargeting={activeCoordinateTarget === choice.id}
+              onToggleTarget={() => setActiveCoordinateTarget(activeCoordinateTarget === choice.id ? null : (choice.id || null))} 
+            />
           ))}
         </div>
 
-        <button type="button" onClick={() => setters.setChoices([...state.choices, { id: crypto.randomUUID(), text: '', outcomes: {}, requirements: {} }])} className="btn-secondary" style={{ padding: '0.75rem', width: '100%', marginTop: '1rem' }}>
-          {t.mapCoordinateBtn}
+        <button 
+          type="button" 
+          onClick={() => setters.setChoices([...state.choices, { id: crypto.randomUUID(), text: '', outcomes: {}, requirements: {} }])} 
+          className="btn-secondary" 
+          style={{ padding: '0.75rem', width: '100%', marginTop: '1rem' }}
+        >
+          {t.addSceneBtn}
         </button>
 
         <button type="submit" className="btn-primary" disabled={status.isProcessing} style={{ background: state.editingId ? 'var(--accent-amber)' : 'var(--accent-cyan)', color: 'var(--bg-dark)', marginTop: '2rem' }}>

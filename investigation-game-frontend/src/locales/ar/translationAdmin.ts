@@ -439,6 +439,7 @@ export const translations = {
     sceneTitleLabel: "عنوان المشهد / نص التلميح",
     envMapLabel: "خريطة البيئة (صورة - بحد أقصى 10 ميجابايت)",
     targetingBanner: "⚠️ مصفوفة التحديد مفعلة: انقر فوق الخريطة للقفل.",
+    addSceneBtn: "إضافة مشهد",
     cancelTargetBtn: "إلغاء",
     mapCoordinateBtn: "+ تعيين نقطة إحداثيات جديدة",
     processingBtn: "جاري المعالجة...",

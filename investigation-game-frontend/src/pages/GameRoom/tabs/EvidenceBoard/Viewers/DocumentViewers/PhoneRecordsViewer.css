@@ -19,9 +19,8 @@
   color: var(--telecom-ink-primary);
   
   /* Explicit boundary dimensions */
-  width: 100%;
-  max-width: 850px;
-  min-height: 100%;
+  width: 800px;
+  height: 1131px;
   box-sizing: border-box;
   position: relative;
   margin: 0 auto;

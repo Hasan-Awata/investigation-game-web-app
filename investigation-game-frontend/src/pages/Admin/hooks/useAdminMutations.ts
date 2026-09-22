@@ -36,7 +36,15 @@ export function useAdminMutations(entityType: AdminEntityType) {
 
   const handleSuccess = (action: string) => {
     toast.success(`${methods.name} successfully ${action}.`);
+    
+    // Always refresh the master case list (handles base stats, character arrays, etc.)
     queryClient.invalidateQueries({ queryKey: ['adminCases'] });
+
+    // Only refresh the narrative hierarchy if a structural element was altered
+    if (['zone', 'level', 'question'].includes(entityType)) {
+      queryClient.invalidateQueries({ queryKey: ['adminZones'] });
+      queryClient.invalidateQueries({ queryKey: ['adminLevels'] });
+    }
   };
 
   const handleError = (error: Error) => {

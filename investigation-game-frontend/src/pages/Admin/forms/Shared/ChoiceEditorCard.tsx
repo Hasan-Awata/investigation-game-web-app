@@ -22,9 +22,9 @@ export interface DraftChoice {
   };
 }
 
-export interface LevelWithPhase extends Level {
+export interface LevelWithZone extends Level {
   zone?: Zone;
-  phase_title?: string;
+  zone_title?: string;
 }
 
 export interface FlattenedChoice extends DraftChoice {
@@ -37,6 +37,8 @@ interface ChoiceEditorCardProps {
   choice: DraftChoice;
   updateChoice: (updated: DraftChoice) => void;
   removeChoice: () => void;
+  isTargeting?: boolean;
+  onToggleTarget?: () => void;
 }
 
 export default function ChoiceEditorCard({
@@ -44,6 +46,8 @@ export default function ChoiceEditorCard({
   choice,
   updateChoice,
   removeChoice,
+  isTargeting: propIsTargeting,
+  onToggleTarget
 }: ChoiceEditorCardProps) {
   const [isExpanded, setIsExpanded] = useState<boolean>(
     typeof choice.id === 'string' || choice.id === undefined
@@ -59,7 +63,7 @@ export default function ChoiceEditorCard({
   const availableEvidence = selectedCase.evidences || [];
   const availableLevels = selectedCase.zones?.flatMap(z => z.levels || []) || [];
   const availableCharacters = selectedCase.characters || [];
-
+  
   const updateOutcomes = <K extends keyof NonNullable<DraftChoice['outcomes']>>(
     key: K,
     value: NonNullable<DraftChoice['outcomes']>[K]
@@ -95,7 +99,8 @@ export default function ChoiceEditorCard({
   const hasCoords = choice.text.includes('|') && !choice.text.startsWith('|');
   const coordPreview = hasCoords ? choice.text.split('|')[0].trim() : null;
   
-  const isTargeting = targeting?.activeTarget === choice.id;
+  const isTargeting = propIsTargeting !== undefined ? propIsTargeting : targeting?.activeTarget === choice.id;
+  const canTarget = onToggleTarget || targeting;
 
   return (
     <div className="choice-editor-card">
@@ -117,11 +122,11 @@ export default function ChoiceEditorCard({
         </div>
 
         <div className="header-actions-group" onClick={(e) => e.stopPropagation()}>
-          {targeting && (
+          {canTarget && (
             <button
               type="button"
               className={`btn-secondary target-btn ${isTargeting ? 'active' : ''}`}
-              onClick={() => targeting.toggleTarget(choice.id as string | number)}
+              onClick={() => onToggleTarget ? onToggleTarget() : targeting?.toggleTarget(choice.id as string | number)}
             >
               {isTargeting ? t.targetingActive : t.targetingMap}
             </button>

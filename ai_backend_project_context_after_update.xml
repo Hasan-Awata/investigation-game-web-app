@@ -157,7 +157,6 @@
 │   │   ├── 2026_09_12_090854_refactor_people_to_characters.php
 │   │   ├── 2026_09_13_091113_rename_phases_to_zones.php
 │   │   └── 2026_09_13_142320_move_map_url_to_cases_table.php
-│   ├── schema
 │   └── seeders
 │       └── DatabaseSeeder.php
 ├── package-lock.json
@@ -1092,8 +1091,8 @@ class CaseController extends Controller
         $userId = $request->user()->id;
 
         $cases = GameCase::select(
-            'id', 'title', 'story', 'min_player_XP', 'XP_on_solve', 'img_url', 'max_strikes',
-            'rating_stars', 'age_rating', 'estimated_playtime', 'difficulty', 'tags', 'author_name'
+        'id', 'title', 'story', 'map_url', 'min_player_XP', 'XP_on_solve', 'img_url', 'max_strikes',
+        'rating_stars', 'age_rating', 'estimated_playtime', 'difficulty', 'tags', 'author_name'
         )
             ->where('is_published', true)
             ->with([
@@ -2246,8 +2245,8 @@ class AdminQuestionController extends Controller
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-        $level = Level::with('phase.gameCase')->find($validated['level_id']);
-        $caseTitle = $level?->phase?->gameCase?->title ?? 'General';
+        $level = Level::with('zones.gameCase')->find($validated['level_id']);
+        $caseTitle = $level?->zones?->gameCase?->title ?? 'General';
         $levelTitle = $level?->title ?? 'General-Level';
         $subfolder = 'Levels/' . \Illuminate\Support\Str::slug($levelTitle) . '/Questions';
 
@@ -2303,7 +2302,7 @@ class AdminQuestionController extends Controller
         ]);
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-        $caseTitle = Level::with('phase.gameCase')->where('id', $validated['level_id'])->first()?->phase?->gameCase?->title ?? 'General';
+        $caseTitle = Level::with('zones.gameCase')->where('id', $validated['level_id'])->first()?->zones?->gameCase?->title ?? 'General';
 
         $updateData = [
             'level_id' => $validated['level_id'],
@@ -2798,6 +2797,7 @@ class GameCase extends Model
     protected $fillable = [
         'title',
         'story',
+        'map_url',
         'min_player_XP',
         'XP_on_solve',
         'max_strikes',
@@ -3333,7 +3333,7 @@ class AssessmentService
             $level = $room->currentLevel;
 
             if (!$level) {
-                return Result::failure("No active phase to evaluate. This phase may have already been submitted.");
+                return Result::failure("No active zones to evaluate. This zones may have already been submitted.");
             }
 
             $votes = \App\Models\RoomVote::with('choice')->where('room_id', $room->id)
@@ -3388,7 +3388,7 @@ class AssessmentService
             if ($completedCount >= $totalLevels) {
                 $responseMessage = 'Final verdict accepted. Stand by for further instructions.';
             } else {
-                $responseMessage = 'Verdict accepted. Return to the roadmap to select the next phase.';
+                $responseMessage = 'Verdict accepted. Return to the roadmap to select the next zone.';
             }
 
             LevelTransitioned::dispatch($room, $responseMessage);

@@ -14,9 +14,8 @@
   border-top: 12px solid #2c3e50; 
   
   /* Explicit boundary dimensions */
-  width: 100%;
-  max-width: 800px;
-  min-height: 100%;
+  width: 800px;
+  height: 1131px;
   box-sizing: border-box;
   margin: 0 auto;
   text-align: start;

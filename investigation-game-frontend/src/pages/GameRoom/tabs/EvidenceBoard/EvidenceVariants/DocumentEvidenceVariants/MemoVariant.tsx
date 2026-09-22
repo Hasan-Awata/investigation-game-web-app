@@ -5,14 +5,14 @@ import './MemoVariant.css';
 export default function MemoVariant({ evidence }: { evidence: Evidence }) {
   const memoEvidence = evidence as Extract<DocEvType, { sub_type: 'memo' }>;
   const isSticky = memoEvidence.metadata.style === 'sticky';
+  const memoContent = memoEvidence.metadata.context || evidence.description
 
   if (isSticky) {
     return (
       <div className="document-variant memo-sticky-variant">
         <div className="sticky-tape"></div>
         <div className="memo-content">
-          <h4 className="evidence-title">{evidence.title}</h4>
-          {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
+          {memoContent && <p className="evidence-desc">{memoContent}</p>}
         </div>
       </div>
     );
@@ -24,8 +24,7 @@ export default function MemoVariant({ evidence }: { evidence: Evidence }) {
       <div className="crumpled-texture"></div>
 
       <div className="memo-content">
-        <h4 className="evidence-title">{evidence.title}</h4>
-        {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
+        {memoContent && <p className="evidence-desc">{memoContent}</p>}
       </div>
     </div>
   );

@@ -14,7 +14,7 @@ export function useAdminCases() {
   });
 }
 
-// 2. Fetch Phases (Only triggers when a Case is selected)
+// 2. Fetch zones (Only triggers when a Case is selected)
 export function useAdminZones(caseId: string) {
   return useQuery<Zone[]>({
     queryKey: ['adminZones', caseId],

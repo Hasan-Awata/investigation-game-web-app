@@ -23,7 +23,7 @@ class AssessmentService
             $level = $room->currentLevel;
 
             if (!$level) {
-                return Result::failure("No active phase to evaluate. This phase may have already been submitted.");
+                return Result::failure("No active zones to evaluate. This zones may have already been submitted.");
             }
 
             $votes = \App\Models\RoomVote::with('choice')->where('room_id', $room->id)
@@ -78,7 +78,7 @@ class AssessmentService
             if ($completedCount >= $totalLevels) {
                 $responseMessage = 'Final verdict accepted. Stand by for further instructions.';
             } else {
-                $responseMessage = 'Verdict accepted. Return to the roadmap to select the next phase.';
+                $responseMessage = 'Verdict accepted. Return to the roadmap to select the next zone.';
             }
 
             LevelTransitioned::dispatch($room, $responseMessage);

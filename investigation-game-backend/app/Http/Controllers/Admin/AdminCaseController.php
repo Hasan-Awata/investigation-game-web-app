@@ -18,6 +18,7 @@ class AdminCaseController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'story' => 'required|string',
+            'map_url' => 'nullable|string',
             'min_player_XP' => 'required|integer|min:0',
             'XP_on_solve' => 'required|integer|min:0',
             'max_strikes' => 'required|integer|min:1',
@@ -48,6 +49,7 @@ class AdminCaseController extends Controller
         $case = GameCase::create([
             'title' => $validated['title'],
             'story' => $validated['story'],
+            'map_url' => $validated['map_url'] ?? null,
             'min_player_XP' => $validated['min_player_XP'],
             'XP_on_solve' => $validated['XP_on_solve'],
             'max_strikes' => $validated['max_strikes'],
@@ -84,6 +86,7 @@ class AdminCaseController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'story' => 'required|string',
+            'map_url' => 'nullable|string',
             'min_player_XP' => 'required|integer|min:0',
             'XP_on_solve' => 'required|integer|min:0',
             'max_strikes' => 'required|integer|min:1',
@@ -114,6 +117,7 @@ class AdminCaseController extends Controller
         $case->update([
             'title' => $validated['title'],
             'story' => $validated['story'],
+            'map_url' => $validated['map_url'] ?? null,
             'min_player_XP' => $validated['min_player_XP'],
             'XP_on_solve' => $validated['XP_on_solve'],
             'max_strikes' => $validated['max_strikes'],
@@ -183,6 +187,7 @@ class AdminCaseController extends Controller
             $case = GameCase::create([
                 'title' => $caseData['title'],
                 'story' => $caseData['story'],
+                'map_url' => $caseData['map_url'] ?? null,
                 'min_player_XP' => $caseData['min_player_XP'] ?? 0,
                 'XP_on_solve' => $caseData['XP_on_solve'],
                 'max_strikes' => $caseData['max_strikes'] ?? 3,

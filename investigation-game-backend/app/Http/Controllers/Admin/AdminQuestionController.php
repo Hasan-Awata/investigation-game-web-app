@@ -30,8 +30,8 @@ class AdminQuestionController extends Controller
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-        $level = Level::with('phase.gameCase')->find($validated['level_id']);
-        $caseTitle = $level?->phase?->gameCase?->title ?? 'General';
+        $level = Level::with('zone.gameCase')->find($validated['level_id']);
+        $caseTitle = $level?->zone?->gameCase?->title ?? 'General';
         $levelTitle = $level?->title ?? 'General-Level';
         $subfolder = 'Levels/' . \Illuminate\Support\Str::slug($levelTitle) . '/Questions';
 
@@ -87,7 +87,7 @@ class AdminQuestionController extends Controller
         ]);
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-        $caseTitle = Level::with('phase.gameCase')->where('id', $validated['level_id'])->first()?->phase?->gameCase?->title ?? 'General';
+        $caseTitle = Level::with('zone.gameCase')->where('id', $validated['level_id'])->first()?->zone?->gameCase?->title ?? 'General';
 
         $updateData = [
             'level_id' => $validated['level_id'],

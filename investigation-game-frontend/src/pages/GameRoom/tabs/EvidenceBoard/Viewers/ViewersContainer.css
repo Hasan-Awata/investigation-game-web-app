@@ -4,37 +4,9 @@
 .viewers-container-wrapper {
   position: relative;
   width: 100%;
+  height: 100%;
   border-radius: 4px;
   isolation: isolate; 
-}
-
-.viewers-floating-toolbar {
-  position: absolute;
-  top: 15px;
-  inset-inline-end: 15px;
-  z-index: 20;
-}
-
-.btn-icon-fullscreen {
-  background: rgba(26, 26, 26, 0.85);
-  color: #fff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  width: 36px;
-  height: 36px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  backdrop-filter: blur(4px);
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-}
-
-.btn-icon-fullscreen:hover {
-  background: #5a8a9e;
-  border-color: #5a8a9e;
-  transform: scale(1.08);
 }
 
 .viewers-content-area {
@@ -46,29 +18,26 @@
    FULLSCREEN MODAL OVERLAY MODE
    ============================================================== */
 .viewers-container-wrapper.fullscreen-mode {
-  position: fixed;
-  inset: 0;
-  z-index: 99999;
   background: rgba(10, 10, 10, 0.95);
   margin: 0;
   padding: 0;
 }
 
-.viewers-container-wrapper.fullscreen-mode .viewers-floating-toolbar {
-  position: absolute;
-  top: 25px;
-  inset-inline-end: 30px;
-  z-index: 100000;
-}
-
-/* The interactive background that captures the wheel & mouse events */
-.viewers-zoom-overlay {
-  width: 100vw;
-  height: 100vh;
+/* Captures wheel & mouse events during Fullscreen */
+.viewers-zoom-overlay.zoom-enabled {
+  width: 100%;
+  height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
-  overflow: hidden; /* Ensures native scrollbars never appear */
+  overflow: hidden; /* Prevent native scrollbars when zooming */
+}
+
+/* Allows normal native scrolling in Standard Mode */
+.viewers-zoom-overlay.native-scroll {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
 }
 
 /* The wrapper that holds the document and applies the math */
