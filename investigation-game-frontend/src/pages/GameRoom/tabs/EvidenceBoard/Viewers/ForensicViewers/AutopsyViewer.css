@@ -14,10 +14,11 @@
   
   /* Explicit boundary dimensions */
   width: 800px;
-  height: 1131px;
+  min-height: 1131px;
   box-sizing: border-box;
   position: relative;
   margin: 0 auto;
+  overflow: hidden;
   
   font-family: var(--autopsy-font-main);
 }

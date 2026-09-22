@@ -15,7 +15,8 @@
   
   /* Explicit boundary dimensions */
   width: 800px;
-  height: 1131px;
+  min-height: 1131px;
+  overflow: hidden;
   box-sizing: border-box;
   position: relative;
   margin: 0 auto;

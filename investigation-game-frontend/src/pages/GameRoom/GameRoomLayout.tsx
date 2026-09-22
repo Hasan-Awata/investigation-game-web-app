@@ -25,6 +25,7 @@ import PersonsOfInterestTab from './tabs/Characters/CharactersTab';
 import CampaignTab from './tabs/Campaign/CampaignTab';
 import AgentNotepad from '@/pages/GameRoom/components/AgentNotepad/AgentNotepad';
 import ProceduralRequestTray from './components/ProceduralRequestTray/ProceduralRequestTray';
+import ActiveAgents from './components/ActiveAgents/ActiveAgents';
 import { EvidenceCardOverlay } from './tabs/EvidenceBoard/EvidenceCard';
 import { CharacterCardOverlay } from './tabs/Characters/CharacterCard';
 import GameEndOverlay from './components/GameEffects/GameEndOverlay';
@@ -46,7 +47,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
   const { viewedEvidences, viewedCharacters, globalFeedback, setGlobalFeedback, setGameOverData } = useRoomUI();
 
   const [activeTab, setActiveTab] = useState<Tab>('details');
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('procedural');
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>('agents');
   const [isCopied, setIsCopied] = useState(false);
   const [showExitWarning, setShowExitWarning] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -230,16 +231,16 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
           <div className={`${styles.sidebarSection} ${styles.sidebarFlexSection}`}>
             <div className={styles.sidebarToggleHeader}>
               <button
-                className={`${styles.toggleIconBtn} ${sidebarTab === 'ledger' ? styles.activeToggle : ''}`}
-                onClick={() => setSidebarTab('ledger')} title={t('components.agentNotepad.fieldLedger', 'Field Ledger')}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg>
-              </button>
-              <button
                 className={`${styles.toggleIconBtn} ${sidebarTab === 'agents' ? styles.activeToggle : ''}`}
                 onClick={() => setSidebarTab('agents')} title={t('gameRoom.activeAgents')}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18" /><path d="M6 12l1.5-6h9l1.5 6" /><path d="M12 12v3" /><circle cx="8.5" cy="16.5" r="2.5" /><circle cx="15.5" cy="16.5" r="2.5" /><path d="M11 16.5h2" /></svg>
+              </button>
+              <button
+                className={`${styles.toggleIconBtn} ${sidebarTab === 'ledger' ? styles.activeToggle : ''}`}
+                onClick={() => setSidebarTab('ledger')} title={t('components.agentNotepad.fieldLedger', 'Field Ledger')}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg>
               </button>
               <button
                 className={`${styles.toggleIconBtn} ${sidebarTab === 'procedural' ? styles.activeToggle : ''}`}
@@ -257,19 +258,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
 
             <div className={styles.sidebarToggleContent}>
               {sidebarTab === 'agents' ? (
-                <ul className={styles.agentList}>
-                  {room.users ? room.users.map((participant: any) => (
-                    <li key={participant.id} className={styles.agentItem}>
-                      <span className={`${styles.agentRole} ${participant.role === 'host' ? styles.hostRole : styles.participantRole}`}></span>
-                      {participant.user?.username || `Agent #${participant.user_id}`}
-                    </li>
-                  )) : (
-                    <li className={styles.agentItem}>
-                      <span className={`${styles.agentRole} ${styles.hostRole}`}></span>
-                      {t('pages.gameRoom.layout.host')} (ID: {room.host_user_id})
-                    </li>
-                  )}
-                </ul>
+                <ActiveAgents users={room.users} hostUserId={room.host_user_id} />
               ) : sidebarTab === 'procedural' ? (
                 <ProceduralRequestTray
                   accumulatedEvidences={accumulatedEvidences}

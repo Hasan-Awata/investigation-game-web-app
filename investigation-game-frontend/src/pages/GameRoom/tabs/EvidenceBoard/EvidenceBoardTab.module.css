@@ -55,6 +55,8 @@
   gap: 2rem; 
   justify-content: center; 
   align-content: flex-start; 
+  /* Add this line to force wrappers to hug their visual cards tightly */
+  align-items: center; 
   min-height: 250px;
 }
 
