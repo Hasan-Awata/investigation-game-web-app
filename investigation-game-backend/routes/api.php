@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CaseController;
 use App\Http\Controllers\GameRoomController;
+use App\Http\Controllers\RoomEvidenceController;
 use App\Http\Controllers\VoteController;
 use App\Http\Controllers\AssessmentController;
 use App\Http\Controllers\InvestigationRequestController;
@@ -44,6 +45,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/rooms/join', [GameRoomController::class, 'join']);
     Route::post('/rooms/{room}/leave', [GameRoomController::class, 'leave']);
     Route::get('/rooms/{room}', [GameRoomController::class, 'show']);
+    Route::get('/rooms/{room}/evidences/{evidence}', [RoomEvidenceController::class, 'show']);
 
     // Core Gameplay Loop
     Route::post('/rooms/{room}/questions/{question}/vote', [VoteController::class, 'store']);
@@ -60,6 +62,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/cases', [AdminCaseController::class, 'index']);
         Route::get('/cases/{caseId}/zones', [AdminZoneController::class, 'indexByCase']);
         Route::get('/zones/{zoneId}/levels', [AdminLevelController::class, 'indexByZone']);
+        Route::get('/evidence-schema', [AdminEvidenceController::class, 'schema']);
+        Route::get('/signatures', [AdminEvidenceController::class, 'signatures']);
 
         // POST (Create)
         Route::post('/cases', [AdminCaseController::class, 'store']);

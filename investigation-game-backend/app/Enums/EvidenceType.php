@@ -5,27 +5,29 @@ namespace App\Enums;
 enum EvidenceType: string
 {
     case Document = 'document';
-    case Testimony = 'testimony';
-    case Audio = 'audio';
-    case Image = 'image';
     case Forensic = 'forensic';
-    case Digital = 'digital';
     case Ballistics = 'ballistics';
+    case Testimony = 'testimony';
+    case Digital = 'digital';
+    case Image = 'image';
+    case Audio = 'audio';
+    case Custom = 'custom';
 
     /**
-     * Optional: You can add helper methods right inside the enum
-     * to format labels for your frontend UI.
+     * The thumbnail currently rendered on the Evidence Board for this type.
+     * Every value is backed by a component in the frontend ThumbnailRegistry.
      */
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::Document => 'Written Document',
-            self::Testimony => 'Witness Testimony',
-            self::Audio => 'Audio Recording',
-            self::Image => 'Photographic Evidence',
             self::Forensic => 'Forensic Report',
-            self::Digital => 'Digital Forensics',
             self::Ballistics => 'Ballistics Analysis',
+            self::Testimony => 'Witness Testimony',
+            self::Digital => 'Digital Forensics',
+            self::Image => 'Photographic Evidence',
+            self::Audio => 'Audio Recording',
+            self::Custom => 'Physical Object',
         };
     }
 }

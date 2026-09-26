@@ -47,7 +47,7 @@
   color: var(--text-secondary);
 }
 
-.evidenceTypeBadge { 
+.evidenceTypeBadge {
   font-family: var(--font-mono); 
   font-size: 0.75rem; 
   text-transform: uppercase; 
@@ -56,6 +56,30 @@
   border-radius: 9999px; /* Pill shape */
   color: var(--accent-cyan); 
   border: 1px solid var(--accent-cyan); 
+}
+
+/* The board row already knows the title, so the header can show it while the
+   body is still loading. */
+.modalTitle {
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Loading, failure, and unsupported-strategy states share one treatment: the
+   file is present but there is nothing to render inside it. */
+.modalStatus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40vh;
+  padding: 2rem;
+  text-align: center;
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
 }
 
 .modalActions {

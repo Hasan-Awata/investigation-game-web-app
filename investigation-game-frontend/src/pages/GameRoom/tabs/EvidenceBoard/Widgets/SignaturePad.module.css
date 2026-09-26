@@ -17,7 +17,7 @@
 
 .line {
   width: 100%;
-  border-bottom: 1px solid #1a1a1a;
+  border-bottom: 1px solid var(--paper-ink, #1a1a1a);
   margin-top: 0.25rem;
 }
 
@@ -30,7 +30,7 @@
   font-family: var(--font-mono, monospace);
   font-size: 0.7rem;
   letter-spacing: 0.05em;
-  color: var(--text-secondary, #666);
+  color: var(--paper-ink-dim, #666);
   text-transform: uppercase;
 }
 

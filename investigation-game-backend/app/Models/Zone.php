@@ -13,7 +13,6 @@ class Zone extends Model
         'title',
         'description',
         'order_index',
-        'map_url',
         'coord_x',
         'coord_y'
     ];

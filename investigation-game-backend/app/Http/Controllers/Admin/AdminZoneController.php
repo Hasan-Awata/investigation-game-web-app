@@ -4,8 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Zone;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class AdminZoneController extends Controller
 {
@@ -16,16 +16,15 @@ class AdminZoneController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'order_index' => 'required|integer|min:1',
-            'map_url'     => 'nullable|string',
-            'coord_x'     => 'nullable|numeric|required_with:map_url',
-            'coord_y'     => 'nullable|numeric|required_with:map_url',
+            'coord_x' => 'nullable|numeric|required_with:map_url',
+            'coord_y' => 'nullable|numeric|required_with:map_url',
         ]);
 
         $zone = Zone::create($validated);
 
         return response()->json([
             'message' => 'Zone created successfully.',
-            'zone' => $zone
+            'zone' => $zone,
         ], 201);
     }
 
@@ -37,12 +36,12 @@ class AdminZoneController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'order_index' => 'required|integer|min:1',
-            'map_url'     => 'nullable|string',
-            'coord_x'     => 'nullable|numeric|required_with:map_url',
-            'coord_y'     => 'nullable|numeric|required_with:map_url',
+            'coord_x' => 'nullable|numeric|required_with:map_url',
+            'coord_y' => 'nullable|numeric|required_with:map_url',
         ]);
-        
+
         $zone->update($validated);
+
         return response()->json(['message' => 'Zone updated.', 'zone' => $zone], 200);
     }
 
@@ -50,6 +49,7 @@ class AdminZoneController extends Controller
     {
         $zone = Zone::findOrFail($id);
         $zone->delete();
+
         return response()->json(['message' => 'Zone deleted.'], 200);
     }
 

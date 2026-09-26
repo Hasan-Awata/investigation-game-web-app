@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { joinRoom, fetchRoomState } from '@/services/api';
-import type { GameRoom, Evidence, Character } from '@/types';
+import type { GameRoom, EvidenceBoardEntry, Character } from '@/types';
 
 export function useGameRoom(inviteCode: string | undefined) {
   const { t } = useTranslation();
@@ -51,7 +51,7 @@ export function useGameRoom(inviteCode: string | undefined) {
     }
   };
 
-  const accumulatedEvidences: Evidence[] = room?.accumulated_evidences || [];
+  const accumulatedEvidences: EvidenceBoardEntry[] = room?.accumulated_evidences || [];
   const accumulatedCharacters: Character[] = room?.accumulated_characters || [];
 
   return {

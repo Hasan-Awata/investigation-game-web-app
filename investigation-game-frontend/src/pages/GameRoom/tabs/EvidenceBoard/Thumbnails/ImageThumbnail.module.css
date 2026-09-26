@@ -25,7 +25,7 @@
 .pin {
   position: absolute;
   inset-block-start: -6%;
-  inset-inline-start: 35%;
+  left: 50%;
   transform: translateX(-50%);
   width: 14%;
   aspect-ratio: 1;

@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import type { FC } from 'react';
-import type { Evidence } from '@/types/evidence';
+import type { EvidenceBoardEntry } from '@/types/evidence';
 import styles from './DocumentThumbnail.module.css';
 
 interface DocumentThumbnailProps {
-  evidence: Evidence;
+  evidence: EvidenceBoardEntry;
 }
 
 const DocumentThumbnail: FC<DocumentThumbnailProps> = ({ evidence }) => {

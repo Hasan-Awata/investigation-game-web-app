@@ -45,7 +45,7 @@
 .shellCase {
   position: absolute;
   inset-block-start: 26%;
-  inset-inline-end: 8%;
+  right: 50%;
   width: 12%;
   height: 42%;
   background: linear-gradient(90deg, #9c7436, #d8b062 40%, #8a6832 60%, #b5914a);

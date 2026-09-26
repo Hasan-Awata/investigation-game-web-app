@@ -5,7 +5,7 @@ import { useGameRoom } from '@/hooks/useGameRoom';
 import { useViewedItems } from '@/hooks/useViewedItems';
 import { RoomDataProvider, RoomUIProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
 import GameRoomLayout from './GameRoomLayout';
-import type { GameRoom, Evidence, Character, Level } from '@/types';
+import type { GameRoom, EvidenceBoardEntry, Character, Level } from '@/types';
 import './GameRoom.css';
 
 // --- ENRICHED PAYLOAD TYPINGS ---
@@ -32,7 +32,8 @@ interface VoteLockedInPayload {
 }
 
 interface ItemsUnlockedPayload {
-  unlocked_evidences?: Evidence[];
+  /** Board-shaped entries, as broadcast by ItemsUnlocked::broadcastWith(). */
+  unlocked_evidences?: EvidenceBoardEntry[];
   unlocked_levels?: Level[];
   character_updates?: any[];
   strikes?: number;
@@ -189,10 +190,21 @@ export default function GameRoom() {
           });
         }
 
+        const incomingEvidences = e.unlocked_evidences ?? [];
+
         return {
           ...oldRoom,
-          unlocked_evidences: patchArray(oldRoom.unlocked_evidences, e.unlocked_evidences),
-          accumulated_evidences: patchArray(oldRoom.accumulated_evidences, e.unlocked_evidences),
+
+          // The board is the merged view of initial plus unlocked evidence, so
+          // the broadcast's entries patch straight into it.
+          accumulated_evidences: patchArray(oldRoom.accumulated_evidences, incomingEvidences),
+
+          // The room payload tracks possession as ids only. Full evidence
+          // records are never broadcast, so nothing else needs merging here.
+          unlocked_evidence_ids: Array.from(new Set([
+            ...(oldRoom.unlocked_evidence_ids ?? []),
+            ...incomingEvidences.map((ev) => ev.id),
+          ])),
 
           unlocked_levels: patchArray(oldRoom.unlocked_levels, e.unlocked_levels),
 

@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDroppable } from '@dnd-kit/core';
 import { InvestigationRequestType } from '@/types';
-import type { Evidence } from '@/types';
+import type { EvidenceBoardEntry } from '@/types';
 import type { FiledRequest } from '@/hooks/useInvestigationRequest';
 import styles from './ProceduralRequestTray.module.css';
 
 interface ProceduralRequestTrayProps {
-  accumulatedEvidences: Evidence[];
+  accumulatedEvidences: EvidenceBoardEntry[];
   trayEvidences: number[];
   requestType: string;
   setRequestType: (type: string) => void;

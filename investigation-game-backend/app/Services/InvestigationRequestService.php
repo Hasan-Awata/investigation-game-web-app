@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
-use App\Models\GameRoom;
-use App\Models\InvestigationRequest;
-use Illuminate\Support\Facades\DB;
-use App\Support\Result;
 use App\Events\ItemsUnlocked;
 use App\Events\RequestFiled;
+use App\Http\Resources\EvidenceBoardResource;
+use App\Models\Evidence;
+use App\Models\GameRoom;
+use App\Models\InvestigationRequest;
+use App\Models\Level;
+use App\Support\Result;
+use Illuminate\Support\Facades\DB;
 
 class InvestigationRequestService
 {
@@ -18,7 +21,7 @@ class InvestigationRequestService
         $possessedEvidences = array_unique(array_merge($initialEvidences, $unlockedEvidencesList));
 
         if (array_diff($submittedIds, $possessedEvidences)) {
-            return Result::failure("Unauthorized: You cannot file a request using evidence you have not yet discovered.");
+            return Result::failure('Unauthorized: You cannot file a request using evidence you have not yet discovered.');
         }
 
         sort($submittedIds);
@@ -44,19 +47,23 @@ class InvestigationRequestService
                 if ($request->unlocks_evidence_id) {
                     DB::table('room_evidences')->updateOrInsert([
                         'room_id' => $room->id,
-                        'evidence_id' => $request->unlocks_evidence_id
+                        'evidence_id' => $request->unlocks_evidence_id,
                     ]);
-                    $evidence = \App\Models\Evidence::find($request->unlocks_evidence_id);
-                    if ($evidence) $unlockedEvidences->push($evidence);
+                    $evidence = Evidence::with('assets')->find($request->unlocks_evidence_id);
+                    if ($evidence) {
+                        $unlockedEvidences->push($evidence);
+                    }
                 }
 
                 if ($request->unlocks_level_id) {
                     DB::table('room_unlocked_levels')->updateOrInsert([
                         'room_id' => $room->id,
-                        'level_id' => $request->unlocks_level_id
+                        'level_id' => $request->unlocks_level_id,
                     ]);
-                    $level = \App\Models\Level::find($request->unlocks_level_id);
-                    if ($level) $unlockedLevels->push($level);
+                    $level = Level::find($request->unlocks_level_id);
+                    if ($level) {
+                        $unlockedLevels->push($level);
+                    }
                 }
 
                 if ($unlockedEvidences->isNotEmpty() || $unlockedLevels->isNotEmpty()) {
@@ -66,19 +73,19 @@ class InvestigationRequestService
                 // NEW: LOG THE PERMANENT HISTORY & BROADCAST
                 $filedRecord = $room->filedRequests()->create([
                     'request_type' => $request->request_type->value,
-                    'evidence_ids' => $submittedIds
+                    'evidence_ids' => $submittedIds,
                 ]);
                 RequestFiled::dispatch($room, $filedRecord);
 
                 return Result::success([
                     'message' => "{$request->request_type->label()} approved by the DA.",
-                    'unlocked_evidence' => $unlockedEvidences->toArray(),
+                    'unlocked_evidence' => EvidenceBoardResource::collection($unlockedEvidences)->resolve(),
                     'unlocked_levels' => $unlockedLevels->toArray(),
-                    'request_type' => $request->request_type->value
+                    'request_type' => $request->request_type->value,
                 ]);
             }
         }
 
-        return Result::failure("The DA rejected your request. The provided evidence does not establish sufficient grounds.");
+        return Result::failure('The DA rejected your request. The provided evidence does not establish sufficient grounds.');
     }
 }

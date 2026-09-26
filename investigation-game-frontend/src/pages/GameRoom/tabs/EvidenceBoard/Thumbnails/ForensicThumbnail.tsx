@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import type { FC } from 'react';
-import type { Evidence } from '@/types/evidence';
+import type { EvidenceBoardEntry } from '@/types/evidence';
 import styles from './ForensicThumbnail.module.css';
 
 interface ForensicThumbnailProps {
-  evidence: Evidence;
+  evidence: EvidenceBoardEntry;
 }
 
 const ForensicThumbnail: FC<ForensicThumbnailProps> = ({ evidence }) => {
@@ -27,7 +27,7 @@ const ForensicThumbnail: FC<ForensicThumbnailProps> = ({ evidence }) => {
         </div>
       </div>
       <div className={styles.meta}>
-        <span className={styles.badge}>{t('pages.gameRoom.evidence.thumbnails.forensic', 'FORENSIC REPORT')}</span>
+        <span className={styles.badge}>{t('pages.gameRoom.evidence.thumbnails.forensic.label', 'FORENSIC REPORT')}</span>
         <h4 className={styles.title}>{evidence.title}</h4>
       </div>
     </div>

@@ -141,6 +141,24 @@
   width: 100%; 
 }
 
+/* Guidance under a control, distinct from the uppercase label above it. */
+.admin-field-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+}
+
+/* Groups a sub-editor inside a form, e.g. the page builder under the fields. */
+.admin-sub-section-title {
+  margin: 1.5rem 0 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+}
+
 /* --- TYPOGRAPHY & INPUT STYLING --- */
 
 .form-group label { 

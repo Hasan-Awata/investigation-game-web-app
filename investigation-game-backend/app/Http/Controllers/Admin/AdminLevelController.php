@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\LevelPresentationType;
 use App\Http\Controllers\Controller;
-use App\Services\MediaService;
 use App\Models\Level;
 use App\Models\Zone;
-use App\Enums\LevelPresentationType;
-use Illuminate\Validation\Rules\Enum;
-use Illuminate\Http\Request;
+use App\Services\MediaService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Validation\Rules\Enum;
 
 class AdminLevelController extends Controller
 {
@@ -89,6 +89,7 @@ class AdminLevelController extends Controller
         $level = Level::findOrFail($id);
         $this->mediaService->delete($level->getRawOriginal('img_url'));
         $level->delete();
+
         return response()->json(['message' => 'Level deleted.'], 200);
     }
 

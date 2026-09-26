@@ -2,16 +2,38 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\EvidenceType;
+use App\Enums\PaperFinish;
+use App\Enums\ViewerStrategy;
 use App\Http\Controllers\Controller;
-use App\Services\MediaService;
+use App\Models\Character;
+use App\Models\Choice;
+use App\Models\Evidence;
 use App\Models\GameCase;
-use Illuminate\Http\Request;
+use App\Models\InvestigationRequest;
+use App\Models\Level;
+use App\Models\Question;
+use App\Models\Zone;
+use App\Services\Evidence\ContentPayloadValidator;
+use App\Services\Evidence\EvidenceAssetWriter;
+use App\Services\Evidence\PresentationResolver;
+use App\Services\Evidence\ViewerStrategyLegality;
+use App\Services\MediaService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rules\Enum;
+use Illuminate\Validation\ValidationException;
 
 class AdminCaseController extends Controller
 {
-    public function __construct(private readonly MediaService $mediaService) {}
+    public function __construct(
+        private readonly MediaService $mediaService,
+        private readonly ContentPayloadValidator $evidencePayloads,
+        private readonly PresentationResolver $evidencePresenter,
+        private readonly ViewerStrategyLegality $evidenceLegality,
+        private readonly EvidenceAssetWriter $assetWriter,
+    ) {}
 
     public function store(Request $request): JsonResponse
     {
@@ -71,10 +93,10 @@ class AdminCaseController extends Controller
         $cases = GameCase::with([
             'evidences',
             'characters',
-            'investigationRequests.requiredEvidences'
+            'investigationRequests.requiredEvidences',
         ])
-        ->orderBy('created_at', 'desc')
-        ->get();
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return response()->json(['cases' => $cases], 200);
     }
@@ -136,15 +158,18 @@ class AdminCaseController extends Controller
     public function destroy($id): JsonResponse
     {
         // Eager load all related entities that contain media attachments
-        $case = GameCase::with(['levels.questions', 'evidences', 'characters'])->findOrFail($id);
+        $case = GameCase::with(['levels.questions', 'evidences.assets', 'characters'])->findOrFail($id);
 
         // 1. Delete Case Cover Image
         $this->mediaService->delete($case->getRawOriginal('img_url'));
 
-        // 2. Delete Evidence Media
+        // 2. Delete Evidence Assets
+        // Asset rows cascade with the case, so the backing files are unlinked
+        // here before the delete happens.
         foreach ($case->evidences as $evidence) {
-            $this->mediaService->delete($evidence->getRawOriginal('img_url'));
-            $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
+            foreach ($evidence->assets as $asset) {
+                $this->assetWriter->delete($evidence, $asset->kind);
+            }
         }
 
         // 3. Delete Level and Question Media
@@ -176,6 +201,16 @@ class AdminCaseController extends Controller
         $validated = $request->validate([
             'case_details' => 'required|array',
             'evidences' => 'present|array',
+            'evidences.*.ref_id' => 'nullable|string|max:64',
+            'evidences.*.title' => 'required|string|max:255',
+            'evidences.*.description' => 'nullable|string',
+            'evidences.*.evidence_type' => ['required', new Enum(EvidenceType::class)],
+            'evidences.*.viewer_strategy' => ['nullable', new Enum(ViewerStrategy::class)],
+            'evidences.*.paper_finish' => ['nullable', new Enum(PaperFinish::class)],
+            'evidences.*.content_payload' => 'nullable|array',
+            'evidences.*.is_initial' => 'sometimes|boolean',
+            'evidences.*.is_vital_for_conviction' => 'sometimes|boolean',
+            'evidences.*.order_index' => 'nullable|integer|min:0',
             'characters' => 'present|array',
             'investigation_requests' => 'present|array',
             'zones' => 'present|array',
@@ -189,7 +224,7 @@ class AdminCaseController extends Controller
                 'story' => $caseData['story'],
                 'map_url' => $caseData['map_url'] ?? null,
                 'min_player_XP' => $caseData['min_player_XP'] ?? 0,
-                'XP_on_solve' => $caseData['XP_on_solve'],
+                'XP_on_solve' => $caseData['XP_on_solve'] ?? 0,
                 'max_strikes' => $caseData['max_strikes'] ?? 3,
                 'rating_stars' => $caseData['rating_stars'] ?? 5.0,
                 'age_rating' => $caseData['age_rating'] ?? 'Unrated',
@@ -210,24 +245,59 @@ class AdminCaseController extends Controller
             ];
 
             // PASS 2: Base Entities (Evidences, Characters)
-            foreach ($validated['evidences'] as $evData) {
-                $evidence = \App\Models\Evidence::create([
+            foreach ($validated['evidences'] as $index => $evData) {
+                $type = EvidenceType::from($evData['evidence_type']);
+
+                $requestedStrategy = isset($evData['viewer_strategy'])
+                    ? ViewerStrategy::from($evData['viewer_strategy'])
+                    : null;
+
+                if ($requestedStrategy !== null && ! $this->evidenceLegality->isLegal($type, $requestedStrategy)) {
+                    throw ValidationException::withMessages([
+                        "evidences.$index.viewer_strategy" => "Strategy '{$requestedStrategy->value}' cannot present a {$type->value}.",
+                    ]);
+                }
+
+                $strategy = $this->evidencePresenter->resolveStrategy($type, $requestedStrategy);
+
+                $requestedFinish = isset($evData['paper_finish'])
+                    ? PaperFinish::from($evData['paper_finish'])
+                    : null;
+
+                if ($requestedFinish !== null && ! $this->evidenceLegality->isLegalFinish($strategy, $requestedFinish)) {
+                    throw ValidationException::withMessages([
+                        "evidences.$index.paper_finish" => "Finish '{$requestedFinish->value}' is not valid for a {$strategy->value} presentation.",
+                    ]);
+                }
+
+                // Same validator the admin form uses, so an import cannot create
+                // a document the viewers would be unable to render.
+                $payload = $this->evidencePayloads->validate(
+                    $type,
+                    $strategy,
+                    $evData['content_payload'] ?? null
+                );
+
+                $evidence = Evidence::create([
                     'case_id' => $case->id,
                     'title' => $evData['title'],
                     'description' => $evData['description'] ?? null,
-                    'evidence_type' => $evData['evidence_type'],
-                    'theme' => $evData['theme'] ?? null,
-                    'pages' => $evData['pages'] ?? null,
+                    'evidence_type' => $type,
+                    'viewer_strategy' => $strategy,
+                    'paper_finish' => $this->evidencePresenter->resolveFinish($type, $strategy, $requestedFinish),
+                    'content_payload' => $payload,
                     'is_initial' => $evData['is_initial'] ?? false,
                     'is_vital_for_conviction' => $evData['is_vital_for_conviction'] ?? false,
+                    'order_index' => $evData['order_index'] ?? $index,
                 ]);
+
                 if (isset($evData['ref_id'])) {
                     $refMaps['evidence'][$evData['ref_id']] = $evidence->id;
                 }
             }
 
             foreach ($validated['characters'] as $charData) {
-                $character = \App\Models\Character::create([
+                $character = Character::create([
                     'case_id' => $case->id,
                     'name' => $charData['name'],
                     'background' => $charData['background'] ?? null,
@@ -241,30 +311,29 @@ class AdminCaseController extends Controller
                 }
             }
 
-            // PASS 3: Zones and Levels 
-            $levelDataWithRefs = []; 
-            $zonesDataArray = [];   
+            // PASS 3: Zones and Levels
+            $levelDataWithRefs = [];
+            $zonesDataArray = [];
 
             foreach ($validated['zones'] as $zoneData) {
-                $zone = \App\Models\Zone::create([
+                $zone = Zone::create([
                     'case_id' => $case->id,
                     'title' => $zoneData['title'],
                     'description' => $zoneData['description'] ?? null,
                     'order_index' => $zoneData['order_index'],
-                    'map_url' => $zoneData['map_url'] ?? null,
                     'coord_x' => $zoneData['coord_x'] ?? null,
                     'coord_y' => $zoneData['coord_y'] ?? null,
                 ]);
 
                 foreach ($zoneData['levels'] as $lvlData) {
-                    $level = \App\Models\Level::create([
+                    $level = Level::create([
                         'zone_id' => $zone->id,
                         'title' => $lvlData['title'],
                         'details' => $lvlData['details'],
                         'order_index' => $lvlData['order_index'],
                         'is_initial' => $lvlData['is_initial'] ?? false,
                         'presentation_type' => $lvlData['presentation_type'],
-                        'required_request_id' => null, 
+                        'required_request_id' => null,
                     ]);
 
                     if (isset($lvlData['ref_id'])) {
@@ -278,14 +347,14 @@ class AdminCaseController extends Controller
 
                     $zonesDataArray[] = [
                         'level_id' => $level->id,
-                        'nodes' => $lvlData['nodes'] ?? []
+                        'nodes' => $lvlData['nodes'] ?? [],
                     ];
                 }
             }
 
             // PASS 4: Investigation Requests (Mapping unlocks to the levels we just created)
             foreach ($validated['investigation_requests'] as $reqData) {
-                $req = \App\Models\InvestigationRequest::create([
+                $req = InvestigationRequest::create([
                     'case_id' => $case->id,
                     'request_type' => $reqData['request_type'],
                     'unlocks_evidence_id' => isset($reqData['unlocks_evidence_ref']) && isset($refMaps['evidence'][$reqData['unlocks_evidence_ref']]) ? $refMaps['evidence'][$reqData['unlocks_evidence_ref']] : null,
@@ -296,17 +365,18 @@ class AdminCaseController extends Controller
                     $refMaps['request'][$reqData['ref_id']] = $req->id;
                 }
 
-                if (!empty($reqData['required_evidence_refs'])) {
-                    $evIds = array_map(fn($ref) => $refMaps['evidence'][$ref] ?? null, $reqData['required_evidence_refs']);
-                    $req->requiredEvidences()->sync(array_filter($evIds));
+                if (! empty($reqData['required_evidence_refs'])) {
+                    $evIds = array_map(fn ($ref) => $refMaps['evidence'][$ref] ?? null, $reqData['required_evidence_refs']);
+                    // Wrap array_filter in array_values to guarantee a sequential list
+                    $req->requiredEvidences()->sync(array_values(array_filter($evIds)));
                 }
             }
 
             // PASS 5: Update Levels with their required Investigation Requests
             foreach ($levelDataWithRefs as $ldata) {
                 if ($ldata['req_ref'] && isset($refMaps['request'][$ldata['req_ref']])) {
-                    \App\Models\Level::where('id', $ldata['level_id'])->update([
-                        'required_request_id' => $refMaps['request'][$ldata['req_ref']]
+                    Level::where('id', $ldata['level_id'])->update([
+                        'required_request_id' => $refMaps['request'][$ldata['req_ref']],
                     ]);
                 }
             }
@@ -317,7 +387,7 @@ class AdminCaseController extends Controller
 
                 // Sub-Pass A: Insert Questions First (to generate IDs for dialogue trees)
                 foreach ($ldata['nodes'] as $index => $nodeData) {
-                    $question = \App\Models\Question::create([
+                    $question = Question::create([
                         'level_id' => $ldata['level_id'],
                         'text' => $nodeData['text'],
                     ]);
@@ -334,51 +404,66 @@ class AdminCaseController extends Controller
 
                         // Build Outcomes Array
                         $mappedOutcomes = [];
-                        if (isset($outcomes['feedback'])) $mappedOutcomes['feedback'] = $outcomes['feedback'];
-                        if (isset($outcomes['gives_strike'])) $mappedOutcomes['gives_strike'] = $outcomes['gives_strike'];
+                        if (isset($outcomes['feedback'])) {
+                            $mappedOutcomes['feedback'] = $outcomes['feedback'];
+                        }
+                        if (isset($outcomes['gives_strike'])) {
+                            $mappedOutcomes['gives_strike'] = $outcomes['gives_strike'];
+                        }
                         if (isset($outcomes['next_question_index']) && $outcomes['next_question_index'] !== null) {
                             $mappedOutcomes['next_question_id'] = $nodeIndexMap[$outcomes['next_question_index']] ?? null;
                         }
 
-                        $mapRefs = function($refs, $type) use ($refMaps) {
-                            if (!is_array($refs)) return [];
-                            return array_values(array_filter(array_map(fn($r) => $refMaps[$type][$r] ?? null, $refs)));
+                        $mapRefs = function ($refs, $type) use ($refMaps) {
+                            if (! is_array($refs)) {
+                                return [];
+                            }
+
+                            return array_values(array_filter(array_map(fn ($r) => $refMaps[$type][$r] ?? null, $refs)));
                         };
 
-                        if (!empty($outcomes['unlock_evidence_refs'])) $mappedOutcomes['unlock_evidence'] = $mapRefs($outcomes['unlock_evidence_refs'], 'evidence');
-                        if (!empty($outcomes['unlock_levels_refs'])) $mappedOutcomes['unlock_levels'] = $mapRefs($outcomes['unlock_levels_refs'], 'level');
-                        
+                        if (! empty($outcomes['unlock_evidence_refs'])) {
+                            $mappedOutcomes['unlock_evidence'] = $mapRefs($outcomes['unlock_evidence_refs'], 'evidence');
+                        }
+                        if (! empty($outcomes['unlock_levels_refs'])) {
+                            $mappedOutcomes['unlock_levels'] = $mapRefs($outcomes['unlock_levels_refs'], 'level');
+                        }
+
                         // Map the dynamic character updates array
-                        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {
+                        if (! empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {
                             $mappedCharUpdates = [];
                             foreach ($outcomes['character_updates'] as $update) {
                                 if (isset($update['ref_id']) && isset($refMaps['character'][$update['ref_id']])) {
                                     $mappedUpdate = ['id' => $refMaps['character'][$update['ref_id']]];
-                                    if (isset($update['is_unlocked'])) $mappedUpdate['is_unlocked'] = $update['is_unlocked'];
-                                    if (isset($update['status'])) $mappedUpdate['status'] = $update['status'];
+                                    if (isset($update['is_unlocked'])) {
+                                        $mappedUpdate['is_unlocked'] = $update['is_unlocked'];
+                                    }
+                                    if (isset($update['status'])) {
+                                        $mappedUpdate['status'] = $update['status'];
+                                    }
                                     $mappedCharUpdates[] = $mappedUpdate;
                                 }
                             }
-                            if (!empty($mappedCharUpdates)) {
+                            if (! empty($mappedCharUpdates)) {
                                 $mappedOutcomes['character_updates'] = $mappedCharUpdates;
                             }
                         }
 
                         // Build Requirements Array
                         $mappedReqs = [];
-                        if (!empty($requirements['required_evidence_refs'])) {
+                        if (! empty($requirements['required_evidence_refs'])) {
                             $mappedReqs['required_evidence'] = $mapRefs($requirements['required_evidence_refs'], 'evidence');
                         }
-                        if (!empty($requirements['required_choice_refs'])) {
+                        if (! empty($requirements['required_choice_refs'])) {
                             $mappedReqs['required_choices'] = $mapRefs($requirements['required_choice_refs'], 'choice');
                         }
 
                         // Create choice so Eloquent arrays are casted to JSON properly and we retrieve the auto-increment ID
-                        $choice = \App\Models\Choice::create([
+                        $choice = Choice::create([
                             'question_id' => $questionId,
                             'text' => $choiceData['text'],
-                            'outcomes' => !empty($mappedOutcomes) ? $mappedOutcomes : null,
-                            'requirements' => !empty($mappedReqs) ? $mappedReqs : null,
+                            'outcomes' => ! empty($mappedOutcomes) ? $mappedOutcomes : null,
+                            'requirements' => ! empty($mappedReqs) ? $mappedReqs : null,
                         ]);
 
                         if (isset($choiceData['ref_id'])) {

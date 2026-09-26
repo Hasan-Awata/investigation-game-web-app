@@ -10,9 +10,10 @@ use App\Enums\InvestigationRequestType;
 class InvestigationRequest extends Model
 {
     protected $fillable = [
-        'case_id',
-        'request_type',
-        'unlocks_evidence_id'
+    'case_id',
+    'request_type',
+    'unlocks_evidence_id',
+    'unlocks_level_id' 
     ];
 
     protected function casts(): array

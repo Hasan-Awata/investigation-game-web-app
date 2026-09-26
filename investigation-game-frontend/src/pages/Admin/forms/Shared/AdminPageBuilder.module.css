@@ -1,0 +1,192 @@
+/* Admin page builder — schema-driven block editing.
+   Layout only; every field control comes from AdminUI. */
+
+.builder {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.pageCard {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.pageTitle {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+}
+
+/* ---- Blocks ---- */
+
+.blockCard {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.dragging {
+  opacity: 0.75;
+  border-color: var(--accent-cyan);
+}
+
+.blockHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+/* The handle is also the label, so the affordance and the block name are one
+   target rather than a grip icon the author has to associate with a row. */
+.dragHandle {
+  flex: 1;
+  text-align: left;
+  background: transparent;
+  border: none;
+  cursor: grab;
+  padding: 0.25rem 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.dragHandle:active {
+  cursor: grabbing;
+}
+
+.blockBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.missingNote {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: #d9a441;
+}
+
+/* A block type this client cannot render is shown read-only and removable
+   rather than being dropped from the payload. */
+.unknownBlock {
+  border: 1px dashed #d9a441;
+  border-radius: 5px;
+  padding: 0.7rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: #d9a441;
+}
+
+/* ---- Inline and grid list inputs ---- */
+
+.inlineRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.inlineField {
+  flex: 1;
+  margin: 0;
+}
+
+.gridRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.gridRowFields {
+  flex: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: flex-end;
+}
+
+.addCellBtn {
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  padding: 0.45rem 0.6rem;
+  cursor: pointer;
+}
+
+.addCellBtn:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+/* ---- Add controls ---- */
+
+.addBlockRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.addBlockBtn,
+.addPageBtn {
+  background: transparent;
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+.addBlockBtn:hover,
+.addPageBtn:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.addPageBtn {
+  align-self: flex-start;
+  border-style: solid;
+}
+
+/* ---- Empty states ---- */
+
+.emptyNote {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}

@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import type { FC } from 'react';
-import type { Evidence } from '@/types/evidence';
+import type { EvidenceBoardEntry } from '@/types/evidence';
 import styles from './BallisticsThumbnail.module.css';
 
 interface BallisticsThumbnailProps {
-  evidence: Evidence;
+  evidence: EvidenceBoardEntry;
 }
 
 const BallisticsThumbnail: FC<BallisticsThumbnailProps> = ({ evidence }) => {
@@ -26,7 +26,7 @@ const BallisticsThumbnail: FC<BallisticsThumbnailProps> = ({ evidence }) => {
         </div>
       </div>
       <div className={styles.meta}>
-        <span className={styles.badge}>{t('pages.gameRoom.evidence.thumbnails.ballistics', 'BALLISTICS')}</span>
+        <span className={styles.badge}>{t('pages.gameRoom.evidence.thumbnails.ballistics.label', 'BALLISTICS')}</span>
         <h4 className={styles.title}>{evidence.title}</h4>
       </div>
     </div>

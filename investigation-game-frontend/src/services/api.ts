@@ -1,5 +1,6 @@
 import { type Result, success, failure } from '../utils/Result';
 import type { GameCase, GameRoom, User } from '../types'; 
+import { toEvidenceDetailEntry, type EvidenceDetailEntry } from '../types/evidence';
 import { getToken, logout } from './auth';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
@@ -111,6 +112,55 @@ export const fetchRoomState = async (roomId: number): Promise<Result<GameRoom>> 
     
     const data = await response.json();
     return success(data.room);
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+};
+
+/**
+ * Fetches the full body of a single evidence.
+ *
+ * The board listing ships no content, so opening a file is the only time the
+ * payload is requested. The server answers 404 both for evidence that does not
+ * exist and for evidence this room has not unlocked, so a failure here is
+ * reported as generic on purpose rather than distinguishing the two.
+ */
+export const fetchEvidenceDetail = async (
+  roomId: number,
+  evidenceId: number
+): Promise<Result<EvidenceDetailEntry>> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/evidences/${evidenceId}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`
+      }
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        handleUnauthorized();
+        return failure('Session expired.');
+      }
+      const data = await response.json().catch(() => null);
+      return failure(data?.message || 'This file could not be opened.');
+    }
+
+    const data: unknown = await response.json();
+    const payload =
+      typeof data === 'object' && data !== null && 'evidence' in data ? data.evidence : undefined;
+
+    // Validated rather than cast: the union's per-strategy payload guarantees
+    // have to hold for the value the viewer receives, not just its declared
+    // type, and this is the only point where the response is still untrusted.
+    const parsed = toEvidenceDetailEntry(payload);
+
+    if (parsed === null) {
+      return failure('This file could not be opened.');
+    }
+
+    return success(parsed);
   } catch (error) {
     return failure(error instanceof Error ? error.message : 'Network error');
   }

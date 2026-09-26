@@ -2,16 +2,19 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\GameCase;
-use App\Models\Level;
-use App\Models\Choice;
-use App\Models\RoomInspection;
 use App\Enums\LevelPresentationType;
-use App\Services\GameRoomService;
+use App\Events\LevelTransitioned;
 use App\Events\LocationInspected;
-use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
+use App\Http\Resources\EvidenceBoardResource;
+use App\Models\Choice;
+use App\Models\Evidence;
+use App\Models\GameCase;
 use App\Models\GameRoom;
+use App\Models\Level;
+use App\Models\RoomInspection;
+use App\Services\GameRoomService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class GameRoomController extends Controller
 {
@@ -65,10 +68,10 @@ class GameRoomController extends Controller
     public function startLevel(Request $request, GameRoom $room, Level $level): JsonResponse
     {
         // 1. Structural Guard: Location sweeps are persistent and stateless
-        if ($level->presentation_type === \App\Enums\LevelPresentationType::Location) {
+        if ($level->presentation_type === LevelPresentationType::Location) {
             return response()->json([
-                'error' => 'Invalid Action', 
-                'message' => 'Location environments are persistently accessible and do not require host authorization.'
+                'error' => 'Invalid Action',
+                'message' => 'Location environments are persistently accessible and do not require host authorization.',
             ], 400);
         }
 
@@ -87,15 +90,16 @@ class GameRoomController extends Controller
         if ($level->required_request_id) {
             $hasRequirement = $room->completedRequests()->where('request_id', $level->required_request_id)->exists();
 
-            if (!$hasRequirement) {
+            if (! $hasRequirement) {
                 $level->load('requiredRequest');
                 $label = $level->requiredRequest ? $level->requiredRequest->request_type->label() : 'specific procedural request';
-                return response()->json(['error' => 'Missing Prerequisite', 'message' => "We can't proceed without a " . $label . "."], 403);
+
+                return response()->json(['error' => 'Missing Prerequisite', 'message' => "We can't proceed without a ".$label.'.'], 403);
             }
         }
 
         $room->update(['current_level_id' => $level->id]);
-        \App\Events\LevelTransitioned::dispatch($room);
+        LevelTransitioned::dispatch($room);
 
         return response()->json(['message' => 'Encounter initiated.', 'room' => $room->load('currentLevel')], 200);
     }
@@ -116,9 +120,9 @@ class GameRoomController extends Controller
 
         $inspection = RoomInspection::firstOrCreate([
             'room_id' => $room->id,
-            'choice_id' => $choice->id
+            'choice_id' => $choice->id,
         ], [
-            'is_dead_end' => $isDeadEnd
+            'is_dead_end' => $isDeadEnd,
         ]);
 
         LocationInspected::dispatch($room, $inspection);
@@ -130,28 +134,44 @@ class GameRoomController extends Controller
     {
         $room->load([
             'host',
-            'gameCase.zones.levels.questions.choices', 
-            'gameCase.evidences',
+            'gameCase.zones.levels.questions.choices',
             'gameCase.characters',
             'users.user',
             'currentLevel.questions.choices',
-            'unlockedEvidences',
             'unlockedLevels',
             'completedLevels',
             'characters',
             'playedWiretaps',
             'votes',
             'inspections',
-            'filedRequests'
+            'filedRequests',
         ]);
 
         $this->roomService->distributeLocationQuestions($room);
 
-        // Pre-compile evidences
-        $unlockedEvidenceIds = $room->unlockedEvidences->pluck('id')->toArray();
-        $room->accumulated_evidences = $room->gameCase->evidences->filter(function ($e) use ($unlockedEvidenceIds) {
-            return $e->is_initial || in_array($e->id, $unlockedEvidenceIds);
-        })->values();
+        // Only the ids are needed here, and only as an input to the filter
+        // below. Loading the relation would serialize whole Evidence models -
+        // content_payload included - into every room load.
+        $unlockedEvidenceIds = $room->unlockedEvidences()->pluck('evidences.id');
+
+        // 'assets' is eager loaded because the board resource reads each
+        // evidence's thumbnail. Left lazy, every room load and every Reverb
+        // broadcast costs one extra query per evidence on the board.
+        $possessedEvidences = Evidence::query()
+            ->with('assets')
+            ->where('case_id', $room->case_id)
+            ->where(function ($query) use ($unlockedEvidenceIds) {
+                $query->where('is_initial', true)
+                    ->orWhereIn('id', $unlockedEvidenceIds);
+            })
+            ->orderBy('order_index')
+            ->get();
+
+        $room->accumulated_evidences = EvidenceBoardResource::collection($possessedEvidences);
+
+        // The frontend needs to know which evidence is already unlocked, but
+        // not what is in it, so ids only.
+        $room->unlocked_evidence_ids = $unlockedEvidenceIds->values()->all();
 
         // Pre-compile Unified Characters based on their initial state and dynamic room override
         $unlockedCharacterIds = $room->characters->where('pivot.is_unlocked', true)->pluck('id')->toArray();
@@ -162,6 +182,7 @@ class GameRoomController extends Controller
             $roomOverride = $room->characters->firstWhere('id', $c->id);
             $c->current_status = $roomOverride ? $roomOverride->pivot->status : $c->default_status->value;
             unset($c->is_guilty, $c->charge);
+
             return $c;
         })->values();
 

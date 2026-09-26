@@ -1,31 +1,30 @@
 import { useTranslation } from 'react-i18next';
 import type { FC } from 'react';
+import type { TableBlockProps } from '@/types/evidence';
 import styles from './DataGrid.module.css';
 
-export interface DataGridProps {
-  headers: string[];
-  rows: (string | number)[][];
-  emptyMessage?: string;
-}
+export type DataGridProps = TableBlockProps;
 
-const DataGrid: FC<DataGridProps> = ({ headers, rows, emptyMessage }) => {
+const DataGrid: FC<DataGridProps> = ({ headers, rows, caption, dense }) => {
   const { t } = useTranslation();
 
   if (rows.length === 0) {
     return (
       <p className={styles['empty-message']}>
-        {emptyMessage ?? t('pages.gameRoom.evidence.widgets.dataGrid.emptyData', 'No data available')}
+        {t('pages.gameRoom.evidence.widgets.dataGrid.emptyData', 'No data available')}
       </p>
     );
   }
 
   return (
-    <div className={styles.wrapper}>
+    <figure className={`${styles.wrapper} ${dense ? styles.dense : ''}`}>
       <table className={styles.table}>
         <thead>
           <tr>
-            {headers.map((header) => (
-              <th key={header}>{header}</th>
+            {headers.map((header, headerIndex) => (
+              // Headers are author-supplied and may legitimately repeat, so the
+              // index is part of the key rather than the label alone.
+              <th key={`${headerIndex}-${header}`}>{header}</th>
             ))}
           </tr>
         </thead>
@@ -39,7 +38,8 @@ const DataGrid: FC<DataGridProps> = ({ headers, rows, emptyMessage }) => {
           ))}
         </tbody>
       </table>
-    </div>
+      {caption && <figcaption className={styles.caption}>{caption}</figcaption>}
+    </figure>
   );
 };
 

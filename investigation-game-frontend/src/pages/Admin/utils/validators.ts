@@ -26,10 +26,8 @@ export const validateLevelForm = (data: { order_index: string | number; zone_id?
   return null;
 };
 
-export const validateEvidenceForm = (data: { evidence_type: string; sub_type: string }) => {
-  if ((data.evidence_type === 'document' || data.evidence_type === 'forensic') && !data.sub_type) {
-    return 'You must select a specific classification sub-type for this evidence.';
-  }
+export const validateEvidenceForm = (data: { title: string }) => {
+  if (!data.title.trim()) return 'Evidence title cannot be empty.';
   return null;
 };
 

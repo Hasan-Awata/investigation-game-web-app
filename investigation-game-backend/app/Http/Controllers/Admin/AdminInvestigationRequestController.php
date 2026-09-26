@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\InvestigationRequestType;
 use App\Http\Controllers\Controller;
 use App\Models\InvestigationRequest;
-use App\Enums\InvestigationRequestType;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\Rules\Enum;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rules\Enum;
 
 class AdminInvestigationRequestController extends Controller
 {
@@ -36,7 +36,7 @@ class AdminInvestigationRequestController extends Controller
 
             return response()->json([
                 'message' => 'Investigation request created successfully.',
-                'investigation_request' => $investigationRequest->load('requiredEvidences')
+                'investigation_request' => $investigationRequest->load('requiredEvidences'),
             ], 201);
         });
     }
@@ -67,7 +67,7 @@ class AdminInvestigationRequestController extends Controller
 
             return response()->json([
                 'message' => 'Investigation request updated.',
-                'investigation_request' => $investigationRequest->load('requiredEvidences')
+                'investigation_request' => $investigationRequest->load('requiredEvidences'),
             ], 200);
         });
     }
@@ -75,7 +75,7 @@ class AdminInvestigationRequestController extends Controller
     public function destroy($id): JsonResponse
     {
         $investigationRequest = InvestigationRequest::findOrFail($id);
-        
+
         // Pivot records in `investigation_request_items` delete automatically due to cascadeOnDelete constraints
         $investigationRequest->delete();
 

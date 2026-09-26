@@ -2,28 +2,28 @@
 
 namespace App\Services;
 
-use App\Models\GameRoom;
-use App\Models\Question;
+use App\Events\ItemsUnlocked;
+use App\Events\VoteLockedIn;
+use App\Http\Resources\EvidenceBoardResource;
 use App\Models\Choice;
+use App\Models\Evidence;
+use App\Models\GameRoom;
+use App\Models\Level;
+use App\Models\Question;
 use App\Models\RoomVote;
 use App\Models\User;
-use App\Models\Evidence;
-use App\Models\Level;
-use Illuminate\Support\Facades\DB;
 use App\Support\Result;
-use App\Events\VoteLockedIn;
-use App\Events\ItemsUnlocked;
 
 class VotingService
 {
     public function lockInVote(GameRoom $room, User $user, Question $question, Choice $choice): Result
     {
         if ($question->level_id !== $room->current_level_id) {
-            return Result::failure("This verdict does not belong to the currently active level.");
+            return Result::failure('This verdict does not belong to the currently active level.');
         }
 
         if ($choice->question_id !== $question->id) {
-            return Result::failure("Invalid choice for the given verdict.");
+            return Result::failure('Invalid choice for the given verdict.');
         }
 
         $vote = RoomVote::updateOrCreate(
@@ -43,33 +43,39 @@ class VotingService
 
         $outcomes = $choice->outcomes ?? [];
 
-        if (!empty($outcomes['unlock_evidence']) && is_array($outcomes['unlock_evidence'])) {
-            $unlockedEvidences = Evidence::whereIn('id', $outcomes['unlock_evidence'])->get();
+        if (! empty($outcomes['unlock_evidence']) && is_array($outcomes['unlock_evidence'])) {
+            $unlockedEvidences = Evidence::with('assets')->whereIn('id', $outcomes['unlock_evidence'])->get();
             if ($unlockedEvidences->isNotEmpty()) {
                 $room->unlockedEvidences()->syncWithoutDetaching($unlockedEvidences->pluck('id')->toArray());
             }
         }
 
-        if (!empty($outcomes['unlock_levels']) && is_array($outcomes['unlock_levels'])) {
+        if (! empty($outcomes['unlock_levels']) && is_array($outcomes['unlock_levels'])) {
             $unlockedLevels = Level::whereIn('id', $outcomes['unlock_levels'])->get();
             if ($unlockedLevels->isNotEmpty()) {
                 $room->unlockedLevels()->syncWithoutDetaching($unlockedLevels->pluck('id')->toArray());
             }
         }
 
-        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {
+        if (! empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {
             foreach ($outcomes['character_updates'] as $update) {
-                if (!isset($update['id'])) continue;
+                if (! isset($update['id'])) {
+                    continue;
+                }
 
                 $dataToUpdate = [];
-                if (isset($update['status'])) $dataToUpdate['status'] = $update['status'];
-                if (isset($update['is_unlocked'])) $dataToUpdate['is_unlocked'] = $update['is_unlocked'];
+                if (isset($update['status'])) {
+                    $dataToUpdate['status'] = $update['status'];
+                }
+                if (isset($update['is_unlocked'])) {
+                    $dataToUpdate['is_unlocked'] = $update['is_unlocked'];
+                }
 
-                if (!empty($dataToUpdate)) {
+                if (! empty($dataToUpdate)) {
                     $room->characters()->syncWithoutDetaching([
-                        $update['id'] => $dataToUpdate
+                        $update['id'] => $dataToUpdate,
                     ]);
-                    
+
                     $appliedCharacterUpdates[] = array_merge(['character_id' => $update['id']], $dataToUpdate);
                 }
             }
@@ -77,12 +83,12 @@ class VotingService
 
         VoteLockedIn::dispatch($room, $vote);
 
-        if ($unlockedEvidences->isNotEmpty() || $unlockedLevels->isNotEmpty() || !empty($appliedCharacterUpdates)) {
+        if ($unlockedEvidences->isNotEmpty() || $unlockedLevels->isNotEmpty() || ! empty($appliedCharacterUpdates)) {
             ItemsUnlocked::dispatch(
                 $room,
                 $unlockedEvidences->isNotEmpty() ? $unlockedEvidences : null,
                 $unlockedLevels->isNotEmpty() ? $unlockedLevels : null,
-                !empty($appliedCharacterUpdates) ? $appliedCharacterUpdates : null,
+                ! empty($appliedCharacterUpdates) ? $appliedCharacterUpdates : null,
                 null
             );
         }
@@ -90,17 +96,18 @@ class VotingService
         return Result::success([
             'vote' => $vote,
             'unlocked' => [
-                'evidence' => $unlockedEvidences->toArray(),
+                // Board-shaped: a vote must not carry document content.
+                'evidence' => EvidenceBoardResource::collection($unlockedEvidences)->resolve(),
                 'levels' => $unlockedLevels->toArray(),
-                'character_updates' => $appliedCharacterUpdates
-            ]
+                'character_updates' => $appliedCharacterUpdates,
+            ],
         ]);
     }
 
     public function calculateLevelConsensus(GameRoom $room, int $levelId): array
     {
         $votes = RoomVote::where('room_id', $room->id)
-            ->whereHas('question', fn($q) => $q->where('level_id', $levelId))
+            ->whereHas('question', fn ($q) => $q->where('level_id', $levelId))
             ->get();
 
         $tally = [];

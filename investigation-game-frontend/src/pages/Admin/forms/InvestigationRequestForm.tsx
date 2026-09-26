@@ -3,7 +3,7 @@ import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
 import { getInvestigationRequestLabel } from '@/types';
-import type { Evidence, Level, InvestigationRequest } from '@/types';
+import type { AdminEvidence, Level, InvestigationRequest } from '@/types';
 import { AdminSelect } from '@/pages/Admin/components/AdminUI';
 import { validateInvestigationRequestForm } from '@/pages/Admin/utils/validators';
 import './Shared/AdminForms.css';
@@ -39,7 +39,7 @@ export default function InvestigationRequestForm() {
   const onEdit = (req: InvestigationRequest) => {
     handleEditInit(req, (r) => ({
       request_type: r.request_type,
-      required_evidence_ids: r.required_evidences?.map((ev: Evidence) => ev.id.toString()) || [],
+      required_evidence_ids: r.required_evidences?.map((ev: AdminEvidence) => ev.id.toString()) || [],
       unlocks_evidence_id: r.unlocks_evidence_id?.toString() || '',
       unlocks_level_id: r.unlocks_level_id?.toString() || ''
     }));
@@ -79,14 +79,14 @@ export default function InvestigationRequestForm() {
           <label className="admin-multiselect-label">{t.puzzleHeader}</label>
           <p className="admin-multiselect-hint">{t.puzzleHint}</p>
           <select multiple className="admin-input admin-multiselect-box" value={formData.required_evidence_ids} onChange={(e) => updateField('required_evidence_ids', Array.from(e.target.selectedOptions, opt => opt.value))}>
-            {selectedCase.evidences?.map((ev: Evidence) => (
+            {selectedCase.evidences?.map((ev: AdminEvidence) => (
               <option key={ev.id} value={ev.id.toString()}>EX-{ev.id.toString().padStart(3, '0')} : {ev.title}</option>
             ))}
           </select>
         </div>
 
         <div className="admin-form-row admin-reward-container">
-          <AdminSelect label={t.rewardEvidenceLabel} value={formData.unlocks_evidence_id} onChange={(e) => updateField('unlocks_evidence_id', e.target.value)} options={[{ value: '', label: t.noEvidenceReward }, ...(selectedCase.evidences?.filter((ev: Evidence) => !ev.is_initial).map((ev: Evidence) => ({ value: ev.id.toString(), label: `EX-${ev.id.toString().padStart(3, '0')} : ${ev.title}` })) || [])]} />
+          <AdminSelect label={t.rewardEvidenceLabel} value={formData.unlocks_evidence_id} onChange={(e) => updateField('unlocks_evidence_id', e.target.value)} options={[{ value: '', label: t.noEvidenceReward }, ...(selectedCase.evidences?.filter((ev: AdminEvidence) => !ev.is_initial).map((ev: AdminEvidence) => ({ value: ev.id.toString(), label: `EX-${ev.id.toString().padStart(3, '0')} : ${ev.title}` })) || [])]} />
           <AdminSelect label={t.rewardLevelLabel} value={formData.unlocks_level_id} onChange={(e) => updateField('unlocks_level_id', e.target.value)} options={[{ value: '', label: t.noLevelReward }, ...allCaseLevels.filter(l => !l.is_initial).map((l: Level) => ({ value: l.id.toString(), label: `Level ${l.order_index} : ${l.title}` }))] } />
         </div>
 

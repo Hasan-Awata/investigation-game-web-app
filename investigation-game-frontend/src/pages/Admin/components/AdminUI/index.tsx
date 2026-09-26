@@ -10,30 +10,33 @@ export const AdminRow = ({ children }: { children: React.ReactNode }) => (
   </div>
 );
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> { label?: string; }
-export const AdminInput = ({ label, ...props }: InputProps) => (
+interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> { label?: string; hint?: string; }
+export const AdminInput = ({ label, hint, ...props }: InputProps) => (
   <div className="form-group">
     {label && <label>{label}</label>}
     <input className="admin-input" {...props} />
+    {hint && <p className="admin-field-hint">{hint}</p>}
   </div>
 );
 
-interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> { label?: string; minHeight?: string; }
-export const AdminTextarea = ({ label, minHeight = '80px', style, ...props }: TextareaProps) => (
+interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> { label?: string; hint?: string; minHeight?: string; }
+export const AdminTextarea = ({ label, hint, minHeight = '80px', style, ...props }: TextareaProps) => (
   <div className="form-group">
     {label && <label>{label}</label>}
     <textarea className="admin-textarea" style={{ minHeight, ...style }} {...props} />
+    {hint && <p className="admin-field-hint">{hint}</p>}
   </div>
 );
 
-interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> { label?: string; options: { label: string; value: string }[]; placeholder?: string; }
-export const AdminSelect = ({ label, options, placeholder, ...props }: SelectProps) => (
+interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> { label?: string; hint?: string; options: { label: string; value: string }[]; placeholder?: string; }
+export const AdminSelect = ({ label, hint, options, placeholder, ...props }: SelectProps) => (
   <div className="form-group">
     {label && <label>{label}</label>}
     <select className="admin-input" {...props}>
       {placeholder && <option value="" disabled>{placeholder}</option>}
       {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
     </select>
+    {hint && <p className="admin-field-hint">{hint}</p>}
   </div>
 );
 
@@ -61,7 +64,7 @@ interface FileInputProps extends React.InputHTMLAttributes<HTMLInputElement> { l
 export const AdminFileInput = forwardRef<HTMLInputElement, FileInputProps>(({ label, hint, ...props }, ref) => (
   <div className="form-group">
     <label>{label}</label>
-    {hint && <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{hint}</p>}
+    {hint && <p className="admin-field-hint">{hint}</p>}
     <input type="file" className="admin-file-input" ref={ref} {...props} />
   </div>
 ));
@@ -205,9 +208,9 @@ export const JsonPopulator = ({
 }: { 
   jsonInput: string, 
   setJsonInput: (v: string) => void, 
-  onPopulate: (parsed: any) => void, 
+  onPopulate: (parsed: any) => void,
   requiredFields?: string[],
-  template?: Record<string, any>,
+  template?: Record<string, unknown>,
   label?: string 
 }) => {
   

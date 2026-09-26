@@ -3,7 +3,6 @@ import { useEvidenceContext } from '../EvidenceContext';
 import './ViewersContainer.css';
 
 interface ViewersContainerProps {
-  evidence: { id: string | number; [key: string]: any };
   children: React.ReactNode;
 }
 

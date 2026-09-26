@@ -1,0 +1,89 @@
+/* ==============================================================
+   EVIDENCE PRESENTATION TOKENS
+   The single source of truth for how a document looks, keyed on the
+   two axes the backend actually stores: the viewer strategy and, for
+   paper, its finish.
+
+   The previous dictionary was keyed on the old `theme` column, which
+   the unified evidence rebuild removed along with the per-type
+   widget matrix. Strategy picks the medium; finish picks the stock.
+   ============================================================== */
+
+:root {
+  /* ---- Evidence-domain tokens (not app-wide) ---- */
+  --ev-manila: #d8c8a0;
+  --ev-manila-deep: #c2ad7f;
+  --ev-ink: #1a1a1a;
+
+  --ev-crt-green: #49d17a;
+  --ev-crt-amber: #d9a441;
+  --ev-crt-cyan: #62d6e0;
+  --ev-crt-rule: rgba(73, 209, 122, 0.25);
+
+  --ev-sticky: #fef08a;
+  --ev-handwritten: 'Caveat', cursive, sans-serif;
+  --ev-faded-ink: #5d5543;
+
+  /* Terminal chrome palette */
+  --ev-term-dot-red: #ff5f56;
+  --ev-term-dot-amber: #ffbd2e;
+  --ev-term-dot-green: #27c93f;
+}
+
+/* ==============================================================
+   STRATEGY: paper
+   A physical sheet. The finish chooses the stock.
+   ============================================================== */
+
+[data-strategy='paper'] {
+  --font-page: var(--font-primary, sans-serif);
+}
+
+/* Blank stock: plain white sheet, the default finish. */
+[data-strategy='paper'][data-finish='blank'] {
+  --paper-bg: #ffffff;
+  --paper-ink: var(--ev-ink);
+  --paper-ink-dim: #555555;
+  --paper-rule: var(--ev-ink);
+  --paper-accent: var(--ev-ink);
+}
+
+/* Manila stock: the classic evidence envelope. */
+[data-strategy='paper'][data-finish='manila'] {
+  --paper-bg: var(--ev-manila);
+  --paper-ink: #2b2618;
+  --paper-ink-dim: var(--ev-faded-ink);
+  --paper-rule: rgba(43, 38, 24, 0.45);
+  --paper-accent: #7a5c22;
+
+  border: 1px solid var(--ev-manila-deep);
+  border-radius: 4px;
+  box-shadow: 4px 6px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* A paper evidence with no finish recorded still has to be legible, so the
+   blank palette is repeated rather than leaving the tokens undefined. */
+[data-strategy='paper']:not([data-finish]) {
+  --paper-bg: #ffffff;
+  --paper-ink: var(--ev-ink);
+  --paper-ink-dim: #555555;
+  --paper-rule: var(--ev-ink);
+  --paper-accent: var(--ev-ink);
+}
+
+/* ==============================================================
+   STRATEGY: terminal
+   A CRT screen. Shares the paged layout; only the palette changes.
+   ============================================================== */
+
+[data-strategy='terminal'] {
+  --paper-bg: var(--bg-dark, #0b0f0b);
+  --paper-ink: var(--ev-crt-green);
+  --paper-ink-dim: #8fb98f;
+  --paper-rule: var(--ev-crt-rule);
+  --paper-accent: var(--ev-crt-amber);
+  --font-page: var(--font-mono, monospace);
+
+  border: 1px solid var(--ev-crt-rule);
+  border-radius: var(--radius-sm, 4px);
+}

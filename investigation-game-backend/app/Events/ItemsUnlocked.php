@@ -2,13 +2,14 @@
 
 namespace App\Events;
 
+use App\Http\Resources\EvidenceBoardResource;
 use App\Models\GameRoom;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Database\Eloquent\Collection;
 
 class ItemsUnlocked implements ShouldBroadcastNow
 {
@@ -25,14 +26,18 @@ class ItemsUnlocked implements ShouldBroadcastNow
     public function broadcastOn(): array
     {
         return [
-            new PrivateChannel('room.' . $this->room->id),
+            new PrivateChannel('room.'.$this->room->id),
         ];
     }
 
     public function broadcastWith(): array
     {
         return [
-            'unlocked_evidences' => $this->unlockedEvidences ? $this->unlockedEvidences->toArray() : [],
+            // Projected through the board resource so an unlock never pushes a
+            // document to the client. The player fetches the detail on open.
+            'unlocked_evidences' => $this->unlockedEvidences
+                ? EvidenceBoardResource::collection($this->unlockedEvidences)->resolve()
+                : [],
             'unlocked_levels' => $this->unlockedLevels ? $this->unlockedLevels->toArray() : [],
             'character_updates' => $this->characterUpdates ?? [],
             'strikes' => $this->strikes,

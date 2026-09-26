@@ -1,11 +1,8 @@
 import type { FC } from 'react';
+import type { StampBlockProps } from '@/types/evidence';
 import styles from './StampOverlay.module.css';
 
-export interface StampOverlayProps {
-  text: string;
-  variant?: 'red' | 'blue' | 'black';
-  rotation?: number;
-}
+export type StampOverlayProps = StampBlockProps;
 
 const VARIANT_CLASS: Record<'red' | 'blue' | 'black', string> = {
   red: styles['variant-red'],
@@ -13,10 +10,17 @@ const VARIANT_CLASS: Record<'red' | 'blue' | 'black', string> = {
   black: styles['variant-black'],
 };
 
-const StampOverlay: FC<StampOverlayProps> = ({ text, variant = 'red', rotation = -8 }) => {
+const FONT_SIZE_CLASS: Record<'auto' | 'small' | 'medium' | 'large', string> = {
+  auto: styles['font-auto'],
+  small: styles['font-small'],
+  medium: styles['font-medium'],
+  large: styles['font-large'],
+};
+
+const StampOverlay: FC<StampOverlayProps> = ({ text, variant, rotation, font_size }) => {
   return (
     <div
-      className={`${styles.wrapper} ${VARIANT_CLASS[variant]}`}
+      className={`${styles.wrapper} ${styles.stamp} ${VARIANT_CLASS[variant]} ${FONT_SIZE_CLASS[font_size]}`}
       style={{ transform: `rotate(${rotation}deg)` }}
     >
       {text}

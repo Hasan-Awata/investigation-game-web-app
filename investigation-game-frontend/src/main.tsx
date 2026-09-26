@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import './index.css'
+import './pages/GameRoom/tabs/EvidenceBoard/Viewers/themes.css'
 import Echo from 'laravel-echo';
 import Pusher from 'pusher-js';
 

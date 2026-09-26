@@ -4,6 +4,8 @@
   padding: 0.5rem;
 }
 
+/* The stamp face itself. This class was previously declared but never applied,
+   so stamps rendered as unstyled body text. */
 .stamp {
   font-family: var(--font-mono, monospace);
   font-weight: 700;
@@ -13,8 +15,7 @@
   padding: 0.4rem 1.1rem;
   border: 3px solid currentColor;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.15);
-  box-shadow: inset 0 0 12px rgba(0, 0, 0, 0.12);
+  background: transparent;
   white-space: nowrap;
 }
 
@@ -27,5 +28,29 @@
 }
 
 .variant-black {
-  color: #1a1a1a;
+  color: var(--paper-ink, #1a1a1a);
+}
+
+/* Scale mirrors the block catalog's font_size options. `auto` keeps the
+   default so an unconfigured stamp is unchanged. */
+.font-auto {
+  font-size: 1.05rem;
+}
+
+.font-small {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.7rem;
+  border-width: 2px;
+}
+
+.font-medium {
+  font-size: 1.25rem;
+  padding: 0.5rem 1.3rem;
+}
+
+.font-large {
+  font-size: 1.6rem;
+  padding: 0.7rem 1.7rem;
+  border-width: 4px;
+  letter-spacing: 0.2em;
 }

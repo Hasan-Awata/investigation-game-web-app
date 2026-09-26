@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Choice;
 use App\Models\GameRoom;
 use App\Models\Question;
-use App\Models\Choice;
 use App\Services\VotingService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class VoteController extends Controller
 {
@@ -29,17 +29,16 @@ class VoteController extends Controller
         if ($result->isFailure()) {
             return response()->json([
                 'error' => 'Validation Failed',
-                'message' => $result->errorMessage
+                'message' => $result->errorMessage,
             ], 422);
         }
 
         return response()->json([
             'message' => 'Vote locked in successfully.',
             'data' => $result->value['vote'],
-            'unlocked_evidence' => $result->value['unlocked']['evidence'], 
-            'unlocked_levels' => $result->value['unlocked']['levels'],     
-            'unlocked_suspects' => $result->value['unlocked']['suspects'], 
-            'unlocked_victims' => $result->value['unlocked']['victims']    
+            'unlocked_evidence' => $result->value['unlocked']['evidence'],
+            'unlocked_levels' => $result->value['unlocked']['levels'],
+            'character_updates' => $result->value['unlocked']['character_updates'],
         ], 200);
     }
 }

@@ -75,6 +75,8 @@
   justify-content: center;
   gap: 0.25em;
   overflow: hidden;
+  direction: ltr; /* Added to force standard terminal LTR */
+  text-align: left;
 }
 
 .cmdLine {

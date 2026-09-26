@@ -1,0 +1,22 @@
+.wrapper {
+  width: min(90vw, 1100px);
+  min-height: 70vh;
+  display: flex;
+}
+
+.frame {
+  flex: 1;
+  width: 100%;
+  min-height: 70vh;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  background: #ffffff;
+  color-scheme: light;
+}
+
+.empty {
+  padding: 3rem 2rem;
+  text-align: center;
+  font-family: var(--font-mono, monospace);
+  color: var(--text-secondary, #888);
+}

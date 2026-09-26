@@ -1,4 +1,4 @@
-import type { Evidence } from './evidence';
+import type { AdminEvidence, EvidenceBoardEntry } from './evidence';
 export * from './evidence';
 
 export interface User {
@@ -80,7 +80,7 @@ export interface GameCase {
   active_room_invite_code?: string; 
   is_published?: boolean; 
   zones?: Zone[]; 
-  evidences?: Evidence[]; 
+  evidences?: AdminEvidence[]; 
   characters?: Character[];
   investigation_requests?: InvestigationRequest[];
   user_status?: CaseUserStatus | null; 
@@ -120,7 +120,7 @@ export interface GameRoom {
   game_case?: GameCase;
   users?: RoomUser[];
   current_level?: Level;
-  unlocked_evidences?: Evidence[]; 
+  unlocked_evidence_ids?: number[];
   unlocked_levels?: Level[];
   characters?: Character[];
   completed_levels?: Level[];
@@ -128,7 +128,7 @@ export interface GameRoom {
   played_wiretaps?: Question[];
   inspections?: RoomInspection[];
   filed_requests?: FiledRequest[];
-  accumulated_evidences?: Evidence[];
+  accumulated_evidences?: EvidenceBoardEntry[];
   accumulated_characters?: Character[];
 }
 
@@ -223,7 +223,7 @@ export interface InvestigationRequest {
   request_type: InvestigationRequestType | string; 
   unlocks_evidence_id?: number | null;
   unlocks_level_id?: number | null;
-  required_evidences?: Evidence[]; 
+  required_evidences?: AdminEvidence[]; 
   created_at?: string;
   updated_at?: string;
 }

@@ -1,5 +1,5 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
-import type { GameRoom, Evidence, Character } from '../types';
+import type { GameRoom, EvidenceBoardEntry, Character } from '../types';
 
 export interface ToastNotification {
   id: string;
@@ -18,7 +18,7 @@ export interface GlobalFeedback {
 // 1. DATA CONTEXT: Domain entities that change slowly
 export interface RoomDataState {
   room: GameRoom;
-  accumulatedEvidences: Evidence[];
+  accumulatedEvidences: EvidenceBoardEntry[];
   accumulatedCharacters: Character[];
   refreshRoomData: () => Promise<void>;
 }

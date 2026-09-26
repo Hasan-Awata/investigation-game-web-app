@@ -1,6 +1,23 @@
 .wrapper {
   width: 100%;
   overflow-x: auto;
+  margin: 0;
+}
+
+/* Compact rows, as the block catalog's `dense` option describes. */
+.dense .table th,
+.dense .table td {
+  padding: 0.4rem 0.6rem;
+  font-size: 0.82rem;
+}
+
+.caption {
+  margin-block-start: 0.6rem;
+  font-family: var(--font-page, var(--font-primary, sans-serif));
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--paper-ink-dim, #666);
+  text-align: center;
 }
 
 .table {
@@ -8,28 +25,24 @@
   border-collapse: collapse;
   font-family: var(--font-mono, monospace);
   font-size: 0.9rem;
-  color: var(--text-primary, #1a1a1a);
+  color: var(--paper-ink, #1a1a1a);
 }
 
 .table th,
 .table td {
   padding: 0.85rem 1rem;
   text-align: start;
-  border-bottom: 1px solid var(--border-thin, #1a1a1a);
+  border-bottom: 1px solid var(--paper-rule, #1a1a1a);
 }
 
 .table th {
-  background-color: #1a1a1a;
-  color: #ffffff;
+  background-color: var(--paper-ink, #1a1a1a);
+  color: var(--paper-bg, #ffffff);
   font-weight: 600;
   text-transform: uppercase;
   font-size: 0.8rem;
   letter-spacing: 0.05em;
   border-bottom: none;
-}
-
-.table tr:nth-child(even) td {
-  background-color: #f8fafc;
 }
 
 /* Flip alignment for RTL */
@@ -43,6 +56,6 @@
   padding: 1.5rem;
   text-align: center;
   font-style: italic;
-  font-family: var(--font-primary, sans-serif);
-  color: var(--text-secondary, #666);
+  font-family: var(--font-page, var(--font-primary, sans-serif));
+  color: var(--paper-ink-dim, #666);
 }

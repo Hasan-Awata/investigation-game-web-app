@@ -1,10 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import type { FC } from 'react';
-import type { Evidence } from '@/types/evidence';
+import type { EvidenceBoardEntry } from '@/types/evidence';
 import styles from './AudioThumbnail.module.css';
 
 interface AudioThumbnailProps {
-  evidence: Evidence;
+  evidence: EvidenceBoardEntry;
 }
 
 const AudioThumbnail: FC<AudioThumbnailProps> = ({ evidence }) => {

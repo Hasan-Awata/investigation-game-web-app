@@ -3,12 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\MediaService;
-use App\Models\Question;
 use App\Models\Level;
-use Illuminate\Http\Request;
+use App\Models\Question;
+use App\Services\MediaService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class AdminQuestionController extends Controller
 {
@@ -33,7 +34,7 @@ class AdminQuestionController extends Controller
         $level = Level::with('zone.gameCase')->find($validated['level_id']);
         $caseTitle = $level?->zone?->gameCase?->title ?? 'General';
         $levelTitle = $level?->title ?? 'General-Level';
-        $subfolder = 'Levels/' . \Illuminate\Support\Str::slug($levelTitle) . '/Questions';
+        $subfolder = 'Levels/'.Str::slug($levelTitle).'/Questions';
 
         $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, $subfolder, $storeLocally);
         $audioUrl = $this->mediaService->store($request->file('audio'), $caseTitle, $subfolder, $storeLocally);
@@ -48,7 +49,7 @@ class AdminQuestionController extends Controller
 
             $choices = $request->input('choices', []);
 
-            if (!empty($choices)) {
+            if (! empty($choices)) {
                 $choicesData = array_map(function ($choice) use ($question) {
                     return [
                         'question_id' => $question->id,
@@ -65,7 +66,7 @@ class AdminQuestionController extends Controller
 
             return response()->json([
                 'message' => 'Question and choices created successfully.',
-                'question' => $question->load('choices')
+                'question' => $question->load('choices'),
             ], 201);
         });
     }
@@ -104,14 +105,14 @@ class AdminQuestionController extends Controller
             $updateData['audio_url'] = $this->mediaService->store($request->file('audio'), $caseTitle, 'Levels/Questions', $storeLocally);
         }
 
-        return DB::transaction(function () use ($question, $validated, $request, $updateData) {
+        return DB::transaction(function () use ($question, $request, $updateData) {
             $question->update($updateData);
 
             $question->choices()->delete();
 
             $choices = $request->input('choices', []);
 
-            if (!empty($choices)) {
+            if (! empty($choices)) {
                 $choicesData = array_map(function ($choice) use ($question) {
                     return [
                         'question_id' => $question->id,

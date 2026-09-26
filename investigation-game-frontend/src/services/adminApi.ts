@@ -1,4 +1,5 @@
 import { type Result, success, failure } from '@/utils/Result';
+import type { EvidenceSchema, SignatureOption } from '@/types/evidence';
 import { getToken } from './auth';
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
@@ -80,6 +81,20 @@ export const deleteAdminQuestion = (id: number) => adminRequest(`/questions/${id
 // ==========================================
 // EVIDENCES
 // ==========================================
+/**
+ * The block and presentation catalog the evidence editor is built from.
+ *
+ * Fetched rather than imported so the editor can never offer a block, strategy
+ * or finish the server would reject on write.
+ */
+export const fetchEvidenceSchema = (): Promise<Result<EvidenceSchema>> =>
+  adminRequest<EvidenceSchema>('/evidence-schema', { method: 'GET' });
+
+export const fetchSignatures = (): Promise<Result<SignatureOption[]>> =>
+  adminRequest<{ signatures: SignatureOption[] }>('/signatures', { method: 'GET' }).then(
+    (result) => (result.isSuccess ? success(result.value.signatures) : result)
+  );
+
 export const createAdminEvidence = (fd: FormData) => adminRequest('/evidences', { method: 'POST', body: fd });
 export const updateAdminEvidence = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/evidences/${id}`, { method: 'POST', body: fd }); };
 export const deleteAdminEvidence = (id: number) => adminRequest(`/evidences/${id}`, { method: 'DELETE' });

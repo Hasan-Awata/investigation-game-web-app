@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext';
 import { useTargeting } from '@/context/TargetingContext';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
-import type { Evidence, Level, Zone, Character } from '@/types';
+import type { AdminEvidence, Level, Zone, Character } from '@/types';
 import './ChoiceEditorCard.css';
 
 export interface DraftChoice {
@@ -183,7 +183,7 @@ export default function ChoiceEditorCard({
               <div className="form-group">
                 <label>{t.unlockEvidenceLabel}</label>
                 <select multiple className="admin-input" value={unlockedEv} onChange={(e) => updateOutcomes('unlock_evidence', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
-                  {availableEvidence.map((ev: Evidence) => (
+                  {availableEvidence.map((ev: AdminEvidence) => (
                     <option key={ev.id} value={ev.id.toString()}>{t.evidenceOption(ev.id, ev.title)}</option>
                   ))}
                 </select>
@@ -219,7 +219,7 @@ export default function ChoiceEditorCard({
             <div className="form-group">
               <label>{t.requiredEvidenceLabel}</label>
               <select multiple className="admin-input" value={reqEv} onChange={(e) => updateRequirements('required_evidence', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
-                {availableEvidence.map((ev: Evidence) => (
+                {availableEvidence.map((ev: AdminEvidence) => (
                   <option key={ev.id} value={ev.id.toString()}>{t.evidenceOption(ev.id, ev.title)}</option>
                 ))}
               </select>

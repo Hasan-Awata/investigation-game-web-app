@@ -1,9 +1,10 @@
 import type { FC } from 'react';
 import { useDraggable } from '@dnd-kit/core';
-import type { Evidence, EvidenceType } from '@/types/evidence';
+import type { EvidenceBoardEntry, EvidenceType } from '@/types/evidence';
 import {
   AudioThumbnail,
   BallisticsThumbnail,
+  CustomThumbnail,
   DigitalThumbnail,
   DocumentThumbnail,
   ForensicThumbnail,
@@ -13,15 +14,20 @@ import {
 import styles from './EvidenceCard.module.css';
 
 interface EvidenceCardProps {
-  evidence: Evidence;
+  evidence: EvidenceBoardEntry;
   index: number;
   isNew: boolean;
-  onInspect: (evidence: Evidence) => void;
+  onInspect: (evidence: EvidenceBoardEntry) => void;
 }
 
-type ThumbnailComponent = FC<{ evidence: Evidence }>;
+type ThumbnailComponent = FC<{ evidence: EvidenceBoardEntry }>;
 
-const ThumbnailRegistry: Partial<Record<EvidenceType, ThumbnailComponent>> = {
+/**
+ * Every EvidenceType has an entry. A custom artifact is a sandboxed document,
+ * so falling back to the written-document thumbnail would mislabel it on the
+ * board.
+ */
+const ThumbnailRegistry: Record<EvidenceType, ThumbnailComponent> = {
   document: DocumentThumbnail,
   testimony: TestimonyThumbnail,
   image: ImageThumbnail,
@@ -29,6 +35,7 @@ const ThumbnailRegistry: Partial<Record<EvidenceType, ThumbnailComponent>> = {
   forensic: ForensicThumbnail,
   digital: DigitalThumbnail,
   ballistics: BallisticsThumbnail,
+  custom: CustomThumbnail,
 };
 
 export default function EvidenceCard({ evidence, index, isNew, onInspect }: EvidenceCardProps) {
@@ -39,7 +46,7 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
     },
   });
 
-  const Thumbnail = ThumbnailRegistry[evidence.evidence_type] ?? DocumentThumbnail;
+  const Thumbnail = ThumbnailRegistry[evidence.evidence_type];
 
   return (
     <div
@@ -59,8 +66,8 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
 // OVERLAY CLONE: Used exclusively by <DragOverlay> to provide visual feedback.
 // Keeps the component pure and prevents hook-duplication errors in dnd-kit.
 // ----------------------------------------------------------------------
-export function EvidenceCardOverlay({ evidence }: { evidence: Evidence }) {
-  const Thumbnail = ThumbnailRegistry[evidence.evidence_type] ?? DocumentThumbnail;
+export function EvidenceCardOverlay({ evidence }: { evidence: EvidenceBoardEntry }) {
+  const Thumbnail = ThumbnailRegistry[evidence.evidence_type];
 
   return (
     <div className={`${styles.evidenceCardWrapper} ${styles.overlayClone}`}>

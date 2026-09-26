@@ -1,0 +1,22 @@
+/* The live preview frame in the admin evidence form. */
+
+.preview {
+  /* The viewers size themselves to the page geometry, so the frame has to give
+     them a real box to lay out in rather than shrink-wrapping the content. */
+  block-size: 100%;
+  inline-size: 100%;
+  min-block-size: 0;
+  overflow: auto;
+  border: 1px solid var(--border-color, rgb(255 255 255 / 12%));
+  border-radius: 6px;
+  background: var(--bg-deep, #101014);
+}
+
+.notPaged {
+  margin: 0;
+  padding: 1rem;
+  color: var(--text-muted, rgb(255 255 255 / 60%));
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  text-align: center;
+}

@@ -101,7 +101,8 @@
           "evidences": "الأدلة",
           "personsOfInterest": "الأشخاص",
           "campaign": "الخريطة",
-          "returnToMenu": "مغادرة الجلسة"
+          "returnToMenu": "مغادرة الجلسة",
+          "unreadIntel": "غير مقروء"
         },
         "notifications": {
           "newCasualty": "حالة وفاة مؤكدة",
@@ -161,7 +162,6 @@
       },
       "evidence": {
         "board": {
-          "title": "لوحة الأدلة",
           "subtitle": "اسحب الملفات إلى الدرج أدناه لطلب مذكرة تفتيش أو استدعاء.",
           "proceduralTrayTitle": "درج الطلبات الإجرائية",
           "requestApproved": "تمت الموافقة على الطلب",
@@ -177,226 +177,65 @@
           "viewFiled": "عرض الطلبات المقدمة",
           "noRequestsFiled": "لم يتم تقديم أي طلبات إجرائية حتى الآن خلال هذه الجلسة.",
           "crossReferenced": "تم التقاطع مع:",
-          "approvedStatus": "موافق عليه",
-          "requestTypes": {
-            "search_warrant": "مذكرة تفتيش",
-            "financial_subpoena": "استدعاء سجلات مالية",
-            "toxicology_report": "تقرير سموم",
-            "wiretap_authorization": "تصريح تنصت",
-            "ballistics_analysis": "تحليل مقذوفات",
-            "digital_forensics": "فحص الأدلة الرقمية",
-            "exhumation_order": "أمر استخراج جثة"
-          }
+          "approvedStatus": "موافق عليه"
         },
         "variants": {
           "audio": {
             "aSide": "الوجه أ"
-          },
-          "image": {
-            "noImage": "لا توجد صورة"
-          },
-          "testimony": {
-            "transcript": "نسخة طبق الأصل"
-          },
-          "forensic": {
-            "medicalExaminer": "مكتب الطبيب الشرعي",
-            "evidenceSealed": "دليل - مختوم",
-            "firearmsUnit": "وحدة الأسلحة النارية وعلامات الأدوات",
-            "dnaProfile": "تحليل الأمصال والملف الجيني",
-            "dataExtraction": "تقرير استخراج البيانات",
-            "traceAnalysis": "تحليل المواد والآثار"
-          },
-          "document": {
-            "financialDate": "التاريخ",
-            "financialDetail": "التفاصيل",
-            "financialAmount": "المبلغ",
-            "financialStatus": "الحالة",
-            "financialCleared": "مُسدد",
-            "contractLegalFiles": "ملفات قانونية",
-            "dossierRestricted": "سري للغاية",
-            "time": "الوقت",
-            "type": "النوع",
-            "contact": "جهة الاتصال",
-            "duration": "المدة",
-            "noLogs": "لا تتوفر بيانات مكالمات"
           }
         },
         "viewers": {
-          "contract": {
-            "noTerms": "لا توجد شروط متاحة.",
-            "bindingAgreement": "اتفاقية ملزمة",
-            "deedOfAgreement": "صك اتفاق",
-            "officialInstrument": "أداة قانونية رسمية // موثق من كاتب العدل",
-            "betweenParties": "بين الأطراف:",
-            "party": "الطرف",
-            "termsAndConditions": "الشروط والأحكام (صفحة",
-            "inWitnessWhereof": "وإثباتاً لما تقدم، قام أطراف هذه الاتفاقية بالتوقيع عليها اعتباراً من",
-            "authorizedRep": "ممثل مفوض",
-            "witness": "شاهد",
-            "verifiedNotarized": "تم التحقق: موثق",
-            "flaggedFraudulent": "مُعلّم: مزور",
-            "prev": "السابق",
-            "next": "التالي",
-            "page": "صفحة",
-            "of": "من"
-          },
-          "financial": {
-            "confidential": "سري",
-            "subpoenaedRecord": "سجل مستدعى",
-            "account": "الحساب:",
-            "accountNo": "رقم الحساب:",
-            "period": "الفترة:",
-            "docRef": "مرجع المستند:",
-            "date": "التاريخ",
-            "transactionDetail": "تفاصيل المعاملة",
-            "amount": "المبلغ",
-            "noLedgerData": "لا تتوفر بيانات دفتر الأستاذ لهذه الفترة.",
-            "authorizedBy": "معتمد من وزارة الخزانة",
-            "prev": "السابق",
-            "next": "التالي",
-            "page": "صفحة",
-            "of": "من"
-          },
-          "journal": {
-            "author": "المؤلف:",
-            "date": "التاريخ:",
-            "personalDiary": "إدخال مذكرات شخصية",
-            "empty": "يبدو أن هذه المذكرات فارغة.",
-            "tornPage": "[ تم تمزيق الصفحة - الدليل مفقود ]",
-            "prev": "السابق",
-            "next": "التالي",
-            "page": "صفحة",
-            "of": "من"
-          },
-          "correspondence": {
-            "confidential": "مراسلات سرية",
-            "to": "إلى:",
-            "from": "من:",
-            "subject": "الموضوع:",
-            "intelDivision": "قسم الاستحواذ على المعلومات // القطاع-4"
-          },
-          "backgroundCheck": {
-            "deptOfPublicSafety": "إدارة السلامة العامة - قسم السجلات",
-            "title": "تحقيق في الخلفية",
-            "subjectName": "اسم الموضوع:",
-            "dob": "تاريخ الميلاد:",
-            "sexAge": "الجنس / العمر:",
-            "aliases": "الأسماء المستعارة:",
-            "lastKnownAddress": "آخر عنوان معروف:",
-            "employmentProfile": "الملف الوظيفي والمالي",
-            "criminalHistory": "التاريخ الجنائي والمذكرات",
-            "knownAssociates": "الشركاء المعروفون"
-          },
-          "autopsy": {
-            "officeOfChief": "مكتب كبير الأطباء الشرعيين",
-            "reportOfAutopsy": "تقرير تشريح الجثة",
-            "cityCountyMorgue": "قسم مشرحة المدينة والمقاطعة",
-            "caseNo": "رقم القضية:",
-            "date": "التاريخ:",
-            "examiner": "الطبيب الشرعي:",
-            "estTimeOfDeath": "وقت الوفاة المقدر:",
-            "causeOfDeath": "سبب الوفاة:",
-            "externalExam": "الفحص الخارجي والشذوذ:",
-            "noAnomalies": "الجثة لشخص تطور بشكل طبيعي. لم يتم الإبلاغ عن أي شذوذ واضح أو صدمات ثانوية أثناء الفحص القياسي.",
-            "fig1": "الشكل 1. مرجع تشريحي",
-            "confidentialRecord": "سري // سجل رسمي",
-            "chiefMedicalExaminer": "كبير الأطباء الشرعيين",
-            "victimName": "الضحية:",
-            "gender": "الجنس:",
-            "estimatedAge": "العمر المقدر:",
-            "internalExam": "الفحص الداخلي والأعضاء:",
-            "toxicologyReport": "تقرير السموم / المختبر:",
-            "collectedEvidence": "العينات والأدلة المستخرجة:"
-          },
-          "ballistics": {
-            "stateForensicLab": "المختبر الجنائي بالولاية",
-            "divBallistics": "قسم الأسلحة النارية وعلامات الأدوات",
-            "caseFile": "ملف القضية رقم",
-            "officialLabReport": "تقرير مختبر رسمي",
-            "intakeLog": "سجل استلام الأدلة",
-            "noExhibits": "لم يتم تسجيل أي معروضات مادية عند الاستلام.",
-            "section1": "1. بيانات مواصفات السلاح الناري",
-            "section2": "2. التحليل المجهري وعلامات الأدوات",
-            "lensOverlay": "عدسة محاذاة التخطيط",
-            "section3": "3. نتائج المسار والمدى",
-            "seniorExpert": "خبير أسلحة نارية أول",
-            "verifiedLabId": "معرف المختبر المعتمد:",
-            "chainOfCustody": "سلسلة الحيازة والأدلة",
-            "submittedBy": "مُقدم الدليل:",
-            "receivedDate": "تاريخ الاستلام:",
-            "ballisticParameters": "المعاملات البليستيكية",
-            "caliberMfg": "العيار / الشركة المصنعة:",
-            "riflingPattern": "نمط الحلزنة والخطوط:",
-            "sectionFiringDistance": "4. تقدير مسافة إطلاق النار وديناميكياتها"
-          },
-          "dna": {
-            "geneticLab": "مختبر الأدلة الجنائية الجينية",
-            "strAnalysis": "تحليل الحمض النووي ومطابقة الملف الجيني",
-            "evidenceId": "معرف الدليل:",
-            "sampleType": "نوع العينة:",
-            "date": "التاريخ:",
-            "electropherogram": "مقارنة المخطط الكهربائي",
-            "crimeSceneSample": "عينة مسرح الجريمة",
-            "databaseRecord": "سجل قاعدة البيانات",
-            "probOfMatch": "احتمالية التطابق:",
-            "identifiedSubject": "الموضوع الذي تم التعرف عليه:",
-            "noMatch": "لم يتم العثور على تطابق في قاعدة البيانات",
-            "codisVerified": "اكتمل بحث CODIS // تم التحقق منه",
-            "labTechnician": "فاحص المختبر:",
-            "extractionMethod": "طريقة الاستخلاص:",
-            "lociProfileSummary": "ملخص تحليل المواقع الوراثية (STR Loci):",
-            "labNotes": "ملاحظات ومرئيات المختبر:"
-          },
-          "digitalForensics": {
-            "terminalTitle": "وحدة_الجرائم_الإلكترونية_v3.4.1 // محطة_فك_التشفير",
-            "initiating": "[+] جاري بدء بروتوكول الاستخراج الجنائي...",
-            "targetDevice": "[+] الجهاز المستهدف:",
-            "method": "[+] الطريقة:",
-            "bypassing": "[+] جاري تجاوز التشفير........ [ نجاح ]",
-            "beginPayload": "--- بداية الحمولة المستردة ---",
-            "endOfFile": "--- نهاية الملف ---"
-          },
-          "traceAnalysis": {
-            "advancedLab": "مختبر المواد المتقدمة والآثار",
-            "massSpec": "تحليل مطياف الكتلة",
-            "sampleId": "معرف العينة:",
-            "scanDate": "تاريخ الفحص:",
-            "spectralChart": "مخطط الوفرة الطيفية",
-            "mzRatio": "نسبة الكتلة إلى الشحنة (m/z)",
-            "relativeAbundance": "الوفرة النسبية ➔",
-            "materialComp": "تركيبة المواد:",
-            "originSource": "مصدر المنشأ المحدد:",
-            "analysisComplete": "اكتمل التحليل",
-            "autoGenerated": "تقرير نظام مُنشأ تلقائياً"
-          },
-          "testimony": {
-            "policeDept": "قسم شرطة المدينة",
-            "officialTranscript": "سجل شهادة رسمي",
-            "date": "التاريخ",
-            "caseNo": "رقم القضية",
-            "subject": "الموضوع المستجوب:",
-            "interviewer": "المحقق:",
-            "watermark": "نسخة رسمية",
-            "certStatement": "أقر بموجب هذا أن هذه الوثيقة هي نسخة صحيحة ودقيقة من الاستجواب المسجل الوارد في المرجع.",
-            "stenoSignature": "كاتب المحكمة / مسؤول التسجيل"
-          },
           "media": {
             "audioNotSupported": "متصفحك لا يدعم تشغيل هذا المقطع الصوتي.",
             "imageAltFallback": "صورة دليل مصورة",
             "noMediaFound": "لم يتم العثور على وسائط مرتبطة بهذا الملف."
           },
-          "phoneRecords": {
-            "networkProvider": "مزود الشبكة",
-            "subscriber": "المشترك",
-            "assignedNumber": "الرقم المخصص",
-            "statementPeriod": "فترة الكشف",
-            "docRef": "مرجع المستند",
-            "logsHeader": "سجل المكالمات",
-            "incoming": "واردة",
-            "outgoing": "صادرة",
-            "missed": "فائتة",
-            "sms": "رسالة نصية",
-            "endOfRecord": "*** نهاية سجل الاتصالات الرسمي ***"
+          "universal": {
+            "terminalTitle": "الطب_الشرعي_الرقمي_v3.4.1",
+            "prev": "السابق",
+            "next": "التالي",
+            "page": "صفحة",
+            "of": "من"
+          },
+          "artifact": {
+            "empty": "لا يوجد محتوى لهذا الأثر بعد.",
+            "modelDisabled": "الآثار ثلاثية الأبعاد غير مفعّلة."
+          },
+          "loading": "جارٍ فتح الملف...",
+          "malformed": "تعذّرت قراءة هذا الملف.",
+          "pagedStrategiesOnly": "تنطبق معاينة الصفحات على مستندات الورق والطرفية. أما هذه الاستراتيجية فتخزّن ملفاً واحداً بدلاً من ذلك."
+        },
+        "thumbnails": {
+          "audio": "تسجيل صوتي",
+          "ballistics": {
+            "seal": "دليل",
+            "label": "تقرير الرصاص"
+          },
+          "custom": "أثر مخصص",
+          "digital": {
+            "line1": "> جارٍ فك تشفير الوسائط...",
+            "line2": "> السلسلة سليمة [SHA-256]",
+            "prompt": "استخراج_دليل",
+            "label": "الأدلة الرقمية"
+          },
+          "document": "مستند مكتوب",
+          "forensic": {
+            "warning": "الخبير الجنائي",
+            "label": "تقرير جنائي"
+          },
+          "image": {
+            "caption": "صورة الدليل",
+            "placeholder": "لا توجد صورة",
+            "label": "صورة فوتوغرافية"
+          },
+          "testimony": {
+            "stamp": "محضر",
+            "label": "شهادة"
+          }
+        },
+        "widgets": {
+          "dataGrid": {
+            "emptyData": "لا توجد بيانات متاحة"
           }
         }
       },
@@ -480,7 +319,9 @@
           "dataAvailable": "البيانات متاحة",
           "restricted": "وصول مقيد",
           "warrantRequired": "مطلوب تصريح / مذكرة"
-        }
+        },
+        "showGameplay": "إظهار اللعب",
+        "showLevelInfo": "إظهار معلومات المرحلة"
       },
       "hooks": {
         "phase": {
