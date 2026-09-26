@@ -36,11 +36,17 @@ class RoomEvidenceController extends Controller
 
         // Likewise for evidence this room has not unlocked. A detective game
         // that 403s on unclaimed evidence tells the player it is there.
+        //
+        // Initial evidence counts as possessed. The board already lists it
+        // (GameRoomController filters on is_initial), and both
+        // AssessmentService and InvestigationRequestService treat it as held,
+        // so refusing it here left an evidence the player could see but never
+        // open.
         $unlocked = $room->unlockedEvidences()
             ->where('evidences.id', $evidence->id)
             ->exists();
 
-        if (! $unlocked) {
+        if (! $unlocked && ! $evidence->is_initial) {
             return $this->notFound();
         }
 

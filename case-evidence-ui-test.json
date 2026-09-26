@@ -1,0 +1,1186 @@
+{
+  "case_details": {
+    "title": "ظلال المزة",
+    "story": "عُثر على فيسام الحلبي، مؤسس شركة ميزاء للتقنية، ميّتاً في مكتبه في الطابق الحادي والعشرين. تتقاطع في هذه القضية ثلاث روايات: قرص صلب مفقود، وحوالة مالية كبيرة قبل الحادثة بيوم، وأدلة رقمية محوة.",
+
+    "map_url": "/Maps/tactical-damascus-blueprint.png",
+    "min_player_XP": 200,
+    "XP_on_solve": 900,
+    "max_strikes": 3,
+    "rating_stars": 4.5,
+    "age_rating": "Mature 17+",
+    "estimated_playtime": "90 دقيقة",
+    "difficulty": "صعب",
+    "tags": ["نوار", "تكنولوجيا", "قتل", "دمشق"],
+    "author_name": "فريق المحققين",
+    "is_published": false
+  },
+
+  "evidences": [
+    {
+      "ref_id": "ev_autopsy",
+      "order_index": 10,
+      "title": "تقرير الشرح الجساني",
+      "description": "تقرير الطب الشرعي الأول عن الجثة، يحدد نوع السلاح وقوة الضربة.",
+      "evidence_type": "forensic",
+      "viewer_strategy": "paper",
+      "paper_finish": "blank",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "autopsy-page-1",
+            "blocks": [
+              {
+                "id": "autopsy-lead",
+                "type": "text",
+                "props": {
+                  "html": "<p><strong>مديرية الطب الشرعي — دمشق</strong></p><p>رقم التقرير: ش / 2026 / 089</p><p>الحالة: فيسام الحلبي، ذكر،اربعة وخمسون عاما.</p>",
+                  "align": "right",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "autopsy-findings",
+                "type": "text",
+                "props": {
+                  "html": "<p>أُجري الشرح الجساني على الجثة بعد ساعتين من اكتشافها. أظهر الفحص البصري جرحا نافذا في الفك الأيسر، ورضا سحقا في الجانب الأيمن من الجمجمة.</p><p>لم تُسجَّل أي علامات دفاع على الساعدين، وهو ما يشير إلى أن الضحية كان مقيَّدا أو فاقد الوعي وقت الضربة الأولى.</p>",
+                  "align": "justify",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "autopsy-table",
+                "type": "table",
+                "props": {
+                  "headers": ["الفقرة", "النتيجة"],
+                  "rows": [
+                    ["الجرح النافذ", "الفك الأيسر، عرض 2.1 سم"],
+                    ["الرض السحق", "الجانب الأيمن، ضغط 340 كغم"],
+                    ["مدة التصلّب", "من 10 إلى 14 ساعة"],
+                    ["نسبة الكحول في الدم", "0.0"],
+                    ["أثر الألياف", "ألياف صناعية زرقاء، سُجّلت للمقارنة"]
+                  ],
+                  "caption": "الملخص التشخيصي",
+                  "dense": false
+                }
+              },
+              {
+                "id": "autopsy-signature",
+                "type": "signature",
+                "props": {
+                  "signature_id": 4,
+                  "label": "د. ليلى قدسي — طبيبة الشراح",
+                  "verified": true
+                }
+              },
+              {
+                "id": "autopsy-stamp",
+                "type": "stamp",
+                "props": {
+                  "text": "سري للغاية",
+                  "variant": "red",
+                  "rotation": -8,
+                  "font_size": "auto"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_police_log",
+      "order_index": 20,
+      "title": "صفحة من سجل بلاغات الفرقة",
+      "description": "صفحة واحدة من دفتر البلاغات، الليلة نفسها، ثلاثة بلاغات.",
+      "evidence_type": "document",
+      "viewer_strategy": "paper",
+      "paper_finish": "blank",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "policelog-page-1",
+            "blocks": [
+              {
+                "id": "policelog-text",
+                "type": "text",
+                "props": {
+                  "html": "<p>فُتح الدفتر على الصفحة 214. بين التاسعة مساءً وال23:00، وردت ثلاثة بلاغات: شجار في الطابق السفلي، ثم انقطاع للتيار الكهربائي، ثم سطر واحد بخط اليد لا يحمل توقيعا.</p>",
+                  "align": "justify",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "policelog-table",
+                "type": "table",
+                "props": {
+                  "headers": ["الوقت", "نوع البلاغ", "المبلّغ"],
+                  "rows": [
+                    ["21:40", "شجار", "مقيم الطابق الرابع"],
+                    ["22:15", "انقطاع الكهرباء", "حارس المبنى"],
+                    ["22:51", "سطر بخط اليد، بلا توقيع", "لا يوجد"]
+                  ],
+                  "caption": "البلاغات الواردة في الليلة",
+                  "dense": true
+                }
+              },
+              {
+                "id": "policelog-stamp",
+                "type": "stamp",
+                "props": {
+                  "text": "مُصادق",
+                  "variant": "blue",
+                  "rotation": 12,
+                  "font_size": "large"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_bank",
+      "order_index": 30,
+      "title": "كشوف حساب شركة ميزاء",
+      "description": "كشف حساب مصرفي لشهر تموز، يظهر تحويلا مريبا قبل الحادثة بيوم.",
+      "evidence_type": "document",
+      "viewer_strategy": "paper",
+      "paper_finish": "manila",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "bank-page-1",
+            "blocks": [
+              {
+                "id": "bank-text",
+                "type": "text",
+                "props": {
+                  "html": "<p>أرفقت الفرقة كشف حساب شركة ميزاء للتقنية لدى المصرف. في الأيام الأربعة الأخيرة قبل الحادثة، غادر الحساب مبلغ كبير جدا، وحل محله مبلغ لم يسبق أن رأته الشركة في cuenta.</p>",
+                  "align": "right",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "bank-table",
+                "type": "table",
+                "props": {
+                  "headers": ["التاريخ", "البيان", "المبلغ"],
+                  "rows": [
+                    ["13 آب", "حويل صادر إلى شركة أوج", "250,000"],
+                    ["14 آب", "رسوم إدارية", "1,200"],
+                    ["14 آب", "حوالة واردة من الخارج", "180,000"],
+                    ["15 آب", "رصيد آخر اليوم", "41,750"]
+                  ],
+                  "caption": "الحركة خلال خمسة أيام",
+                  "dense": false
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_ballistics",
+      "order_index": 40,
+      "title": "تقرير فحص السلاح الناري",
+      "description": "مسدس بلا رقم تسلسلي، طلقتان أُطلقتا، ورصاصة تطابق الجثة.",
+      "evidence_type": "ballistics",
+      "viewer_strategy": "paper",
+      "paper_finish": "manila",
+      "is_initial": true,
+      "is_vital_for_conviction": true,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "ballistics-page-1",
+            "blocks": [
+              {
+                "id": "ballistics-text",
+                "type": "text",
+                "props": {
+                  "html": "<p>فُحص مسدس من طراز تشيك تاوون، عثر عليه في صندوق السيارة. سببه تآكل واضح، ورقمه التسلسلي محو عمدا بآلة.</p><p>في الأنبوب طلقتان. إحداهما أخرجت بصمة مطابقة للرصاصة المستخرجة من رأس الضحية، والثانية لم تُطلق بعد.</p>",
+                  "align": "right",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "ballistics-table",
+                "type": "table",
+                "props": {
+                  "headers": ["البند", "الوصف"],
+                  "rows": [
+                    ["نوع السلاح", "مسدس آلي عيار 9 ملم"],
+                    ["حالة الأنبوب", "طلقتان، إحداهما مستعملة"],
+                    ["الرقم التسلسلي", "محو عمدا"],
+                    ["مطابقة البصمة", "نعم، تطابق تام"],
+                    ["أثر اليد", "لم يُؤخذ بعد"]
+                  ],
+                  "caption": "الخصائص الفنية للسلاح",
+                  "dense": false
+                }
+              },
+              {
+                "id": "ballistics-signature",
+                "type": "signature",
+                "props": {
+                  "signature_id": 11,
+                  "label": "الرائد سامر ميعاد — قسم الأسلحة",
+                  "verified": false
+                }
+              },
+              {
+                "id": "ballistics-stamp",
+                "type": "stamp",
+                "props": {
+                  "text": "مُعتمد",
+                  "variant": "black",
+                  "rotation": 4,
+                  "font_size": "medium"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_ballistics_term",
+      "order_index": 50,
+      "title": "استعلام قاعدة بيانات الأسلحة",
+      "description": "استعلام من النظام المركزي، الطراز مطابق لكن السجل فارغ.",
+      "evidence_type": "ballistics",
+      "viewer_strategy": "terminal",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "ballisticsterm-page-1",
+            "blocks": [
+              {
+                "id": "ballisticsterm-cmd",
+                "type": "text",
+                "props": {
+                  "html": "<pre>$ ballistics query --make \"chicago typewriter\" --window 2026-08-01..2026-08-16\nفُحص 412 مدخلة. طُابقت ثلاثة أسلحة.</pre>",
+                  "align": "right",
+                  "size": "small"
+                }
+              },
+              {
+                "id": "ballisticsterm-table",
+                "type": "table",
+                "props": {
+                  "headers": ["المدخل", "الوصف", "آخر استعمال"],
+                  "rows": [
+                    ["B-8841", "تشيك تاوون 9 ملم", "مجهول"],
+                    ["B-8842", "تشيك تاوون 9 ملم", "مجهول"],
+                    ["B-9103", "بيرا 9 ملم", "لم يستعمل"]
+                  ],
+                  "caption": "المداخل المرشحة",
+                  "dense": true
+                }
+              },
+              {
+                "id": "ballisticsterm-stamp",
+                "type": "stamp",
+                "props": {
+                  "text": "سري",
+                  "variant": "blue",
+                  "rotation": -20,
+                  "font_size": "small"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_autopsy_term",
+      "order_index": 60,
+      "title": "سجل تصوير مسرح الجثة",
+      "description": "قائمة الملفات المصورة في مسرح الجثة مع أرقامها.",
+      "evidence_type": "forensic",
+      "viewer_strategy": "terminal",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "autopsyterm-page-1",
+            "blocks": [
+              {
+                "id": "autopsyterm-cmd",
+                "type": "text",
+                "props": {
+                  "html": "<pre>forensic export --case 2026-089 --media photo\nإجمالي الملفات: 37 صورة، 6 قياسات، عينتان مختومتان.</pre>",
+                  "align": "right",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "autopsyterm-table",
+                "type": "table",
+                "props": {
+                  "headers": ["الملف", "الوصف"],
+                  "rows": [
+                    ["P-01", "الجثة في مكانها"],
+                    ["P-14", "المكتب المكتب، أثر انقلاب"],
+                    ["P-22", "النصل تحت المقعد الخلفي"]
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_testimony",
+      "order_index": 70,
+      "title": "شهادة موظفة الاستقبال",
+      "description": "شهادة مكتوبة وموقعة، تسمع صوتا وترى رجلا يحمل حقيبة.",
+      "evidence_type": "testimony",
+      "viewer_strategy": "paper",
+      "paper_finish": "blank",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "testimony-page-1",
+            "blocks": [
+              {
+                "id": "testimony-text",
+                "type": "text",
+                "props": {
+                  "html": "<p>تصف الموظفة رنا منصور سماع صوت ارتطام ثقيل عند الحادية عشرة، ثم صوت ركلة واحدة، ثم صمت. تصف بعد ذلك خروج رجل وامرأة من المصعد، والرجل يحمل حقيبة صغيرة يظنها حقيبة معدات.</p><p>تؤكد أنها لم ترى وجهيهما، وأنهما خرجا ولم يعودا.</p>",
+                  "align": "right",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "testimony-signature",
+                "type": "signature",
+                "props": {
+                  "signature_id": 7,
+                  "label": "رنا منصور — موظفة الاستقبال",
+                  "verified": false
+                }
+              },
+              {
+                "id": "testimony-stamp",
+                "type": "stamp",
+                "props": {
+                  "text": "شك مشكوك فيه",
+                  "variant": "red",
+                  "rotation": 30,
+                  "font_size": "medium"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_testimony_term",
+      "order_index": 80,
+      "title": "محضر استجواب السائق",
+      "description": "محضر نصي لاستجواب طارق عثمان، أجوبة متناقضة متوالية.",
+      "evidence_type": "testimony",
+      "viewer_strategy": "terminal",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "testimonyterm-page-1",
+            "blocks": [
+              {
+                "id": "testimonyterm-cmd",
+                "type": "text",
+                "props": {
+                  "html": "<pre>المحضر رقم 3 —طارق عثمان.\n\nس: أين كنت ليلة الحادثة؟\nج: في بيتي. كنت نائما.\nس: من يشهد على ذلك؟\nج: لا أحد.</pre>",
+                  "align": "right",
+                  "size": "small"
+                }
+              },
+              {
+                "id": "testimonyterm-table",
+                "type": "table",
+                "props": {
+                  "headers": ["السؤال", "الإجابة"],
+                  "rows": [
+                    ["متى غادرت المنزل؟", "لم يجب"],
+                    ["هل رأيت السيارة في المبنى؟", "أنكر"],
+                    ["من دفع لك؟", "رفض الكلام"]
+                  ],
+                  "dense": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_shell",
+      "order_index": 90,
+      "title": "سجل أوامر الطرفية المستعاد",
+      "description": "أوامر محو الأدلة، قبل الحادثة بساعة.",
+      "evidence_type": "digital",
+      "viewer_strategy": "terminal",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "shell-page-1",
+            "blocks": [
+              {
+                "id": "shell-cmd",
+                "type": "text",
+                "props": {
+                  "html": "<pre>$ forensic recover --device sda2 --since \"2026-08-14T20:00\"\nتمت استعادة 1204 أمر. آخر 30 أمرا مدرجة أدناه.</pre>",
+                  "align": "right",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "shell-table",
+                "type": "table",
+                "props": {
+                  "headers": ["الوقت", "الأمر", "المستخدم"],
+                  "rows": [
+                    ["22:41", "ssh root@10.0.0.7", "root"],
+                    ["22:44", "shred -n 3 ledger.db", "root"],
+                    ["22:47", "shred -n 3 audit.log", "root"],
+                    ["22:51", "history -c", "root"]
+                  ],
+                  "caption": "أوامر محو الأدلة",
+                  "dense": false
+                }
+              },
+              {
+                "id": "shell-signature",
+                "type": "signature",
+                "props": {
+                  "signature_id": 15,
+                  "label": "رامي نجار — مسؤول الأنظمة",
+                  "verified": true
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_shell_paper",
+      "order_index": 100,
+      "title": "نسخة مطبوعة من تقرير الأدلة الرقمية",
+      "description": "التقرير الرقمي مطبوعا على ورق، للتوثيق فقط.",
+      "evidence_type": "digital",
+      "viewer_strategy": "paper",
+      "paper_finish": "blank",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "shellpaper-page-1",
+            "blocks": [
+              {
+                "id": "shellpaper-text",
+                "type": "text",
+                "props": {
+                  "html": "<p>هذه نسخة مطبوعة من التقرير الرقمي لأغراض التوثيق، والأصل يبقى القرص الصلب. أُدرجت النسخة لأن أحد المدافعين طلب قرينة مكتوبة.</p>",
+                  "align": "right",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "shellpaper-table",
+                "type": "table",
+                "props": {
+                  "headers": ["البند", "الحالة"],
+                  "rows": [
+                    ["القرص الصلب", "مستعاد"],
+                    ["الأوامر", "محوة جزئيا"],
+                    ["التشفير", "غير مفعّل"]
+                  ],
+                  "caption": "حالة الأدلة الرقمية",
+                  "dense": false
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_audit",
+      "order_index": 110,
+      "title": "سجل تدقيق الصلاحيات",
+      "description": "صلاحيات المستخدمين، وأحدهم كان يملك كل الصلاحيات في لحظة الحادثة.",
+      "evidence_type": "document",
+      "viewer_strategy": "terminal",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "audit-page-1",
+            "blocks": [
+              {
+                "id": "audit-cmd",
+                "type": "text",
+                "props": {
+                  "html": "<pre>audit export --all --format table\nأربعة سجلات حساسة في النطاق المطلوب.</pre>",
+                  "align": "right",
+                  "size": "small"
+                }
+              },
+              {
+                "id": "audit-table",
+                "type": "table",
+                "props": {
+                  "headers": ["المستخدم", "الصلاحية", "آخر دخول"],
+                  "rows": [
+                    ["n.sarrar", "قراءة فقط", "09:02"],
+                    ["t.othman", "صلاحيات كاملة", "22:40"],
+                    ["r.najar", "قراءة وكتابة", "21:15"],
+                    ["k.aldin", "مدير النظام", "20:00"]
+                  ],
+                  "caption": "الصلاحيات في ليلة الحادثة",
+                  "dense": true
+                }
+              },
+              {
+                "id": "audit-stamp",
+                "type": "stamp",
+                "props": {
+                  "text": "محصور",
+                  "variant": "black",
+                  "rotation": -6,
+                  "font_size": "auto"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_cctv",
+      "order_index": 120,
+      "title": "لقطة كاميرا ممر الطابق الحادي والعشرين",
+      "description": "صورة مراقبة، تُقرأ بعد إرفاق ملفها.",
+      "evidence_type": "image",
+      "viewer_strategy": "media",
+      "is_initial": true,
+      "is_vital_for_conviction": true
+    },
+
+    {
+      "ref_id": "ev_wiretap",
+      "order_index": 130,
+      "title": "تسجيل مكالمة مراقبة",
+      "description": "تسجيل صوتي قصير، يُقرأ بعد إرفاق ملفه.",
+      "evidence_type": "audio",
+      "viewer_strategy": "media",
+      "is_initial": true,
+      "is_vital_for_conviction": false
+    },
+
+    {
+      "ref_id": "ev_blade_tag",
+      "order_index": 140,
+      "title": "بطاقة الدليل رقم 14 — نصل معدني",
+      "description": "بطاقة تعريف مادية، لاختبار عارض القطع الأثرية.",
+      "evidence_type": "custom",
+      "viewer_strategy": "artifact",
+      "is_initial": true,
+      "is_vital_for_conviction": true,
+      "content_payload": {
+        "kind": "html",
+        "html": "<header><h2>بطاقة دليل — رقم 14</h2></header><section><p>صُرفت هذه البطاقة في الدورية رقم 7. أُدرجت التفاصيل التالية عند استلام الدليل من المسرح، ولم تُجرَ أي مقارنة مخبرية بعد.</p></section><table><caption>تفاصيل الدليل</caption><thead><tr><th>البند</th><th>الوصف</th></tr></thead><tbody><tr><td>نوع الدليل</td><td>نصل معدني</td></tr><tr><td>الطول</td><td>19.4 سم</td></tr><tr><td>مكان العثور</td><td>صندوق السيارة، المقعد الخلفي</td></tr><tr><td>الحالة</td><td>نظيف، بلا أثر دموي ظاهر</td></tr><tr><td>ملاحظة</td><td>لا يطابق أسلوب الطعنات المعتادة في هذه القضية</td></tr></tbody></table><footer><p>حُرّر في دمشق — الدورية 7</p></footer>",
+        "css": "body { direction: rtl; font-family: Tahoma, sans-serif; color: #1c1c1c; background-color: #f7f5ee; margin: 0; padding: 18px; line-height: 1.7; } header { border-bottom: 3px double #7a1f1f; padding-bottom: 8px; margin-bottom: 14px; } h2 { color: #7a1f1f; margin: 0; font-size: 1.2rem; } table { width: 100%; border-collapse: collapse; margin-top: 12px; } caption { font-weight: bold; margin-bottom: 6px; } th, td { border: 1px solid #b9b2a0; padding: 7px 9px; text-align: right; } th { background-color: #ece7d9; } tbody tr:nth-child(even) { background-color: #f2eee3; } footer { margin-top: 16px; border-top: 1px solid #b9b2a0; padding-top: 8px; font-size: 0.8rem; color: #5c5548; }"
+      }
+    },
+
+    {
+      "ref_id": "ev_empty_tag",
+      "order_index": 150,
+      "title": "بطاقة دليل فارغة",
+      "description": "بطاقة أنشئت ولم تملأ بعد، لاختبار حالة الفراغ في العارض.",
+      "evidence_type": "custom",
+      "viewer_strategy": "artifact",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": null
+    },
+
+    {
+      "ref_id": "ev_minutes",
+      "order_index": 160,
+      "title": "محضر جلسة التحريات الأولى",
+      "description": "محضر من ثلاث صفحات، لاختبار ترقيم الصفحات والتنقل بينها.",
+      "evidence_type": "document",
+      "viewer_strategy": "paper",
+      "paper_finish": "blank",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "minutes-page-1",
+            "blocks": [
+              {
+                "id": "minutes-head",
+                "type": "text",
+                "props": {
+                  "html": "<p>محضر جلسة التحريات الأولى</p><p>التاريخ: 16 آب 2026 — المكان: غرفة التحريات</p>",
+                  "align": "center",
+                  "size": "heading"
+                }
+              },
+              {
+                "id": "minutes-intro",
+                "type": "text",
+                "props": {
+                  "html": "<p>حضر الجلسة المحققان، وشارك فيها ناطق باسم المدعى عليه. افتُتح المحضر بتحديد هوية الحضور، ثم أُخذت إفادات أولية عن-License.</p>",
+                  "align": "justify",
+                  "size": "body"
+                }
+              }
+            ]
+          },
+          {
+            "id": "minutes-page-2",
+            "blocks": [
+              {
+                "id": "minutes-testimony",
+                "type": "text",
+                "props": {
+                  "html": "<p>صرّح الناطق بأن موكليه كان في اجتماع مغلق حتى العاشرة مساء، وأنه لا يعرف شيئا عن المبلغ الذي خرج من حساب الشركة. أُثبتت للإفادة وثيقتان.</p>",
+                  "align": "justify",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "minutes-table",
+                "type": "table",
+                "props": {
+                  "headers": ["المستند", "الوصف", "الحالة"],
+                  "rows": [
+                    ["وثيقة 1", "إشعار حضور", "موثقة"],
+                    ["وثيقة 2", "دفتر حسابات", "موثقة"]
+                  ],
+                  "caption": "الوثائق المرفقة",
+                  "dense": false
+                }
+              }
+            ]
+          },
+          {
+            "id": "minutes-page-3",
+            "blocks": [
+              {
+                "id": "minutes-close",
+                "type": "text",
+                "props": {
+                  "html": "<p>خُتم المحضر، وأُجّل البت إلى اليوم التالي. سُجل أن المحققين قدما طلب مذكرة الاعتقال إلى المدعي العام، وأن رامي نجار في انتظار.</p>",
+                  "align": "right",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "minutes-stamp",
+                "type": "stamp",
+                "props": {
+                  "text": "صفحة 3 من 3",
+                  "variant": "black",
+                  "rotation": 0,
+                  "font_size": "small"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_aligns",
+      "order_index": 170,
+      "title": "تقرير محاذاة المخرجات",
+      "description": "يعرض المحاذاة الأربع، لاختبار كيف يغير محاذاة الكتلة النص المطبوع.",
+      "evidence_type": "document",
+      "viewer_strategy": "paper",
+      "paper_finish": "blank",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "aligns-page-1",
+            "blocks": [
+              {
+                "id": "aligns-left",
+                "type": "text",
+                "props": {
+                  "html": "<div>محاذاة إلى اليسار: هذا الفقرة ترقيمها وسجلات النظام، وتُقرأ من اليسار إلى اليمين.</div>",
+                  "align": "left",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "aligns-center",
+                "type": "text",
+                "props": {
+                  "html": "<blockquote>محاذاة إلى الوسط: عنوان فرعي أو اسم قسم موضوع في منتصف الصفحة.</blockquote>",
+                  "align": "center",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "aligns-right",
+                "type": "text",
+                "props": {
+                  "html": "<ul><li>محاذاة إلى اليمين: هذه قائمة عادية.</li><li>وهي المحاذاة الطبيعية للنص العربي.</li><li>لأن الصفحة نفسها تبدأ من اليمين.</li></ul>",
+                  "align": "right",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "aligns-justify",
+                "type": "text",
+                "props": {
+                  "html": "<blockquote>محاذاة مضبوطة على الطرفين: تُستخدم في النصوص الطويلة حتى تصير حافة الصفحة اليمنى وحافتها اليسرى متساويتين في السطر الأخير من كل فقرة. هذه الفقرة طويلة عمدا، وثمان جمل على الأقل، كي يظهر أثر الضبط على الطرفين بوضوح.</blockquote>",
+                  "align": "justify",
+                  "size": "body"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_scales",
+      "order_index": 180,
+      "title": "تقرير أحجام الخط",
+      "description": "يعرض أحجام الخط الأربعة على الصفحة نفسها.",
+      "evidence_type": "document",
+      "viewer_strategy": "paper",
+      "paper_finish": "blank",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "scales-page-1",
+            "blocks": [
+              {
+                "id": "scales-small",
+                "type": "text",
+                "props": {
+                  "html": "<blockquote>حجم صغير: للحواشي وأرقام المراجع.</blockquote>",
+                  "align": "right",
+                  "size": "small"
+                }
+              },
+              {
+                "id": "scales-body",
+                "type": "text",
+                "props": {
+                  "html": "<blockquote>حجم المتن: وهو الحجم الافتراضي لنص التقرير.</blockquote>",
+                  "align": "right",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "scales-lead",
+                "type": "text",
+                "props": {
+                  "html": "<blockquote>حجم بارز: للفقرات التمهيدية والملخص التنفيذي.</blockquote>",
+                  "align": "right",
+                  "size": "lead"
+                }
+              },
+              {
+                "id": "scales-heading",
+                "type": "text",
+                "props": {
+                  "html": "<ul><li>حجم عنوان: لعناوين الأقسام الرئيسة.</li></ul>",
+                  "align": "right",
+                  "size": "heading"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_stamps",
+      "order_index": 190,
+      "title": "سجل الموافقات الداخلية",
+      "description": "ثلاثة أختام بألوان وأحجام وزوايا مختلفة، لاختبار عرض الختوم.",
+      "evidence_type": "document",
+      "viewer_strategy": "paper",
+      "paper_finish": "manila",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "stamps-page-1",
+            "blocks": [
+              {
+                "id": "stamps-text",
+                "type": "text",
+                "props": {
+                  "html": "<p>يحتوي هذا السجل على ثلاثة أختام مختلفة اللون والحجم والدوران. الغرض منها اختبار عرض الختوم على ورق المانيلا، ومعرفة ما إذا كان اللون يبقى واضحا فوق النص.</p>",
+                  "align": "right",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "stamps-red",
+                "type": "stamp",
+                "props": {
+                  "text": "مرفوض",
+                  "variant": "red",
+                  "rotation": -22,
+                  "font_size": "large"
+                }
+              },
+              {
+                "id": "stamps-blue",
+                "type": "stamp",
+                "props": {
+                  "text": "معتمد",
+                  "variant": "blue",
+                  "rotation": 18,
+                  "font_size": "medium"
+                }
+              },
+              {
+                "id": "stamps-black",
+                "type": "stamp",
+                "props": {
+                  "text": "مؤرشف",
+                  "variant": "black",
+                  "rotation": 6,
+                  "font_size": "small"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "ref_id": "ev_pending",
+      "order_index": 200,
+      "title": "نتيجة الفحص الأولي — بانتظار المختبر",
+      "description": "جدول بعناوينه فقط وبلا صفوف، لاختبار حالة الجدول الفارغ.",
+      "evidence_type": "document",
+      "viewer_strategy": "paper",
+      "paper_finish": "blank",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "content_payload": {
+        "pages": [
+          {
+            "id": "pending-page-1",
+            "blocks": [
+              {
+                "id": "pending-text",
+                "type": "text",
+                "props": {
+                  "html": "<p>أُنشئ الجدول بعناوينه، ولم تصل النتائج بعد. حين تكون الصفوف فارغة، يفترض أن يعرض المشهد رسالة حالة فارغة بدل الجدول.</p>",
+                  "align": "right",
+                  "size": "body"
+                }
+              },
+              {
+                "id": "pending-table",
+                "type": "table",
+                "props": {
+                  "headers": ["العينة", "الفحص", "النتيجة"],
+                  "rows": [],
+                  "caption": "بانتظار المختبر",
+                  "dense": false
+                }
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ],
+
+  "characters": [
+    {
+      "ref_id": "char_halabi",
+      "name": "فيسام الحلبي",
+      "background": "مؤسس شركة ميزاء للتقنية، قُتل في مكتبه قبل أن يصل إليه.",
+      "is_initial": true,
+      "is_guilty": false,
+      "default_status": "deceased"
+    },
+    {
+      "ref_id": "char_karam",
+      "name": "كرم الدين",
+      "background": "رئيس مجلس إدارة منافس، كان يطالب بمبلغ لم تدفعه الشركة.",
+      "is_initial": true,
+      "is_guilty": true,
+      "charge": "murder",
+      "default_status": "available"
+    },
+    {
+      "ref_id": "char_nadia",
+      "name": "نادية سرّار",
+      "background": "المديرة المالية للشركة،وقّعت على التحويل الكبير.",
+      "is_initial": true,
+      "is_guilty": false,
+      "default_status": "available"
+    },
+    {
+      "ref_id": "char_tarek",
+      "name": "طارق عثمان",
+      "background": "السائق الشخصي، كان أقرب إلى فيسام في تلك الليلة، وهرب قبل الفجر.",
+      "is_initial": false,
+      "is_guilty": true,
+      "charge": "accomplice",
+      "default_status": "fled"
+    },
+    {
+      "ref_id": "char_rami",
+      "name": "رامي نجار",
+      "background": "مسؤول الأنظمة، نفّذ أوامر المحو، ويقول إنه لا يعرف من أعطاها.",
+      "is_initial": false,
+      "is_guilty": false,
+      "default_status": "available"
+    }
+  ],
+
+  "investigation_requests": [
+    {
+      "ref_id": "req_warrant",
+      "request_type": "search_warrant",
+      "required_evidence_refs": ["ev_cctv", "ev_autopsy"],
+      "unlocks_evidence_ref": "ev_ballistics",
+      "unlocks_level_ref": null
+    },
+    {
+      "ref_id": "req_financial",
+      "request_type": "financial_subpoena",
+      "required_evidence_refs": ["ev_bank", "ev_audit"],
+      "unlocks_evidence_ref": "ev_ballistics_term",
+      "unlocks_level_ref": null
+    },
+    {
+      "ref_id": "req_digital",
+      "request_type": "digital_forensics",
+      "required_evidence_refs": ["ev_audit", "ev_bank"],
+      "unlocks_evidence_ref": "ev_shell_paper",
+      "unlocks_level_ref": "lvl_server"
+    }
+  ],
+
+  "zones": [
+    {
+      "title": "المزة — القطاع التجاري",
+      "description": "البرج ومبانيه المحيطة، حيث تتركّز التحقيقات الأولى.",
+      "order_index": 1,
+      "coord_x": 45.5,
+      "coord_y": 60.2,
+      "levels": [
+        {
+          "ref_id": "lvl_scene",
+          "title": "مكتب فيسام الحلبي",
+          "details": "مسح مسرح الجريمة في الطابق الحادي والعشرين. اختر موقعا لتفحصه.",
+          "order_index": 1,
+          "is_initial": true,
+          "presentation_type": "location",
+          "required_request_ref": null,
+          "nodes": [
+            {
+              "text": "المكتب فوضوي. الحاسوب المحمول مقلوب على وجهه، والقرص الصلب مفقود. أين تبدأ؟",
+              "choices": [
+                {
+                  "ref_id": "choice_desk",
+                  "text": "المكتب: تفحص الحاسوب وسجل النظام",
+                  "outcomes": {
+                    "feedback": "وجدت سجل تدقيق الصلاحيات، ونسخة مطبوعة من التقرير الرقمي، واعتقال مسؤول الأنظمة رامي نجار.",
+                    "gives_strike": false,
+                    "unlock_evidence_refs": ["ev_audit", "ev_shell_paper", "ev_autopsy_term"],
+                    "character_updates": [
+                      { "ref_id": "char_rami", "is_unlocked": true, "status": "incarcerated" }
+                    ]
+                  }
+                },
+                {
+                  "ref_id": "choice_drawer",
+                  "text": "الدرج: تفتح أدراج المكتب",
+                  "outcomes": {
+                    "feedback": "وثائق مالية، وشهادة موظفة الاستقبال، وتسجيل مكالمة، وعدد من الأوراق القديمة. كل ما في المزة صار بين يديك الآن.",
+                    "gives_strike": false,
+                    "unlock_evidence_refs": [
+                      "ev_autopsy",
+                      "ev_police_log",
+                      "ev_cctv",
+                      "ev_bank",
+                      "ev_testimony",
+                      "ev_testimony_term",
+                      "ev_wiretap",
+                      "ev_empty_tag",
+                      "ev_minutes",
+                      "ev_aligns",
+                      "ev_scales",
+                      "ev_stamps",
+                      "ev_pending"
+                    ]
+                  }
+                },
+                {
+                  "ref_id": "choice_cup",
+                  "text": "فنجان القهوة على المكتب",
+                  "outcomes": {
+                    "feedback": "قهوة باردة منذ ساعات. لا شيء هنا.",
+                    "gives_strike": false,
+                    "unlock_evidence_refs": []
+                  }
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "ref_id": "lvl_karam",
+          "title": "مواجهة كرم الدين",
+          "details": "استجواب رئيس مجلس الإدارة المنافس. لا يمكنك إتمام الاعتراف دون دليل.",
+          "order_index": 2,
+          "is_initial": true,
+          "presentation_type": "interrogation",
+          "required_request_ref": null,
+          "nodes": [
+            {
+              "text": "كرم الدين، بثقة: سمعت عن الحادثة. لي صلة بالشركة، ونريد أموالنا، هذا كل شيء.",
+              "choices": [
+                {
+                  "ref_id": "choice_alibi",
+                  "text": "تعرض عليه لقطة الكاميرا",
+                  "requirements": {
+                    "required_evidence_refs": ["ev_cctv"]
+                  },
+                  "outcomes": {
+                    "feedback": "تهدأ، ويقول إنه كان في اجتماع مغلق حتى العاشرة، ويدّعي أنه لم ير فيسام بعد التاسعة. ثم تغيّر لونه: سائدي كان معي.",
+                    "gives_strike": false,
+                    "next_question_index": 1,
+                    "unlock_evidence_refs": ["ev_testimony"],
+                    "character_updates": [
+                      { "ref_id": "char_tarek", "is_unlocked": true, "status": "fled" }
+                    ]
+                  }
+                },
+                {
+                  "ref_id": "choice_accuse",
+                  "text": "اتهامه مباشرة بإطلاق النار",
+                  "outcomes": {
+                    "feedback": "يضرب الطاولة ويطلب محاميا. أخطأت: دفعت الاتهام بلا دليل واحد.",
+                    "gives_strike": true,
+                    "next_question_index": null,
+                    "unlock_evidence_refs": []
+                  }
+                }
+              ]
+            },
+            {
+              "text": "كرم الدين، متردد: كنت هناك، لكنني لم أضغط الزناد. أنا من طلب، وسائدي هو من فعل.",
+              "choices": [
+                {
+                  "ref_id": "choice_driver",
+                  "text": "من هو السائق؟",
+                  "requirements": {
+                    "required_choice_refs": ["choice_alibi"]
+                  },
+                  "outcomes": {
+                    "feedback": "يعطي اسم طارق عثمان، السائق الشخصي، ويقول إنه يظن أنه هرب. اطلب الآن إذن-entry.",
+                    "gives_strike": false,
+                    "next_question_index": null,
+                    "unlock_evidence_refs": []
+                  }
+                },
+                {
+                  "ref_id": "choice_press",
+                  "text": "تعيد السؤال مرة ثانية",
+                  "outcomes": {
+                    "feedback": "ينظر إليك طويلا ثم يصمت. لم يتغير شيء.",
+                    "gives_strike": false,
+                    "next_question_index": null,
+                    "unlock_evidence_refs": []
+                  }
+                }
+              ]
+            }
+          ]
+        },
+
+        {
+          "ref_id": "lvl_server",
+          "title": "غرفة الخوادم",
+          "details": "في الطابق السفلي. لا يمكن دخولها إلا بتصريح من المدعي العام.",
+          "order_index": 3,
+          "is_initial": false,
+          "presentation_type": "location",
+          "required_request_ref": "req_digital",
+          "nodes": [
+            {
+              "text": "الخزائن مغلقة، ومخرج الطوارئ مفتوح. لا أثر لدخول قسري.",
+              "choices": [
+                {
+                  "ref_id": "choice_rack",
+                  "text": "خزانة الخادم: تسحب القرص المستعاد",
+                  "outcomes": {
+                    "feedback": "أوامر المحو، الساعة 22:44 و22:47. الأدلة الحاسمة.",
+                    "gives_strike": false,
+                    "unlock_evidence_refs": ["ev_shell"]
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -128,14 +128,39 @@ class RoomEvidenceDetailTest extends TestCase
         $host = User::factory()->create();
         $room = $this->roomWith($host);
 
+        // is_initial is pinned because the factory randomises it. A random
+        // initial evidence is possessed and must be readable, so leaving it
+        // to chance made this assertion flaky.
         $evidence = Evidence::factory()
             ->ofType(EvidenceType::Document)
-            ->create(['case_id' => $room->case_id]);
+            ->create(['case_id' => $room->case_id, 'is_initial' => false]);
 
-        // Deliberately not attached to the room.
+        // Deliberately neither attached to the room nor initial.
         $this->actingAs($host)
             ->getJson("/api/rooms/{$room->id}/evidences/{$evidence->id}")
             ->assertNotFound();
+    }
+
+    public function test_an_initial_evidence_is_readable_without_being_attached_to_the_room(): void
+    {
+        $host = User::factory()->create();
+        $room = $this->roomWith($host);
+
+        $evidence = Evidence::factory()
+            ->ofType(EvidenceType::Document)
+            ->create(['case_id' => $room->case_id, 'is_initial' => true]);
+
+        // The board already lists initial evidence, and both the assessment and
+        // the request service treat it as held. Refusing it here left a
+        // document the player could see on the board but never open.
+        $this->assertFalse(
+            $room->unlockedEvidences()->where('evidences.id', $evidence->id)->exists()
+        );
+
+        $this->actingAs($host)
+            ->getJson("/api/rooms/{$room->id}/evidences/{$evidence->id}")
+            ->assertOk()
+            ->assertJsonPath('evidence.viewer_strategy', ViewerStrategy::Paper->value);
     }
 
     public function test_an_unlocked_evidence_from_another_case_still_404s(): void
