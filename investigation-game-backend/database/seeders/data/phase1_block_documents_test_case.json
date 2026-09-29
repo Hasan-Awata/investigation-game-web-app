@@ -1,0 +1,1062 @@
+{
+  "case_details": {
+    "title": "PHASE 1 ENGINE — Block Document Test Case",
+    "story": "A synthetic case file whose entire purpose is to exercise every block type in the Phase 1 universal document engine. Twelve documents covering all sixteen block types across all five themes. Safe to delete; contains no real content.",
+    "min_player_XP": 0,
+    "XP_on_solve": 1000,
+    "max_strikes": 3,
+    "rating_stars": 5.0,
+    "age_rating": "Unrated",
+    "estimated_playtime": "5 Minutes",
+    "difficulty": "Standard",
+    "tags": ["Internal", "Phase1", "BlockEngine", "TestFixture"],
+    "author_name": "System",
+    "is_published": false
+  },
+
+  "evidences": [
+    {
+      "ref_id": "ev_contract",
+      "title": "01 · Contract — Service Agreement",
+      "description": "Blocks: watermark, letterhead, meta_grid, rule, prose, signature_row, spacer, stamp. Theme: case_file.",
+      "evidence_type": "document",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "case_file",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "c_wm",
+              "type": "watermark",
+              "span": 12,
+              "props": { "text": "DRAFT", "rotate": -30 }
+            },
+            {
+              "id": "c_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Office of Legal Affairs",
+                "title": "Service Agreement",
+                "sub": "Effective on countersignature",
+                "aside": "NO. 4471",
+                "asideLabel": "Docket",
+                "rule": true
+              }
+            },
+            {
+              "id": "c_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 2,
+                "tone": "rows",
+                "rows": [
+                  { "label": "Parties", "value": "A. Vance / Meridian Holdings Ltd." },
+                  { "label": "Effective", "value": "2026-02-11" },
+                  { "label": "Jurisdiction", "value": "District of Northgate" },
+                  { "label": "Governing law", "value": "State Contract Code, s.14" }
+                ]
+              }
+            },
+            { "id": "c_r1", "type": "rule", "span": 12, "props": { "variant": "solid" } },
+            {
+              "id": "c_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "typed",
+                "html": "<p>This Agreement is entered into by and between the parties named above. Each party represents that it has full authority to bind itself to the obligations set out herein.</p><p>Nothing in this Agreement shall be construed to limit either party&rsquo;s statutory rights. Any amendment must be executed in writing and countersigned by both parties.</p>"
+              }
+            },
+            { "id": "c_r2", "type": "rule", "span": 12, "props": { "variant": "double" } },
+            {
+              "id": "c_p2",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "serif",
+                "html": "<p><strong>IN WITNESS WHEREOF</strong> the parties have executed this Agreement as of the date first written above.</p>"
+              }
+            },
+            {
+              "id": "c_sig",
+              "type": "signature_row",
+              "span": 12,
+              "props": {
+                "columns": [{ "caption": "For the Company" }, { "caption": "Authorised Signatory" }]
+              }
+            },
+            { "id": "c_sp", "type": "spacer", "span": 12, "props": { "height": 16 } },
+            {
+              "id": "c_st",
+              "type": "stamp",
+              "span": 4,
+              "style": { "align": "end" },
+              "props": { "text": "Executed", "tone": "confidential" }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_memo",
+      "title": "02 · Memo — Internal Notes",
+      "description": "Blocks: letterhead, meta_grid, rule, prose(handwritten), image(polaroid), annotation. Theme: notebook.",
+      "evidence_type": "document",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "notebook",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "m_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Internal",
+                "title": "Memo",
+                "sub": "To: Detective Unit 4",
+                "aside": "MEMO",
+                "asideLabel": "File",
+                "rule": true
+              }
+            },
+            {
+              "id": "m_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 1,
+                "tone": "plain",
+                "rows": [
+                  { "label": "From", "value": "Det. R. Okonkwo" },
+                  { "label": "Date", "value": "2026-03-04" },
+                  { "label": "Re", "value": "Timeline discrepancy — witness Vance" }
+                ]
+              }
+            },
+            { "id": "m_r1", "type": "rule", "span": 12, "props": { "variant": "dashed" } },
+            {
+              "id": "m_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "handwritten",
+                "html": "Working notes. Not for distribution outside the unit."
+              }
+            },
+            {
+              "id": "m_p2",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "handwritten",
+                "html": "Follow up on the statement taken Tuesday. Two details do not line up with the timeline we have, and the second location in her account is four blocks from where the witness placed her."
+              }
+            },
+            {
+              "id": "m_img",
+              "type": "image",
+              "span": 6,
+              "props": {
+                "url": "/assets/cases/aaod-rgl-alkhf/Evidences/3899b2f7e58951ed5e95398d0521385c0b42bbfbd5618ab8c387a9b1f4157548.jpg",
+                "caption": "Photograph taped to the memo",
+                "filter": "polaroid",
+                "width": 210,
+                "rotate": -2
+              }
+            },
+            {
+              "id": "m_ann",
+              "type": "annotation",
+              "span": 6,
+              "props": { "text": "confirm before next interview", "rotate": -3 }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_correspondence",
+      "title": "03 · Correspondence — Municipal Records",
+      "description": "Blocks: letterhead, meta_grid, rule, prose, spacer, signature_row, image(plain). Theme: case_file.",
+      "evidence_type": "document",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "case_file",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "r_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Municipal Records",
+                "title": "Letter of Correspondence",
+                "sub": "Sent via registered post",
+                "aside": "2026/RM/118",
+                "asideLabel": "Ref",
+                "rule": true
+              }
+            },
+            {
+              "id": "r_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 2,
+                "tone": "rows",
+                "rows": [
+                  { "label": "From", "value": "Municipal Records Office" },
+                  { "label": "To", "value": "Det. R. Okonkwo" },
+                  { "label": "Sent", "value": "2026-01-22" },
+                  { "label": "Received", "value": "2026-01-29" }
+                ]
+              }
+            },
+            { "id": "r_r1", "type": "rule", "span": 12, "props": { "variant": "solid" } },
+            {
+              "id": "r_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "typed",
+                "html": "<p>Sir or Madam,</p><p>We acknowledge receipt of your enquiry of the date above. The records requested are held in the municipal archive and are available for inspection during business hours.</p><p>You must present identification and a written authority before any copy will be released.</p>"
+              }
+            },
+            { "id": "r_sp", "type": "spacer", "span": 12, "props": { "height": 8 } },
+            {
+              "id": "r_p2",
+              "type": "prose",
+              "span": 12,
+              "props": { "tone": "typed", "html": "<p>Yours faithfully,</p>" }
+            },
+            {
+              "id": "r_sig",
+              "type": "signature_row",
+              "span": 8,
+              "props": { "columns": [{ "caption": "Records Clerk" }] }
+            },
+            {
+              "id": "r_img",
+              "type": "image",
+              "span": 4,
+              "props": {
+                "url": "/assets/cases/Case-cover.png",
+                "caption": "Municipal seal",
+                "filter": "plain",
+                "width": 110
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_financial",
+      "title": "04 · Financial — Account Statement",
+      "description": "Blocks: watermark, letterhead, meta_grid(boxed), table(number, negative), spacer, barcode, stamp. Theme: ledger.",
+      "evidence_type": "document",
+      "is_initial": true,
+      "is_vital_for_conviction": true,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "ledger",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "f_wm",
+              "type": "watermark",
+              "span": 12,
+              "props": { "text": "COPY", "rotate": -30 }
+            },
+            {
+              "id": "f_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Meridian Holdings",
+                "title": "Account Statement",
+                "sub": "Consolidated, all branches",
+                "aside": "****7741",
+                "asideLabel": "Account",
+                "rule": true
+              }
+            },
+            {
+              "id": "f_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 2,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Account holder", "value": "A. Vance" },
+                  { "label": "Account no.", "value": "****7741" },
+                  { "label": "Period", "value": "2026-01-01 → 2026-01-31" },
+                  { "label": "Currency", "value": "USD" }
+                ]
+              }
+            },
+            {
+              "id": "f_tbl",
+              "type": "table",
+              "span": 12,
+              "props": {
+                "tone": "ledger",
+                "caption": "Statement of activity",
+                "columns": [
+                  { "key": "date", "label": "Date" },
+                  { "key": "description", "label": "Description" },
+                  { "key": "amount", "label": "Amount", "type": "number", "align": "end" }
+                ],
+                "rows": [
+                  { "date": "2026-01-03", "description": "Salary — Northgate Clinic", "amount": 4200 },
+                  { "date": "2026-01-07", "description": "Transfer to K. Aldana", "amount": -1850 },
+                  { "date": "2026-01-11", "description": "Rent — 12 Ellery St", "amount": -1450 },
+                  { "date": "2026-01-14", "description": "Transfer to K. Aldana", "amount": -2400 },
+                  { "date": "2026-01-19", "description": "Utility — municipal", "amount": -212 },
+                  { "date": "2026-01-27", "description": "Transfer to K. Aldana", "amount": -3100 },
+                  { "date": "2026-01-31", "description": "Closing balance", "amount": 12884 }
+                ],
+                "emptyMessage": "No activity recorded for this period."
+              }
+            },
+            { "id": "f_sp", "type": "spacer", "span": 12, "props": { "height": 12 } },
+            {
+              "id": "f_bc",
+              "type": "barcode",
+              "span": 6,
+              "props": { "value": "0000 7741 2026" }
+            },
+            {
+              "id": "f_st",
+              "type": "stamp",
+              "span": 4,
+              "style": { "align": "end" },
+              "props": { "text": "Verified", "tone": "confidential" }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_phone",
+      "title": "05 · Phone Records — Subscriber Call Log",
+      "description": "Blocks: letterhead, meta_grid, table(log tone, badges), spacer, barcode. Theme: ledger.",
+      "evidence_type": "document",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "ledger",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "p_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Telecommunications",
+                "title": "Subscriber Call Log",
+                "sub": "Lawful production order 2026-LPO-0031",
+                "aside": "+1 555 0142",
+                "asideLabel": "Line",
+                "rule": true
+              }
+            },
+            {
+              "id": "p_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 2,
+                "tone": "rows",
+                "rows": [
+                  { "label": "Subscriber", "value": "A. Vance" },
+                  { "label": "Number", "value": "+1 555 0142" },
+                  { "label": "Period", "value": "2026-01-01 → 2026-01-31" },
+                  { "label": "Produced", "value": "2026-02-03" }
+                ]
+              }
+            },
+            {
+              "id": "p_tbl",
+              "type": "table",
+              "span": 12,
+              "props": {
+                "tone": "log",
+                "columns": [
+                  { "key": "date", "label": "Date" },
+                  { "key": "number", "label": "Number", "type": "mono" },
+                  {
+                    "key": "direction",
+                    "label": "Direction",
+                    "type": "badge",
+                    "tones": { "incoming": "in", "outgoing": "out", "missed": "missed" }
+                  },
+                  { "key": "duration", "label": "Duration", "type": "mono", "align": "end" }
+                ],
+                "rows": [
+                  { "date": "2026-01-07 09:12", "number": "+1 555 9981", "direction": "outgoing", "duration": "04:12" },
+                  { "date": "2026-01-07 09:41", "number": "+1 555 9981", "direction": "incoming", "duration": "06:55" },
+                  { "date": "2026-01-09 22:03", "number": "+1 555 4470", "direction": "outgoing", "duration": "11:20" },
+                  { "date": "2026-01-11 13:30", "number": "+1 555 2210", "direction": "missed", "duration": "—" },
+                  { "date": "2026-01-14 08:55", "number": "+1 555 9981", "direction": "outgoing", "duration": "02:08" },
+                  { "date": "2026-01-21 19:44", "number": "+1 555 4470", "direction": "incoming", "duration": "23:47" },
+                  { "date": "2026-01-28 02:17", "number": "+1 555 9981", "direction": "missed", "duration": "—" }
+                ],
+                "emptyMessage": "No calls originated or terminated on this line in the period."
+              }
+            },
+            { "id": "p_sp", "type": "spacer", "span": 12, "props": { "height": 12 } },
+            { "id": "p_bc", "type": "barcode", "span": 6, "props": { "value": "TEL 555 0142" } }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_background",
+      "title": "06 · Background Check — Subject Record",
+      "description": "Blocks: letterhead, meta_grid(boxed), prose(redacted/highlighted spans), image(mugshot), redaction, rule. Theme: dossier.",
+      "evidence_type": "document",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "dossier",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "b_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Records Bureau",
+                "title": "Background Record",
+                "sub": "Full scope search — county and federal",
+                "aside": "BR-2026-0912",
+                "asideLabel": "File",
+                "rule": true
+              }
+            },
+            {
+              "id": "b_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 2,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Subject", "value": "A. Vance" },
+                  { "label": "DOB", "value": "1988-06-14" },
+                  { "label": "Search date", "value": "2026-02-18" },
+                  { "label": "Scope", "value": "County + federal" }
+                ]
+              }
+            },
+            {
+              "id": "b_img",
+              "type": "image",
+              "span": 4,
+              "props": {
+                "url": "/assets/cases/aaod-rgl-alkhf/Evidences/3899b2f7e58951ed5e95398d0521385c0b42bbfbd5618ab8c387a9b1f4157548.jpg",
+                "caption": "Subject photograph",
+                "filter": "mugshot",
+                "width": 150
+              }
+            },
+            {
+              "id": "b_p1",
+              "type": "prose",
+              "span": 8,
+              "props": {
+                "tone": "mono",
+                "html": "<p><strong>Prior addresses</strong></p><ul><li>Current — 12 Ellery St, verified</li><li>Previous — <span class=\"redacted\">withheld</span></li></ul>"
+              }
+            },
+            {
+              "id": "b_p2",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p><strong>Known associates</strong></p><p>Two entries returned. One is a <span class=\"redacted\">minor</span> conviction; the other is a civil matter settled out of court. See the enclosed record for the <span class=\"highlighted\">sealed address history</span>.</p>"
+              }
+            },
+            {
+              "id": "b_rd",
+              "type": "redaction",
+              "span": 12,
+              "props": { "lines": 3, "label": "Redacted pursuant to court order 4471" }
+            },
+            { "id": "b_r1", "type": "rule", "span": 12, "props": { "variant": "solid" } },
+            {
+              "id": "b_p3",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p>Prepared by an automated records request. No inference of guilt attaches to any entry listed above.</p>"
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_journal",
+      "title": "07 · Journal — Private Diary",
+      "description": "Blocks: prose(handwritten), meta_grid(plain), rule, spacer, signature_row. Theme: notebook.",
+      "evidence_type": "document",
+      "is_initial": false,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "notebook",
+          "page": { "w": 800, "minH": 1131, "pad": 48 },
+          "blocks": [
+            {
+              "id": "j_p0",
+              "type": "prose",
+              "span": 12,
+              "props": { "tone": "handwritten", "html": "Journal — private" }
+            },
+            {
+              "id": "j_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 1,
+                "tone": "plain",
+                "rows": [
+                  { "label": "Entry", "value": "2026-01-19" },
+                  { "label": "Author", "value": "A. Vance" }
+                ]
+              }
+            },
+            { "id": "j_r1", "type": "rule", "span": 12, "props": { "variant": "dotted" } },
+            {
+              "id": "j_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "handwritten",
+                "html": "Woke before the alarm again. The thing I cannot shake is not the argument but the quiet after it — how fast the room went back to normal, as though nothing had been said at all."
+              }
+            },
+            {
+              "id": "j_p2",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "handwritten",
+                "html": "Wrote the names down in order. Cross-checked two of them against the register. The second one is misspelled on the form, which is the only reason I found it."
+              }
+            },
+            { "id": "j_sp", "type": "spacer", "span": 12, "props": { "height": 20 } },
+            {
+              "id": "j_sig",
+              "type": "signature_row",
+              "span": 6,
+              "props": { "columns": [{ "caption": "Author" }] }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_autopsy",
+      "title": "08 · Autopsy — Examination Report",
+      "description": "Blocks: letterhead, meta_grid(boxed 4-col), two_column(diagram), rule, prose, spacer, signature_row, stamp. Theme: lab.",
+      "evidence_type": "forensic",
+      "is_initial": true,
+      "is_vital_for_conviction": true,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "lab",
+          "page": { "w": 800, "minH": 1131, "pad": 32 },
+          "blocks": [
+            {
+              "id": "a_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Forensic Pathology",
+                "title": "Autopsy Report",
+                "sub": "Office of the Chief Medical Examiner",
+                "aside": "2026-ME-0044",
+                "asideLabel": "Case",
+                "rule": true
+              }
+            },
+            {
+              "id": "a_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 4,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Case", "value": "2026-ME-0044" },
+                  { "label": "Decedent", "value": "K. Aldana" },
+                  { "label": "Exam date", "value": "2026-01-16" },
+                  { "label": "Examiner", "value": "Dr. H. Sadler" }
+                ]
+              }
+            },
+            {
+              "id": "a_2c",
+              "type": "two_column",
+              "span": 12,
+              "props": {
+                "gap": 28,
+                "rightWidth": 170,
+                "left": [
+                  {
+                    "id": "a_tbl",
+                    "type": "table",
+                    "span": 12,
+                    "props": {
+                      "tone": "ledger",
+                      "caption": "Findings",
+                      "columns": [
+                        { "key": "finding", "label": "Finding" },
+                        { "key": "note", "label": "Note" }
+                      ],
+                      "rows": [
+                        { "finding": "Contusion", "note": "Left parietal, 4cm" },
+                        { "finding": "Ligature mark", "note": "Incomplete, anterior neck" },
+                        { "finding": "Defence injuries", "note": "None recorded" }
+                      ],
+                      "emptyMessage": "No external findings recorded."
+                    }
+                  },
+                  {
+                    "id": "a_p1",
+                    "type": "prose",
+                    "span": 12,
+                    "props": {
+                      "tone": "mono",
+                      "html": "<p><strong>Cause of death</strong></p><p>Pending. See supplemental toxicology.</p>"
+                    }
+                  }
+                ],
+                "right": [
+                  {
+                    "id": "a_dg",
+                    "type": "diagram",
+                    "span": 12,
+                    "props": { "preset": "body_outline", "caption": "Reference diagram" }
+                  }
+                ]
+              }
+            },
+            { "id": "a_r1", "type": "rule", "span": 12, "props": { "variant": "solid" } },
+            { "id": "a_sp", "type": "spacer", "span": 12, "props": { "height": 12 } },
+            {
+              "id": "a_sig",
+              "type": "signature_row",
+              "span": 12,
+              "props": { "columns": [{ "caption": "Chief Medical Examiner" }] }
+            },
+            {
+              "id": "a_st",
+              "type": "stamp",
+              "span": 4,
+              "style": { "align": "end" },
+              "props": { "text": "Preliminary", "tone": "official" }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_ballistics",
+      "title": "09 · Ballistics — Firearms Examination",
+      "description": "Blocks: letterhead, meta_grid(boxed), table, spacer, prose, image(micrograph), annotation, signature_row. Theme: lab.",
+      "evidence_type": "forensic",
+      "is_initial": false,
+      "is_vital_for_conviction": true,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "lab",
+          "page": { "w": 800, "minH": 1131, "pad": 32 },
+          "blocks": [
+            {
+              "id": "l_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Firearms & Ballistics",
+                "title": "Ballistics Examination",
+                "sub": "NIBIN / AFTE comparison",
+                "aside": "2026-BL-8842",
+                "asideLabel": "Report",
+                "rule": true
+              }
+            },
+            {
+              "id": "l_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 3,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Evidence", "value": "EX-009 (recovered)" },
+                  { "label": "Examiner", "value": "M. Ferreira" },
+                  { "label": "Received", "value": "2026-01-17" }
+                ]
+              }
+            },
+            {
+              "id": "l_tbl",
+              "type": "table",
+              "span": 12,
+              "props": {
+                "tone": "ledger",
+                "caption": "Microscopic comparison",
+                "columns": [
+                  { "key": "land", "label": "Land impression" },
+                  { "key": "quantity", "label": "Quantity" },
+                  { "key": "dimensions", "label": "Dimensions" },
+                  { "key": "conclusion", "label": "Conclusion" }
+                ],
+                "rows": [
+                  { "land": "Ejector", "quantity": "1", "dimensions": "0.038 × 0.014 in", "conclusion": "Consistent" },
+                  { "land": "Extractor", "quantity": "1", "dimensions": "0.041 × 0.012 in", "conclusion": "Consistent" },
+                  { "land": "Firing pin", "quantity": "Insufficient", "dimensions": "—", "conclusion": "Not suitable" }
+                ],
+                "emptyMessage": "No comparison performed on this item."
+              }
+            },
+            {
+              "id": "l_img",
+              "type": "image",
+              "span": 6,
+              "props": {
+                "url": "/assets/cases/tgrb/Levels/ee4705758793f54f17e2beb10e741c8d09266896925330fc4e78d9ec2e9e13ab.png",
+                "caption": "Microscope capture — ejector port",
+                "filter": "micrograph",
+                "width": 320
+              }
+            },
+            {
+              "id": "l_ann",
+              "type": "annotation",
+              "span": 6,
+              "props": { "text": "ask about the second firing", "rotate": -2 }
+            },
+            { "id": "l_sp", "type": "spacer", "span": 12, "props": { "height": 16 } },
+            {
+              "id": "l_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p>Examiner&rsquo;s opinion is recorded above. Items not suitable for comparison are documented with the reason.</p>"
+              }
+            },
+            {
+              "id": "l_sig",
+              "type": "signature_row",
+              "span": 12,
+              "props": { "columns": [{ "caption": "Examiner" }] }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_dna",
+      "title": "10 · DNA — STR Analysis",
+      "description": "Blocks: letterhead, meta_grid(boxed), diagram(electropherogram), rule, table, prose, barcode, stamp. Theme: lab.",
+      "evidence_type": "forensic",
+      "is_initial": false,
+      "is_vital_for_conviction": true,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "lab",
+          "page": { "w": 800, "minH": 1131, "pad": 32 },
+          "blocks": [
+            {
+              "id": "d_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Genetic Laboratory",
+                "title": "STR Analysis Report",
+                "sub": "Combined DNA Index System",
+                "aside": "DNA-2026-0113",
+                "asideLabel": "Sample",
+                "rule": true
+              }
+            },
+            {
+              "id": "d_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 3,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Evidence", "value": "EX-009" },
+                  { "label": "Sample type", "value": "Buccal swab" },
+                  { "label": "Analyst", "value": "P. Nwosu" }
+                ]
+              }
+            },
+            {
+              "id": "d_dg",
+              "type": "diagram",
+              "span": 12,
+              "props": {
+                "preset": "electropherogram",
+                "caption": "Crime scene sample vs. database record"
+              }
+            },
+            { "id": "d_r1", "type": "rule", "span": 12, "props": { "variant": "solid" } },
+            {
+              "id": "d_tbl",
+              "type": "table",
+              "span": 12,
+              "props": {
+                "tone": "ledger",
+                "columns": [
+                  { "key": "result", "label": "Result" },
+                  { "key": "value", "label": "Value" }
+                ],
+                "rows": [
+                  { "result": "Probability of match", "value": "1.2 × 10⁻¹⁸" },
+                  { "result": "Identified subject", "value": "A. Vance" },
+                  { "result": "Loci profiled", "value": "20 / 20" }
+                ]
+              }
+            },
+            {
+              "id": "d_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p>Conclusions are reported for investigative use only and are not a substitute for a legal determination of identity.</p>"
+              }
+            },
+            { "id": "d_bc", "type": "barcode", "span": 6, "props": { "value": "CODIS 2026 0113" } },
+            {
+              "id": "d_st",
+              "type": "stamp",
+              "span": 4,
+              "style": { "align": "end" },
+              "props": { "text": "CODIS Verified", "tone": "official" }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_trace",
+      "title": "11 · Trace Analysis — Mass Spectrometry",
+      "description": "Blocks: letterhead, meta_grid(boxed), diagram(mass_spec), rule, meta_grid, prose, stamp. Theme: lab.",
+      "evidence_type": "forensic",
+      "is_initial": false,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "lab",
+          "page": { "w": 800, "minH": 1131, "pad": 32 },
+          "blocks": [
+            {
+              "id": "t_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Advanced Laboratory",
+                "title": "Trace Analysis",
+                "sub": "Mass spectrometry screening",
+                "aside": "TR-2026-0071",
+                "asideLabel": "Sample",
+                "rule": true
+              }
+            },
+            {
+              "id": "t_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 3,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Sample", "value": "EX-011 (fibre)" },
+                  { "label": "Scan date", "value": "2026-01-20" },
+                  { "label": "Instrument", "value": "GC-MS 2010" }
+                ]
+              }
+            },
+            {
+              "id": "t_dg",
+              "type": "diagram",
+              "span": 12,
+              "props": { "preset": "mass_spec", "caption": "Reference spectrum vs. library match" }
+            },
+            { "id": "t_r1", "type": "rule", "span": 12, "props": { "variant": "solid" } },
+            {
+              "id": "t_meta2",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 2,
+                "tone": "rows",
+                "rows": [
+                  { "label": "Material", "value": "Synthetic polymer, aramid blend" },
+                  { "label": "Origin", "value": "Protective outerwear, law enforcement issue" }
+                ]
+              }
+            },
+            {
+              "id": "t_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p>Analysis complete. Origin is stated at the confidence level recorded above; higher confidence tiers require a confirmatory run.</p>"
+              }
+            },
+            {
+              "id": "t_st",
+              "type": "stamp",
+              "span": 4,
+              "style": { "align": "end" },
+              "props": { "text": "Complete", "tone": "official" }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_digital",
+      "title": "12 · Digital Forensics — Device Examination",
+      "description": "Blocks: letterhead, meta_grid(boxed), prose, list(ordered), rule, spacer, signature_row, watermark. Theme: dossier.",
+      "evidence_type": "forensic",
+      "is_initial": false,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "dossier",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "g_wm",
+              "type": "watermark",
+              "span": 12,
+              "props": { "text": "EVIDENCE", "rotate": -30 }
+            },
+            {
+              "id": "g_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Digital Forensics Unit",
+                "title": "Device Examination",
+                "sub": "Logical extraction report",
+                "aside": "DF-2026-0207",
+                "asideLabel": "Device",
+                "rule": true
+              }
+            },
+            {
+              "id": "g_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 4,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Exhibit", "value": "EX-012" },
+                  { "label": "Device", "value": "Handset, black" },
+                  { "label": "Acquired", "value": "2026-01-16" },
+                  { "label": "Examiner", "value": "S. Iqbal" }
+                ]
+              }
+            },
+            {
+              "id": "g_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p><strong>Extraction summary</strong></p>"
+              }
+            },
+            {
+              "id": "g_li",
+              "type": "list",
+              "span": 12,
+              "props": {
+                "ordered": true,
+                "items": [
+                  "Logical extraction completed; image verified against acquisition hash.",
+                  "Deleted artefacts recovered from unallocated space.",
+                  "Application data isolated; passcode not defeated during this examination.",
+                  "Two messages to an unassociated number deleted at 02:14 on 2026-01-15."
+                ]
+              }
+            },
+            { "id": "g_r1", "type": "rule", "span": 12, "props": { "variant": "dotted" } },
+            {
+              "id": "g_p2",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p>Artifacts are presented in acquisition order. Interpretation of individual artefacts is deferred to the examining analyst.</p>"
+              }
+            },
+            { "id": "g_sp", "type": "spacer", "span": 12, "props": { "height": 12 } },
+            {
+              "id": "g_sig",
+              "type": "signature_row",
+              "span": 12,
+              "props": { "columns": [{ "caption": "Examiner" }] }
+            }
+          ]
+        }
+      }
+    }
+  ],
+
+  "characters": [],
+  "investigation_requests": [],
+  "zones": []
+}

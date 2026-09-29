@@ -1,0 +1,802 @@
+/* ==============================================================
+   DOC BLOCKS
+   --------------------------------------------------------------
+   Every rule here consumes theme tokens only (--doc-*). No block may
+   hardcode a colour, or themes stop being composable.
+
+   Isolation reset, matching the pattern the legacy viewers each declared
+   for themselves (BallisticsViewer.css:29-33, AutopsyViewer.css:27-31).
+   ============================================================== */
+
+.doc-sheet .db-grid,
+.doc-sheet .db-grid *,
+.doc-sheet .db-grid *::before,
+.doc-sheet .db-grid *::after {
+  box-sizing: border-box;
+}
+
+.doc-sheet .db-grid h1,
+.doc-sheet .db-grid h2,
+.doc-sheet .db-grid h3,
+.doc-sheet .db-grid h4,
+.doc-sheet .db-grid p,
+.doc-sheet .db-grid ul,
+.doc-sheet .db-grid ol {
+  font-family: inherit;
+  margin-top: 0;
+}
+
+/* ---------- GRID ------------------------------------------- */
+.doc-sheet .db-grid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 1rem;
+  align-content: start;
+  width: 100%;
+}
+
+.doc-sheet .db-grid--nested {
+  gap: 0.75rem;
+}
+
+.doc-sheet .db-cell {
+  min-width: 0;
+}
+
+.doc-sheet .db-cell > * {
+  max-width: 100%;
+}
+
+/* ---------- LETTERHEAD -------------------------------------
+   From .ballistics-header (BallisticsViewer.css:43-61)
+        .autopsy-header  (AutopsyViewer.css:42-99)            */
+.doc-sheet .db-letterhead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  position: relative;
+  padding-bottom: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.doc-sheet .db-letterhead-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.doc-sheet .db-letterhead-agency {
+  font-weight: 900;
+  font-size: 0.75rem;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.15rem;
+  color: var(--doc-ink);
+}
+
+.doc-sheet .db-letterhead-title {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--doc-ink);
+}
+
+.doc-sheet .db-letterhead-sub {
+  font-size: 0.8rem;
+  color: var(--doc-ink-muted);
+  letter-spacing: 0.05em;
+  margin-top: 0.15rem;
+}
+
+.doc-sheet .db-letterhead-aside {
+  border: 2px solid var(--doc-rule);
+  padding: 0.5rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-weight: 700;
+  min-width: 140px;
+  text-align: start;
+  font-size: 0.9rem;
+  flex-shrink: 0;
+  color: var(--doc-ink);
+}
+
+.doc-sheet .db-letterhead-aside-label {
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--doc-ink-muted);
+  text-transform: uppercase;
+}
+
+.doc-sheet .db-letterhead-aside-value {
+  font-family: var(--doc-font-mono);
+  letter-spacing: 0.05em;
+}
+
+.doc-sheet .db-letterhead-rule {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  border-bottom: var(--doc-header-rule);
+}
+
+[dir='rtl'] .doc-sheet .db-letterhead-aside {
+  transform: none;
+}
+
+/* ---------- META GRID --------------------------------------
+   From .autopsy-data-row    (AutopsyViewer.css:119-145)
+        .autopsy-meta-box    (AutopsyViewer.css:89-99)
+        .bg-check-data-row   (BackgroundCheckViewer.css:95-99) */
+.doc-sheet .db-meta-grid {
+  display: grid;
+  gap: 0.35rem 1.5rem;
+  align-content: start;
+}
+
+.doc-sheet .db-meta-grid--cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.doc-sheet .db-meta-grid--cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.doc-sheet .db-meta-grid--cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+.doc-sheet .db-meta-pair {
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.doc-sheet .db-meta-label {
+  font-weight: 900;
+  color: var(--doc-ink);
+  flex-shrink: 0;
+  width: var(--doc-label-w);
+  margin-inline-end: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.doc-sheet .db-meta-value {
+  font-size: 0.95rem;
+  color: var(--doc-ink);
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.doc-sheet .db-meta-grid--rows .db-meta-pair {
+  border-bottom: 1px dotted var(--doc-rule-soft);
+  padding-bottom: 0.35rem;
+}
+
+.doc-sheet .db-meta-grid--boxed {
+  border: 2px solid var(--doc-rule);
+  padding: 0.75rem;
+  background: var(--doc-box-bg);
+  border-radius: var(--doc-radius-alt);
+  gap: 0.6rem 1.5rem;
+}
+
+.doc-sheet .db-meta-grid--boxed .db-meta-pair {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.doc-sheet .db-meta-grid--boxed .db-meta-label {
+  width: auto;
+  margin-inline-end: 0;
+  font-size: 0.65rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--doc-ink-muted);
+}
+
+.doc-sheet .db-meta-grid--plain .db-meta-pair {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.doc-sheet .db-meta-grid--plain .db-meta-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--doc-ink-muted);
+}
+
+/* ---------- PROSE ------------------------------------------
+   From .correspondence-body-text, .memo-body-text
+        (MemoViewer.css:101-109), .journal-diary-body
+        (JournalViewer.css:98-111)                            */
+.doc-sheet .db-prose {
+  font-family: var(--doc-font);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--doc-ink);
+  text-align: start;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  unicode-bidi: plaintext;
+}
+
+.doc-sheet .db-prose--typed {
+  font-family: var(--doc-font);
+}
+
+.doc-sheet .db-prose--mono {
+  font-family: var(--doc-font-mono);
+  font-size: 0.95rem;
+}
+
+.doc-sheet .db-prose--serif {
+  font-family: 'Georgia', var(--font-serif), serif;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: var(--doc-ink);
+}
+
+.doc-sheet .db-prose--handwritten {
+  font-family: var(--doc-handwriting);
+  font-size: 1.6rem;
+  line-height: 32px;
+  color: var(--doc-ink);
+}
+
+/* Section heading convention.
+   sanitizeHtml's tag whitelist (src/utils/sanitize.ts:4) has no h1-h6, so an
+   authored <h4> would be silently unwrapped and lose its heading. Rather than
+   widen that app-wide security boundary, headings are authored as
+   <p><strong>Title</strong></p> and a paragraph whose only child is a <strong>
+   is styled as one. */
+.doc-sheet .db-prose p > strong:only-child {
+  display: block;
+  font-size: 1.05em;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--doc-ink);
+  margin: 0.9rem 0 0.3rem;
+}
+
+.doc-sheet .db-prose > p:first-child > strong:only-child {
+  margin-top: 0;
+}
+
+/* ---------- LIST -------------------------------------------
+   From .contract-parties-list (ContractViewer.tsx:57-60)
+        .autopsy-evidence-list (AutopsyViewer.css:173-182)    */
+.doc-sheet .db-list {
+  margin: 0.3rem 0 0;
+  padding-inline-start: 1.4rem;
+  font-size: 0.95rem;
+  color: var(--doc-ink);
+  text-align: start;
+}
+
+.doc-sheet .db-list-item {
+  margin-bottom: 0.2rem;
+  overflow-wrap: break-word;
+}
+
+.doc-sheet .db-list-item::marker {
+  color: var(--doc-ink-muted);
+  font-weight: 700;
+}
+
+/* ---------- TABLE ------------------------------------------
+   From .financial-table     (FinancialRecordViewer.css:53-78)
+        .telecom-logs-table  (PhoneRecordsViewer.css:123-149) */
+.doc-sheet .db-table-figure {
+  margin: 0.5rem 0 0;
+  width: 100%;
+}
+
+.doc-sheet .db-table-caption {
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--doc-ink);
+  margin-bottom: 0.75rem;
+  letter-spacing: 0.06em;
+}
+
+.doc-sheet .db-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  color: var(--doc-ink);
+}
+
+.doc-sheet .db-table th,
+.doc-sheet .db-table td {
+  padding: 0.7rem 0.85rem;
+  text-align: start;
+  vertical-align: top;
+}
+
+/* -- ledger: bordered grid, tinted header -- */
+.doc-sheet .db-table--ledger {
+  border: 1px solid var(--doc-table-border);
+}
+
+.doc-sheet .db-table--ledger th,
+.doc-sheet .db-table--ledger td {
+  border: 1px solid var(--doc-table-border);
+}
+
+.doc-sheet .db-table--ledger th {
+  background-color: var(--doc-table-head-bg);
+  color: var(--doc-table-head-ink);
+  font-weight: 700;
+}
+
+.doc-sheet .db-table--ledger tr:nth-child(even) td {
+  background-color: var(--doc-table-zebra);
+}
+
+/* -- log: dark header, zebra striping -- */
+.doc-sheet .db-table--log th {
+  background-color: var(--doc-ink);
+  color: var(--doc-paper);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.78rem;
+  letter-spacing: 0.05em;
+}
+
+.doc-sheet .db-table--log td {
+  border-bottom: 1px solid var(--doc-table-border);
+  font-family: var(--doc-font-mono);
+  font-size: 0.88rem;
+}
+
+.doc-sheet .db-table--log tr:nth-child(even) {
+  background-color: var(--doc-table-zebra);
+}
+
+.doc-sheet .db-table-num {
+  font-weight: 800;
+}
+
+.doc-sheet .db-table-num--negative {
+  color: var(--doc-accent);
+}
+
+.doc-sheet .db-table-mono {
+  font-family: var(--doc-font-mono);
+  letter-spacing: 0.04em;
+}
+
+.doc-sheet .db-table-empty {
+  text-align: center;
+  font-style: italic;
+  padding: 2rem 0;
+  color: var(--doc-ink-muted);
+}
+
+/* Badges -- direction coding for call logs, per
+   PhoneRecordsViewer.css:152-169 */
+.doc-sheet .db-badge {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--doc-ink-muted);
+}
+
+.doc-sheet .db-badge--in { color: #059669; }
+.doc-sheet .db-badge--out { color: #2563eb; }
+.doc-sheet .db-badge--missed { color: #dc2626; }
+.doc-sheet .db-badge--sms { color: #d97706; }
+
+/* ---------- TWO COLUMN -------------------------------------
+   From .autopsy-body-section (AutopsyViewer.css:106-111)      */
+.doc-sheet .db-two-col {
+  display: grid;
+  align-items: start;
+  width: 100%;
+}
+
+.doc-sheet .db-two-col-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-width: 0;
+}
+
+.doc-sheet .db-two-col-cell--trail {
+  align-items: stretch;
+}
+
+/* ---------- SIGNATURE ROW ----------------------------------
+   From .contract-signature-block, .ballistics-sign-off      */
+.doc-sheet .db-signature-row {
+  display: grid;
+  gap: 2rem;
+  align-items: end;
+  margin-top: 0.75rem;
+  width: 100%;
+}
+
+.doc-sheet .db-signature-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.doc-sheet .db-signature-img {
+  max-height: 50px;
+  max-width: 100%;
+  object-fit: contain;
+}
+
+.doc-sheet .db-signature-line {
+  width: 100%;
+  max-width: 220px;
+  border-top: 1px solid var(--doc-rule);
+  margin-top: -4px;
+}
+
+.doc-sheet .db-signature-caption {
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--doc-ink);
+  text-align: center;
+  margin-top: 0.3rem;
+}
+
+/* ---------- STAMP ------------------------------------------
+   From .autopsy-stamp       (AutopsyViewer.css:232-244)
+        .financial-stamp     (FinancialRecordViewer.css:99-114)
+        .contract-validation-stamp (ContractViewer.tsx:100-104) */
+.doc-sheet .db-stamp {
+  display: inline-block;
+  font-weight: 900;
+  border: 3px solid currentColor;
+  padding: 0.25rem 0.55rem;
+  font-size: 1.05rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  transform: rotate(-12deg);
+  pointer-events: none;
+  user-select: none;
+}
+
+[dir='rtl'] .doc-sheet .db-stamp {
+  transform: rotate(12deg);
+}
+
+.doc-sheet .db-stamp--official {
+  color: #5a8a9e;
+  font-size: 0.85rem;
+  transform: rotate(-5deg);
+}
+
+[dir='rtl'] .doc-sheet .db-stamp--official {
+  transform: rotate(5deg);
+}
+
+.doc-sheet .db-stamp--forged {
+  color: var(--doc-accent-soft);
+  font-size: 1rem;
+}
+
+.doc-sheet .db-stamp--confidential {
+  color: var(--doc-accent-soft);
+  font-size: 1.2rem;
+}
+
+.doc-sheet .db-stamp--crimson {
+  color: var(--doc-accent);
+}
+
+/* ---------- BARCODE ----------------------------------------
+   From .financial-barcode (FinancialRecordViewer.css:90-98)
+        .telecom-barcode   (PhoneRecordsViewer.css:62-67)    */
+.doc-sheet .db-barcode {
+  font-family: 'Libre Barcode 39', var(--doc-font-mono), monospace;
+  font-size: 3.5rem;
+  line-height: 0.8;
+  color: var(--doc-ink);
+  opacity: 0.85;
+  user-select: none;
+  white-space: nowrap;
+}
+
+/* ---------- WATERMARK (overlay layer) ----------------------
+   From .contract-watermark  (ContractViewer.css:46)
+        .financial-watermark (FinancialRecordViewer.css:122-135)
+
+   Anchored to the sheet root, never to a block. This is what allows the
+   document to keep reflowing. See PlansEvidence.md section 5.1.          */
+.doc-sheet .db-watermark {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 50%;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.doc-sheet .db-watermark-text {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 50%;
+  display: block;
+  white-space: nowrap;
+  font-family: var(--doc-font);
+  font-size: 8rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  color: var(--doc-ink);
+  opacity: 0.05;
+  text-align: center;
+}
+
+/* ---------- RULE / SPACER ---------------------------------- */
+.doc-sheet .db-rule {
+  width: 100%;
+  border-top: 1px solid var(--doc-rule-soft);
+  margin: 0.5rem 0;
+}
+
+.doc-sheet .db-rule--dashed { border-top-style: dashed; }
+.doc-sheet .db-rule--dotted { border-top-style: dotted; }
+.doc-sheet .db-rule--double { border-top: 3px double var(--doc-rule); }
+
+.doc-sheet .db-spacer {
+  width: 100%;
+}
+
+/* ---------- IMAGE ------------------------------------------
+   From .sticky-tape (MemoViewer.css:149-161)
+        .bg-check-mugshot (BackgroundCheckViewer.css:78-86)
+        .microscope-comparison (BallisticsViewer.tsx:79-89)   */
+.doc-sheet .db-image {
+  margin: 0.5rem 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.doc-sheet .db-image-frame {
+  position: relative;
+  max-width: 100%;
+  transform-origin: center center;
+}
+
+.doc-sheet .db-image-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+
+.doc-sheet .db-image--plain .db-image-img {
+  border: 1px solid var(--doc-rule-soft);
+}
+
+.doc-sheet .db-image--polaroid .db-image-img {
+  border: 6px solid #fdfdfb;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+}
+
+.doc-sheet .db-image--mugshot .db-image-img {
+  border: 2px solid var(--doc-rule);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+  filter: grayscale(100%) contrast(120%);
+}
+
+.doc-sheet .db-image--micrograph .db-image-img {
+  border: 2px solid var(--doc-rule);
+  filter: contrast(115%) brightness(1.02);
+}
+
+.doc-sheet .db-image-tape {
+  position: absolute;
+  top: -14px;
+  inset-inline-start: 50%;
+  transform: translateX(-50%) rotate(2deg);
+  width: 110px;
+  height: 30px;
+  background-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  z-index: 2;
+}
+
+[dir='rtl'] .doc-sheet .db-image-tape {
+  transform: translateX(50%) rotate(-2deg);
+}
+
+.doc-sheet .db-image-crosshair-v,
+.doc-sheet .db-image-crosshair-h {
+  position: absolute;
+  background: rgba(163, 50, 50, 0.55);
+  pointer-events: none;
+}
+
+.doc-sheet .db-image-crosshair-v {
+  top: 0;
+  bottom: 0;
+  inset-inline-start: 50%;
+  width: 1px;
+}
+
+.doc-sheet .db-image-crosshair-h {
+  inset-inline: 0;
+  top: 50%;
+  height: 1px;
+}
+
+.doc-sheet .db-image-caption {
+  font-size: 0.75rem;
+  color: var(--doc-ink-muted);
+  text-align: center;
+  margin-top: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+/* ---------- ANNOTATION -------------------------------------
+   From .handwritten-note-overlay (BallisticsViewer.tsx:124-128) */
+.doc-sheet .db-annotation {
+  width: 100%;
+  display: flex;
+  margin: 0.5rem 0;
+}
+
+.doc-sheet .db-annotation-text {
+  display: inline-block;
+  max-width: 100%;
+  font-family: var(--doc-handwriting);
+  font-size: 1.4rem;
+  line-height: 1.3;
+  color: var(--doc-ink);
+  background-color: rgba(255, 235, 59, 0.28);
+  padding: 0.5rem 0.9rem;
+  border-inline-start: 3px solid var(--doc-accent-soft);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+}
+
+/* ---------- REDACTION ------------------------------------- */
+.doc-sheet .db-redaction {
+  width: 100%;
+  margin: 0.5rem 0;
+}
+
+.doc-sheet .db-redaction-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.doc-sheet .db-redaction-bar {
+  height: 14px;
+  background-color: #1a1a1a;
+  border-radius: 2px;
+  user-select: none;
+}
+
+.doc-sheet .db-redaction-label {
+  margin-top: 0.4rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--doc-ink-muted);
+  font-weight: 700;
+}
+
+/* ---------- DIAGRAM ----------------------------------------
+   From .autopsy-diagram-col (AutopsyViewer.css:184-215)      */
+.doc-sheet .db-diagram {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.doc-sheet .db-diagram-frame {
+  border: 2px solid var(--doc-rule);
+  padding: 1rem;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: fit-content;
+}
+
+.doc-sheet .db-diagram-svg {
+  width: 120px;
+  height: auto;
+  fill: transparent;
+  stroke: var(--doc-rule);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  margin-bottom: 0.5rem;
+}
+
+/* Data presets read as charts, not icons, so they take the full frame width. */
+.doc-sheet .db-diagram-svg--wide {
+  width: 100%;
+  margin-bottom: 0;
+}
+
+.doc-sheet .db-diagram-svg .db-diagram-grid {
+  stroke: #aaa;
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+}
+
+.doc-sheet .db-trace-line {
+  fill: none;
+  stroke-width: 0.7;
+  stroke-linejoin: round;
+}
+
+.doc-sheet .db-trace-line--primary {
+  stroke: var(--doc-ink);
+}
+
+.doc-sheet .db-trace-line--secondary {
+  stroke: var(--doc-accent);
+  stroke-dasharray: 2 1;
+  stroke-opacity: 0.85;
+}
+
+.doc-sheet .db-diagram-caption {
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-align: center;
+  color: var(--doc-ink);
+  margin-top: 0.5rem;
+}
+
+/* ---------- NARROW VIEWPORTS --------------------------------
+   The sheet is a fixed 800px stage that ViewersContainer scales, but the admin
+   authoring canvas is fluid, so the grid still needs to hold together there.  */
+@media (max-width: 700px) {
+  .doc-sheet .db-grid {
+    gap: 0.75rem;
+  }
+
+  .doc-sheet .db-meta-grid--cols-2,
+  .doc-sheet .db-meta-grid--cols-3,
+  .doc-sheet .db-meta-grid--cols-4 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .doc-sheet .db-meta-label {
+    width: auto;
+    margin-inline-end: 0;
+  }
+
+  .doc-sheet .db-meta-pair {
+    flex-direction: column;
+    gap: 0.1rem;
+  }
+
+  .doc-sheet .db-two-col {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .doc-sheet .db-letterhead {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+}

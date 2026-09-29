@@ -1,0 +1,76 @@
+/* ==============================================================
+   DOC SHEET
+   --------------------------------------------------------------
+   Structural layer only. Colour, typography, padding and shadow come from
+   themes.css, so this file can never be edited to fix one theme's appearance --
+   that guarantee is what keeps the five themes composable.
+
+   The A4 contract: width 800px, min-height 1131px, and the sheet GROWS past
+   that rather than clipping. `overflow: visible` on the sheet is load-bearing:
+   combined with ViewersContainer's natural-scroll mode it means a long document
+   scrolls inside the modal instead of being cut off. Matches the sizing the
+   legacy viewers each declared for themselves (e.g. FinancialRecordViewer.css
+   .financial-sheet, BallisticsViewer.css .ballistics-page).
+   ============================================================== */
+
+.doc-sheet {
+  position: relative;
+  width: var(--doc-page-w, 800px);
+  min-height: var(--doc-page-min-h, 1131px);
+  margin: 0 auto;
+  background-color: var(--doc-paper);
+  background-image: var(--doc-paper-image, none);
+  background-attachment: local;
+  color: var(--doc-ink);
+  font-family: var(--doc-font);
+  font-size: 16px;
+  line-height: 1.5;
+  box-shadow: var(--doc-shadow);
+  border-radius: var(--doc-radius, 2px);
+  padding: var(--doc-pad-y, 64px) var(--doc-pad-x, 64px);
+  overflow: visible;
+  box-sizing: border-box;
+  unicode-bidi: isolate;
+}
+
+/* Admin authoring canvas: same sheet, no fixed stage. Phase 3. */
+.doc-sheet--fluid {
+  width: 100%;
+  min-height: 0;
+  max-width: 100%;
+}
+
+/* The overlay layer sits behind all flow content and covers the whole sheet.
+   It is the only positioned region, and it is inert to pointer events so it
+   never blocks the block-level interactions Phase 3 adds. */
+.doc-sheet-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+
+.doc-sheet-body {
+  position: relative;
+  z-index: 1;
+}
+
+.doc-sheet-empty {
+  text-align: center;
+  font-style: italic;
+  color: var(--doc-ink-muted);
+  padding: 4rem 0;
+  margin: 0;
+  user-select: none;
+}
+
+/* Print / screenshot fidelity: strip the modal chrome and lay the sheet flat.
+   Used by the Phase 1 visual-fidelity harness (PlansEvidence.md section 8). */
+@media print {
+  .doc-sheet {
+    box-shadow: none;
+    margin: 0;
+  }
+}

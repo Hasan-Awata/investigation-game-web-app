@@ -25,6 +25,13 @@ class MediaService
             
             $fullFilePath = $destinationPath . '/' . $filename;
 
+            // `$subfolder` may be nested (e.g. 'Evidences/Blocks'), and the
+            // target directory will not exist the first time a case slug is
+            // seen. UploadedFile::move() does not create parents.
+            if (!is_dir($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
+
             // Only move the file if a file with this exact content hash doesn't already exist
             if (!file_exists($fullFilePath)) {
                 $file->move($destinationPath, $filename);

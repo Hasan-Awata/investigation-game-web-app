@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import type { Evidence } from '@/types/evidence';
-import ForensicViewer from './Viewers/ForensicViewer';
-import DocumentViewer from './Viewers/DocumentViewer';
+import UniversalDocViewer from './DocViewer/UniversalDocViewer';
 import TestimonyViewer from './Viewers/TestimonyViewer';
 import MediaViewer from './Viewers/MediaViewer';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -28,20 +27,20 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
 
   const renderEvidenceContent = () => {
     const ViewerComponents: Record<string, React.ElementType> = {
-      forensic: ForensicViewer,
-      document: DocumentViewer,
+      forensic: UniversalDocViewer,
+      document: UniversalDocViewer,
       testimony: TestimonyViewer,
       image: MediaViewer,
       audio: MediaViewer,
-    };
+    } as const;
 
-    const Viewer = ViewerComponents[evidence.evidence_type];
+    const Viewer = ViewerComponents[evidence.evidence_type as keyof typeof ViewerComponents];
 
     if (!Viewer) {
       throw new Error(`Unrecognized evidence classification type: ${evidence.evidence_type}`);
     }
 
-    return <Viewer evidence={evidence} />;
+    return <Viewer evidence={evidence as { id: number; metadata?: unknown }} />;
   };
 
   return (

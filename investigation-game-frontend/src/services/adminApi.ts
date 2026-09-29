@@ -84,6 +84,13 @@ export const createAdminEvidence = (fd: FormData) => adminRequest('/evidences', 
 export const updateAdminEvidence = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/evidences/${id}`, { method: 'POST', body: fd }); };
 export const deleteAdminEvidence = (id: number) => adminRequest(`/evidences/${id}`, { method: 'DELETE' });
 
+/**
+ * Block-image upload. Deliberately separate from the evidence create/update
+ * call: an `image` block's URL lives in `metadata.doc`, and the author uploads
+ * it long before the evidence row exists. See AdminMediaController.
+ */
+export const uploadAdminBlockImage = (fd: FormData) => adminRequest('/media/block-image', { method: 'POST', body: fd });
+
 // ==========================================
 // INVESTIGATION REQUESTS (Combos)
 // ==========================================

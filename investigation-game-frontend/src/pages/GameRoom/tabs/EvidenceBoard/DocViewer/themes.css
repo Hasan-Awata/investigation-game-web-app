@@ -1,0 +1,188 @@
+/* ==============================================================
+   DOC THEMES
+   --------------------------------------------------------------
+   One token set per DocTheme. The structural sheet (width, min-height,
+   positioning, overflow) lives in UniversalDocViewer.css -- these classes
+   supply only visual tokens, so a theme can never break the A4 contract.
+
+   Every token below is lifted from a concrete legacy viewer so the new
+   templates reproduce the old look. Source noted per theme.
+
+   Blocks consume tokens exclusively. A block CSS file must never hardcode a
+   colour; that is what makes themes composable.
+   ============================================================== */
+
+/* ---------- CASE FILE ----------------------------------------
+   Source: ForensicViewers/BallisticsViewer.css:6-26
+            DocumentViewers/ContractViewer.css:42-60
+   Neutral official stock: reports, correspondence, contracts.        */
+.doc-sheet[data-theme='case_file'] {
+  --doc-paper: #fdfbf7;
+  --doc-ink: #1a1a1a;
+  --doc-ink-muted: #555555;
+  --doc-rule: #1a1a1a;
+  --doc-rule-soft: rgba(0, 0, 0, 0.15);
+  --doc-accent: #a33232;
+  --doc-accent-soft: rgba(163, 50, 50, 0.7);
+  --doc-font: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --doc-font-mono: var(--font-mono), monospace;
+  --doc-handwriting: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  --doc-shadow: inset 0 0 50px rgba(0, 0, 0, 0.04), 2px 4px 20px rgba(0, 0, 0, 0.25);
+  --doc-radius: 2px;
+  --doc-radius-alt: 2px;
+  --doc-pad-y: 64px;
+  --doc-pad-x: 72px;
+  --doc-header-rule: 4px solid var(--doc-rule);
+  --doc-label-w: 150px;
+  --doc-box-bg: rgba(0, 0, 0, 0.03);
+  --doc-table-head-bg: #f0efec;
+  --doc-table-head-ink: #1a1a1a;
+  --doc-table-border: rgba(0, 0, 0, 0.18);
+  --doc-table-zebra: rgba(0, 0, 0, 0.015);
+}
+
+/* ---------- NOTEBOOK ----------------------------------------
+   Source: DocumentViewers/MemoViewer.css:29-51
+            DocumentViewers/JournalViewer.css:4-24
+   Ruled paper with a red margin line. Handwriting-forward.            */
+.doc-sheet[data-theme='notebook'] {
+  --doc-paper: #fcfbfa;
+  --doc-ink: #1b263b;
+  --doc-ink-muted: #4a5568;
+  --doc-rule: #1b263b;
+  --doc-rule-soft: rgba(27, 38, 59, 0.15);
+  --doc-accent: #7a3e3e;
+  --doc-accent-soft: rgba(122, 62, 62, 0.7);
+  --doc-font: var(--font-primary), sans-serif;
+  --doc-font-mono: var(--font-mono), monospace;
+  --doc-handwriting: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  --doc-shadow: inset 0 0 60px rgba(80, 60, 40, 0.12), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --doc-radius: 4px;
+  --doc-radius-alt: 12px 4px 10px 6px;
+  --doc-pad-y: 64px;
+  --doc-pad-x: 48px;
+  --doc-header-rule: 2px solid var(--doc-rule);
+  --doc-label-w: 130px;
+  --doc-box-bg: rgba(27, 38, 59, 0.04);
+  --doc-table-head-bg: rgba(27, 38, 59, 0.08);
+  --doc-table-head-ink: #1b263b;
+  --doc-table-border: rgba(27, 38, 59, 0.16);
+  --doc-table-zebra: rgba(27, 38, 59, 0.02);
+
+  /* Ruled lines + red margin, per MemoViewer.css:41-43. Angles flip in RTL. */
+  --doc-paper-image:
+    linear-gradient(90deg, transparent 68px, #e88b8b 68px, #e88b8b 70px, transparent 70px),
+    repeating-linear-gradient(180deg, transparent, transparent 31px, #a6c8ff 31px, #a6c8ff 32px);
+}
+
+[dir='rtl'] .doc-sheet[data-theme='notebook'] {
+  --doc-paper-image:
+    linear-gradient(-90deg, transparent 68px, #e88b8b 68px, #e88b8b 70px, transparent 70px),
+    repeating-linear-gradient(180deg, transparent, transparent 31px, #a6c8ff 31px, #a6c8ff 32px);
+}
+
+/* ---------- LEDGER -----------------------------------------
+   Source: DocumentViewers/FinancialRecordViewer.css:4-23
+            DocumentViewers/PhoneRecordsViewer.css:4-28
+   Accountant stock: statements, call logs, itemised tables.           */
+.doc-sheet[data-theme='ledger'] {
+  --doc-paper: #f5f2eb;
+  --doc-ink: #1a1a1a;
+  --doc-ink-muted: #555555;
+  --doc-rule: #1a1a1a;
+  --doc-rule-soft: #b5b0a1;
+  --doc-accent: #a33232;
+  --doc-accent-soft: rgba(163, 50, 50, 0.7);
+  --doc-font: var(--font-primary), sans-serif;
+  --doc-font-mono: var(--font-mono), monospace;
+  --doc-handwriting: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  --doc-shadow: inset 0 0 100px rgba(0, 0, 0, 0.15);
+  --doc-radius: 0;
+  --doc-radius-alt: 0;
+  --doc-pad-y: 64px;
+  --doc-pad-x: 64px;
+  --doc-header-rule: 2px solid var(--doc-rule);
+  --doc-label-w: 150px;
+  --doc-box-bg: rgba(0, 0, 0, 0.02);
+  --doc-table-head-bg: #e8e4d5;
+  --doc-table-head-ink: #1a1a1a;
+  --doc-table-border: #b5b0a1;
+  --doc-table-zebra: transparent;
+}
+
+/* ---------- DOSSIER ----------------------------------------
+   Source: DocumentViewers/BackgroundCheckViewer.css:4-26
+   Monospaced official record: background checks, personnel files.     */
+.doc-sheet[data-theme='dossier'] {
+  --doc-paper: #f4f1ea;
+  --doc-ink: #1a1a1a;
+  --doc-ink-muted: #444444;
+  --doc-rule: #1a1a1a;
+  --doc-rule-soft: rgba(0, 0, 0, 0.2);
+  --doc-accent: #a33232;
+  --doc-accent-soft: rgba(163, 50, 50, 0.7);
+  --doc-font: var(--font-primary), sans-serif;
+  --doc-font-mono: var(--font-mono), monospace;
+  --doc-handwriting: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  --doc-shadow: inset 0 0 80px rgba(0, 0, 0, 0.1);
+  --doc-radius: 0;
+  --doc-radius-alt: 4px;
+  --doc-pad-y: 48px;
+  --doc-pad-x: 64px;
+  --doc-header-rule: 3px solid var(--doc-rule);
+  --doc-label-w: 160px;
+  --doc-box-bg: rgba(0, 0, 0, 0.03);
+  --doc-table-head-bg: rgba(0, 0, 0, 0.08);
+  --doc-table-head-ink: #1a1a1a;
+  --doc-table-border: rgba(0, 0, 0, 0.2);
+  --doc-table-zebra: rgba(0, 0, 0, 0.015);
+}
+
+/* ---------- LAB --------------------------------------------
+   Source: ForensicViewers/AutopsyViewer.css:4-24
+   Tight clinical stock: autopsy, ballistics, DNA, trace, digital.     */
+.doc-sheet[data-theme='lab'] {
+  --doc-paper: #fcfcfb;
+  --doc-ink: #1a1a1a;
+  --doc-ink-muted: #444444;
+  --doc-rule: #1a1a1a;
+  --doc-rule-soft: #d4cebc;
+  --doc-accent: #a33232;
+  --doc-accent-soft: rgba(163, 50, 50, 0.7);
+  --doc-font: var(--font-primary), sans-serif;
+  --doc-font-mono: var(--font-mono), monospace;
+  --doc-handwriting: 'Caveat', 'Segoe Script', cursive, sans-serif;
+  --doc-shadow: inset 0 0 40px rgba(0, 0, 0, 0.05), 2px 4px 15px rgba(0, 0, 0, 0.3);
+  --doc-radius: 2px;
+  --doc-radius-alt: 2px;
+  --doc-pad-y: 32px;
+  --doc-pad-x: 40px;
+  --doc-header-rule: 2px solid var(--doc-rule);
+  --doc-label-w: 160px;
+  --doc-box-bg: #f4f4f4;
+  --doc-table-head-bg: #e8e4d5;
+  --doc-table-head-ink: #1a1a1a;
+  --doc-table-border: #d4cebc;
+  --doc-table-zebra: rgba(0, 0, 0, 0.012);
+}
+
+/* ==============================================================
+   IN-WORLD HTML FORMATTING
+   --------------------------------------------------------------
+   Re-homed from DocumentViewers/BackgroundCheckViewer.css:134-148, which is
+   deleted in Phase 2. Author HTML runs through `sanitizeHtml`, which whitelists
+   the `class` attribute precisely so these spans survive.
+   ============================================================== */
+.doc-sheet .redacted {
+  background-color: #1a1a1a;
+  color: #1a1a1a;
+  padding-inline: 6px;
+  user-select: none;
+  border-radius: 2px;
+}
+
+.doc-sheet .highlighted {
+  background-color: rgba(255, 235, 59, 0.5);
+  padding-inline: 2px;
+  border-radius: 2px;
+}

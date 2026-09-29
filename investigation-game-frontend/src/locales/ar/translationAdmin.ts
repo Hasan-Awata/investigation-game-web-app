@@ -223,8 +223,50 @@ export const translations = {
       evidenceOption: (id: string | number, title: string) => `EX-${String(id).padStart(3, '0')}: ${title}`
     },
     entityList: {
-     editBtn: "تعديل", 
-     deleteBtn: "حذف"  
+      editBtn: "تعديل", 
+      deleteBtn: "حذف"  
+    },
+    docBuilder: {
+      paletteTitle: "الكتل",
+      inspectorTitle: "المُحرِّر",
+      inspectorEmpty: "اختر كتلة على الورقة لتحريرها.",
+      template: "القالب",
+      templatePlaceholder: "-- ابدأ من قالب --",
+      theme: "السمة",
+      pagePad: "هامش الصفحة",
+      blocksWord: "كتلة",
+      clear: "تفريغ",
+      clearConfirm: "تفريغ جميع الكتل؟ لا يمكن التراجع.",
+      uploadImage: "رفع صورة",
+      uploading: "جارٍ الرفع...",
+      duplicate: "تكرار",
+      remove: "حذف",
+      uploadSuccess: "تم رفع الصورة بنجاح",
+      uploadError: "فشل رفع الصورة",
+      blocksSection: "الكتل",
+      templatesSection: "القوالب",
+      spanLabel: "العرض",
+      alignLabel: "محاذاة",
+      toneLabel: "النبرة",
+      padLabel: "حشو",
+      blocks: {
+        letterhead: "ترويسة",
+        meta_grid: "شبكة حقول",
+        prose: "نص",
+        two_column: "عمودان",
+        table: "جدول",
+        list: "قائمة",
+        signature_row: "صف تواقيع",
+        stamp: "ختم",
+        barcode: "باركود",
+        watermark: "علامة مائية",
+        rule: "فاصل",
+        spacer: "مسافة",
+        image: "صورة",
+        annotation: "تعليق",
+        redaction: "إخفاء",
+        diagram: "رسم توضيحي"
+      }
     },
     evidenceMetadata: {
       sectionTitle: "[ حقن البيانات الوصفية المنظمة ]",

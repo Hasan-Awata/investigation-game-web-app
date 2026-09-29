@@ -16,7 +16,6 @@ class Evidence extends Model
         'title',
         'description',
         'evidence_type',
-        'sub_type',    
         'metadata',    
         'audio_url',
         'img_url',

@@ -223,8 +223,50 @@ export const translations = {
       evidenceOption: (id: string | number, title: string) => `EX-${String(id).padStart(3, '0')}: ${title}`
     },
     entityList: {
-     editBtn: "Edit", 
-     deleteBtn: "Delete"  
+      editBtn: "Edit", 
+      deleteBtn: "Delete"  
+    },
+    docBuilder: {
+      paletteTitle: "Blocks",
+      inspectorTitle: "Inspector",
+      inspectorEmpty: "Select a block on the sheet to edit it.",
+      template: "Template",
+      templatePlaceholder: "-- start from a template --",
+      theme: "Theme",
+      pagePad: "Page inset",
+      blocksWord: "blocks",
+      clear: "Clear",
+      clearConfirm: "Clear all blocks? This cannot be undone.",
+      uploadImage: "Upload image",
+      uploading: "Uploading...",
+      duplicate: "Duplicate",
+      remove: "Remove",
+      uploadSuccess: "Image uploaded successfully",
+      uploadError: "Failed to upload image",
+      blocksSection: "Blocks",
+      templatesSection: "Templates",
+      spanLabel: "Span",
+      alignLabel: "Align",
+      toneLabel: "Tone",
+      padLabel: "Pad",
+      blocks: {
+        letterhead: "Letterhead",
+        meta_grid: "Field grid",
+        prose: "Prose",
+        two_column: "Two columns",
+        table: "Table",
+        list: "List",
+        signature_row: "Signature row",
+        stamp: "Stamp",
+        barcode: "Barcode",
+        watermark: "Watermark",
+        rule: "Divider",
+        spacer: "Spacer",
+        image: "Image",
+        annotation: "Annotation",
+        redaction: "Redaction",
+        diagram: "Diagram"
+      }
     },
     evidenceMetadata: {
       sectionTitle: "[ Structured Metadata Injection ]",

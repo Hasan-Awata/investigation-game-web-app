@@ -1,19 +1,18 @@
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import type { Evidence } from '@/types';
-import DocumentEvidence from './EvidenceVariants/DocumentEvidence';
+import DocEvidence from './EvidenceVariants/DocEvidence';
 import TestimonyEvidence from './EvidenceVariants/TestimonyEvidence';
 import AudioEvidence from './EvidenceVariants/AudioEvidence';
 import ImageEvidence from './EvidenceVariants/ImageEvidence';
-import ForensicEvidence from './EvidenceVariants/ForensicEvidence';
 import styles from './EvidenceCard.module.css';
 
 const EvidenceComponents: Record<string, React.FC<{ evidence: Evidence }>> = {
-  document: DocumentEvidence,
+  document: DocEvidence,
+  forensic: DocEvidence,
   testimony: TestimonyEvidence,
   audio: AudioEvidence,
   image: ImageEvidence,
-  forensic: ForensicEvidence,
 };
 
 interface EvidenceCardProps {

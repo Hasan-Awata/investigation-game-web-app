@@ -1,0 +1,119 @@
+/* ==============================================================
+   DOC BOARD CARD
+   --------------------------------------------------------------
+   One card, five skins, chosen by `DOC_THEME_SKINS[doc.theme]`.
+   Each skin reuses the sheet's own theme tokens (defined in
+   DocViewer/themes.css) rather than restating colours, so a card can
+   never drift from the document it opens.
+
+   Only card CHROME lives here: the tab, the rule, and the footer.
+   Block rendering is never duplicated on a card.
+   ============================================================== */
+
+.doc-variant {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 118px;
+  padding: 0.85rem 0.9rem 0.7rem;
+  border-radius: var(--doc-radius, 3px);
+  background: var(--doc-paper);
+  background-image: var(--doc-paper-image, none);
+  background-attachment: local;
+  color: var(--doc-ink);
+  font-family: var(--doc-font);
+  box-shadow: var(--doc-shadow);
+  overflow: hidden;
+}
+
+/* The clip tab at the sheet's leading edge. */
+.doc-variant-tab {
+  position: absolute;
+  top: 0;
+  inset-inline-start: 0;
+  width: 6px;
+  height: 100%;
+  background: var(--doc-accent, var(--accent-cyan));
+  opacity: 0.75;
+}
+
+.doc-variant .evidence-title {
+  color: var(--doc-ink);
+  font-size: 1.05rem;
+  line-height: 1.3;
+  margin: 0;
+}
+
+.doc-variant .evidence-desc {
+  color: var(--doc-ink-muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.doc-variant-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--doc-rule);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--doc-ink-muted);
+}
+
+.doc-variant-skin {
+  color: var(--doc-accent, var(--accent-cyan));
+}
+
+.doc-variant-blocks {
+  white-space: nowrap;
+}
+
+/* Notebook: the card gets a ruled margin and a slanted top edge, so a diary
+   does not read as an official document at a glance. */
+.doc-variant--handwritten .doc-variant-foot {
+  border-top-style: dotted;
+}
+
+.doc-variant--handwritten .evidence-title {
+  font-style: italic;
+}
+
+/* Ledger: numbers-first, so the footer leads with the block count. */
+.doc-variant--tabular .doc-variant-foot {
+  border-top-width: 2px;
+}
+
+.doc-variant--tabular .doc-variant-skin {
+  order: 2;
+}
+
+.doc-variant--tabular .doc-variant-blocks {
+  order: 1;
+  font-weight: 700;
+}
+
+/* Dossier: heavier paper, tighter caption. */
+.doc-variant--dossier {
+  border-inline-start: 3px solid var(--doc-accent, var(--accent-crimson));
+}
+
+.doc-variant--dossier .doc-variant-tab {
+  display: none;
+}
+
+.doc-variant--dossier .doc-variant-foot {
+  font-weight: 700;
+}
+
+/* Lab report: monospace body, the whole way down. */
+.doc-variant--report .doc-variant-foot,
+.doc-variant--report .doc-variant-skin {
+  letter-spacing: 0.14em;
+}

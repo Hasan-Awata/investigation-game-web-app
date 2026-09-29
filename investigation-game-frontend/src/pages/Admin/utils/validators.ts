@@ -26,9 +26,22 @@ export const validateLevelForm = (data: { order_index: string | number; zone_id?
   return null;
 };
 
-export const validateEvidenceForm = (data: { evidence_type: string; sub_type: string }) => {
-  if ((data.evidence_type === 'document' || data.evidence_type === 'forensic') && !data.sub_type) {
-    return 'You must select a specific classification sub-type for this evidence.';
+const isDocEvidenceType = (t: string): boolean => t === 'document' || t === 'forensic';
+
+/**
+ * `document` / `forensic` must carry a non-empty `metadata.doc.blocks` array,
+ * since the viewer renders an empty sheet as "contents illegible" -- saving one
+ * would produce an evidence row that is silently broken in game.
+ */
+export const validateEvidenceForm = (data: { evidence_type: string; metadata?: Record<string, any> }) => {
+  if (!isDocEvidenceType(data.evidence_type)) return null;
+
+  const doc = data.metadata?.doc;
+  if (!doc || typeof doc !== 'object') {
+    return 'This evidence needs a document. Compose it in the builder before saving.';
+  }
+  if (!Array.isArray(doc.blocks) || doc.blocks.length === 0) {
+    return 'Add at least one block to the document. An empty document renders as illegible.';
   }
   return null;
 };
