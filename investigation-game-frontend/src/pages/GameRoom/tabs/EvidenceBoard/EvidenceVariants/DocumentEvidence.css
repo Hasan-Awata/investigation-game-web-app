@@ -1,0 +1,123 @@
+/* ==============================================================
+   DOCUMENT EVIDENCE (Manilla Folder)
+   ============================================================== */
+.manilla-folder {
+  /* --- THEME CONTROL PANEL --- */
+  --folder-paper: #e8d5b7;       /* Classic manilla */
+  --folder-ink: #2d2d2d;         /* Dark brown/black ink */
+  --folder-accent: #c49a6c;      /* Brass/gold accent */
+  --folder-shadow: #3d3528;      /* Folded edge shadow */
+  --tab-color: #d4c4a8;          /* Tab slightly lighter */
+  /* --------------------------- */
+
+  width: 240px;
+  height: 170px;
+  position: relative;
+  background: var(--folder-paper);
+  border-radius: 4px 4px 2px 2px;
+  
+  /* Reduced top padding and used logical inline padding for RTL support */
+  padding: 1.5rem 1.25rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  
+  box-shadow: 
+    2px 4px 12px rgba(0, 0, 0, 0.25),
+    inset 0 -4px 8px rgba(61, 53, 40, 0.15),
+    inset 0 1px 2px rgba(255, 255, 255, 0.1);
+  background-image: 
+    repeating-linear-gradient(
+      180deg,
+      transparent,
+      transparent 20px,
+      rgba(61, 53, 40, 0.04) 20px,
+      rgba(61, 53, 40, 0.04) 21px
+    );
+  border: 1px solid #c9b896;
+}
+
+/* FOLDED TAB AT TOP */
+.folder-tab {
+  position: absolute;
+  top: -8px;
+  /* Logical property replaces "left" to automatically flip in RTL */
+  inset-inline-start: 20px;
+  width: 70px;
+  height: 22px;
+  background: var(--tab-color);
+  border-radius: 8px 8px 0 0;
+  border: 1px solid #c9b896;
+  border-bottom: none;
+  box-shadow: 
+    inset 0 -2px 4px rgba(61, 53, 40, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.15);
+  z-index: 5;
+}
+
+.folder-tab::before {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  width: 30px;
+  height: 4px;
+  background: radial-gradient(ellipse at center, rgba(61, 53, 40, 0.2) 0%, transparent 70%);
+  border-radius: 50%;
+}
+
+/* FOLDER TOP AREA */
+.folder-top {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.folder-category {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--folder-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  border: 1px solid var(--folder-accent);
+  padding: 2px 5px;
+  border-radius: 2px;
+  background: rgba(196, 154, 108, 0.1);
+}
+
+/* TITLE & SEPARATOR LINE */
+.manilla-folder .evidence-title {
+  color: var(--folder-ink);
+  font-family: var(--font-primary);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 0 0 0.75rem 0;
+  padding-bottom: 0.75rem;
+  /* Moved the dashed line below the title */
+  border-bottom: 2px dashed rgba(61, 53, 40, 0.2);
+  line-height: 1.3;
+  width: 100%;
+  
+  /* Truncates the title if it gets too long */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* DESCRIPTION */
+.manilla-folder .evidence-desc {
+  color: #4a4038;
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  margin: 0;
+  line-height: 1.5;
+  
+  /* Prevents overflow out of the card by adding an ellipsis to the 2nd line */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

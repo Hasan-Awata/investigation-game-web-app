@@ -197,6 +197,14 @@
           },
           "testimony": {
             "transcript": "نسخة طبق الأصل"
+          },
+          "document": {
+            "folder": "ملف"
+          },
+          "forensic": {
+            "classified": "سري",
+            "report": "تقرير",
+            "chain": "سلسلة الحضانة"
           }
         },
         "viewers": {

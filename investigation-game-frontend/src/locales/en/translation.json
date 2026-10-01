@@ -11,5 +11,30 @@
     "sessionCode": "Session Code",
     "activeAgents": "Active Agents",
     "strikes": "STRIKES"
+  },
+  "pages": {
+    "gameRoom": {
+      "evidence": {
+        "variants": {
+          "audio": {
+            "aSide": "Side A"
+          },
+          "image": {
+            "noImage": "No Image"
+          },
+          "testimony": {
+            "transcript": "Transcript"
+          },
+          "document": {
+            "folder": "FILE"
+          },
+          "forensic": {
+            "classified": "CLASSIFIED",
+            "report": "REPORT",
+            "chain": "CHAIN OF CUSTODY"
+          }
+        }
+      }
+    }
   }
 }
