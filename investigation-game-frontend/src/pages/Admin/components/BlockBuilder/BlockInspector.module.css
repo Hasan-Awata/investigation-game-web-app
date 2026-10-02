@@ -1,0 +1,128 @@
+.inspector {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  overflow: auto;
+}
+
+.inspectorHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: var(--border-thin);
+}
+
+.inspectorTitle {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-primary);
+}
+
+.inspectorActions {
+  display: flex;
+  gap: 8px;
+}
+
+.inspectorBtn {
+  padding: 4px 10px;
+  background: var(--bg-panel);
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-primary);
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.inspectorBtn:hover {
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  color: var(--bg-dark);
+}
+
+.inspectorEmpty {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 32px 0;
+}
+
+.inspectorFields {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding-bottom: 16px;
+  border-bottom: var(--border-thin);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fieldLabel {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.fieldSelect,
+.fieldInput {
+  padding: 8px 10px;
+  background: var(--bg-panel);
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+}
+
+.fieldInput[type="number"] {
+  width: 80px;
+}
+
+.editorWrapper {
+  flex: 1;
+  min-height: 0;
+}
+
+.uploadWrapper {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: var(--border-thin);
+}
+
+.uploadBtn {
+  width: 100%;
+  padding: 10px;
+  background: var(--bg-panel);
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.uploadBtn:hover {
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  color: var(--bg-dark);
+}

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useViewedItems } from '@/hooks/useViewedItems';
+import { patchArray } from '@/utils/parsers';
 import { RoomDataProvider, RoomUIProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
 import GameRoomLayout from './GameRoomLayout';
 import type { GameRoom, Evidence, Character, Level } from '@/types';
@@ -77,12 +78,6 @@ export default function GameRoom() {
     const newToast: ToastNotification = { ...toastData, id: crypto.randomUUID() };
     setToasts((prev) => [...prev, newToast]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== newToast.id)), 5000);
-  }, []);
-
-  const patchArray = useCallback((oldArr: any[] = [], newItems: any[] = []) => {
-    const map = new Map(oldArr.map(item => [item.id, item]));
-    newItems.forEach(item => map.set(item.id, item));
-    return Array.from(map.values());
   }, []);
 
   useEffect(() => {
@@ -255,7 +250,7 @@ export default function GameRoom() {
 
       window.Echo.leave(`room.${room.id}`);
     };
-  }, [room?.id, patchRoomData, patchArray, setGameOverData, addGlobalToast, t]);
+  }, [room?.id, patchRoomData, setGameOverData, addGlobalToast, t]);
 
   if (isLoading) return <div className="terminal-text">{t('pages.gameRoom.synchronizing')}</div>;
   if (error || !room) return <div className="terminal-text error">{error || t('pages.gameRoom.sessionNotFound')}</div>;

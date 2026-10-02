@@ -1,0 +1,48 @@
+.tb-file-tree {
+  font-family: var(--term-font-mono);
+  font-size: var(--term-font-size);
+  line-height: var(--term-line-height);
+}
+
+.tb-file-tree__pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.tb-file-tree__line {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.tb-file-tree__glyph {
+  flex-shrink: 0;
+}
+
+.tb-file-tree__path {
+  color: var(--term-ink);
+  flex: 1;
+  word-break: break-all;
+}
+
+.tb-file-tree__size {
+  color: var(--term-ink-muted);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.tb-file-tree__mtime {
+  color: var(--term-ink-muted);
+  font-size: 0.85em;
+  white-space: nowrap;
+}
+
+.tb-file-tree__state {
+  font-size: 0.85em;
+}
+
+.tb-file-tree__state--recovered { color: var(--term-warn); }
+.tb-file-tree__state--intact { color: var(--term-ok); }
+.tb-file-tree__state--corrupted { color: var(--term-err); }
+.tb-file-tree__state--encrypted { color: var(--term-accent); }

@@ -8,6 +8,8 @@ import GameRoom from '@/pages/GameRoom/GameRoom';
 import AdminGuard from '@/pages/Admin/components/AdminGuard';
 import AdminDashboard from '@/pages/Admin/AdminDashboard';
 import { getToken, logout } from '@/services/auth';
+import { AUTH_USER_KEY } from '@/utils/userState';
+import { removeSafeStorage } from '@/utils/storage';
 import { useAuthSession } from '@/hooks/useAuth';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
@@ -32,13 +34,10 @@ function AppRouter() {
     const handleForceLogout = () => {
       // 1. Nuke the token immediately
       logout();
-      
-      // Safe execution context to prevent unhandled storage exceptions
-      try {
-        localStorage.removeItem('auth_user'); 
-      } catch (e) {
-        console.warn('Storage operation restricted by browser:', e);
-      }
+
+      // Safe execution context: removeSafeStorage already swallows the
+      // SecurityError thrown by restricted/sandboxed browser contexts.
+      removeSafeStorage('local', AUTH_USER_KEY);
 
       // 2. Instantly sever the protected UI tree to prevent a refetch stampede
       setIsSessionRevoked(true);

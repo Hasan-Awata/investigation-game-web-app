@@ -1,0 +1,28 @@
+.tb-output-stream {
+  font-family: var(--term-font-mono);
+  font-size: var(--term-font-size);
+  line-height: var(--term-line-height);
+}
+
+.tb-output-stream__label {
+  color: var(--term-ink-muted);
+  font-size: 0.85em;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.tb-output-stream__lines {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.tb-output-stream__line {
+  display: block;
+}
+
+.tb-tone-stdout .tb-output-stream__line { color: var(--term-ink); }
+.tb-tone-stderr .tb-output-stream__line { color: var(--term-err); }
+.tb-tone-warn .tb-output-stream__line { color: var(--term-warn); }
+.tb-tone-ok .tb-output-stream__line { color: var(--term-ok); }
+.tb-tone-info .tb-output-stream__line { color: var(--term-info); }

@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { GameCase, User } from '@/types';
 import { fetchCases } from '@/services/api';
 import { logout } from '@/services/auth';
+import { getLocalUser, AUTH_USER_KEY } from '@/utils/userState';
+import { setSafeStorage } from '@/utils/storage';
 import CaseBriefingModal from '@/pages/MainMenu/CaseBriefingModal/CaseBriefingModal';
 import CaseCard from '@/pages/MainMenu/CaseCard/CaseCard';
 import styles from './MainMenu.module.css';
@@ -13,15 +15,8 @@ export default function MainMenu() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => getLocalUser());
   const [selectedCase, setSelectedCase] = useState<GameCase | null>(null);
-
-  useEffect(() => {
-    const storedUser = localStorage.getItem('auth_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-  }, []);
 
   const { data: cases = [], isLoading, error } = useQuery({
     queryKey: ['cases'],
@@ -29,7 +24,7 @@ export default function MainMenu() {
       const result = await fetchCases();
       if (!result.isSuccess) throw new Error(result.errorMessage);
 
-      localStorage.setItem('auth_user', JSON.stringify(result.value.user));
+      setSafeStorage('local', AUTH_USER_KEY, result.value.user);
       setUser(result.value.user);
       return result.value.cases;
     }

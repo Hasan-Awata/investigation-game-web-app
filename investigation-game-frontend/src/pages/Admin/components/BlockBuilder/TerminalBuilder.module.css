@@ -1,0 +1,46 @@
+.toolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toolbarLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.toolbarSelect {
+  padding: 6px 10px;
+  background: var(--bg-panel);
+  border: var(--border-thin);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-primary);
+  font-size: 0.85rem;
+  min-width: 160px;
+}
+
+.clearBtn {
+  margin-left: auto;
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid var(--term-err);
+  border-radius: var(--radius-sm);
+  color: var(--term-err);
+  font-family: var(--font-primary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.clearBtn:hover {
+  background: var(--term-err);
+  color: var(--term-bg);
+}

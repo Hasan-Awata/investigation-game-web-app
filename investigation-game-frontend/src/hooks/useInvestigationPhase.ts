@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useRoomState, useRoomActions } from '@/context/RoomContext';
+import { useGameMutation } from './useGameMutation';
+import { getLocalUser } from '@/utils/userState';
+import { getSafeString } from '@/utils/parsers';
 import type { Choice } from '@/types';
 import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/services/api';
 
 export type { ToastNotification, GlobalFeedback } from '@/context/RoomContext';
-
-interface ApiError { title?: string; message: any; }
 
 export function useInvestigationPhase() {
   const { t } = useTranslation();
@@ -17,18 +17,8 @@ export function useInvestigationPhase() {
   const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
   const roomId = room.id;
 
-  // --- Helper to strictly extract strings and prevent React object-child crashes ---
-  const getSafeString = (val: any, fallback: string): string => {
-    if (!val) return fallback;
-    if (typeof val === 'string') return val;
-    if (typeof val.message === 'string') return val.message;
-    if (val.message && typeof val.message.message === 'string') return val.message.message;
-    return fallback;
-  };
-
   useEffect(() => {
-    const storedUser = localStorage.getItem('auth_user');
-    const currentUser = storedUser ? JSON.parse(storedUser) : null;
+    const currentUser = getLocalUser();
     if (!currentUser) return;
 
     const serverVotes: Record<number, number> = {};
@@ -40,28 +30,25 @@ export function useInvestigationPhase() {
     setLocalVotes(serverVotes);
   }, [room.votes]);
 
-  const voteMutation = useMutation({
-    mutationFn: async ({ questionId, choiceId }: { questionId: number, choiceId: number }) => {
-      const result = await lockVote(roomId, questionId, choiceId);
-      if (!result.isSuccess) throw new Error(result.errorMessage as string);
-      return result.value;
-    },
+  const voteMutation = useGameMutation({
+    mutationFn: ({ questionId, choiceId }: { questionId: number, choiceId: number }) =>
+      lockVote(roomId, questionId, choiceId),
     onSuccess: () => refreshRoomData()
   });
 
-  const submitTheoryMutation = useMutation({
+  const submitTheoryMutation = useGameMutation({
     mutationFn: async () => {
       // STRICT GUARD
       if (room.current_level_id === null || room.current_level_id === undefined) {
         throw { message: 'No active level to submit.' };
-      }      
-      
-      const result = await submitAssessment(roomId);
-      
-      if (!result.isSuccess) throw { message: result.errorMessage };
-      return result.value;
+      }
+
+      return submitAssessment(roomId);
     },
-    onSuccess: async (data) => {
+    // The consensus outcome is branched on below, so the success dispatch is
+    // left to `onSuccess` rather than the unified handler.
+    errorTitle: 'pages.gameRoom.hooks.phase.systemError',
+    onSuccess: (data) => {
       if (data.status === 'success' || data.status === 'failed_final') {
         setGlobalFeedback({
           type: data.status === 'success' ? 'success' : 'error',
@@ -86,46 +73,19 @@ export function useInvestigationPhase() {
         setLocalVotes({});
         refreshRoomData();
       }
-    },
-    onError: (error: ApiError) => {
-      // Safely parse the title and message so React never receives an object
-      const safeTitle = error.title || error?.message?.title || t('pages.gameRoom.hooks.phase.systemError');
-      const safeMessage = getSafeString(error.message, t('pages.gameRoom.hooks.phase.systemError'));
-      
-      setGlobalFeedback({ type: 'error', title: safeTitle, message: safeMessage });
     }
   });
 
-  const initiatePhaseMutation = useMutation({
-    mutationFn: async (levelId: number) => {
-      const result = await initiatePhase(roomId, levelId);
-      if (!result.isSuccess) throw { message: result.errorMessage };
-      return result.value;
-    },
-    onSuccess: () => refreshRoomData(),
-    onError: (error: ApiError) => {
-      setGlobalFeedback({
-        type: 'error', 
-        title: error.title || t('pages.gameRoom.hooks.phase.systemError'), 
-        message: getSafeString(error.message, t('pages.gameRoom.hooks.phase.systemError'))
-      });
-    }
+  const initiatePhaseMutation = useGameMutation({
+    mutationFn: (levelId: number) => initiatePhase(roomId, levelId),
+    errorTitle: 'pages.gameRoom.hooks.phase.systemError',
+    onSuccess: () => refreshRoomData()
   });
 
-  const triggerWiretapMutation = useMutation({
-    mutationFn: async ({ questionId, audioUrl }: { questionId: number, audioUrl: string }) => {
-      const result = await triggerWiretap(roomId, questionId);
-      if (!result.isSuccess) throw { message: result.errorMessage };
-      return { value: result.value, audioUrl };
-    },
-    onSuccess: () => refreshRoomData(),
-    onError: (error: ApiError) => {
-      setGlobalFeedback({
-        type: 'error', 
-        title: error.title || t('pages.gameRoom.hooks.phase.transmissionError'), 
-        message: getSafeString(error.message, t('pages.gameRoom.hooks.phase.transmissionError'))
-      });
-    }
+  const triggerWiretapMutation = useGameMutation({
+    mutationFn: ({ questionId }: { questionId: number, audioUrl: string }) => triggerWiretap(roomId, questionId),
+    errorTitle: 'pages.gameRoom.hooks.phase.transmissionError',
+    onSuccess: () => refreshRoomData()
   });
 
   // --- NEW: Safe Event Handling ---

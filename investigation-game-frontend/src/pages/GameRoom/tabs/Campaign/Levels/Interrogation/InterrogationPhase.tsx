@@ -2,12 +2,13 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
+import { getSafeStorage, setSafeStorage } from '@/utils/storage';
 import type { Level, Choice, Question } from '@/types';
 import './InterrogationPhase.css';
 
 // --- MESSAGE REVEAL COMPONENT ---
 const MessageReveal = ({ text, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
-  const [isTyping, setIsTyping] = useState(!skip && !(cacheKey && sessionStorage.getItem(cacheKey)));
+  const [isTyping, setIsTyping] = useState(!skip && !(cacheKey && getSafeStorage<boolean>('session', cacheKey, false)));
   const savedOnComplete = useRef(onComplete);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ const MessageReveal = ({ text, onComplete, skip = false, cacheKey = '' }: { text
 
     const timer = setTimeout(() => {
       setIsTyping(false);
-      if (cacheKey) sessionStorage.setItem(cacheKey, 'true');
+      if (cacheKey) setSafeStorage('session', cacheKey, true);
     }, calculatedDelay);
 
     return () => clearTimeout(timer);
@@ -88,7 +89,7 @@ export default function InterrogationPhase({
   const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>(() => {
     const initial: Record<number, boolean> = {};
     level.questions?.forEach(q => {
-      if (sessionStorage.getItem(`room_${room.id}_suspect_${q.id}`)) initial[q.id] = true;
+      if (getSafeStorage<boolean>('session', `room_${room.id}_suspect_${q.id}`, false)) initial[q.id] = true;
     });
     return initial;
   });
@@ -96,7 +97,7 @@ export default function InterrogationPhase({
   const [investigatorTypingComplete, setInvestigatorTypingComplete] = useState<Record<number, boolean>>(() => {
     const initial: Record<number, boolean> = {};
     level.questions?.forEach(q => {
-      if (sessionStorage.getItem(`room_${room.id}_investigator_${q.id}`)) initial[q.id] = true;
+      if (getSafeStorage<boolean>('session', `room_${room.id}_investigator_${q.id}`, false)) initial[q.id] = true;
     });
     return initial;
   });

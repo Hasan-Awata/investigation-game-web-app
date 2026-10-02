@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { joinRoom, fetchRoomState } from '@/services/api';
+import { getSafeStringStorage, setSafeStringStorage } from '@/utils/storage';
 import type { GameRoom, Evidence, Character } from '@/types';
 
 export function useGameRoom(inviteCode: string | undefined) {
@@ -19,7 +20,7 @@ export function useGameRoom(inviteCode: string | undefined) {
       if (!inviteCode) throw new Error(t('pages.gameRoom.noInviteCode'));
 
       const storageKey = `active_room_id_for_${inviteCode}`;
-      let roomId = sessionStorage.getItem(storageKey);
+      let roomId = getSafeStringStorage('session', storageKey, '');
 
       if (!roomId) {
         const joinResult = await joinRoom(inviteCode);
@@ -38,7 +39,7 @@ export function useGameRoom(inviteCode: string | undefined) {
 
   useEffect(() => {
     if (room?.id && inviteCode) {
-      sessionStorage.setItem(`active_room_id_for_${inviteCode}`, room.id.toString());
+      setSafeStringStorage('session', `active_room_id_for_${inviteCode}`, room.id.toString());
     }
   }, [room?.id, inviteCode]);
 

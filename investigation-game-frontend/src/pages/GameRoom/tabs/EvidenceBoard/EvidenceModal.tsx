@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Evidence } from '@/types/evidence';
 import UniversalDocViewer from './DocViewer/UniversalDocViewer';
+import TerminalViewer from './TerminalViewer/TerminalViewer';
 import TestimonyViewer from './Viewers/TestimonyViewer';
 import MediaViewer from './Viewers/MediaViewer';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -29,6 +30,7 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
     const ViewerComponents: Record<string, React.ElementType> = {
       forensic: UniversalDocViewer,
       document: UniversalDocViewer,
+      digital: TerminalViewer,
       testimony: TestimonyViewer,
       image: MediaViewer,
       audio: MediaViewer,

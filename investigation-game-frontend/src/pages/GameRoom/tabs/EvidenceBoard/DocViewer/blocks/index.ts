@@ -12,7 +12,7 @@ import StampBlock from './StampBlock';
 import BarcodeBlock from './BarcodeBlock';
 import WatermarkBlock from './WatermarkBlock';
 import RuleBlock from './RuleBlock';
-import SpacerBlock from './SpacerBlock';
+import SpacerBlock from '@/components/blocks/SpacerBlock';
 import ImageBlock from './ImageBlock';
 import AnnotationBlock from './AnnotationBlock';
 import RedactionBlock from './RedactionBlock';

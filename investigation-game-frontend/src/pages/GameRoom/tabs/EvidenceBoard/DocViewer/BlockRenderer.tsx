@@ -1,7 +1,8 @@
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { DocBlock, DocRenderContext } from '@/types/evidence/doc';
-import { clampSpan, ensureBlockIds } from '@/types/evidence/doc';
+import { clampSpan } from '@/types/evidence/shared';
+import { ensureBlockIds } from '@/types/evidence/doc';
 import { getBlockComponent } from './blocks';
 import './blocks.css';
 

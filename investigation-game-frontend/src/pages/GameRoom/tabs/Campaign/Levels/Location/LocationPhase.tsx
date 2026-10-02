@@ -4,6 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
+import { getLocalUser } from '@/utils/userState';
+import { getSafeStorage, setSafeStorage } from '@/utils/storage';
 import type { Level, Choice } from '@/types';
 import * as api from '@/services/api'; 
 import './LocationPhase.css';
@@ -19,9 +21,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
   const { room, accumulatedEvidences } = useRoomState();
   const { localVotes, handleSelectChoice, addToast } = useInvestigationPhase();
 
-  const storedUser = localStorage.getItem('auth_user');
-  const currentUser = storedUser ? JSON.parse(storedUser) : null;
-  const currentUserId = currentUser?.id;
+  const currentUserId = getLocalUser()?.id;
 
   const checkIsLockedByNarrative = (choice: Choice) => {
     if (!choice.requirements) return false;
@@ -57,27 +57,27 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
   const storageKeyBase = `inv_loc_state_${room.id}_${level.id}`;
 
   const [localFound, setLocalFound] = useState<Set<number>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(`${storageKeyBase}_found`) || '[]')); } catch { return new Set(); }
+    return new Set(getSafeStorage<number[]>('local', `${storageKeyBase}_found`, []));
   });
 
   const [localDeadEnds, setLocalDeadEnds] = useState<Set<number>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(`${storageKeyBase}_deadEnds`) || '[]')); } catch { return new Set(); }
+    return new Set(getSafeStorage<number[]>('local', `${storageKeyBase}_deadEnds`, []));
   });
 
   const [activeBubbles, setActiveBubbles] = useState<Set<number>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem(`${storageKeyBase}_bubbles`) || '[]')); } catch { return new Set(); }
+    return new Set(getSafeStorage<number[]>('local', `${storageKeyBase}_bubbles`, []));
   });
 
   useEffect(() => {
-    localStorage.setItem(`${storageKeyBase}_found`, JSON.stringify([...localFound]));
+    setSafeStorage('local', `${storageKeyBase}_found`, Array.from(localFound));
   }, [localFound, storageKeyBase]);
 
   useEffect(() => {
-    localStorage.setItem(`${storageKeyBase}_deadEnds`, JSON.stringify([...localDeadEnds]));
+    setSafeStorage('local', `${storageKeyBase}_deadEnds`, Array.from(localDeadEnds));
   }, [localDeadEnds, storageKeyBase]);
 
   useEffect(() => {
-    localStorage.setItem(`${storageKeyBase}_bubbles`, JSON.stringify([...activeBubbles]));
+    setSafeStorage('local', `${storageKeyBase}_bubbles`, Array.from(activeBubbles));
   }, [activeBubbles, storageKeyBase]);
 
   const foundPoints = new Set([

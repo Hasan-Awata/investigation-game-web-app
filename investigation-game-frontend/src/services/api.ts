@@ -9,6 +9,28 @@ const handleUnauthorized = () => {
   window.dispatchEvent(new CustomEvent('auth:unauthorized')); 
 };
 
+/**
+ * Collapses a Laravel error payload into a single renderable string.
+ *
+ * `Result`'s error channel is a `string` by contract. The room mutations below
+ * used to smuggle a `{ title, message }` object through it instead, which no
+ * consumer could actually read: `useInvestigationPhase` re-threw it as
+ * `{ message: result.errorMessage }`, silently dropping `title`, and then had
+ * to dig one level down through `message` to recover a string. A bare string
+ * keeps the contract honest and puts the backend's own wording on screen.
+ *
+ * `message` wins because it is the human-readable field; `error` is Laravel's
+ * short error key and is the next best thing.
+ */
+const toFailureMessage = (data: unknown, fallback: string): string => {
+  if (data !== null && typeof data === 'object') {
+    const payload = data as { message?: unknown; error?: unknown };
+    if (typeof payload.message === 'string' && payload.message) return payload.message;
+    if (typeof payload.error === 'string' && payload.error) return payload.error;
+  }
+  return fallback;
+};
+
 export const fetchCases = async (): Promise<Result<{ cases: GameCase[], user: User }>> => {
   try {
     const response = await fetch(`${API_BASE_URL}/cases`, {
@@ -138,7 +160,7 @@ export const lockVote = async (roomId: number, questionId: number, choiceId: num
   }
 };
 
-export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string; }, { title: string, message: string }>> => {
+export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string; }>> => {
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/submit`, {
       method: 'POST',
@@ -152,18 +174,15 @@ export const submitAssessment = async (roomId: number): Promise<Result<{ status:
     if (!response.ok) {
       if (response.status === 401) handleUnauthorized();
       const data = await response.json().catch(() => null);
-      return failure({
-        title: data?.error || 'Theory Rejected',
-        message: data?.message || 'Failed to submit theory.'
-      });
+      return failure(toFailureMessage(data, 'Failed to submit theory.'));
     }
     return success(await response.json());
   } catch (error) {
-    return failure({ title: 'Network Error', message: error instanceof Error ? error.message : 'Unknown error' });
+    return failure(error instanceof Error ? error.message : 'Network error');
   }
 };
 
-export const initiatePhase = async (roomId: number, levelId: number): Promise<Result<any, { title: string, message: string }>> => {
+export const initiatePhase = async (roomId: number, levelId: number): Promise<Result<any>> => {
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/levels/${levelId}/start`, {
       method: 'POST',
@@ -177,15 +196,11 @@ export const initiatePhase = async (roomId: number, levelId: number): Promise<Re
     if (!response.ok) {
       if (response.status === 401) handleUnauthorized();
       const data = await response.json().catch(() => null);
-      // Capture the backend 'error' key for the title
-      return failure({ 
-        title: data?.error || 'Clearance Denied', 
-        message: data?.message || 'Failed to initiate phase.' 
-      });
+      return failure(toFailureMessage(data, 'Failed to initiate phase.'));
     }
     return success(await response.json());
   } catch (error) {
-    return failure({ title: 'Network Error', message: error instanceof Error ? error.message : 'Unknown error' });
+    return failure(error instanceof Error ? error.message : 'Network error');
   }
 };
 
@@ -241,7 +256,7 @@ export const submitInvestigationRequest = async (
   }
 };
 
-export const triggerWiretap = async (roomId: number, questionId: number): Promise<Result<any, { title: string, message: string }>> => {
+export const triggerWiretap = async (roomId: number, questionId: number): Promise<Result<any>> => {
   try {
     const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/questions/${questionId}/wiretap/play`, {
       method: 'POST',
@@ -255,14 +270,11 @@ export const triggerWiretap = async (roomId: number, questionId: number): Promis
     if (!response.ok) {
       if (response.status === 401) handleUnauthorized();
       const data = await response.json().catch(() => null);
-      return failure({
-        title: data?.error || 'Transmission Failed',
-        message: data?.message || 'Failed to trigger wiretap.'
-      });
+      return failure(toFailureMessage(data, 'Failed to trigger wiretap.'));
     }
     return success(await response.json());
   } catch (error) {
-    return failure({ title: 'Network Error', message: error instanceof Error ? error.message : 'Unknown error' });
+    return failure(error instanceof Error ? error.message : 'Network error');
   }
 };
 

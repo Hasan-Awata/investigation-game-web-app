@@ -1,0 +1,37 @@
+.tb-prompt-line {
+  font-family: var(--term-font-mono);
+  font-size: var(--term-font-size);
+  line-height: var(--term-line-height);
+}
+
+.tb-prompt-line__header {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.tb-prompt {
+  color: var(--term-prompt);
+  white-space: pre;
+}
+
+.tb-command {
+  color: var(--term-ink);
+  white-space: pre;
+}
+
+.tb-prompt-line__output {
+  margin-left: 2ch;
+  color: var(--term-ink-muted);
+}
+
+.tb-prompt-line__output-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.tb-tone-stdout .tb-command { color: var(--term-ink); }
+.tb-tone-stderr .tb-command { color: var(--term-err); }
+.tb-tone-warn .tb-command { color: var(--term-warn); }
+.tb-tone-ok .tb-command { color: var(--term-ok); }
+.tb-tone-info .tb-command { color: var(--term-info); }

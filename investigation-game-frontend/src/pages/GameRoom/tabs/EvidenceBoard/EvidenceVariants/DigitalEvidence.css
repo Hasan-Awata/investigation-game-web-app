@@ -1,0 +1,91 @@
+.digital-variant.terminal-card {
+  background: var(--term-bg);
+  border: 1px solid var(--term-rule);
+  border-radius: var(--term-radius);
+  overflow: hidden;
+  font-family: var(--term-font-mono);
+  direction: ltr;
+  text-align: left;
+  min-height: 170px;
+  width: 240px; 
+  display: flex;
+  flex-direction: column;
+}
+
+.terminal-card__chrome {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: var(--term-chrome-bg);
+  border-bottom: 1px solid var(--term-rule);
+}
+
+.terminal-card__controls {
+  display: flex;
+  gap: 6px;
+}
+
+.terminal-card__control {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--term-chrome-ink-muted);
+}
+
+.terminal-card__control--close { background: var(--term-err); }
+.terminal-card__control--minimize { background: var(--term-warn); }
+.terminal-card__control--maximize { background: var(--term-ok); }
+
+.terminal-card__title {
+  flex: 1;
+  font-size: 0.7em;
+  color: var(--term-chrome-ink);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.terminal-card__body {
+  flex: 1;
+  padding: var(--term-pad-y) var(--term-pad-x);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.terminal-card__prompt {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  color: var(--term-prompt);
+  font-size: 0.85em;
+}
+
+.terminal-card__prompt-user { color: var(--term-ok); }
+.terminal-card__prompt-at { color: var(--term-ink-muted); }
+.terminal-card__prompt-host { color: var(--term-accent); }
+.terminal-card__prompt-dir { color: var(--term-prompt); }
+.terminal-card__prompt-char { color: var(--term-prompt); font-weight: 600; }
+
+.terminal-card__evidence-title {
+  margin: 0;
+  font-size: 1.1em;
+  font-weight: 600;
+  color: var(--term-ink);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.terminal-card__evidence-desc {
+  margin: 0;
+  font-size: 0.85em;
+  color: var(--term-ink-muted);
+  line-height: 1.5;
+  font-family: var(--font-primary);
+  text-transform: none;
+  letter-spacing: normal;
+}

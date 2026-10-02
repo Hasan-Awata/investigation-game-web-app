@@ -1,0 +1,27 @@
+.terminal-window[data-theme='terminal'] {
+  --term-bg: #0d1117;
+  --term-chrome-bg: #161b22;
+  --term-chrome-ink: #e6edf3;
+  --term-chrome-ink-muted: #8b949e;
+  --term-ink: #e6edf3;
+  --term-ink-muted: #8b949e;
+  --term-prompt: #58a6ff;
+  --term-accent: #f78166;
+  --term-warn: #d29922;
+  --term-err: #f85149;
+  --term-ok: #3fb950;
+  --term-info: #58a6ff;
+  --term-rule: #30363d;
+  --term-rule-soft: #21262d;
+  --term-panel-bg: #161b22;
+  --term-caret: #f78166;
+  --term-selection: rgba(88, 166, 255, 0.3);
+  --term-font-mono: var(--font-terminal), var(--font-primary);
+  --term-font-size: 13px;
+  --term-line-height: 1.6;
+  --term-radius: 6px;
+  --term-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  --term-pad-x: 16px;
+  --term-pad-y: 12px;
+  --term-block-gap: 8px;
+}

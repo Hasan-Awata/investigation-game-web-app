@@ -41,6 +41,7 @@
   --font-primary: 'IBM Plex Sans Arabic';
   --font-mono: 'IBM Plex Sans Arabic';
   --font-serif: 'IBM Plex Sans Arabic';
+  --font-terminal: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', monospace;
 }
 
 /* =========================================

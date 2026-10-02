@@ -1,0 +1,51 @@
+.tb-encryption-flow {
+  font-family: var(--term-font-mono);
+  font-size: var(--term-font-size);
+  line-height: var(--term-line-height);
+  overflow-x: auto;
+}
+
+.tb-encryption-flow__svg {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+}
+
+.tb-encryption-flow__step {
+  text-align: center;
+  padding: 8px 12px;
+  background: var(--term-panel-bg);
+  border: 1px solid var(--term-rule);
+  border-radius: var(--term-radius);
+  min-width: 140px;
+}
+
+.tb-encryption-flow__label {
+  font-weight: 600;
+  color: var(--term-ink);
+}
+
+.tb-encryption-flow__detail {
+  font-size: 0.8em;
+  color: var(--term-ink-muted);
+  margin-top: 2px;
+}
+
+.tb-encryption-flow__token {
+  font-size: 0.75em;
+  color: var(--term-accent);
+  font-family: var(--term-font-mono);
+  margin-top: 4px;
+  word-break: break-all;
+}
+
+.tb-encryption-flow__algorithm {
+  margin-top: 12px;
+  padding: 8px;
+  background: var(--term-panel-bg);
+  border: 1px solid var(--term-rule-soft);
+  border-radius: var(--term-radius);
+  font-size: 0.85em;
+  color: var(--term-ink-muted);
+  text-align: center;
+}

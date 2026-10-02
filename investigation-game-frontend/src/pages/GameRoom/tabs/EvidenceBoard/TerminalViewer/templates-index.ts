@@ -1,0 +1,1 @@
+export { templates, type TerminalTemplateName } from './templates';

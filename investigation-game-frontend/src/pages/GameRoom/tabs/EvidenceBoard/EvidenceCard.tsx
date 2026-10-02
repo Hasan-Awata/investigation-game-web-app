@@ -6,6 +6,7 @@ import ForensicEvidence from './EvidenceVariants/ForensicEvidence';
 import TestimonyEvidence from './EvidenceVariants/TestimonyEvidence';
 import AudioEvidence from './EvidenceVariants/AudioEvidence';
 import ImageEvidence from './EvidenceVariants/ImageEvidence';
+import DigitalEvidence from './EvidenceVariants/DigitalEvidence';
 import styles from './EvidenceCard.module.css';
 
 const EvidenceComponents: Record<string, React.FC<{ evidence: Evidence }>> = {
@@ -14,6 +15,7 @@ const EvidenceComponents: Record<string, React.FC<{ evidence: Evidence }>> = {
   testimony: TestimonyEvidence,
   audio: AudioEvidence,
   image: ImageEvidence,
+  digital: DigitalEvidence,
 };
 
 interface EvidenceCardProps {

@@ -27,22 +27,38 @@ export const validateLevelForm = (data: { order_index: string | number; zone_id?
 };
 
 const isDocEvidenceType = (t: string): boolean => t === 'document' || t === 'forensic';
+const isDigitalEvidenceType = (t: string): boolean => t === 'digital';
 
 /**
  * `document` / `forensic` must carry a non-empty `metadata.doc.blocks` array,
  * since the viewer renders an empty sheet as "contents illegible" -- saving one
  * would produce an evidence row that is silently broken in game.
+ * 
+ * `digital` must carry a non-empty `metadata.terminal.blocks` array.
  */
 export const validateEvidenceForm = (data: { evidence_type: string; metadata?: Record<string, any> }) => {
-  if (!isDocEvidenceType(data.evidence_type)) return null;
+  if (isDocEvidenceType(data.evidence_type)) {
+    const doc = data.metadata?.doc;
+    if (!doc || typeof doc !== 'object') {
+      return 'This evidence needs a document. Compose it in the builder before saving.';
+    }
+    if (!Array.isArray(doc.blocks) || doc.blocks.length === 0) {
+      return 'Add at least one block to the document. An empty document renders as illegible.';
+    }
+    return null;
+  }
 
-  const doc = data.metadata?.doc;
-  if (!doc || typeof doc !== 'object') {
-    return 'This evidence needs a document. Compose it in the builder before saving.';
+  if (isDigitalEvidenceType(data.evidence_type)) {
+    const terminal = data.metadata?.terminal;
+    if (!terminal || typeof terminal !== 'object') {
+      return 'This evidence needs a terminal session. Compose it in the builder before saving.';
+    }
+    if (!Array.isArray(terminal.blocks) || terminal.blocks.length === 0) {
+      return 'Add at least one block to the terminal session. An empty session renders as empty.';
+    }
+    return null;
   }
-  if (!Array.isArray(doc.blocks) || doc.blocks.length === 0) {
-    return 'Add at least one block to the document. An empty document renders as illegible.';
-  }
+
   return null;
 };
 

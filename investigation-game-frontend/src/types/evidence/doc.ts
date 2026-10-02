@@ -12,6 +12,16 @@
  * See PlansEvidence.md section 4 for the full rationale.
  */
 
+import type {
+  BlockAlign,
+  BlockStyle,
+  BlockBase,
+  BlockRenderContext,
+  SpacerProps,
+  SpacerBlock,
+} from './shared';
+import { clampSpan, nextBlockId } from './shared';
+
 /* ------------------------------------------------------------------ *
  * Themes
  * ------------------------------------------------------------------ */
@@ -34,40 +44,23 @@ export const DOC_THEMES: readonly DocTheme[] = [
 ] as const;
 
 /* ------------------------------------------------------------------ *
- * Shared primitives
+ * Shared primitives (re-exported from shared.ts)
  * ------------------------------------------------------------------ */
 
-export type BlockAlign = 'start' | 'center' | 'end';
+export type { BlockAlign, BlockStyle, BlockBase, BlockRenderContext, SpacerProps, SpacerBlock };
+export { clampSpan, nextBlockId };
 
 export interface DocPage {
-  /** Sheet width in px. 800 is A4 at ~96dpi, matching every legacy viewer. */
   w: number;
-  /** Sheet height floor in px. The sheet GROWS past this; it is not a hard clip. */
   minH: number;
-  /** Block inset in px. */
   pad: number;
 }
 
-export interface DocBlockStyle {
-  align?: BlockAlign;
-  /** Block-type-specific tonal variant. Meaning depends on the block type. */
-  tone?: string;
-  /** Extra inline padding in px. */
-  pad?: number;
-}
+export type DocBlockStyle = BlockStyle;
 
-export interface DocBlockBase {
-  /** Stable client key. Used for React keys and DnD identity; never rendered. */
-  id: string;
-  /** CSS grid columns to occupy, 1-12. Defaults to 12 (full width). */
-  span?: number;
-  style?: DocBlockStyle;
-}
+export type DocBlockBase = BlockBase;
 
-/** Passed to every block so procedural assets can key off the evidence row. */
-export interface DocRenderContext {
-  evidenceId: number;
-}
+export type DocRenderContext = BlockRenderContext;
 
 export interface MetaRow {
   label: string;
@@ -79,11 +72,6 @@ export interface TableColumn {
   label: string;
   align?: BlockAlign;
   type?: 'text' | 'number' | 'mono' | 'badge';
-  /**
-   * Maps a raw cell value to a tonal class suffix, e.g.
-   * `{ incoming: 'in', outgoing: 'out', missed: 'missed' }`.
-   * Only consulted when `type === 'badge'`.
-   */
   tones?: Record<string, string>;
 }
 
@@ -118,22 +106,18 @@ export interface LetterheadProps {
   agency?: string;
   title?: string;
   sub?: string;
-  /** Rendered in a bordered box on the trailing edge (case number, docket). */
   aside?: string;
   asideLabel?: string;
-  /** Draw a rule beneath the letterhead. Defaults to true. */
   rule?: boolean;
 }
 
 export interface MetaGridProps {
   rows: MetaRow[];
-  /** Label/value pairs per row. Defaults to 1. */
   columns?: number;
   tone?: MetaGridTone;
 }
 
 export interface ProseProps {
-  /** Author-supplied HTML. MUST be passed through `sanitizeHtml` before render. */
   html: string;
   tone?: ProseTone;
 }
@@ -142,7 +126,6 @@ export interface TwoColumnProps {
   left: DocBlock[];
   right: DocBlock[];
   gap?: number;
-  /** Fixed width for the trailing column in px. Omit for an even split. */
   rightWidth?: number;
 }
 
@@ -150,9 +133,7 @@ export interface TableBlockProps {
   columns: TableColumn[];
   rows: TableRow[];
   tone?: TableTone;
-  /** Rendered above the table, centered. */
   caption?: string;
-  /** Shown in place of rows when `rows` is empty. */
   emptyMessage?: string;
 }
 
@@ -176,7 +157,6 @@ export interface BarcodeProps {
 
 export interface WatermarkProps {
   text: string;
-  /** Clockwise degrees. Negated automatically in RTL. */
   rotate?: number;
 }
 
@@ -184,16 +164,10 @@ export interface RuleProps {
   variant?: RuleVariant;
 }
 
-export interface SpacerProps {
-  height: number;
-}
-
 export interface ImageBlockProps {
   url: string;
   caption?: string;
-  /** Rendered width in px. Defaults per filter. */
   width?: number;
-  /** Clockwise degrees. Negated automatically in RTL. */
   rotate?: number;
   filter?: ImageFilter;
 }
@@ -204,9 +178,7 @@ export interface AnnotationProps {
 }
 
 export interface RedactionProps {
-  /** Number of black bars to draw. Defaults to 1. */
   lines?: number;
-  /** Optional caption beneath the bars, e.g. "Pursuant to Order 4471". */
   label?: string;
 }
 
@@ -219,7 +191,7 @@ export interface DiagramProps {
  * The block union
  * ------------------------------------------------------------------ */
 
-export type DocBlock =
+export type PaperBlock =
   | (DocBlockBase & { type: 'letterhead'; props: LetterheadProps })
   | (DocBlockBase & { type: 'meta_grid'; props: MetaGridProps })
   | (DocBlockBase & { type: 'prose'; props: ProseProps })
@@ -231,11 +203,12 @@ export type DocBlock =
   | (DocBlockBase & { type: 'barcode'; props: BarcodeProps })
   | (DocBlockBase & { type: 'watermark'; props: WatermarkProps })
   | (DocBlockBase & { type: 'rule'; props: RuleProps })
-  | (DocBlockBase & { type: 'spacer'; props: SpacerProps })
   | (DocBlockBase & { type: 'image'; props: ImageBlockProps })
   | (DocBlockBase & { type: 'annotation'; props: AnnotationProps })
   | (DocBlockBase & { type: 'redaction'; props: RedactionProps })
   | (DocBlockBase & { type: 'diagram'; props: DiagramProps });
+
+export type DocBlock = PaperBlock | SpacerBlock;
 
 export type DocBlockType = DocBlock['type'];
 
@@ -306,13 +279,6 @@ export const DOC_THEME_SKINS: Record<DocTheme, string> = {
  * Helpers
  * ------------------------------------------------------------------ */
 
-/** Grid columns are 1-12. Clamp defensively so malformed data cannot break layout. */
-export const clampSpan = (span?: number): number => {
-  const n = Number(span);
-  if (!Number.isFinite(n)) return 12;
-  return Math.min(12, Math.max(1, Math.round(n)));
-};
-
 /**
  * Narrow an unknown `metadata` payload to a usable `DocDocument`, repairing
  * anything missing or malformed. Never throws — a corrupt document must still
@@ -336,13 +302,6 @@ export const normalizeDoc = (metadata: unknown): DocDocument => {
     : [];
 
   return { v: 1, theme, page, blocks };
-};
-
-/** Monotonic block id factory. Not persisted — call sites assign and store it. */
-let blockSeq = 0;
-export const nextBlockId = (prefix = 'b'): string => {
-  blockSeq += 1;
-  return `${prefix}_${blockSeq.toString(36)}_${Date.now().toString(36).slice(-4)}`;
 };
 
 /**

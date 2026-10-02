@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import type { DocBlock, DocBlockType, TableColumn, TableRow } from '@/types/evidence/doc';
-import { clampSpan } from '@/types/evidence/doc';
+import { clampSpan } from '@/types/evidence/shared';
 import { AdminInput, AdminSelect, AdminTextarea, RemoveButton } from '@/pages/Admin/components/AdminUI';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import { validateImageSize } from '@/pages/Admin/utils/validators';

@@ -8,6 +8,8 @@
    for themselves (BallisticsViewer.css:29-33, AutopsyViewer.css:27-31).
    ============================================================== */
 
+@import '@/components/blocks/blocks-shared.css';
+
 .doc-sheet .db-grid,
 .doc-sheet .db-grid *,
 .doc-sheet .db-grid *::before,
@@ -553,10 +555,6 @@
 .doc-sheet .db-rule--dashed { border-top-style: dashed; }
 .doc-sheet .db-rule--dotted { border-top-style: dotted; }
 .doc-sheet .db-rule--double { border-top: 3px double var(--doc-rule); }
-
-.doc-sheet .db-spacer {
-  width: 100%;
-}
 
 /* ---------- IMAGE ------------------------------------------
    From .sticky-tape (MemoViewer.css:149-161)

@@ -1,0 +1,39 @@
+.canvas {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+}
+
+.blockWrapper {
+  position: relative;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  border-radius: var(--radius-sm);
+}
+
+.blockWrapper.selected {
+  box-shadow: 0 0 0 2px var(--term-accent);
+}
+
+.blockWrapper .selectionIndicator {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 16px;
+  height: 16px;
+  background: var(--term-accent);
+  border: 2px solid var(--term-bg);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.emptyState {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  color: var(--term-ink-muted);
+  font-style: italic;
+  border: 2px dashed var(--term-rule);
+  border-radius: var(--term-radius);
+}

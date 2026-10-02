@@ -1,24 +1,23 @@
 import { useState, useCallback, useEffect } from 'react';
+import { getSafeStorage, setSafeStorage } from '@/utils/storage';
 
 type TrackableEntity = 'evidence' | 'characters' | 'locations';
+
+const readViewed = (storageKey: string): Set<number> => {
+  return new Set(getSafeStorage<number[]>('session', storageKey, []));
+};
 
 export function useViewedItems(roomKey: string | number | undefined, entityType: TrackableEntity) {
   const storageKey = roomKey ? `room_${roomKey}_viewed_${entityType}` : null;
 
   const [viewedItems, setViewedItems] = useState<Set<number>>(() => {
     if (!storageKey) return new Set();
-    try {
-      const stored = sessionStorage.getItem(storageKey);
-      return stored ? new Set(JSON.parse(stored)) : new Set();
-    } catch { return new Set(); }
+    return readViewed(storageKey);
   });
 
   useEffect(() => {
     if (!storageKey) return;
-    const stored = sessionStorage.getItem(storageKey);
-    if (stored) {
-      setViewedItems(new Set(JSON.parse(stored)));
-    }
+    setViewedItems(readViewed(storageKey));
   }, [storageKey]);
 
   const markItemAsViewed = useCallback((id: number) => {
@@ -30,7 +29,7 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
       const nextViewed = new Set(prev);
       nextViewed.add(id);
 
-      sessionStorage.setItem(storageKey, JSON.stringify(Array.from(nextViewed)));
+      setSafeStorage('session', storageKey, Array.from(nextViewed));
 
       return nextViewed;
     });

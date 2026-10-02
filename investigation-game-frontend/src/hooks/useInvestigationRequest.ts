@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { submitInvestigationRequest } from '@/services/api';
+import { useGameMutation } from './useGameMutation';
 import type { GameRoom } from '@/types';
 import type { ToastNotification } from './useInvestigationPhase';
 
@@ -10,6 +11,10 @@ export interface FiledRequest {
   request_type: string;
   created_at: string;
   evidence_ids: number[];
+}
+
+interface RequestRollback {
+  previousRoom: unknown;
 }
 
 export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => void) {
@@ -24,12 +29,14 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
   // Derived directly from the authoritative room payload
   const filedRequests: FiledRequest[] = room.filed_requests || [];
 
-  const requestMutation = useMutation({
-    mutationFn: async () => {
-      const result = await submitInvestigationRequest(room.id, trayEvidences);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    },
+  const requestMutation = useGameMutation<
+    { status: string; message: string; unlocked_evidence: number[]; unlocked_levels?: number[] },
+    void,
+    RequestRollback
+  >({
+    mutationFn: () => submitInvestigationRequest(room.id, trayEvidences),
+    // GameRoomLayout renders the request verdict in its own modal.
+    dispatchErrorFeedback: false,
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['gameRoom', room.invite_code] });
       const previousRoom = queryClient.getQueryData(['gameRoom', room.invite_code]);
@@ -51,7 +58,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
 
       return { previousRoom };
     },
-    onError: (error: Error, _variables: void, context: any) => {
+    onError: (error, _variables, context) => {
       queryClient.setQueryData(['gameRoom', room.invite_code], context?.previousRoom);
       setFeedback({ type: 'error', message: error.message });
       setTrayEvidences([]);

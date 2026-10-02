@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
+import { getLocalUser } from '@/utils/userState';
+import { getSafeStorage, setSafeStorage, removeSafeStorage } from '@/utils/storage';
 import type { Question, Zone, Level } from '@/types';
 import CampaignMap from './CampaignMap';
 import LevelCard from './LevelCard';
@@ -19,8 +21,7 @@ const CampaignTab = () => {
   const currentLevelId = room.current_level_id;
   const roomStatus = room.status;
 
-  const storedUser = localStorage.getItem('auth_user');
-  const currentUser = storedUser ? JSON.parse(storedUser) : null;
+  const currentUser = getLocalUser();
   const isHost = currentUser?.id === room.host_user_id;
 
   const {
@@ -34,19 +35,13 @@ const CampaignTab = () => {
   const levelPreviewStorageKey = `room_${room.id}_active_level_preview`;
 
   const [selectedPreviewId, setSelectedPreviewId] = useState<number | null>(() => {
-    try {
-      const saved = localStorage.getItem(levelPreviewStorageKey);
-      if (saved) return parseInt(saved, 10);
-    } catch { }
-    return null;
+    const saved = getSafeStorage<number | null>('local', levelPreviewStorageKey, null);
+    return typeof saved === 'number' ? saved : null;
   });
   
   const viewStateKey = `room_${room.id}_level_view_prefs`;
   const [levelViewPrefs, setLevelViewPrefs] = useState<Record<number, boolean>>(() => {
-    try {
-      const saved = localStorage.getItem(viewStateKey);
-      return saved ? JSON.parse(saved) : {};
-    } catch { return {}; }
+    return getSafeStorage<Record<number, boolean>>('local', viewStateKey, {});
   });
 
   const unlockedLevelIds = new Set(room.unlocked_levels?.map((l: Level) => l.id) || []);
@@ -71,13 +66,8 @@ const CampaignTab = () => {
     : null;
 
   const [userSelectedZoneId, setUserSelectedZoneId] = useState<number | null>(() => {
-    try {
-      const saved = localStorage.getItem(zoneStorageKey);
-      if (saved) {
-        const parsedId = parseInt(saved, 10);
-        if (sortedZones.some(z => z.id === parsedId)) return parsedId;
-      }
-    } catch { }
+    const saved = getSafeStorage<number | null>('local', zoneStorageKey, null);
+    if (typeof saved === 'number' && sortedZones.some(z => z.id === saved)) return saved;
     return null;
   });
 
@@ -90,15 +80,15 @@ const CampaignTab = () => {
   const handleEnterZone = (zoneId: number) => {
     setUserSelectedZoneId(zoneId);
     setSelectedPreviewId(null);
-    localStorage.setItem(zoneStorageKey, zoneId.toString());
-    localStorage.removeItem(levelPreviewStorageKey);
+    setSafeStorage('local', zoneStorageKey, zoneId);
+    removeSafeStorage('local', levelPreviewStorageKey);
   };
 
   const handleReturnToMap = () => {
     if (hasActiveLevel) return;
     setUserSelectedZoneId(null);
-    localStorage.removeItem(zoneStorageKey);
-    localStorage.removeItem(levelPreviewStorageKey);
+    removeSafeStorage('local', zoneStorageKey);
+    removeSafeStorage('local', levelPreviewStorageKey);
   };
 
   const totalPlayers = room.users?.length || 1;
@@ -160,14 +150,14 @@ const CampaignTab = () => {
 
   const handleSelectLevel = (levelId: number) => {
     setSelectedPreviewId(levelId);
-    localStorage.setItem(levelPreviewStorageKey, levelId.toString());
+    setSafeStorage('local', levelPreviewStorageKey, levelId);
   };
 
   const toggleViewState = () => {
     if (displayLevel) {
       setLevelViewPrefs(prev => {
         const newState = { ...prev, [displayLevel.id]: !prev[displayLevel.id] };
-        localStorage.setItem(viewStateKey, JSON.stringify(newState));
+        setSafeStorage('local', viewStateKey, newState);
         return newState;
       });
     }

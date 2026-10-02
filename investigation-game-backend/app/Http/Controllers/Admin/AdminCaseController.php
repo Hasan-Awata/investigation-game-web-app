@@ -15,7 +15,7 @@ class AdminCaseController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+        $validated =$request->validate([
             'title' => 'required|string|max:255',
             'story' => 'required|string',
             'map_url' => 'nullable|string',
@@ -35,14 +35,13 @@ class AdminCaseController extends Controller
 
         $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
 
-        $imageUrl = $this->mediaService->store(
-            $request->file('image'),
-            $validated['title'],
+        $imageUrl =$this->mediaService->store(
+            $request->file('image'),$validated['title'],
             'Cover',
             $storeLocally
         );
 
-        $tagsArray = $request->filled('tags')
+        $tagsArray =$request->filled('tags')
             ? array_map('trim', explode(',', $validated['tags']))
             : [];
 
@@ -79,11 +78,11 @@ class AdminCaseController extends Controller
         return response()->json(['cases' => $cases], 200);
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(Request $request,$id): JsonResponse
     {
         $case = GameCase::findOrFail($id);
 
-        $validated = $request->validate([
+        $validated =$request->validate([
             'title' => 'required|string|max:255',
             'story' => 'required|string',
             'map_url' => 'nullable|string',
@@ -106,9 +105,8 @@ class AdminCaseController extends Controller
         if ($request->hasFile('image')) {
             $this->mediaService->delete($case->getRawOriginal('img_url'));
 
-            $case->img_url = $this->mediaService->store(
-                $request->file('image'),
-                $validated['title'],
+            $case->img_url =$this->mediaService->store(
+                $request->file('image'),$validated['title'],
                 'Cover',
                 $storeLocally
             );
@@ -142,23 +140,23 @@ class AdminCaseController extends Controller
         $this->mediaService->delete($case->getRawOriginal('img_url'));
 
         // 2. Delete Evidence Media
-        foreach ($case->evidences as $evidence) {
+        foreach ($case->evidences as$evidence) {
             $this->mediaService->delete($evidence->getRawOriginal('img_url'));
             $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
         }
 
         // 3. Delete Level and Question Media
-        foreach ($case->levels as $level) {
+        foreach ($case->levels as$level) {
             $this->mediaService->delete($level->getRawOriginal('img_url'));
 
-            foreach ($level->questions as $question) {
+            foreach ($level->questions as$question) {
                 $this->mediaService->delete($question->getRawOriginal('img_url'));
                 $this->mediaService->delete($question->getRawOriginal('audio_url'));
             }
         }
 
         // 4. Delete Character Media
-        foreach ($case->characters as $character) {
+        foreach ($case->characters as$character) {
             $this->mediaService->delete($character->getRawOriginal('img_url'));
         }
 
@@ -173,26 +171,79 @@ class AdminCaseController extends Controller
      */
     public function import(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+        // Secure endpoint but don't bind to $validated directly for data retrieval, 
+        // to prevent Laravel's aggressive key stripping from dropping our `ref_ids`.
+        $request->validate([
             'case_details' => 'required|array',
-            'evidences' => 'present|array',
+            'evidences' => ['present', 'array'],
+            'evidences.*.title' => ['required', 'string', 'max:255'],
+            'evidences.*.evidence_type' => ['required', new \Illuminate\Validation\Rules\Enum(\App\Enums\EvidenceType::class)],
+            'evidences.*.metadata' => ['nullable'],
             'characters' => 'present|array',
             'investigation_requests' => 'present|array',
             'zones' => 'present|array',
         ]);
 
-        return DB::transaction(function () use ($validated) {
+        // Access raw JSON request to bypass missing un-validated keys
+        $rawEvidences =$request->input('evidences', []);
+
+        // Validate each evidence's metadata against its evidence_type
+        // First, ensure all evidence items are arrays (not stdClass objects)
+        $evidences = array_map(function ($ev) {
+            return is_object($ev) ? (array) $ev :$ev;
+        }, $rawEvidences);
+
+        foreach ($evidences as $i =>$evData) {
+            if (!is_array($evData)) {
+                continue; // Skip invalid entries
+            }
+
+            // Ensure we can access the evidence_type
+            $evidenceType =$evData['evidence_type'] ?? null;
+            if (!$evidenceType) {
+                continue; // Skip if no evidence_type
+            }
+
+            // Cast metadata to array if it's an object
+            $metadata =$evData['metadata'] ?? null;
+            if (is_object($metadata)) {
+                $metadata = (array)$metadata;
+            }
+
+            $rule = new \App\Rules\EvidenceMetadataMatchesType;
+            // Manually set the rule's data to include this evidence's evidence_type
+            $rule->setData(['evidence_type' =>$evidenceType]);
+
+            $validator = \Illuminate\Support\Facades\Validator::make(
+                ['metadata' => $metadata],
+                ['metadata' => ['nullable', $rule]]
+            );
+
+            if ($validator->fails()) {
+                $errors =$validator->errors()->get('metadata');
+                foreach ($errors as$error) {
+                    throw new \Illuminate\Validation\ValidationException(
+                        $validator,
+                        response()->json([
+                            'message' => "Evidence #{$i}: {$error}",
+                        ], 422)
+                    );
+                }
+            }
+        }
+
+        // Gather completely raw payload for mapping
+        $importData =$request->all();
+
+        return DB::transaction(function () use ($importData) {
             // PASS 1: Master Case Creation
-            $caseData = $validated['case_details'];
-            $case = GameCase::create([
+            $caseData = $importData['case_details'];$case = GameCase::create([
                 'title' => $caseData['title'],
                 'story' => $caseData['story'],
                 'map_url' => $caseData['map_url'] ?? null,
-                'min_player_XP' => $caseData['min_player_XP'] ?? 0,
-                'XP_on_solve' => $caseData['XP_on_solve'],
+                'min_player_XP' => $caseData['min_player_XP'] ?? 0,                 'XP_on_solve' =>$caseData['XP_on_solve'],
                 'max_strikes' => $caseData['max_strikes'] ?? 3,
-                'rating_stars' => $caseData['rating_stars'] ?? 5.0,
-                'age_rating' => $caseData['age_rating'] ?? 'Unrated',
+                'rating_stars' => $caseData['rating_stars'] ?? 5.0,                 'age_rating' =>$caseData['age_rating'] ?? 'Unrated',
                 'estimated_playtime' => $caseData['estimated_playtime'] ?? null,
                 'difficulty' => $caseData['difficulty'] ?? 'Standard',
                 'tags' => $caseData['tags'] ?? [],
@@ -210,8 +261,7 @@ class AdminCaseController extends Controller
             ];
 
             // PASS 2: Base Entities (Evidences, Characters)
-            foreach ($validated['evidences'] as $evData) {
-                $evidence = \App\Models\Evidence::create([
+            foreach ($importData['evidences'] as $evData) {$evidence = \App\Models\Evidence::create([
                     'case_id' => $case->id,
                     'title' => $evData['title'],
                     'description' => $evData['description'] ?? null,
@@ -220,13 +270,11 @@ class AdminCaseController extends Controller
                     'is_initial' => $evData['is_initial'] ?? false,
                     'is_vital_for_conviction' => $evData['is_vital_for_conviction'] ?? false,
                 ]);
-                if (isset($evData['ref_id'])) {
-                    $refMaps['evidence'][$evData['ref_id']] = $evidence->id;
+                if (isset($evData['ref_id'])) {$refMaps['evidence'][$evData['ref_id']] =$evidence->id;
                 }
             }
 
-            foreach ($validated['characters'] as $charData) {
-                $character = \App\Models\Character::create([
+            foreach ($importData['characters'] as $charData) {$character = \App\Models\Character::create([
                     'case_id' => $case->id,
                     'name' => $charData['name'],
                     'background' => $charData['background'] ?? null,
@@ -235,17 +283,14 @@ class AdminCaseController extends Controller
                     'charge' => $charData['charge'] ?? null,
                     'default_status' => $charData['default_status'] ?? 'available',
                 ]);
-                if (isset($charData['ref_id'])) {
-                    $refMaps['character'][$charData['ref_id']] = $character->id;
+                if (isset($charData['ref_id'])) {$refMaps['character'][$charData['ref_id']] =$character->id;
                 }
             }
 
-            // PASS 3: Zones and Levels 
-            $levelDataWithRefs = []; 
-            $zonesDataArray = [];   
+            // PASS 3: Zones and Levels
+            $levelDataWithRefs = [];$zonesDataArray = [];
 
-            foreach ($validated['zones'] as $zoneData) {
-                $zone = \App\Models\Zone::create([
+            foreach ($importData['zones'] as $zoneData) {$zone = \App\Models\Zone::create([
                     'case_id' => $case->id,
                     'title' => $zoneData['title'],
                     'description' => $zoneData['description'] ?? null,
@@ -255,19 +300,17 @@ class AdminCaseController extends Controller
                     'coord_y' => $zoneData['coord_y'] ?? null,
                 ]);
 
-                foreach ($zoneData['levels'] as $lvlData) {
-                    $level = \App\Models\Level::create([
+                foreach ($zoneData['levels'] as $lvlData) {$level = \App\Models\Level::create([
                         'zone_id' => $zone->id,
                         'title' => $lvlData['title'],
                         'details' => $lvlData['details'],
                         'order_index' => $lvlData['order_index'],
                         'is_initial' => $lvlData['is_initial'] ?? false,
                         'presentation_type' => $lvlData['presentation_type'],
-                        'required_request_id' => null, 
+                        'required_request_id' => null,
                     ]);
 
-                    if (isset($lvlData['ref_id'])) {
-                        $refMaps['level'][$lvlData['ref_id']] = $level->id;
+                    if (isset($lvlData['ref_id'])) {$refMaps['level'][$lvlData['ref_id']] =$level->id;
                     }
 
                     $levelDataWithRefs[] = [
@@ -283,60 +326,52 @@ class AdminCaseController extends Controller
             }
 
             // PASS 4: Investigation Requests (Mapping unlocks to the levels we just created)
-            foreach ($validated['investigation_requests'] as $reqData) {
-                $req = \App\Models\InvestigationRequest::create([
+            foreach ($importData['investigation_requests'] as $reqData) {$req = \App\Models\InvestigationRequest::create([
                     'case_id' => $case->id,
                     'request_type' => $reqData['request_type'],
                     'unlocks_evidence_id' => isset($reqData['unlocks_evidence_ref']) && isset($refMaps['evidence'][$reqData['unlocks_evidence_ref']]) ? $refMaps['evidence'][$reqData['unlocks_evidence_ref']] : null,
                     'unlocks_level_id' => isset($reqData['unlocks_level_ref']) && isset($refMaps['level'][$reqData['unlocks_level_ref']]) ? $refMaps['level'][$reqData['unlocks_level_ref']] : null,
                 ]);
 
-                if (isset($reqData['ref_id'])) {
-                    $refMaps['request'][$reqData['ref_id']] = $req->id;
+                if (isset($reqData['ref_id'])) {$refMaps['request'][$reqData['ref_id']] =$req->id;
                 }
 
-                if (!empty($reqData['required_evidence_refs'])) {
-                    $evIds = array_map(fn($ref) => $refMaps['evidence'][$ref] ?? null, $reqData['required_evidence_refs']);
+                if (!empty($reqData['required_evidence_refs'])) {$evIds = array_map(fn($ref) =>$refMaps['evidence'][$ref] ?? null, $reqData['required_evidence_refs']);
                     $req->requiredEvidences()->sync(array_filter($evIds));
                 }
             }
 
             // PASS 5: Update Levels with their required Investigation Requests
-            foreach ($levelDataWithRefs as $ldata) {
-                if ($ldata['req_ref'] && isset($refMaps['request'][$ldata['req_ref']])) {
-                    \App\Models\Level::where('id', $ldata['level_id'])->update([
+            foreach ($levelDataWithRefs as$ldata) {
+                if ($ldata['req_ref'] && isset($refMaps['request'][$ldata['req_ref']])) {                     \App\Models\Level::where('id',$ldata['level_id'])->update([
                         'required_request_id' => $refMaps['request'][$ldata['req_ref']]
                     ]);
                 }
             }
 
             // PASS 6: Questions and Choices
-            foreach ($zonesDataArray as $ldata) {
-                $nodeIndexMap = []; // Maps JSON node array index to actual question DB ID
+            foreach ($zonesDataArray as $ldata) {$nodeIndexMap = []; // Maps JSON node array index to actual question DB ID
 
                 // Sub-Pass A: Insert Questions First (to generate IDs for dialogue trees)
-                foreach ($ldata['nodes'] as $index => $nodeData) {
-                    $question = \App\Models\Question::create([
+                foreach ($ldata['nodes'] as$index => $nodeData) {$question = \App\Models\Question::create([
                         'level_id' => $ldata['level_id'],
                         'text' => $nodeData['text'],
                     ]);
-                    $nodeIndexMap[$index] = $question->id;
+                    $nodeIndexMap[$index] =$question->id;
                 }
 
                 // Sub-Pass B: Insert Choices and connect internal routing
-                foreach ($ldata['nodes'] as $index => $nodeData) {
-                    $questionId = $nodeIndexMap[$index];
+                foreach ($ldata['nodes'] as$index => $nodeData) {$questionId = $nodeIndexMap[$index];
 
-                    foreach ($nodeData['choices'] as $choiceData) {
-                        $outcomes = $choiceData['outcomes'] ?? [];
-                        $requirements = $choiceData['requirements'] ?? [];
+                    foreach ($nodeData['choices'] as$choiceData) {
+                        $outcomes =$choiceData['outcomes'] ?? [];
+                        $requirements =$choiceData['requirements'] ?? [];
 
                         // Build Outcomes Array
                         $mappedOutcomes = [];
-                        if (isset($outcomes['feedback'])) $mappedOutcomes['feedback'] = $outcomes['feedback'];
-                        if (isset($outcomes['gives_strike'])) $mappedOutcomes['gives_strike'] = $outcomes['gives_strike'];
-                        if (isset($outcomes['next_question_index']) && $outcomes['next_question_index'] !== null) {
-                            $mappedOutcomes['next_question_id'] = $nodeIndexMap[$outcomes['next_question_index']] ?? null;
+                        if (isset($outcomes['feedback'])) $mappedOutcomes['feedback'] =$outcomes['feedback'];
+                        if (isset($outcomes['gives_strike'])) $mappedOutcomes['gives_strike'] =$outcomes['gives_strike'];
+                        if (isset($outcomes['next_question_index']) && $outcomes['next_question_index'] !== null) {$mappedOutcomes['next_question_id'] = $nodeIndexMap[$outcomes['next_question_index']] ?? null;
                         }
 
                         $mapRefs = function($refs, $type) use ($refMaps) {
@@ -344,44 +379,39 @@ class AdminCaseController extends Controller
                             return array_values(array_filter(array_map(fn($r) => $refMaps[$type][$r] ?? null, $refs)));
                         };
 
-                        if (!empty($outcomes['unlock_evidence_refs'])) $mappedOutcomes['unlock_evidence'] = $mapRefs($outcomes['unlock_evidence_refs'], 'evidence');
-                        if (!empty($outcomes['unlock_levels_refs'])) $mappedOutcomes['unlock_levels'] = $mapRefs($outcomes['unlock_levels_refs'], 'level');
-                        
+                        if (!empty($outcomes['unlock_evidence_refs']))$mappedOutcomes['unlock_evidence'] = $mapRefs($outcomes['unlock_evidence_refs'], 'evidence');
+                        if (!empty($outcomes['unlock_levels_refs']))$mappedOutcomes['unlock_levels'] = $mapRefs($outcomes['unlock_levels_refs'], 'level');
+
                         // Map the dynamic character updates array
-                        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {
-                            $mappedCharUpdates = [];
-                            foreach ($outcomes['character_updates'] as $update) {
-                                if (isset($update['ref_id']) && isset($refMaps['character'][$update['ref_id']])) {
-                                    $mappedUpdate = ['id' => $refMaps['character'][$update['ref_id']]];
-                                    if (isset($update['is_unlocked'])) $mappedUpdate['is_unlocked'] = $update['is_unlocked'];
-                                    if (isset($update['status'])) $mappedUpdate['status'] = $update['status'];
-                                    $mappedCharUpdates[] = $mappedUpdate;
+                        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {$mappedCharUpdates = [];
+                            foreach ($outcomes['character_updates'] as$update) {
+                                if (isset($update['ref_id']) && isset($refMaps['character'][$update['ref_id']])) {$mappedUpdate = ['id' => $refMaps['character'][$update['ref_id']]];
+                                    if (isset($update['is_unlocked'])) $mappedUpdate['is_unlocked'] =$update['is_unlocked'];
+                                    if (isset($update['status'])) $mappedUpdate['status'] =$update['status'];
+                                    $mappedCharUpdates[] =$mappedUpdate;
                                 }
                             }
                             if (!empty($mappedCharUpdates)) {
-                                $mappedOutcomes['character_updates'] = $mappedCharUpdates;
+                                $mappedOutcomes['character_updates'] =$mappedCharUpdates;
                             }
                         }
 
                         // Build Requirements Array
                         $mappedReqs = [];
-                        if (!empty($requirements['required_evidence_refs'])) {
-                            $mappedReqs['required_evidence'] = $mapRefs($requirements['required_evidence_refs'], 'evidence');
+                        if (!empty($requirements['required_evidence_refs'])) {$mappedReqs['required_evidence'] = $mapRefs($requirements['required_evidence_refs'], 'evidence');
                         }
-                        if (!empty($requirements['required_choice_refs'])) {
-                            $mappedReqs['required_choices'] = $mapRefs($requirements['required_choice_refs'], 'choice');
+                        if (!empty($requirements['required_choice_refs'])) {$mappedReqs['required_choices'] = $mapRefs($requirements['required_choice_refs'], 'choice');
                         }
 
                         // Create choice so Eloquent arrays are casted to JSON properly and we retrieve the auto-increment ID
                         $choice = \App\Models\Choice::create([
                             'question_id' => $questionId,
                             'text' => $choiceData['text'],
-                            'outcomes' => !empty($mappedOutcomes) ? $mappedOutcomes : null,
-                            'requirements' => !empty($mappedReqs) ? $mappedReqs : null,
+                            'outcomes' => !empty($mappedOutcomes) ?$mappedOutcomes : null,
+                            'requirements' => !empty($mappedReqs) ?$mappedReqs : null,
                         ]);
 
-                        if (isset($choiceData['ref_id'])) {
-                            $refMaps['choice'][$choiceData['ref_id']] = $choice->id;
+                        if (isset($choiceData['ref_id'])) {$refMaps['choice'][$choiceData['ref_id']] =$choice->id;
                         }
                     }
                 }
