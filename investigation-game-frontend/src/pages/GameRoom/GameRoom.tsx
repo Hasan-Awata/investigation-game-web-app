@@ -7,7 +7,7 @@ import { patchArray } from '@/utils/parsers';
 import { RoomDataProvider, RoomUIProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
 import GameRoomLayout from './GameRoomLayout';
 import type { GameRoom, Evidence, Character, Level } from '@/types';
-import './GameRoom.css';
+import './GameRoom.module.css';
 
 // --- ENRICHED PAYLOAD TYPINGS ---
 interface LevelTransitionedPayload {

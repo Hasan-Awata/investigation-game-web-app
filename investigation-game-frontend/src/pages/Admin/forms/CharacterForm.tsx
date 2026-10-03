@@ -7,7 +7,8 @@ import { AdminInput, AdminTextarea, AdminCheckbox, AdminSelect, AdminFileInput, 
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
 import { validateCharacterForm, validateImageSize } from '../utils/validators';
 import { CharacterCharge, CharacterStatus, type Character } from '@/types';
-import './Shared/AdminForms.css';
+import adminForms from './Shared/AdminForms.module.css';
+import adminDashboard from '../AdminDashboard.module.css';
 
 const initialFormState = { name: '', background: '', is_initial: true, is_guilty: false, charge: '', default_status: CharacterStatus.Available, store_locally: false };
 
@@ -52,7 +53,7 @@ export default function CharacterForm() {
 
   if (!caseId || !selectedCase) {
     return (
-      <div className="admin-form-container glass-panel admin-missing-context">
+      <div className={`${adminDashboard['admin-form-container']} glass-panel ${adminForms['admin-missing-context']}`}>
         <h3>{t.missingContextTitle || 'Context Missing'}</h3><p>{t.missingContextDesc || 'Select a case first.'}</p>
       </div>
     );
@@ -90,21 +91,21 @@ export default function CharacterForm() {
       onClear={onClear} onEdit={onEdit} onDelete={(c) => handleDelete(c.id, t.deleteConfirm(c.name))}
       renderItemContent={(c) => (
         <>
-          <span className={`admin-list-id ${c.is_guilty ? 'admin-list-guilty' : ''}`}>PID-{c.id.toString().padStart(4, '0')}</span>
+          <span className={`${adminForms['admin-list-id']}${c.is_guilty ? adminForms['admin-list-guilty'] : ''}`}>PID-{c.id.toString().padStart(4, '0')}</span>
           <strong>{c.name}</strong>
-          {c.default_status === 'deceased' && <span className="admin-list-badge" style={{ color: 'var(--accent-crimson)', borderColor: 'var(--accent-crimson)' }}>Deceased</span>}
+          {c.default_status === 'deceased' && <span className={adminForms['admin-list-badge']} style={{ color: 'var(--accent-crimson)', borderColor: 'var(--accent-crimson)' }}>Deceased</span>}
         </>
       )}
     >
-      <form onSubmit={(e) => handleValidatedSubmit(e, { image })} className="admin-form">
+      <form onSubmit={(e) => handleValidatedSubmit(e, { image })} className={adminDashboard['admin-form']}>
         <AdminEntryToggle mode={entryMode} setMode={setEntryMode} />
 
         {entryMode === 'form' ? (
           <>
-            <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialCharacterLabel} description={t.initialCharacterDesc} className="status-live" />
-            <AdminCheckbox checked={formData.is_guilty} onChange={(e) => updateField('is_guilty', e.target.checked)} labelTitle={t.guiltyVerdictLabel} description={t.guiltyVerdictDesc} className="status-draft" />
+            <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialCharacterLabel} description={t.initialCharacterDesc} className={adminForms['status-live']} />
+            <AdminCheckbox checked={formData.is_guilty} onChange={(e) => updateField('is_guilty', e.target.checked)} labelTitle={t.guiltyVerdictLabel} description={t.guiltyVerdictDesc} className={adminForms['status-draft']} />
             
-            <div className="admin-form-row">
+            <div className={adminDashboard['admin-form-row']}>
               <AdminInput label={t.nameLabel} required value={formData.name} onChange={(e) => updateField('name', e.target.value)} />
               <AdminSelect 
                 label={t.defaultStatusLabel} 
@@ -125,7 +126,7 @@ export default function CharacterForm() {
 
             <AdminTextarea label={t.backgroundLabel} value={formData.background} onChange={(e) => updateField('background', e.target.value)} />
             <AdminFileInput label="Mugshot Photo" hint={t.imageHint} accept="image/*" ref={registerFileRef('image')} onChange={handleImageChange} />
-            <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} className="amber" />
+            <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} className={adminForms['amber']} />
           </>
         ) : (
           <JsonPopulator 
@@ -134,7 +135,7 @@ export default function CharacterForm() {
           />
         )}
 
-        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing || entryMode === 'json'}>
+        <button type="submit" className={`btn-primary ${adminForms['admin-submit-btn']}${editingId ? adminForms['editing'] : adminForms['creating']}`} disabled={isProcessing || entryMode === 'json'}>
           {isProcessing ? t.processingData : editingId ? t.updateCharacter : t.commitCharacter}
         </button>
       </form>

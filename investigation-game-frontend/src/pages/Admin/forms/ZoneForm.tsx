@@ -6,8 +6,9 @@ import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
 import { AdminInput, AdminTextarea, CoordinatePicker } from '@/pages/Admin/components/AdminUI';
 import type { Zone } from '@/types';
 import { validateZoneForm } from '@/pages/Admin/utils/validators';
-import './Shared/AdminForms.css';
-import './QuestionForm/AdminLocationBuilder.css'; 
+import adminForms from './Shared/AdminForms.module.css';
+import './QuestionForm/AdminLocationBuilder.module.css'; 
+import adminDashboard from '../AdminDashboard.module.css';
 
 const initialFormState = { 
   title: '', 
@@ -46,7 +47,7 @@ export default function ZoneForm() {
 
   if (!caseId || !selectedCase) {
     return (
-      <div className="admin-form-container glass-panel admin-missing-context">
+      <div className={`${adminDashboard['admin-form-container']} glass-panel ${adminForms['admin-missing-context']}`}>
         <h3>{t.missingContextTitle || 'Missing Context'}</h3>
         <p>{t.missingContextDesc || 'Please select a Case from the sidebar to manage its Zones.'}</p>
       </div>
@@ -99,13 +100,13 @@ export default function ZoneForm() {
       onDelete={(z) => handleDelete(z.id, t.deleteConfirm ? t.deleteConfirm(z.title) : `Delete ${z.title}?`)}
       renderItemContent={(z) => (
         <>
-          <span className="admin-list-id">IDX: {z.order_index}</span>
+          <span className={adminForms['admin-list-id']}>IDX: {z.order_index}</span>
           <strong>{z.title}</strong>
-          {z.coord_x && z.coord_y && <span className="admin-list-badge">📍 {z.coord_x}%, {z.coord_y}%</span>}
+          {z.coord_x && z.coord_y && <span className={adminForms['admin-list-badge']}>📍 {z.coord_x}%, {z.coord_y}%</span>}
         </>
       )}
     >
-      <form onSubmit={handleValidatedSubmit} className="admin-form">
+      <form onSubmit={handleValidatedSubmit} className={adminDashboard['admin-form']}>
         <AdminInput label={t.titleLabel || 'Zone Title'} type="text" required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
         <AdminTextarea label={t.descriptionLabel || 'Zone Description'} style={{ minHeight: '100px' }} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
 
@@ -143,7 +144,7 @@ export default function ZoneForm() {
           </div>
         )}
 
-        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing}>
+        <button type="submit" className={`btn-primary ${adminForms['admin-submit-btn']}${editingId ? adminForms['editing'] : adminForms['creating']}`} disabled={isProcessing}>
           {isProcessing ? (t.processingData || 'Processing...') : editingId ? (t.updateZone || 'UPDATE ZONE') : (t.commitZone || 'COMMIT ZONE')}
         </button>
       </form>

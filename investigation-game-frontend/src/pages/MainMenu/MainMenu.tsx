@@ -15,7 +15,14 @@ export default function MainMenu() {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [user, setUser] = useState<User | null>(() => getLocalUser());
+  // Lazy initialiser, NOT `useState(null)` + `useEffect(() => setUser(getLocalUser()))`:
+// an unconditional synchronous setState in an effect body trips
+// `react-hooks/set-state-in-effect` (the old hydration effect only avoided the
+// rule because its setState sat behind an `if`). It also removes a cascading
+// render, and it removes a real pre-existing bug: hydration used to call
+// JSON.parse on the raw localStorage value with no try/catch, so a corrupted
+// payload threw a SyntaxError straight into render. getLocalUser never throws.
+const [user, setUser] = useState<User | null>(() => getLocalUser());
   const [selectedCase, setSelectedCase] = useState<GameCase | null>(null);
 
   const { data: cases = [], isLoading, error } = useQuery({

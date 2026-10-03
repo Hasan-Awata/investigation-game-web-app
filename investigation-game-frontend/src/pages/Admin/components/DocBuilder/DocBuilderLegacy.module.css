@@ -46,12 +46,12 @@
   gap: 0.75rem;
 }
 
-.docb-toolbar-group .admin-input {
+.docb-toolbar-group :global(.admin-input) {
   min-width: 160px;
   padding: 0.35rem 0.5rem;
 }
 
-.docb-toolbar-group input[type='number'].admin-input {
+.docb-toolbar-group input[type='number']:global(.admin-input) {
   min-width: 90px;
 }
 
@@ -242,11 +242,11 @@
 /* The overlay layer is `pointer-events: none` and behind the sheet body so a
    watermark never blocks reading the page. That is right in game and wrong in
    the builder, where a watermark has to be clickable to edit its text. */
-.docb-canvas .doc-sheet-overlay {
+.docb-canvas :global(.doc-sheet-overlay) {
   z-index: 2;
 }
 
-.docb-canvas .doc-sheet-overlay .docb-cell {
+.docb-canvas :global(.doc-sheet-overlay) .docb-cell {
   pointer-events: auto;
   min-height: 3rem;
 }
@@ -301,7 +301,7 @@
   margin-bottom: 0.4rem;
 }
 
-.docb-row .admin-input {
+.docb-row :global(.admin-input) {
   flex: 1 1 0;
   min-width: 0;
   padding: 0.35rem 0.5rem;

@@ -1,6 +1,6 @@
 import { type ReactNode } from 'react';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
-import './AdminForms.css';
+import adminForms from './AdminForms.module.css';
 
 interface EntityListProps<T> {
   title: string;
@@ -28,28 +28,28 @@ export default function EntityList<T>({
   const t = adminT.forms.entityList || { editBtn: 'Edit', deleteBtn: 'Delete' };
 
   return (
-    <div className="admin-entity-list-container">
-      <h3 className="admin-entity-list-title">
+    <div className={adminForms['admin-entity-list-container']}>
+      <h3 className={adminForms['admin-entity-list-title']}>
         // {title}
       </h3>
       
       {items.length === 0 ? (
-        <div className="terminal-text admin-missing-context" style={{ padding: 0, textAlign: 'left' }}>
+        <div className={`terminal-text ${adminForms['admin-missing-context']}`} style={{ padding: 0, textAlign: 'left' }}>
           {emptyMessage}
         </div>
       ) : (
-        <div className="admin-entity-stack">
+        <div className={adminForms['admin-entity-stack']}>
           {items.map((item) => (
-            <div key={keyExtractor(item)} className="admin-entity-row">
-              <div className="admin-entity-content">
+            <div key={keyExtractor(item)} className={adminForms['admin-entity-row']}>
+              <div className={adminForms['admin-entity-content']}>
                 {renderItemContent(item)}
               </div>
-              <div className="admin-entity-actions">
+              <div className={adminForms['admin-entity-actions']}>
                 <button 
                   type="button" 
                   onClick={() => onEdit(item)} 
                   disabled={isProcessing} 
-                  className="admin-action-btn edit"
+                  className={`${adminForms['admin-action-btn']} ${adminForms['edit']}`}
                 >
                   {t.editBtn}
                 </button>
@@ -57,7 +57,7 @@ export default function EntityList<T>({
                   type="button" 
                   onClick={() => onDelete(item)} 
                   disabled={isProcessing} 
-                  className="admin-action-btn delete"
+                  className={`${adminForms['admin-action-btn']} ${adminForms['delete']}`}
                 >
                   {t.deleteBtn}
                 </button>

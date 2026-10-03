@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import adminDashboard from '../../AdminDashboard.module.css';
 
 interface LevelBuilderGuardProps {
   requiredType: 'location' | 'wiretap' | 'interrogation';
@@ -14,7 +15,7 @@ export default function LevelBuilderGuard({ requiredType, children }: LevelBuild
 
   if (!caseId || !levelId || !selectedCase || !selectedZone || !selectedLevel) {
     return (
-      <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center' }}>
+      <div className={`${adminDashboard['admin-form-container']} glass-panel`} style={{ padding: '3rem', textAlign: 'center' }}>
         <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-amber)', margin: '0 0 1rem 0' }}>
           {t.missingContextTitle}
         </h3>
@@ -27,7 +28,7 @@ export default function LevelBuilderGuard({ requiredType, children }: LevelBuild
 
   if (selectedLevel.presentation_type !== requiredType) {
     return (
-      <div className="admin-form-container glass-panel" style={{ padding: '3rem', textAlign: 'center', borderColor: 'var(--accent-crimson)' }}>
+      <div className={`${adminDashboard['admin-form-container']} glass-panel`} style={{ padding: '3rem', textAlign: 'center', borderColor: 'var(--accent-crimson)' }}>
         <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-crimson)', margin: '0 0 1rem 0' }}>
           {t.mismatchTitle}
         </h3>

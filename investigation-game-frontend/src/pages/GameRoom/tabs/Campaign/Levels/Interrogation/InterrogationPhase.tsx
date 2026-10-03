@@ -4,7 +4,7 @@ import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import { getSafeStorage, setSafeStorage } from '@/utils/storage';
 import type { Level, Choice, Question } from '@/types';
-import './InterrogationPhase.css';
+import interrogationPhase from './InterrogationPhase.module.css';
 
 // --- MESSAGE REVEAL COMPONENT ---
 const MessageReveal = ({ text, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
@@ -39,13 +39,13 @@ const MessageReveal = ({ text, onComplete, skip = false, cacheKey = '' }: { text
 
   if (isTyping) {
     return (
-      <span className="typing-indicator">
+      <span className={interrogationPhase['typing-indicator']}>
         <span></span><span></span><span></span>
       </span>
     );
   }
 
-  return <span className="fade-in-text">{text}</span>;
+  return <span className={interrogationPhase['fade-in-text']}>{text}</span>;
 };
 
 interface InterrogationPhaseProps {
@@ -133,6 +133,13 @@ export default function InterrogationPhase({
       }
     }
     return { visibleQuestions: questions, consensusMap: map };
+    // `react-hooks/exhaustive-deps` flags `room.votes` as unnecessary here.
+    // That warning was traced and is a false positive: getQuestionConsensus is
+    // an inline function in CampaignTab.tsx that reads room.votes, so it gets a
+    // new identity every render and the memo recomputes regardless. Dropping
+    // `room.votes` from this list would not avoid the recomputation -- it would
+    // only hide the real dependency behind a changing function reference.
+    // Leave the array as-is.
   }, [level.questions, room.votes, getQuestionConsensus]);
 
   const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
@@ -176,7 +183,7 @@ export default function InterrogationPhase({
   if (visibleQuestions.length === 0) return null;
 
   return (
-    <div className="interrogation-log">
+    <div className={interrogationPhase['interrogation-log']}>
       {visibleQuestions.map((q, qIdx) => {
         const consensus = consensusMap[q.id];
         const prevQ = qIdx > 0 ? visibleQuestions[qIdx - 1] : null;
@@ -193,10 +200,10 @@ export default function InterrogationPhase({
         const customReaction = winningChoice?.outcomes?.suspect_reaction;
 
         return (
-          <div key={q.id} className="chat-exchange">
+          <div key={q.id} className={interrogationPhase['chat-exchange']}>
 
-            <div className="chat-bubble suspect-bubble">
-              <span className="speaker-label suspect">
+            <div className={`chat-bubble ${interrogationPhase['chat-bubble']} ${interrogationPhase['suspect-bubble']}`}>
+              <span className={`${interrogationPhase['speaker-label']} ${interrogationPhase['suspect']}`}>
                 {t('pages.gameRoom.campaign.levels.interrogation.suspect')} {customReaction ? `[${customReaction}]` : ''}
               </span>
               <p>
@@ -212,9 +219,9 @@ export default function InterrogationPhase({
             {isSuspectDone && q.choices && q.choices.length > 0 && (
               <>
                 {status === 'active' && !isGloballyLocked && (
-                  <div className="investigator-interaction-area">
-                    <div className={`vote-status-box ${hasLocalVote ? 'has-vote' : 'no-vote'}`}>
-                      <span className="speaker-label" style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
+                  <div className={interrogationPhase['investigator-interaction-area']}>
+                    <div className={`${interrogationPhase['vote-status-box']}${hasLocalVote ? interrogationPhase['has-vote'] : interrogationPhase['no-vote']}`}>
+                      <span className={interrogationPhase['speaker-label']} style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
                         {consensus.isTie
                           ? t('pages.gameRoom.campaign.levels.interrogation.tieDetected')
                           : hasLocalVote
@@ -222,12 +229,12 @@ export default function InterrogationPhase({
                             : t('pages.gameRoom.campaign.levels.interrogation.selectResponse', { votes: consensus.votesCast, total: totalPlayers })
                         }
                       </span>
-                      <div className="vote-choices-grid">
+                      <div className={interrogationPhase['vote-choices-grid']}>
                         {q.choices?.map(c => {
                           const isSelected = localVotes[q.id] === c.id;
                           const isNarrativeLocked = checkIsLockedByNarrative(c);
                           const pillClass = isNarrativeLocked
-                            ? 'choice-pill locked-choice'
+                            ? `choice-pill ${interrogationPhase['locked-choice']}`
                             : `choice-pill interactable ${isSelected ? 'selected' : ''}`;
 
                           return (
@@ -250,9 +257,9 @@ export default function InterrogationPhase({
                 )}
 
                 {isGloballyLocked && winningChoice && (
-                  <div className="investigator-interaction-area">
-                    <div className="chat-bubble agent-bubble">
-                      <span className="speaker-label investigator">{t('pages.gameRoom.campaign.levels.interrogation.investigators')}</span>
+                  <div className={interrogationPhase['investigator-interaction-area']}>
+                    <div className={`chat-bubble ${interrogationPhase['chat-bubble']} ${interrogationPhase['agent-bubble']}`}>
+                      <span className={`${interrogationPhase['speaker-label']} ${interrogationPhase['investigator']}`}>{t('pages.gameRoom.campaign.levels.interrogation.investigators')}</span>
                       <p>
                         <MessageReveal
                           text={winningChoice.text}

@@ -8,7 +8,7 @@ import { getLocalUser } from '@/utils/userState';
 import { getSafeStorage, setSafeStorage } from '@/utils/storage';
 import type { Level, Choice } from '@/types';
 import * as api from '@/services/api'; 
-import './LocationPhase.css';
+import locationPhase from './LocationPhase.module.css';
 
 interface LocationPhaseProps {
   level: Level;
@@ -270,9 +270,9 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
   const activeQuestion = displayQuestions.find(q => q.id === inspectingQuestionId);
 
   const fullScreenViewer = activeQuestion ? createPortal(
-    <div className="location-fullscreen-overlay">
+    <div className={locationPhase['location-fullscreen-overlay']}>
       <button 
-        className="location-close-button" 
+        className={locationPhase['location-close-button']} 
         onClick={closeViewer}
         title={t('pages.gameRoom.campaign.levels.location.closeViewer')}
       >
@@ -280,7 +280,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
       </button>
 
       <div 
-        className="location-image-container"
+        className={locationPhase['location-image-container']}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -290,13 +290,13 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
       >
         <div 
           ref={wrapperRef}
-          className="location-image-wrapper"
+          className={locationPhase['location-image-wrapper']}
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
             transition: isDragging ? 'none' : 'transform 0.1s ease-out'
           }}
         >
-          <img src={activeQuestion.img_url || '/placeholder-crime-scene.jpg'} alt={t('pages.gameRoom.campaign.levels.location.crimeSceneAlt')} className="location-image-full" draggable="false" />
+          <img src={activeQuestion.img_url || '/placeholder-crime-scene.jpg'} alt={t('pages.gameRoom.campaign.levels.location.crimeSceneAlt')} className={locationPhase['location-image-full']} draggable="false" />
 
           {activeQuestion.choices?.map(choice => {
             const parts = choice.text.split('|');
@@ -326,11 +326,11 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
             const isNarrativeLocked = checkIsLockedByNarrative(choice);
             const isDiscovered = isSelected || isDeadEndClicked;
 
-            let zoneClass = 'loc-hover-zone';
+            let zoneClass = locationPhase['loc-hover-zone'];
             if (isSelected) {
-              zoneClass += ' selected';
+              zoneClass += ` ${locationPhase['selected']}`;
             } else if (isDeadEndClicked || isNarrativeLocked) {
-              zoneClass += ' investigated';
+              zoneClass += ` ${locationPhase['investigated']}`;
             }
 
             const isBubbleActive = activeBubbles.has(choice.id);
@@ -356,16 +356,16 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
                   handlePointClick(e, activeQuestion.id, choice);
                 }}
               >
-                <div className="loc-crosshair"></div>
+                <div className={locationPhase['loc-crosshair']}></div>
                 
                 {!isBubbleActive && (
-                  <div className="loc-tooltip">
+                  <div className={locationPhase['loc-tooltip']}>
                     {isNarrativeLocked ? t('pages.gameRoom.campaign.levels.location.requiresIntel') : title}
                   </div>
                 )}
 
                 {isBubbleActive && (
-                  <div className={`loc-info-bubble ${isCorrectFind ? 'success' : 'error'}`}>
+                  <div className={`${locationPhase['loc-info-bubble']}${isCorrectFind ? locationPhase['success'] : locationPhase['error']}`}>
                     {choice.outcomes?.feedback || (isCorrectFind ? t('pages.gameRoom.campaign.levels.location.foundUseful') : t('pages.gameRoom.campaign.levels.location.nothingFound'))}
                   </div>
                 )}
@@ -381,9 +381,9 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
   return (
     <div className="location-phase-wrapper" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
       {displayQuestions.map(q => (
-        <div key={q.id} className="location-thumbnail-container">
-          <div className="location-thumbnail" style={{ backgroundImage: `url(${q.img_url || '/placeholder-crime-scene.jpg'})` }}>
-            <div className="thumbnail-overlay">
+        <div key={q.id} className={locationPhase['location-thumbnail-container']}>
+          <div className={locationPhase['location-thumbnail']} style={{ backgroundImage: `url(${q.img_url || '/placeholder-crime-scene.jpg'})` }}>
+            <div className={locationPhase['thumbnail-overlay']}>
               <button
                 className="btn-primary"
                 onClick={() => setInspectingQuestionId(q.id)}
@@ -393,7 +393,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
               </button>
             </div>
           </div>
-          <p className="location-hint">{q.text || t('pages.gameRoom.campaign.levels.location.enterViewerHint')}</p>
+          <p className={locationPhase['location-hint']}>{q.text || t('pages.gameRoom.campaign.levels.location.enterViewerHint')}</p>
         </div>
       ))}
 

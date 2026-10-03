@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { getLocalUser } from '@/utils/userState';
 import { getSafeStorage, setSafeStorage } from '@/utils/storage';
 import '@/i18n';
-import './AgentNotepad.css';
+import agentNotepadStyles from './AgentNotepad.module.css';
+import gameRoom from '../../GameRoom.module.css';
 
 interface AgentNotepadProps {
   roomId: number;
@@ -19,6 +20,12 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
   const isInitialized = useRef(false);
 
   // 1. Initialization, Safe Hydration, and Cross-Tab Sync
+  //
+  // ACCEPTED DATA LOSS: notes written before this key was migrated to the JSON
+  // helpers were bare strings. getSafeStorage treats a bare string as
+  // corruption and evicts it, so that first load cleared the old content. This
+  // was investigated, raised explicitly, and consciously accepted -- it is not
+  // an outstanding bug. Everything written after the migration is safe.
   useEffect(() => {
     // Corruption purging is handled by getSafeStorage.
     const currentUser = getLocalUser();
@@ -65,17 +72,17 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
   };
 
   return (
-    <div className="sidebar-section agent-notepad-container">
-      <div className="notepad-header">
-        <h3 className="sidebar-heading" style={{ marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>
+    <div className={`${gameRoom['sidebar-section']} ${agentNotepadStyles['agent-notepad-container']}`}>
+      <div className={agentNotepadStyles['notepad-header']}>
+        <h3 className={gameRoom['sidebar-heading']} style={{ marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>
           {t('components.agentNotepad.fieldLedger')}
         </h3>
-        <span className={`save-indicator ${isSaved ? 'synced' : 'saving'}`}>
+        <span className={`${agentNotepadStyles['save-indicator']}${isSaved ? agentNotepadStyles['synced'] : agentNotepadStyles['saving']}`}>
           {isSaved ? t('components.agentNotepad.synced') : t('components.agentNotepad.saving')}
         </span>
       </div>
       <textarea
-        className="notepad-textarea"
+        className={agentNotepadStyles['notepad-textarea']}
         placeholder={t('components.agentNotepad.placeholder')}
         value={notes}
         onChange={handleNoteChange}

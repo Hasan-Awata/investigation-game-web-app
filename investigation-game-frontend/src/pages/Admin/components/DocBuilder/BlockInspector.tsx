@@ -11,7 +11,8 @@ import {
   ALIGNMENTS, BLOCK_LABELS, BLOCK_GLYPHS, CELL_TYPES, DIAGRAM_PRESETS, IMAGE_FILTERS,
   META_TONES, PROSE_TONES, RULE_VARIANTS, STAMP_TONES, TABLE_TONES,
 } from './labels';
-import './DocBuilder.css';
+import docBuilderLegacy from './DocBuilderLegacy.module.css';
+import adminDashboard from '../../AdminDashboard.module.css';
 
 const opts = (values: readonly string[]) => values.map((v) => ({ value: v, label: v }));
 const num = (v: string, fallback: number): number => {
@@ -38,7 +39,7 @@ const LetterheadEditor = ({ block, patch }: EditorProps) => {
       <AdminInput label="Subtitle" value={p.sub ?? ''} onChange={(e) => patch({ ...p, sub: e.target.value })} />
       <AdminInput label="Aside label" value={p.asideLabel ?? ''} onChange={(e) => patch({ ...p, asideLabel: e.target.value })} />
       <AdminInput label="Aside value" value={p.aside ?? ''} onChange={(e) => patch({ ...p, aside: e.target.value })} />
-      <label className="docb-check">
+      <label className={docBuilderLegacy['docb-check']}>
         <input type="checkbox" checked={p.rule !== false} onChange={(e) => patch({ ...p, rule: e.target.checked })} />
         <span>Rule beneath header</span>
       </label>
@@ -65,17 +66,17 @@ const MetaGridEditor = ({ block, patch }: EditorProps) => {
         onChange={(e) => patch({ ...p, columns: num(e.target.value, 2) })}
       />
 
-      <div className="docb-subhead">Rows ({rows.length})</div>
+      <div className={docBuilderLegacy['docb-subhead']}>Rows ({rows.length})</div>
       {rows.map((row, i) => (
-        <div className="docb-row" key={i}>
+        <div className={docBuilderLegacy['docb-row']} key={i}>
           <input
-            className="admin-input"
+            className={adminDashboard['admin-input']}
             value={row.label}
             placeholder="Label"
             onChange={(e) => patch({ ...p, rows: rows.map((r, j) => (j === i ? { ...r, label: e.target.value } : r)) })}
           />
           <input
-            className="admin-input"
+            className={adminDashboard['admin-input']}
             value={row.value}
             placeholder="Value"
             onChange={(e) => patch({ ...p, rows: rows.map((r, j) => (j === i ? { ...r, value: e.target.value } : r)) })}
@@ -83,7 +84,7 @@ const MetaGridEditor = ({ block, patch }: EditorProps) => {
           <RemoveButton onClick={() => patch({ ...p, rows: rows.filter((_, j) => j !== i) })} />
         </div>
       ))}
-      <button type="button" className="docb-mini" onClick={() => patch({ ...p, rows: [...rows, { label: '', value: '' }] })}>
+      <button type="button" className={docBuilderLegacy['docb-mini']} onClick={() => patch({ ...p, rows: [...rows, { label: '', value: '' }] })}>
         + Row
       </button>
     </>
@@ -106,7 +107,7 @@ const ProseEditor = ({ block, patch }: EditorProps) => {
         value={p.html ?? ''}
         onChange={(e) => patch({ ...p, html: e.target.value })}
       />
-      <p className="docb-hint">
+      <p className={docBuilderLegacy['docb-hint']}>
         Allowed markup: <code>&lt;strong&gt;</code> <code>&lt;em&gt;</code> <code>&lt;br&gt;</code>{' '}
         <code>&lt;ul&gt;</code> <code>&lt;ol&gt;</code> <code>&lt;li&gt;</code>, plus the{' '}
         <code>redacted</code> and <code>highlighted</code> span classes. Everything else is stripped at render.
@@ -136,12 +137,12 @@ const TableEditor = ({ block, patch }: EditorProps) => {
       <AdminInput label="Caption" value={p.caption ?? ''} onChange={(e) => patch({ ...p, caption: e.target.value })} />
       <AdminInput label="Empty message" value={p.emptyMessage ?? ''} onChange={(e) => patch({ ...p, emptyMessage: e.target.value })} />
 
-      <div className="docb-subhead">Columns ({columns.length})</div>
+      <div className={docBuilderLegacy['docb-subhead']}>Columns ({columns.length})</div>
       {columns.map((c, i) => (
-        <div className="docb-stack" key={c.key}>
-          <div className="docb-row">
+        <div className={docBuilderLegacy['docb-stack']} key={c.key}>
+          <div className={docBuilderLegacy['docb-row']}>
             <input
-              className="admin-input"
+              className={adminDashboard['admin-input']}
               value={c.key}
               placeholder="key"
               onChange={(e) => setColumn(i, { key: e.target.value })}
@@ -149,16 +150,16 @@ const TableEditor = ({ block, patch }: EditorProps) => {
             <RemoveButton onClick={() => patch({ ...p, columns: columns.filter((_, j) => j !== i) })} />
           </div>
           <input
-            className="admin-input"
+            className={adminDashboard['admin-input']}
             value={c.label}
             placeholder="Label"
             onChange={(e) => setColumn(i, { label: e.target.value })}
           />
-          <div className="docb-row">
-            <select className="admin-input" value={c.type ?? 'text'} onChange={(e) => setColumn(i, { type: e.target.value as never })}>
+          <div className={docBuilderLegacy['docb-row']}>
+            <select className={adminDashboard['admin-input']} value={c.type ?? 'text'} onChange={(e) => setColumn(i, { type: e.target.value as never })}>
               {CELL_TYPES.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
-            <select className="admin-input" value={c.align ?? 'start'} onChange={(e) => setColumn(i, { align: e.target.value as never })}>
+            <select className={adminDashboard['admin-input']} value={c.align ?? 'start'} onChange={(e) => setColumn(i, { align: e.target.value as never })}>
               {ALIGNMENTS.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
           </div>
@@ -166,7 +167,7 @@ const TableEditor = ({ block, patch }: EditorProps) => {
       ))}
       <button
         type="button"
-        className="docb-mini"
+        className={docBuilderLegacy['docb-mini']}
         onClick={() =>
           patch({
             ...p,
@@ -177,14 +178,14 @@ const TableEditor = ({ block, patch }: EditorProps) => {
         + Column
       </button>
 
-      <div className="docb-subhead">Rows ({rows.length})</div>
-      {rows.length === 0 && <p className="docb-hint">No rows yet. The empty message is shown in their place.</p>}
+      <div className={docBuilderLegacy['docb-subhead']}>Rows ({rows.length})</div>
+      {rows.length === 0 && <p className={docBuilderLegacy['docb-hint']}>No rows yet. The empty message is shown in their place.</p>}
       {rows.map((row, r) => (
-        <div className="docb-stack" key={r}>
+        <div className={docBuilderLegacy['docb-stack']} key={r}>
           {columns.map((c) => (
             <input
               key={c.key}
-              className="admin-input"
+              className={adminDashboard['admin-input']}
               value={(row as TableRow)[c.key] ?? ''}
               placeholder={c.label || c.key}
               onChange={(e) => setCell(r, c.key, e.target.value)}
@@ -195,7 +196,7 @@ const TableEditor = ({ block, patch }: EditorProps) => {
       ))}
       <button
         type="button"
-        className="docb-mini"
+        className={docBuilderLegacy['docb-mini']}
         disabled={columns.length === 0}
         onClick={() =>
           patch({
@@ -215,21 +216,21 @@ const ListEditor = ({ block, patch }: EditorProps) => {
   const items = p.items ?? [];
   return (
     <>
-      <label className="docb-check">
+      <label className={docBuilderLegacy['docb-check']}>
         <input type="checkbox" checked={!!p.ordered} onChange={(e) => patch({ ...p, ordered: e.target.checked })} />
         <span>Numbered</span>
       </label>
       {items.map((item, i) => (
-        <div className="docb-row" key={i}>
+        <div className={docBuilderLegacy['docb-row']} key={i}>
           <input
-            className="admin-input"
+            className={adminDashboard['admin-input']}
             value={item}
             onChange={(e) => patch({ ...p, items: items.map((it, j) => (j === i ? e.target.value : it)) })}
           />
           <RemoveButton onClick={() => patch({ ...p, items: items.filter((_, j) => j !== i) })} />
         </div>
       ))}
-      <button type="button" className="docb-mini" onClick={() => patch({ ...p, items: [...items, ''] })}>
+      <button type="button" className={docBuilderLegacy['docb-mini']} onClick={() => patch({ ...p, items: [...items, ''] })}>
         + Item
       </button>
     </>
@@ -242,9 +243,9 @@ const SignatureRowEditor = ({ block, patch }: EditorProps) => {
   return (
     <>
       {columns.map((c, i) => (
-        <div className="docb-row" key={i}>
+        <div className={docBuilderLegacy['docb-row']} key={i}>
           <input
-            className="admin-input"
+            className={adminDashboard['admin-input']}
             value={c.caption}
             placeholder="Caption"
             onChange={(e) => patch({ ...p, columns: columns.map((x, j) => (j === i ? { caption: e.target.value } : x)) })}
@@ -252,7 +253,7 @@ const SignatureRowEditor = ({ block, patch }: EditorProps) => {
           <RemoveButton onClick={() => patch({ ...p, columns: columns.filter((_, j) => j !== i) })} />
         </div>
       ))}
-      <button type="button" className="docb-mini" onClick={() => patch({ ...p, columns: [...columns, { caption: '' }] })}>
+      <button type="button" className={docBuilderLegacy['docb-mini']} onClick={() => patch({ ...p, columns: [...columns, { caption: '' }] })}>
         + Column
       </button>
     </>
@@ -290,7 +291,7 @@ const WatermarkEditor = ({ block, patch }: EditorProps) => {
         value={String(p.rotate ?? -30)}
         onChange={(e) => patch({ ...p, rotate: num(e.target.value, -30) })}
       />
-      <p className="docb-hint">Drawn behind the sheet content, and mirrored automatically in RTL.</p>
+      <p className={docBuilderLegacy['docb-hint']}>Drawn behind the sheet content, and mirrored automatically in RTL.</p>
     </>
   );
 };
@@ -388,7 +389,7 @@ const DiagramEditor = ({ block, patch }: EditorProps) => {
         onChange={(e) => patch({ ...p, preset: e.target.value as never })}
       />
       <AdminInput label="Caption" value={p.caption ?? ''} onChange={(e) => patch({ ...p, caption: e.target.value })} />
-      <p className="docb-hint">
+      <p className={docBuilderLegacy['docb-hint']}>
         <code>electropherogram</code> and <code>mass_spec</code> are seeded from the evidence id, so every row
         gets a stable, distinct chart. They are drawn, not uploaded.
       </p>
@@ -418,18 +419,18 @@ const TwoColumnEditor = ({
     const list = p[key] ?? [];
 
     return (
-      <div className="docb-side" key={s}>
-        <div className="docb-subhead">{title} ({list.length})</div>
-        {list.length === 0 && <p className="docb-hint">Empty.</p>}
+      <div className={docBuilderLegacy['docb-side']} key={s}>
+        <div className={docBuilderLegacy['docb-subhead']}>{title} ({list.length})</div>
+        {list.length === 0 && <p className={docBuilderLegacy['docb-hint']}>Empty.</p>}
         {list.map((child, i) => (
-          <div className="docb-child" key={child.id}>
-            <button type="button" className="docb-child-pick" onClick={() => onSelectPath([...path, s, i])}>
-              <span className="docb-palette-glyph" aria-hidden="true">{BLOCK_GLYPHS[child.type]}</span>
+          <div className={docBuilderLegacy['docb-child']} key={child.id}>
+            <button type="button" className={docBuilderLegacy['docb-child-pick']} onClick={() => onSelectPath([...path, s, i])}>
+              <span className={docBuilderLegacy['docb-palette-glyph']} aria-hidden="true">{BLOCK_GLYPHS[child.type]}</span>
               {BLOCK_LABELS[child.type]}
             </button>
-            <div className="docb-child-move">
-              <button type="button" className="docb-mini" onClick={() => onMoveChild(s, i, -1)}>&uarr;</button>
-              <button type="button" className="docb-mini" onClick={() => onMoveChild(s, i, 1)}>&darr;</button>
+            <div className={docBuilderLegacy['docb-child-move']}>
+              <button type="button" className={docBuilderLegacy['docb-mini']} onClick={() => onMoveChild(s, i, -1)}>&uarr;</button>
+              <button type="button" className={docBuilderLegacy['docb-mini']} onClick={() => onMoveChild(s, i, 1)}>&darr;</button>
               <RemoveButton
                 onClick={() => patch({ ...p, [key]: list.filter((_, j) => j !== i) })}
                 title={`Remove ${BLOCK_LABELS[child.type]}`}
@@ -437,9 +438,9 @@ const TwoColumnEditor = ({
             </div>
           </div>
         ))}
-        <div className="docb-row">
+        <div className={docBuilderLegacy['docb-row']}>
           <select
-            className="admin-input"
+            className={adminDashboard['admin-input']}
             value={pending}
             onChange={(e) => setPending(Number(e.target.value) as 0 | 1)}
             aria-label="Target column"
@@ -448,7 +449,7 @@ const TwoColumnEditor = ({
             <option value={1}>Trailing</option>
           </select>
           <select
-            className="admin-input"
+            className={adminDashboard['admin-input']}
             value=""
             onChange={(e) => {
               if (!e.target.value) return;
@@ -469,20 +470,20 @@ const TwoColumnEditor = ({
 
   return (
     <>
-      <div className="docb-row">
-        <div className="form-group" style={{ flex: 1 }}>
+      <div className={docBuilderLegacy['docb-row']}>
+        <div className={adminDashboard['form-group']} style={{ flex: 1 }}>
           <label>Gap</label>
           <input
-            className="admin-input"
+            className={adminDashboard['admin-input']}
             type="number"
             value={String(p.gap ?? 28)}
             onChange={(e) => patch({ ...p, gap: num(e.target.value, 28) })}
           />
         </div>
-        <div className="form-group" style={{ flex: 1 }}>
+        <div className={adminDashboard['form-group']} style={{ flex: 1 }}>
           <label>Trailing width</label>
           <input
-            className="admin-input"
+            className={adminDashboard['admin-input']}
             type="number"
             value={String(p.rightWidth ?? '')}
             placeholder="auto"
@@ -561,9 +562,9 @@ export default function BlockInspector({
 
   if (!block) {
     return (
-      <aside className="docb-pane docb-pane--inspector">
-        <h4 className="docb-pane-title">{t?.inspectorTitle ?? 'Inspector'}</h4>
-        <p className="docb-hint">{t?.inspectorEmpty ?? 'Select a block on the sheet to edit it.'}</p>
+      <aside className={`${docBuilderLegacy['docb-pane']} docb-pane--inspector`}>
+        <h4 className={docBuilderLegacy['docb-pane-title']}>{t?.inspectorTitle ?? 'Inspector'}</h4>
+        <p className={docBuilderLegacy['docb-hint']}>{t?.inspectorEmpty ?? 'Select a block on the sheet to edit it.'}</p>
       </aside>
     );
   }
@@ -590,22 +591,22 @@ export default function BlockInspector({
   };
 
   return (
-    <aside className="docb-pane docb-pane--inspector">
-      <h4 className="docb-pane-title">{t?.inspectorTitle ?? 'Inspector'}</h4>
+    <aside className={`${docBuilderLegacy['docb-pane']} docb-pane--inspector`}>
+      <h4 className={docBuilderLegacy['docb-pane-title']}>{t?.inspectorTitle ?? 'Inspector'}</h4>
 
-      <div className="docb-inspector-head">
-        <span className="docb-palette-glyph" aria-hidden="true">{BLOCK_GLYPHS[block.type]}</span>
+      <div className={docBuilderLegacy['docb-inspector-head']}>
+        <span className={docBuilderLegacy['docb-palette-glyph']} aria-hidden="true">{BLOCK_GLYPHS[block.type]}</span>
         <strong>{t?.blocks?.[block.type] ?? BLOCK_LABELS[block.type]}</strong>
-        <code className="docb-id">{block.id}</code>
+        <code className={docBuilderLegacy['docb-id']}>{block.id}</code>
       </div>
 
-      {path.length > 1 && <p className="docb-hint">Nested inside a two-column block.</p>}
+      {path.length > 1 && <p className={docBuilderLegacy['docb-hint']}>Nested inside a two-column block.</p>}
 
-      <div className="docb-row">
-        <div className="form-group" style={{ flex: 1 }}>
+      <div className={docBuilderLegacy['docb-row']}>
+        <div className={adminDashboard['form-group']} style={{ flex: 1 }}>
           <label>Span (of 12)</label>
           <input
-            className="admin-input"
+            className={adminDashboard['admin-input']}
             type="number"
             min={1}
             max={12}
@@ -613,10 +614,10 @@ export default function BlockInspector({
             onChange={(e) => onChange({ ...block, span: clampSpan(num(e.target.value, 12)) })}
           />
         </div>
-        <div className="form-group" style={{ flex: 1 }}>
+        <div className={adminDashboard['form-group']} style={{ flex: 1 }}>
           <label>Align</label>
           <select
-            className="admin-input"
+            className={adminDashboard['admin-input']}
             value={block.style?.align ?? 'start'}
             onChange={(e) => onChange({ ...block, style: { ...block.style, align: e.target.value as never } })}
           >
@@ -626,10 +627,10 @@ export default function BlockInspector({
       </div>
 
       {block.type === 'image' && (
-        <div className="form-group">
+        <div className={adminDashboard['form-group']}>
           <label>{t?.uploadImage ?? 'Upload image'}</label>
           <input
-            className="admin-file-input"
+            className={adminDashboard['admin-file-input']}
             type="file"
             accept="image/*"
             disabled={uploading}
@@ -638,8 +639,8 @@ export default function BlockInspector({
               e.target.value = '';
             }}
           />
-          {uploading && <p className="docb-hint">{t?.uploading ?? 'Uploading...'}</p>}
-          {imageError && <p className="docb-error">{imageError}</p>}
+          {uploading && <p className={docBuilderLegacy['docb-hint']}>{t?.uploading ?? 'Uploading...'}</p>}
+          {imageError && <p className={docBuilderLegacy['docb-error']}>{imageError}</p>}
         </div>
       )}
 
@@ -656,11 +657,11 @@ export default function BlockInspector({
         />
       )}
 
-      <div className="docb-actions">
-        <button type="button" className="docb-mini" onClick={() => onMove(-1)} title="Move up" aria-label="Move up">&uarr;</button>
-        <button type="button" className="docb-mini" onClick={() => onMove(1)} title="Move down" aria-label="Move down">&darr;</button>
-        <button type="button" className="docb-mini" onClick={onDuplicate}>{t?.duplicate ?? 'Duplicate'}</button>
-        <button type="button" className="docb-mini docb-mini--danger" onClick={onDelete}>{t?.remove ?? 'Remove'}</button>
+      <div className={docBuilderLegacy['docb-actions']}>
+        <button type="button" className={docBuilderLegacy['docb-mini']} onClick={() => onMove(-1)} title="Move up" aria-label="Move up">&uarr;</button>
+        <button type="button" className={docBuilderLegacy['docb-mini']} onClick={() => onMove(1)} title="Move down" aria-label="Move down">&darr;</button>
+        <button type="button" className={docBuilderLegacy['docb-mini']} onClick={onDuplicate}>{t?.duplicate ?? 'Duplicate'}</button>
+        <button type="button" className={`${docBuilderLegacy['docb-mini']} ${docBuilderLegacy['docb-mini--danger']}`} onClick={onDelete}>{t?.remove ?? 'Remove'}</button>
       </div>
     </aside>
   );

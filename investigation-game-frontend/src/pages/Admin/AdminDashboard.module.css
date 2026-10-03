@@ -193,7 +193,7 @@
 
 /* If you have a global .glass-panel class controlling backgrounds, 
    make sure it isn't overriding the padding. If it is, force it like this: */
-.admin-form-container.glass-panel {
+.admin-form-container:global(.glass-panel) {
   padding: 3rem; 
 }
 

@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { Level } from '@/types';
-import './LevelCard.css';
+import levelCard from './LevelCard.module.css';
 
 interface LevelCardProps {
   level: Level;
@@ -50,22 +50,22 @@ export default function LevelCard({
 
   return (
     <div 
-      className={`level-list-item ${status} ${isSelected ? 'selected' : ''}`}
+      className={`${levelCard['level-list-item']}${status} ${isSelected ? levelCard['selected'] : ''}`}
       onClick={onSelect}
     >
       {status === 'gated' && (
-        <div className="warrant-overlay">{t('pages.gameRoom.campaign.warrantRequired', 'WARRANT REQUIRED')}</div>
+        <div className={levelCard['warrant-overlay']}>{t('pages.gameRoom.campaign.warrantRequired', 'WARRANT REQUIRED')}</div>
       )}
       
-      <div className="list-item-content">
-        <div className="level-icon-container">
+      <div className={levelCard['list-item-content']}>
+        <div className={levelCard['level-icon-container']}>
           {status === 'undiscovered' ? '❓' : getLevelIcon(level.presentation_type)}
         </div>
-        <div className="list-item-title-area">
-          <span className="node-phase">
+        <div className={levelCard['list-item-title-area']}>
+          <span className={levelCard['node-phase']}>
             {t(`pages.gameRoom.campaign.types.${level.presentation_type || 'standard'}`)}
           </span>
-          <h4 className="list-item-title">{displayTitle}</h4>
+          <h4 className={levelCard['list-item-title']}>{displayTitle}</h4>
         </div>
       </div>
     </div>

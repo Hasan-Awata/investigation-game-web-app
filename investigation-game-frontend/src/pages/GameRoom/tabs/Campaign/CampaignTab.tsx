@@ -11,7 +11,8 @@ import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
 import LocationPhase from './Levels/Location/LocationPhase';
 import WiretapPhase from './Levels/Wiretap/WiretapPhase';
 import '../SharedOverlay.css';
-import './CampaignTab.css';
+import campaignTab from './CampaignTab.module.css';
+import levelCard from './LevelCard.module.css';
 
 const CampaignTab = () => {
   const { t } = useTranslation();
@@ -166,7 +167,7 @@ const CampaignTab = () => {
   const zoneDescription = activeZoneData?.description;
 
   return (
-    <div className="campaign-tab-wrapper">
+    <div className={campaignTab['campaign-tab-wrapper']}>
       {isMapMode ? (
         <CampaignMap
           onEnterZone={handleEnterZone}
@@ -175,16 +176,16 @@ const CampaignTab = () => {
           mapImageUrl={room.game_case?.map_url} 
         />
       ) : (
-        <div className="campaign-roadmap-container">
-          <div className="split-screen-layout">
-            <div className="level-list-column">
+        <div className={campaignTab['campaign-roadmap-container']}>
+          <div className={campaignTab['split-screen-layout']}>
+            <div className={campaignTab['level-list-column']}>
               
-              <div className="phase-info-sidebar">
-                <h2 className="phase-sidebar-title tactical-glitch" data-text={activeZoneData?.title || t('pages.gameRoom.campaign.unknownZone', 'UNKNOWN DISTRICT')}>
+              <div className={campaignTab['phase-info-sidebar']}>
+                <h2 className={`${campaignTab['phase-sidebar-title']} tactical-glitch`} data-text={activeZoneData?.title || t('pages.gameRoom.campaign.unknownZone', 'UNKNOWN DISTRICT')}>
                   {activeZoneData?.title || t('pages.gameRoom.campaign.unknownZone', 'UNKNOWN DISTRICT')}
                 </h2>
                 {zoneDescription && (
-                  <p className="phase-sidebar-desc">{zoneDescription}</p>
+                  <p className={campaignTab['phase-sidebar-desc']}>{zoneDescription}</p>
                 )}
               </div>
 
@@ -222,41 +223,41 @@ const CampaignTab = () => {
               })}
 
               <div 
-                className={`return-map-card ${hasActiveLevel ? 'locked' : ''}`}
+                className={`${campaignTab['return-map-card']}${hasActiveLevel ? campaignTab['locked'] : ''}`}
                 onClick={() => {
                   if (!hasActiveLevel) handleReturnToMap();
                 }}
               >
-                <div className="list-item-content">
-                  <div className="list-item-title-area map-return-area">
-                    <span className="return-icon">
+                <div className={levelCard['list-item-content']}>
+                  <div className={`${levelCard['list-item-title-area']} ${campaignTab['map-return-area']}`}>
+                    <span className={campaignTab['return-icon']}>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
                       </svg>
                     </span>
-                    <h4 className="list-item-title">{t('pages.gameRoom.campaign.map.backToMap')}</h4>
+                    <h4 className={campaignTab['list-item-title']}>{t('pages.gameRoom.campaign.map.backToMap')}</h4>
                   </div>
                 </div>
               </div>
             </div>
 
             {displayLevel && (
-              <div className="preview-column">
+              <div className={campaignTab['preview-column']}>
                 
                 <div 
-                  className={`preview-bg-layer ${showGameplay || previewStatus === 'gated' ? 'blurred' : ''}`} 
+                  className={`${campaignTab['preview-bg-layer']}${showGameplay || previewStatus === 'gated' ? campaignTab['blurred'] : ''}`} 
                   style={{ 
                     backgroundImage: `url(${displayLevelIsDiscovered ? (displayLevel.img_url || '/placeholder-crime-scene.jpg') : ''})`,
                     filter: previewStatus === 'gated' ? 'grayscale(100%) blur(12px) brightness(0.2)' : undefined
                   }}
                 />
                 
-                <div className={`preview-overlay ${(showGameplay || previewStatus === 'gated') ? 'hidden' : ''}`}></div>
+                <div className={`${campaignTab['preview-overlay']}${(showGameplay || previewStatus === 'gated') ? campaignTab['hidden'] : ''}`}></div>
 
-                <div className="top-right-actions">
+                <div className={campaignTab['top-right-actions']}>
                   {canSwap && previewStatus !== 'gated' && (
                     <button
-                      className="swap-view-btn"
+                      className={campaignTab['swap-view-btn']}
                       onClick={toggleViewState}
                       title={isInfoView ? t('pages.gameRoom.campaign.showGameplay', 'Show Gameplay') : t('pages.gameRoom.campaign.showLevelInfo', 'Show Level Info')}
                     >
@@ -267,19 +268,19 @@ const CampaignTab = () => {
                   )}
 
                   {previewStatus === 'gated' && (
-                    <p className="host-warning-text" style={{ color: 'var(--accent-crimson)', borderColor: 'rgba(163, 50, 50, 0.4)' }}>
+                    <p className={campaignTab['host-warning-text']} style={{ color: 'var(--accent-crimson)', borderColor: 'rgba(163, 50, 50, 0.4)' }}>
                       {t('pages.gameRoom.campaign.warrantRequired', 'WARRANT REQUIRED')}
                     </p>
                   )}
 
                   {previewStatus === 'actionable' && !showGameplay && !isLocationSandbox && (
                     <>
-                      <p className="host-warning-text">
+                      <p className={campaignTab['host-warning-text']}>
                         {isHost ? t('pages.gameRoom.campaign.hostInitiateWarning') : t('pages.gameRoom.campaign.awaitingHost')}
                       </p>
                       {isHost && (
                         <button 
-                          className="btn-primary tactical-btn start-btn-top" 
+                          className={`btn-primary tactical-btn ${campaignTab['start-btn-top']}`} 
                           onClick={() => initiatePhase(displayLevel.id)} 
                           disabled={isInitiating}
                         >
@@ -290,31 +291,31 @@ const CampaignTab = () => {
                   )}
                 </div>
 
-                <div className="preview-content-layer">
+                <div className={campaignTab['preview-content-layer']}>
                   {previewStatus === 'gated' ? (
-                    <div className="info-view">
-                      <div className="preview-content-box">
-                        <h3 className="preview-title" style={{ color: 'var(--text-secondary)' }}>
+                    <div className={campaignTab['info-view']}>
+                      <div className={campaignTab['preview-content-box']}>
+                        <h3 className={campaignTab['preview-title']} style={{ color: 'var(--text-secondary)' }}>
                           {displayLevel.title}
                         </h3>
-                        <p className="preview-desc" style={{ color: 'var(--text-secondary)' }}>
+                        <p className={campaignTab['preview-desc']} style={{ color: 'var(--text-secondary)' }}>
                           {t('pages.gameRoom.campaign.gatedDesc', 'This location or subject is currently restricted. You must file the correct procedural request with the DA to proceed.')}
                         </p>
                       </div>
                     </div>
                   ) : !showGameplay ? (
-                    <div className="info-view">
-                      <div className="preview-content-box">
-                        <h3 className="preview-title">
+                    <div className={campaignTab['info-view']}>
+                      <div className={campaignTab['preview-content-box']}>
+                        <h3 className={campaignTab['preview-title']}>
                           {displayLevelIsDiscovered ? displayLevel.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')}
                         </h3>
-                        <p className="preview-desc">
+                        <p className={campaignTab['preview-desc']}>
                           {displayLevelIsDiscovered ? displayLevel.details : t('pages.gameRoom.campaign.hiddenPathDesc')}
                         </p>
                       </div>
                     </div>
                   ) : (
-                    <div className="gameplay-view">
+                    <div className={campaignTab['gameplay-view']}>
                       {displayLevel.presentation_type === 'interrogation' ? (
                         <InterrogationPhase getQuestionConsensus={getQuestionConsensus} handleSubmitTheory={handleSubmitTheory} isHost={isHost} isSubmitting={isSubmitting} level={displayLevel} status={isCurrentlyPlaying ? 'active' : 'completed'} totalPlayers={totalPlayers} />
                       ) : displayLevel.presentation_type === 'location' ? (

@@ -1,22 +1,22 @@
 import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types';
-import './ForensicEvidence.css';
+import forensicEvidence from './ForensicEvidence.module.css';
 
 export default function ForensicEvidence({ evidence }: { evidence: Evidence }) {
   const { t } = useTranslation();
 
   return (
-    <div className="forensic-variant forensic-report">
-      <div className="forensic-top">
-        <span className="forensic-category">{t('pages.gameRoom.evidence.variants.forensic.report')}</span>
-        <span className="medical-icon" aria-hidden="true">⚕</span>
+    <div className={`forensic-variant ${forensicEvidence['forensic-report']}`}>
+      <div className={forensicEvidence['forensic-top']}>
+        <span className={forensicEvidence['forensic-category']}>{t('pages.gameRoom.evidence.variants.forensic.report')}</span>
+        <span className={forensicEvidence['medical-icon']} aria-hidden="true">⚕</span>
       </div>
 
-      <h4 className="evidence-title">{evidence.title}</h4>
-      {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
+      <h4 className={forensicEvidence['evidence-title']}>{evidence.title}</h4>
+      {evidence.description && <p className={forensicEvidence['evidence-desc']}>{evidence.description}</p>}
 
-      <div className="forensic-footer">
-        <span className="barcode-lines" aria-hidden="true"></span>
+      <div className={forensicEvidence['forensic-footer']}>
+        <span className={forensicEvidence['barcode-lines']} aria-hidden="true"></span>
       </div>
     </div>
   );

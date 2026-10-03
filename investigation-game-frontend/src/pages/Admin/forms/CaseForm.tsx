@@ -7,7 +7,8 @@ import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
 import { AdminRow, AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput, AdminEntryToggle, AdminSelect } from '@/pages/Admin/components/AdminUI';
 import { validateCaseForm, validateImageSize, validateJsonPayload } from '@/pages/Admin/utils/validators';
 import type { GameCase } from '@/types';
-import './Shared/AdminForms.css';
+import adminForms from './Shared/AdminForms.module.css';
+import adminDashboard from '../AdminDashboard.module.css';
 
 // 1. Dynamically read all local images inside public/Maps/
 const mapFiles = import.meta.glob('/public/Maps/*.{png,jpg,jpeg,webp}', { eager: true });
@@ -151,12 +152,12 @@ export default function CaseForm() {
         </>
       )}
     >
-      <form onSubmit={onSubmit} className="admin-form">
+      <form onSubmit={onSubmit} className={adminDashboard['admin-form']}>
         {!editingId && <AdminEntryToggle mode={entryMode} setMode={setEntryMode} labelForm="Standard Entry" labelJson="JSON Bulk Case Injection" />}
 
         {entryMode === 'form' ? (
           <>
-            <AdminCheckbox checked={formData.is_published} onChange={(e) => updateField('is_published', e.target.checked)} labelTitle={formData.is_published ? t.livePublished : t.draftClassified} description={formData.is_published ? t.liveDescription : t.draftDescription} className={formData.is_published ? 'status-live' : 'status-draft'} />
+            <AdminCheckbox checked={formData.is_published} onChange={(e) => updateField('is_published', e.target.checked)} labelTitle={formData.is_published ? t.livePublished : t.draftClassified} description={formData.is_published ? t.liveDescription : t.draftDescription} className={formData.is_published ? adminForms['status-live'] : adminForms['status-draft']} />
             
             <AdminRow>
               <AdminInput label={t.titleLabel} required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
@@ -202,7 +203,7 @@ export default function CaseForm() {
                 checked={formData.store_locally}
                 onChange={(e) => updateField('store_locally', e.target.checked)}
                 labelTitle={t.storeLocallyLabel || 'Store Locally'}
-                className="amber"
+                className={adminForms['amber']}
               />
             )}
           </>
@@ -217,7 +218,7 @@ export default function CaseForm() {
           </div>
         )}
 
-        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing}>
+        <button type="submit" className={`btn-primary ${adminForms['admin-submit-btn']}${editingId ? adminForms['editing'] : adminForms['creating']}`} disabled={isProcessing}>
           {isProcessing ? t.processingData : entryMode === 'json' ? "Execute Bulk Transaction" : editingId ? t.updateCase : t.commitCase}
         </button>
       </form>

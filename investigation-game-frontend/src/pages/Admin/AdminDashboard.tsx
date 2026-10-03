@@ -11,7 +11,7 @@ import AdminLocationBuilder from './forms/QuestionForm/AdminLocationBuilder';
 import AdminWiretapBuilder from './forms/QuestionForm/AdminWiretapBuilder'; 
 import InvestigationRequestForm from './forms/InvestigationRequestForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
-import './AdminDashboard.css';
+import adminDashboardStyles from './AdminDashboard.module.css';
 
 type AdminTab = 'cases' | 'zones' | 'levels' | 'interrogation' | 'location' | 'wiretap' | 'evidences' | 'characters' | 'requests';
 
@@ -51,31 +51,31 @@ function AdminDashboardContent() {
   }
 
   return (
-    <div className="admin-dashboard-layout">
+    <div className={adminDashboardStyles['admin-dashboard-layout']}>
       {/* THE TACTICAL SIDEBAR */}
-      <aside className="admin-sidebar">
+      <aside className={adminDashboardStyles['admin-sidebar']}>
         
         {/* GLOBAL CONTEXT SELECTORS */}
-        <div className="admin-global-selectors">
-          <div className="form-group" style={{ gap: '0.25rem' }}>
+        <div className={adminDashboardStyles['admin-global-selectors']}>
+          <div className={adminDashboardStyles['form-group']} style={{ gap: '0.25rem' }}>
             <label style={{ color: 'var(--accent-amber)', fontSize: '0.75rem' }}>{t.activeCaseLabel}</label>
-            <select className="admin-input" style={{ padding: '0.5rem' }} value={caseId} onChange={(e) => setCaseId(e.target.value)}>
+            <select className={adminDashboardStyles['admin-input']} style={{ padding: '0.5rem' }} value={caseId} onChange={(e) => setCaseId(e.target.value)}>
               <option value="">{t.globalDatabaseOption}</option>
               {cases.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
           
-          <div className="form-group" style={{ gap: '0.25rem' }}>
+          <div className={adminDashboardStyles['form-group']} style={{ gap: '0.25rem' }}>
             <label style={{ color: 'var(--accent-amber)', fontSize: '0.75rem' }}>{t.activeZoneLabel || 'ACTIVE ZONE'}</label>
-            <select className="admin-input" style={{ padding: '0.5rem' }} value={zoneId} onChange={(e) => setZoneId(e.target.value)} disabled={!caseId}>
+            <select className={adminDashboardStyles['admin-input']} style={{ padding: '0.5rem' }} value={zoneId} onChange={(e) => setZoneId(e.target.value)} disabled={!caseId}>
               <option value="">{t.allZonesOption || '-- ALL ZONES --'}</option>
               {availableZones.map(z => <option key={z.id} value={z.id}>{z.order_index}: {z.title}</option>)}
             </select>
           </div>
 
-          <div className="form-group" style={{ gap: '0.25rem' }}>
+          <div className={adminDashboardStyles['form-group']} style={{ gap: '0.25rem' }}>
             <label style={{ color: 'var(--accent-amber)', fontSize: '0.75rem' }}>{t.activeLevelLabel}</label>
-            <select className="admin-input" style={{ padding: '0.5rem' }} value={levelId} onChange={(e) => setLevelId(e.target.value)} disabled={!zoneId}>
+            <select className={adminDashboardStyles['admin-input']} style={{ padding: '0.5rem' }} value={levelId} onChange={(e) => setLevelId(e.target.value)} disabled={!zoneId}>
               <option value="">{t.allLevelsOption}</option>
               {availableLevels.map(l => <option key={l.id} value={l.id}>{l.order_index}: {l.title} ({l.presentation_type})</option>)}
             </select>
@@ -83,36 +83,36 @@ function AdminDashboardContent() {
         </div>
 
         {/* NAVIGATION MENUS */}
-        <div className="admin-nav-group">
-          <h4 className="admin-nav-group-title">{t.narrativeHierarchyGroup}</h4>
-          <nav className="admin-nav-menu">
-            <button className={`admin-tab-btn ${activeTab === 'cases' ? 'active' : ''}`} onClick={() => handleTabChange('cases')}>{t.casesTab}</button>
-            <button className={`admin-tab-btn ${activeTab === 'zones' ? 'active' : ''}`} onClick={() => handleTabChange('zones')}>{t.zonesTab || 'ZONES'}</button>
-            <button className={`admin-tab-btn ${activeTab === 'levels' ? 'active' : ''}`} onClick={() => handleTabChange('levels')}>{t.levelsTab}</button>
+        <div className={adminDashboardStyles['admin-nav-group']}>
+          <h4 className={adminDashboardStyles['admin-nav-group-title']}>{t.narrativeHierarchyGroup}</h4>
+          <nav className={adminDashboardStyles['admin-nav-menu']}>
+            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'cases' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('cases')}>{t.casesTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'zones' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('zones')}>{t.zonesTab || 'ZONES'}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'levels' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('levels')}>{t.levelsTab}</button>
           </nav>
         </div>
 
-        <div className="admin-nav-group">
-          <h4 className="admin-nav-group-title">{t.nodeBuildersGroup}</h4>
-          <nav className="admin-nav-menu">
-            <button className={`admin-tab-btn ${activeTab === 'interrogation' ? 'active' : ''}`} onClick={() => handleTabChange('interrogation')}>{t.interrogationTab}</button>
-            <button className={`admin-tab-btn ${activeTab === 'location' ? 'active' : ''}`} onClick={() => handleTabChange('location')}>{t.locationTab}</button>
-            <button className={`admin-tab-btn ${activeTab === 'wiretap' ? 'active' : ''}`} onClick={() => handleTabChange('wiretap')}>{t.wiretapTab}</button>
+        <div className={adminDashboardStyles['admin-nav-group']}>
+          <h4 className={adminDashboardStyles['admin-nav-group-title']}>{t.nodeBuildersGroup}</h4>
+          <nav className={adminDashboardStyles['admin-nav-menu']}>
+            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'interrogation' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('interrogation')}>{t.interrogationTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'location' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('location')}>{t.locationTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'wiretap' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('wiretap')}>{t.wiretapTab}</button>
           </nav>
         </div>
 
-        <div className="admin-nav-group" style={{ borderBottom: 'none' }}>
-          <h4 className="admin-nav-group-title">{t.databaseAssetsGroup}</h4>
-          <nav className="admin-nav-menu">
-            <button className={`admin-tab-btn ${activeTab === 'evidences' ? 'active' : ''}`} onClick={() => handleTabChange('evidences')}>{t.evidencesTab}</button>
-            <button className={`admin-tab-btn ${activeTab === 'characters' ? 'active' : ''}`} onClick={() => handleTabChange('characters')}>{t.charactersTab}</button>
-            <button className={`admin-tab-btn ${activeTab === 'requests' ? 'active' : ''}`} onClick={() => handleTabChange('requests')}>{t.requestsTab}</button>
+        <div className={adminDashboardStyles['admin-nav-group']} style={{ borderBottom: 'none' }}>
+          <h4 className={adminDashboardStyles['admin-nav-group-title']}>{t.databaseAssetsGroup}</h4>
+          <nav className={adminDashboardStyles['admin-nav-menu']}>
+            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'evidences' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('evidences')}>{t.evidencesTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'characters' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('characters')}>{t.charactersTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'requests' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('requests')}>{t.requestsTab}</button>
           </nav>
         </div>
       </aside>
 
       {/* MAIN WORKSPACE */}
-      <main className="admin-workspace">
+      <main className={adminDashboardStyles['admin-workspace']}>
         {activeTab === 'cases' && <CaseForm />}
         {activeTab === 'zones' && <ZoneForm />}
         {activeTab === 'levels' && <LevelForm />}

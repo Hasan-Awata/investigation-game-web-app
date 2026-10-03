@@ -97,11 +97,7 @@ export type TerminalOnlyBlock =
   | (BlockBase & { type: 'prompt_line'; props: PromptLineProps })
   | (BlockBase & { type: 'output_stream'; props: OutputStreamProps })
   | (BlockBase & { type: 'status_banner'; props: StatusBannerProps })
-  | (BlockBase & { type: 'encryption_flow'; props: EncryptionFlowProps })
-  | (BlockBase & { type: 'hash_matrix'; props: HashMatrixProps })
-  | (BlockBase & { type: 'file_tree'; props: FileTreeProps })
-  | (BlockBase & { type: 'ascii_panel'; props: AsciiPanelProps })
-  | (BlockBase & { type: 'packet_trace'; props: PacketTraceProps });
+  | (BlockBase & { type: 'file_tree'; props: FileTreeProps });
 
 export type TerminalBlock = TerminalOnlyBlock | SpacerBlock;
 
@@ -111,11 +107,7 @@ export const TERMINAL_BLOCK_TYPES: readonly TerminalBlockType[] = [
   'prompt_line',
   'output_stream',
   'status_banner',
-  'encryption_flow',
-  'hash_matrix',
   'file_tree',
-  'ascii_panel',
-  'packet_trace',
   'spacer',
 ] as const;
 

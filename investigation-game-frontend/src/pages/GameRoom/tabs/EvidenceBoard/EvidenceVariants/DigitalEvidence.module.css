@@ -6,8 +6,8 @@
   font-family: var(--term-font-mono);
   direction: ltr;
   text-align: left;
-  min-height: 170px;
-  width: 240px; 
+  min-height: 150px; 
+  width: 240px;      
   display: flex;
   flex-direction: column;
 }
@@ -62,7 +62,10 @@
   align-items: baseline;
   gap: 4px;
   color: var(--term-prompt);
-  font-size: 0.85em;
+  font-size: 0.65em; 
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .terminal-card__prompt-user { color: var(--term-ok); }
@@ -88,4 +91,10 @@
   font-family: var(--font-primary);
   text-transform: none;
   letter-spacing: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3; 
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

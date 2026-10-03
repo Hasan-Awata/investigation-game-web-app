@@ -7,7 +7,7 @@ import AdminLocationForm from './AdminLocationForm';
 import EntityList from '../Shared/EntityList';
 import type { Question } from '@/types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
-import './AdminLocationBuilder.css';
+import adminLocationBuilder from './AdminLocationBuilder.module.css';
 
 export default function AdminLocationBuilder() {
   const [image, setImage] = useState<File | null>(null);
@@ -53,7 +53,7 @@ export default function AdminLocationBuilder() {
                   keyExtractor={(q) => q.id} isProcessing={status.isProcessing} onEdit={actions.handleEdit} onDelete={actions.handleDelete}
                   renderItemContent={(scene) => (
                     <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                      <div className="scene-thumbnail" style={{ backgroundImage: `url(${scene.img_url || '/placeholder-crime-scene.jpg'})` }} />
+                      <div className={adminLocationBuilder['scene-thumbnail']} style={{ backgroundImage: `url(${scene.img_url || '/placeholder-crime-scene.jpg'})` }} />
                       <div>
                         <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', fontSize: '0.8rem' }}>{t.sceneIdBadge(scene.id)}</span>
                         <h4 style={{ margin: '0.25rem 0', color: 'var(--text-primary)' }}>{scene.text || t.unnamedScene}</h4>

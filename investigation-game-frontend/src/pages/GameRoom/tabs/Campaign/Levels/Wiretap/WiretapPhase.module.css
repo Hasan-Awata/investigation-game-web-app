@@ -163,7 +163,10 @@
   text-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
 }
 
-.locked-choice {
+/* Modifier for the global `.choice-pill` (SharedOverlay.css). The compound
+   selector raises specificity above `.choice-pill` so the locked appearance
+   wins regardless of stylesheet load order. */
+:global(.choice-pill).locked-choice {
   opacity: 0.3;
   cursor: not-allowed;
   border: 1px dashed var(--text-secondary);

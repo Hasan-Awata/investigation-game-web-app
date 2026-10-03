@@ -9,25 +9,6 @@
   flex-direction: column;
 }
 
-.campaign-map-container {
-  position: relative;
-  flex: 1; 
-  width: 100%;
-  min-height: 100vh;
-  overflow: hidden;
-  background-color: #0a0a0a;
-  box-sizing: border-box;
-  overscroll-behavior: none; 
-  touch-action: none;
-}
-
-/* Optional: True Fullscreen Expansion */
-@media all and (display-mode: fullscreen) {
-  .campaign-map-container {
-    min-height: 100vh; 
-  }
-}
-
 .campaign-roadmap-container {
   width: 100%;
   display: flex;

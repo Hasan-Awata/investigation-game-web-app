@@ -1,9 +1,13 @@
 import React, { forwardRef } from 'react';
 import { validateJsonPayload } from '../../utils/validators';
 import toast from 'react-hot-toast';
+import adminDashboard from '../../AdminDashboard.module.css';
+import locationPhase from '../../../GameRoom/tabs/Campaign/Levels/Location/LocationPhase.module.css';
+import adminLocationBuilder from '../../forms/QuestionForm/AdminLocationBuilder.module.css';
+import adminForms from '../../forms/Shared/AdminForms.module.css';
 
 export const AdminRow = ({ children }: { children: React.ReactNode }) => (
-  <div className="admin-form-row">
+  <div className={adminDashboard['admin-form-row']}>
     {React.Children.map(children, (child) => (
       <div style={{ flex: 1 }}>{child}</div>
     ))}
@@ -12,25 +16,25 @@ export const AdminRow = ({ children }: { children: React.ReactNode }) => (
 
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> { label?: string; }
 export const AdminInput = ({ label, ...props }: InputProps) => (
-  <div className="form-group">
+  <div className={adminDashboard['form-group']}>
     {label && <label>{label}</label>}
-    <input className="admin-input" {...props} />
+    <input className={adminDashboard['admin-input']} {...props} />
   </div>
 );
 
 interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> { label?: string; minHeight?: string; }
 export const AdminTextarea = ({ label, minHeight = '80px', style, ...props }: TextareaProps) => (
-  <div className="form-group">
+  <div className={adminDashboard['form-group']}>
     {label && <label>{label}</label>}
-    <textarea className="admin-textarea" style={{ minHeight, ...style }} {...props} />
+    <textarea className={adminDashboard['admin-textarea']} style={{ minHeight, ...style }} {...props} />
   </div>
 );
 
 interface SelectProps extends React.SelectHTMLAttributes<HTMLSelectElement> { label?: string; options: { label: string; value: string }[]; placeholder?: string; }
 export const AdminSelect = ({ label, options, placeholder, ...props }: SelectProps) => (
-  <div className="form-group">
+  <div className={adminDashboard['form-group']}>
     {label && <label>{label}</label>}
-    <select className="admin-input" {...props}>
+    <select className={adminDashboard['admin-input']} {...props}>
       {placeholder && <option value="" disabled>{placeholder}</option>}
       {options.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
     </select>
@@ -47,7 +51,7 @@ interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>
 
 export const AdminCheckbox = ({ labelTitle, description, accentColor, bgColor, className = '', ...props }: CheckboxProps) => (
   <div 
-    className={`admin-checkbox-card ${className}`} 
+    className={`${adminForms['admin-checkbox-card']}${className}`} 
     style={{ background: bgColor, ...(accentColor ? { borderColor: accentColor } : {}) }}
   >
     <input type="checkbox" style={accentColor ? { accentColor } : undefined} {...props} />
@@ -59,10 +63,10 @@ export const AdminCheckbox = ({ labelTitle, description, accentColor, bgColor, c
 
 interface FileInputProps extends React.InputHTMLAttributes<HTMLInputElement> { label: string; hint?: string; }
 export const AdminFileInput = forwardRef<HTMLInputElement, FileInputProps>(({ label, hint, ...props }, ref) => (
-  <div className="form-group">
+  <div className={adminDashboard['form-group']}>
     <label>{label}</label>
     {hint && <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>{hint}</p>}
-    <input type="file" className="admin-file-input" ref={ref} {...props} />
+    <input type="file" className={adminDashboard['admin-file-input']} ref={ref} {...props} />
   </div>
 ));
 AdminFileInput.displayName = 'AdminFileInput';
@@ -99,11 +103,11 @@ interface ResourceSelectorProps {
 }
 
 export const ResourceSelectorGrid = ({ label, items, selectedValues, onChange, getName }: ResourceSelectorProps) => (
-  <div className="form-group" style={{ flex: 1, margin: 0 }}>
+  <div className={adminDashboard['form-group']} style={{ flex: 1, margin: 0 }}>
     <label style={{ fontSize: '0.7rem' }}>{label}</label>
     <select 
       multiple 
-      className="admin-input" 
+      className={adminDashboard['admin-input']} 
       style={{ height: '80px', padding: '0.25rem' }} 
       value={selectedValues} 
       onChange={(e) => onChange(Array.from(e.target.selectedOptions, opt => Number(opt.value)))}
@@ -149,9 +153,9 @@ export const CoordinatePicker = ({
   };
 
   return (
-    <div className="coordinate-picker-container" style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
+    <div className={adminLocationBuilder['coordinate-picker-container']} style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
       {isTargeting && (
-        <div className="targeting-active-banner">
+        <div className={adminLocationBuilder['targeting-active-banner']}>
           <span>{targetingBannerText}</span>
           <button type="button" onClick={onCancelTargeting} style={{ background: 'transparent', border: '1px solid var(--accent-cyan)', color: 'var(--accent-cyan)' }}>
             {cancelTargetBtnText}
@@ -159,13 +163,13 @@ export const CoordinatePicker = ({
         </div>
       )}
 
-      <div className={`coordinate-picker-image-wrapper ${isTargeting ? 'mapping-active' : ''}`} onClick={handleImageClick}>
+      <div className={`${adminLocationBuilder['coordinate-picker-image-wrapper']}${isTargeting ? adminLocationBuilder['mapping-active'] : ''}`} onClick={handleImageClick}>
         <img src={imageUrl} alt="Map Preview" />
         
         {markers.map((marker) => (
           <div
             key={marker.id}
-            className={`loc-hover-zone ${marker.isTargeting ? 'selected' : 'investigated'}`}
+            className={`${locationPhase['loc-hover-zone']}${marker.isTargeting ? locationPhase['selected'] : locationPhase['investigated']}`}
             style={{ 
               top: `${marker.y}%`, 
               left: `${marker.x}%`,
@@ -173,9 +177,9 @@ export const CoordinatePicker = ({
               pointerEvents: 'none' 
             }}
           >
-            <div className="loc-crosshair"></div>
+            <div className={locationPhase['loc-crosshair']}></div>
             {marker.label && (
-              <div className="loc-tooltip">{marker.label}</div>
+              <div className={locationPhase['loc-tooltip']}>{marker.label}</div>
             )}
           </div>
         ))}
@@ -186,10 +190,10 @@ export const CoordinatePicker = ({
 
 export const AdminEntryToggle = ({ mode, setMode, labelForm = "Form Entry", labelJson = "JSON Bulk Entry" }: { mode: 'form' | 'json', setMode: (m: 'form' | 'json') => void, labelForm?: string, labelJson?: string }) => (
   <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '1rem' }}>
-    <button type="button" className={`btn-secondary ${mode === 'form' ? 'active' : ''}`} onClick={() => setMode('form')} style={mode === 'form' ? { borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' } : {}}>
+    <button type="button" className={`btn-secondary ${mode === 'form' ? adminDashboard['active'] : ''}`} onClick={() => setMode('form')} style={mode === 'form' ? { borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' } : {}}>
       {labelForm}
     </button>
-    <button type="button" className={`btn-secondary ${mode === 'json' ? 'active' : ''}`} onClick={() => setMode('json')} style={mode === 'json' ? { borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' } : {}}>
+    <button type="button" className={`btn-secondary ${mode === 'json' ? adminDashboard['active'] : ''}`} onClick={() => setMode('json')} style={mode === 'json' ? { borderColor: 'var(--accent-cyan)', color: 'var(--accent-cyan)' } : {}}>
       {labelJson}
     </button>
   </div>

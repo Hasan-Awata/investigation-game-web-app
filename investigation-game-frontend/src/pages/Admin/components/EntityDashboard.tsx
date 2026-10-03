@@ -1,6 +1,7 @@
 import { type ReactNode } from 'react';
 import AdminFormLayout from './AdminFormLayout';
 import EntityList from '../forms/Shared/EntityList';
+import adminForms from '../forms/Shared/AdminForms.module.css';
 
 interface EntityDashboardProps<T> {
   entityName: string;
@@ -26,7 +27,7 @@ export default function EntityDashboard<T>({
 }: EntityDashboardProps<T>) {
 
   return (
-    <div className="admin-form-page">
+    <div className={adminForms['admin-form-page']}>
       <AdminFormLayout
         editingId={editingId}
         entityName={entityName}

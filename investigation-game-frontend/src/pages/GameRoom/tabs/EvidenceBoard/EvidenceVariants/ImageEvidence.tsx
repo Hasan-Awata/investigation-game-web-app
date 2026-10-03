@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types';
-import './ImageEvidence.css';
+import imageEvidence from './ImageEvidence.module.css';
 
 export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
   const { t } = useTranslation();
@@ -68,23 +68,23 @@ export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
     : { minHeight: '220px' };
 
   return (
-    <div className="image-variant polaroid-style" ref={containerRef}>
+    <div className={`image-variant ${imageEvidence['polaroid-style']}`} ref={containerRef}>
       {/* 3D red push-pin anchoring the photo */}
-      <div className="red-push-pin" aria-hidden="true"></div>
+      <div className={imageEvidence['red-push-pin']} aria-hidden="true"></div>
 
       {/* The photo frame */}
-      <div className="photo-frame" style={containerStyle}>
+      <div className={imageEvidence['photo-frame']} style={containerStyle}>
         {evidence.img_url ? (
           <>
             {/* Skeleton Loader: Active only after the component enters viewport threshold */}
-            {shouldLoad && !isLoaded && <div className="image-skeleton-loader" />}
+            {shouldLoad && !isLoaded && <div className={imageEvidence['image-skeleton-loader']} />}
             
             {/* Only mount the actual image source once allowed by the observer */}
             {shouldLoad && (
               <img 
                 src={evidence.img_url} 
                 alt={evidence.title} 
-                className="actual-photo" 
+                className={imageEvidence['actual-photo']} 
                 onLoad={() => setIsLoaded(true)}
                 style={{
                   opacity: isLoaded ? 1 : 0,
@@ -93,19 +93,19 @@ export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
             )}
           </>
         ) : (
-          <div className="photo-placeholder">
+          <div className={imageEvidence['photo-placeholder']}>
             <span>{t('pages.gameRoom.evidence.variants.image.noImage')}</span>
           </div>
         )}
 
         {/* Glossy reflection overlay */}
-        <div className="photo-glare" aria-hidden="true"></div>
+        <div className={imageEvidence['photo-glare']} aria-hidden="true"></div>
       </div>
 
       {/* Caption */}
-      <div className="photo-caption">
-        <h4 className="evidence-title">{evidence.title}</h4>
-        {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
+      <div className={imageEvidence['photo-caption']}>
+        <h4 className={imageEvidence['evidence-title']}>{evidence.title}</h4>
+        {evidence.description && <p className={imageEvidence['evidence-desc']}>{evidence.description}</p>}
       </div>
     </div>
   );

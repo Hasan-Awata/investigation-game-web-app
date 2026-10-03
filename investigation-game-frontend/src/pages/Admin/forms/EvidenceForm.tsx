@@ -14,7 +14,8 @@ import { DEFAULT_DOC, DEFAULT_PAGE, DOC_THEMES, normalizeDoc } from '@/types/evi
 import { DEFAULT_TERMINAL, normalizeTerminal } from '@/types/evidence/terminal';
 import type { Evidence } from '@/types/evidence';
 import { surfaceOf } from '@/types/evidence';
-import './Shared/AdminForms.css';
+import adminForms from './Shared/AdminForms.module.css';
+import adminDashboard from '../AdminDashboard.module.css';
 
 const initialFormState = {
   title: '',
@@ -107,7 +108,7 @@ export default function EvidenceForm() {
 
   if (!caseId || !selectedCase) {
     return (
-      <div className="admin-form-container glass-panel admin-missing-context">
+      <div className={`${adminDashboard['admin-form-container']} glass-panel ${adminForms['admin-missing-context']}`}>
         <h3>{t.missingContextTitle}</h3><p>{t.missingContextDesc}</p>
       </div>
     );
@@ -179,27 +180,27 @@ export default function EvidenceForm() {
       onClear={onClear} onEdit={onEdit} onDelete={(ev) => handleDelete(ev.id, t.deleteConfirm(ev.title))}
       renderItemContent={(ev: any) => (
         <>
-          <span className="admin-list-id">EX-{ev.id.toString().padStart(3, '0')}</span>
+          <span className={adminForms['admin-list-id']}>EX-{ev.id.toString().padStart(3, '0')}</span>
           <strong>{ev.title}</strong>
-          <span className="admin-list-badge">{ev.evidence_type}</span>
+          <span className={adminForms['admin-list-badge']}>{ev.evidence_type}</span>
           {ev.metadata?.doc?.theme && DOC_THEMES.includes(ev.metadata.doc.theme) && (
-            <span className="admin-list-badge">{ev.metadata.doc.theme.replace('_', ' ')}</span>
+            <span className={adminForms['admin-list-badge']}>{ev.metadata.doc.theme.replace('_', ' ')}</span>
           )}
-          {ev.metadata?.terminal?.theme && <span className="admin-list-badge">{ev.metadata.terminal.theme}</span>}
+          {ev.metadata?.terminal?.theme && <span className={adminForms['admin-list-badge']}>{ev.metadata.terminal.theme}</span>}
         </>
       )}
     >
-      <form onSubmit={onSubmit} className="admin-form">
+      <form onSubmit={onSubmit} className={adminDashboard['admin-form']}>
         <AdminEntryToggle mode={entryMode} setMode={setEntryMode} />
 
         {entryMode === 'form' ? (
           <>
-            <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialEvidenceLabel} description={t.initialEvidenceDesc} className="status-live" />
-            <AdminCheckbox checked={formData.is_vital_for_conviction} onChange={(e) => updateField('is_vital_for_conviction', e.target.checked)} labelTitle={t.vitalEvidenceLabel} description={t.vitalEvidenceDesc} className="status-draft" />
-            <div className="form-group">
+            <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialEvidenceLabel} description={t.initialEvidenceDesc} className={adminForms['status-live']} />
+            <AdminCheckbox checked={formData.is_vital_for_conviction} onChange={(e) => updateField('is_vital_for_conviction', e.target.checked)} labelTitle={t.vitalEvidenceLabel} description={t.vitalEvidenceDesc} className={adminForms['status-draft']} />
+            <div className={adminDashboard['form-group']}>
               <label>{t.masterCategoryLabel}</label>
               <select
-                className="admin-input"
+                className={adminDashboard['admin-input']}
                 value={formData.evidence_type}
                 onChange={(e) => {
                   const type = e.target.value;
@@ -234,7 +235,7 @@ export default function EvidenceForm() {
                 checked={formData.store_locally}
                 onChange={(e) => updateField('store_locally', e.target.checked)}
                 labelTitle={t.storeLocallyLabel}
-                className="amber"
+                className={adminForms['amber']}
               />
             )}
           </>
@@ -251,7 +252,7 @@ export default function EvidenceForm() {
         {requiresImage && <AdminFileInput label={t.evidenceImageLabel} hint={t.imageHint} accept="image/*" ref={registerFileRef('image')} onChange={(e) => handleFileChange(e, setImage, validateImageSize)} />}
         {formData.evidence_type === 'audio' && <AdminFileInput label={t.audioLabel} hint={t.audioHint} accept="audio/*" ref={registerFileRef('audio')} onChange={(e) => handleFileChange(e, setAudio, validateAudioSize)} />}
 
-        <button type="submit" className={`btn-primary admin-submit-btn ${editingId ? 'editing' : 'creating'}`} disabled={isProcessing || entryMode === 'json'}>
+        <button type="submit" className={`btn-primary ${adminForms['admin-submit-btn']}${editingId ? adminForms['editing'] : adminForms['creating']}`} disabled={isProcessing || entryMode === 'json'}>
           {isProcessing ? t.processingData : editingId ? t.updateEvidence : t.commitEvidence}
         </button>
       </form>

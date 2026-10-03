@@ -19,6 +19,10 @@ export function useGameRoom(inviteCode: string | undefined) {
     queryFn: async () => {
       if (!inviteCode) throw new Error(t('pages.gameRoom.noInviteCode'));
 
+      // OPAQUE identifier, not structured data: kept as a bare string so the
+      // reader below stays a plain parseInt. The JSON helpers would quote the
+      // value on write and fail to parse it on read (and purge it). Writer and
+      // reader must both stay raw -- see getSafeStringStorage in utils/storage.
       const storageKey = `active_room_id_for_${inviteCode}`;
       let roomId = getSafeStringStorage('session', storageKey, '');
 
@@ -38,9 +42,11 @@ export function useGameRoom(inviteCode: string | undefined) {
   });
 
   useEffect(() => {
-    if (room?.id && inviteCode) {
-      setSafeStringStorage('session', `active_room_id_for_${inviteCode}`, room.id.toString());
-    }
+if (room?.id && inviteCode) {
+        // Same opaque raw-string contract as the read above; the key template
+        // is intentionally inlined rather than hoisted, matching the read site.
+        setSafeStringStorage('session', `active_room_id_for_${inviteCode}`, room.id.toString());
+      }
   }, [room?.id, inviteCode]);
 
   const patchRoomData = (updater: (oldRoom: GameRoom) => GameRoom) => {

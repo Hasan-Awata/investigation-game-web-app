@@ -135,11 +135,11 @@
   cursor: pointer;
 }
 
-.outcomes-panel .admin-textarea {
+.outcomes-panel :global(.admin-textarea) {
   min-height: 60px;
 }
 
-.outcomes-panel .admin-input[multiple], .requirements-panel .admin-input[multiple] {
+.outcomes-panel :global(.admin-input)[multiple], .requirements-panel :global(.admin-input)[multiple] {
   height: 100px;
 }
 
@@ -155,6 +155,6 @@
   color: var(--accent-amber);
 }
 
-.admin-form-row .form-group {
+.admin-form-row :global(.form-group) {
   flex: 1;
 }

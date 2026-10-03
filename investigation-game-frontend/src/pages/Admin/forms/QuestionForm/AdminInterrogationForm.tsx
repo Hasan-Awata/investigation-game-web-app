@@ -5,6 +5,9 @@ import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
 import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '@/pages/Admin/utils/questionUtils';
 import type { Question } from '@/types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import choiceEditorCard from '../Shared/ChoiceEditorCard.module.css';
+import adminInterrogationBuilder from './AdminInterrogationBuilder.module.css';
+import adminDashboard from '../../AdminDashboard.module.css';
 
 interface AdminInterrogationFormProps {
   nodeData: Question | any;
@@ -68,16 +71,16 @@ export default function AdminInterrogationForm({
   };
 
   return (
-    <div className={`dialogue-node-card ${isSaved ? '' : 'unsaved'}`}>
-      <div className="node-header">
-        <span className="node-id-badge">{isSaved ? t.nodeIdBadge(nodeData.id) : t.unsavedBadge}</span>
+    <div className={`${adminInterrogationBuilder['dialogue-node-card']}${isSaved ? '' : adminInterrogationBuilder['unsaved']}`}>
+      <div className={adminInterrogationBuilder['node-header']}>
+        <span className={adminInterrogationBuilder['node-id-badge']}>{isSaved ? t.nodeIdBadge(nodeData.id) : t.unsavedBadge}</span>
       </div>
 
-      <div className="node-body">
-        <div className="node-suspect-block">
+      <div className={adminInterrogationBuilder['node-body']}>
+        <div className={adminInterrogationBuilder['node-suspect-block']}>
           <label>{t.suspectDialogueLabel}</label>
           <textarea
-            className="admin-textarea"
+            className={adminDashboard['admin-textarea']}
             dir="auto"
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -86,7 +89,7 @@ export default function AdminInterrogationForm({
           />
         </div>
 
-        <div className="node-responses-block">
+        <div className={adminInterrogationBuilder['node-responses-block']}>
           <label>{t.playerResponsesLabel}</label>
           {choicesState.map((choice, index) => (
             <ChoiceEditorCard
@@ -111,12 +114,12 @@ export default function AdminInterrogationForm({
         </div>
       </div>
 
-      <div className="node-footer">
+      <div className={adminInterrogationBuilder['node-footer']}>
         <button className="btn-primary" onClick={handleSave} disabled={isProcessing}>
           {isProcessing ? t.syncingBtn : isSaved ? t.updateBtn : t.commitBtn}
         </button>
         {isSaved && (
-          <button className="btn-secondary delete-btn" style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }} onClick={handleDelete} disabled={isProcessing}>
+          <button className={`btn-secondary ${choiceEditorCard['delete-btn']}`} style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }} onClick={handleDelete} disabled={isProcessing}>
             {t.deleteBtn}
           </button>
         )}

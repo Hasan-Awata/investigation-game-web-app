@@ -2,6 +2,7 @@ import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
 import MediaUploader from '@/pages/Admin/components/MediaUploader';
 import type { BaseNodeFormProps } from '@/pages/Admin/utils/questionUtils';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import adminDashboard from '../../AdminDashboard.module.css';
 
 interface AdminWiretapFormProps extends BaseNodeFormProps {
   setImage: (file: File | null) => void;
@@ -19,14 +20,14 @@ export default function AdminWiretapForm({
 
   return (
     <div>
-      <form onSubmit={actions.handleSubmit} className="admin-form">
-        <div className="form-group">
+      <form onSubmit={actions.handleSubmit} className={adminDashboard['admin-form']}>
+        <div className={adminDashboard['form-group']}>
           <label>{t.transcriptLabel}</label>
-          <textarea className="admin-textarea" required value={state.text} onChange={(e) => setters.setText(e.target.value)} style={{ minHeight: '100px' }} />
+          <textarea className={adminDashboard['admin-textarea']} required value={state.text} onChange={(e) => setters.setText(e.target.value)} style={{ minHeight: '100px' }} />
         </div>
 
-        <div className="admin-form-row">
-          <div className="form-group" style={{ flex: 1 }}>
+        <div className={adminDashboard['admin-form-row']}>
+          <div className={adminDashboard['form-group']} style={{ flex: 1 }}>
             <MediaUploader 
               label={t.audioFeedLabel(!!state.editingId)} 
               accept="audio/*" 
@@ -35,7 +36,7 @@ export default function AdminWiretapForm({
               previewUrl={previews.audio} 
             />
           </div>
-          <div className="form-group" style={{ flex: 1 }}>
+          <div className={adminDashboard['form-group']} style={{ flex: 1 }}>
             <MediaUploader 
               label={t.imageDossierLabel} 
               accept="image/*" 

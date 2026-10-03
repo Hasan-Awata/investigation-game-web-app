@@ -3,6 +3,7 @@ import MediaUploader from '@/pages/Admin/components/MediaUploader';
 import { CoordinatePicker, type CoordinateMarker } from '@/pages/Admin/components/AdminUI';
 import type { BaseNodeFormProps } from '@/pages/Admin/utils/questionUtils';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import adminDashboard from '../../AdminDashboard.module.css';
 
 interface AdminLocationFormProps extends BaseNodeFormProps {
   setImage: (file: File | null) => void;
@@ -36,15 +37,15 @@ export default function AdminLocationForm({
   }, []);
 
   return (
-    <div className="admin-form-container glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-      <form onSubmit={actions.handleSubmit} className="admin-form">
-        <div className="form-group">
+    <div className={`${adminDashboard['admin-form-container']} glass-panel`} style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+      <form onSubmit={actions.handleSubmit} className={adminDashboard['admin-form']}>
+        <div className={adminDashboard['form-group']}>
           <label>{t.sceneTitleLabel}</label>
-          <textarea className="admin-textarea" style={{ minHeight: '80px' }} required value={state.text} onChange={(e) => setters.setText(e.target.value)} />
+          <textarea className={adminDashboard['admin-textarea']} style={{ minHeight: '80px' }} required value={state.text} onChange={(e) => setters.setText(e.target.value)} />
         </div>
 
-        <div className="admin-form-row" style={{ marginTop: '1rem' }}>
-          <div className="form-group" style={{ flex: 1 }}>
+        <div className={adminDashboard['admin-form-row']} style={{ marginTop: '1rem' }}>
+          <div className={adminDashboard['form-group']} style={{ flex: 1 }}>
             <MediaUploader
               label={t.envMapLabel}
               accept="image/*"

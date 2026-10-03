@@ -158,5 +158,5 @@ if __name__ == "__main__":
         include_styles=False, 
         include_admin_files=False, 
         include_translation_files=False, 
-        only_css_files=True
+        only_css_files=False
     )

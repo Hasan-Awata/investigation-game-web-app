@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next'; 
 import type { Evidence } from '@/types/evidence';
 import ViewersContainer from './ViewersContainer';
-import './MediaViewer.css';
+import mediaViewer from './MediaViewer.module.css';
 
 type MediaEvidence = Extract<Evidence, { evidence_type: 'image' | 'audio' }>;
 
@@ -59,15 +59,15 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
 
   return (
     <ViewersContainer evidence={evidence}>
-      <div className="media-viewer-wrapper">
+      <div className={mediaViewer['media-viewer-wrapper']}>
         {evidence.evidence_type === 'image' ? (
-          <div className="media-image-container" style={containerStyle}>
-            {!isImageLoaded && <div className="media-skeleton-loader" />}
+          <div className={mediaViewer['media-image-container']} style={containerStyle}>
+            {!isImageLoaded && <div className={mediaViewer['media-skeleton-loader']} />}
 
             <img 
               src={mediaUrl} 
               alt={evidence.title || t('pages.gameRoom.evidence.viewers.media.imageAltFallback')} 
-              className="media-full-image"
+              className={mediaViewer['media-full-image']}
               onLoad={() => setIsImageLoaded(true)}
               draggable={false} 
               style={{
@@ -76,19 +76,19 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
             />
           </div>
         ) : (
-          <div className="media-audio-container">
-            <div className="audio-visualizer-mock"></div>
-            <audio controls className="media-audio-player">
+          <div className={mediaViewer['media-audio-container']}>
+            <div className={mediaViewer['audio-visualizer-mock']}></div>
+            <audio controls className={mediaViewer['media-audio-player']}>
               <source src={mediaUrl} type="audio/mpeg" />
               {t('pages.gameRoom.evidence.viewers.media.audioNotSupported')}
             </audio>
           </div>
         )}
 
-        <div className="media-meta-plaque">
-          <h3 className="media-plaque-title">{evidence.title}</h3>
+        <div className={mediaViewer['media-meta-plaque']}>
+          <h3 className={mediaViewer['media-plaque-title']}>{evidence.title}</h3>
           {evidence.description && (
-            <p className="media-plaque-desc">{evidence.description}</p>
+            <p className={mediaViewer['media-plaque-desc']}>{evidence.description}</p>
           )}
         </div>
       </div>

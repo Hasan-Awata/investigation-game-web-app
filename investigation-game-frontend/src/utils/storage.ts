@@ -32,6 +32,14 @@ const resolveStore = (type: StorageType): Storage | null => {
  * If the stored payload is unparseable, the corrupted key is removed and the
  * `fallback` is returned, so callers never have to guard the parse themselves.
  * An absent key returns the `fallback` without touching storage.
+ *
+ * NOTE: "unparseable" includes a bare, unquoted legacy string. That eviction is
+ * intentional, but it means any value written before the JSON migration was
+ * lost on its first read rather than migrated. See the accepted-data-loss note
+ * in AgentNotepad.tsx for the one key where this was actually observed.
+ *
+ * Keys holding opaque scalars must use getSafeStringStorage below instead, which
+ * has no purge path and therefore cannot lose data.
  */
 export const getSafeStorage = <T>(type: StorageType, key: string, fallback: T): T => {
   const store = resolveStore(type);

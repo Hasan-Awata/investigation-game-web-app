@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useRoomState } from '@/context/RoomContext';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Level, Choice, Question } from '@/types';
-import './WiretapPhase.css';
+import wiretapPhase from './WiretapPhase.module.css';
 
 interface WiretapPhaseProps {
   level: Level;
@@ -73,7 +73,7 @@ export default function WiretapPhase({
   const allAudiosPlayed = requiredAudios.length === 0 || requiredAudios.every(q => playedWiretaps.has(q.id));
 
   return (
-    <div className="wiretap-phase-wrapper">
+    <div className={wiretapPhase['wiretap-phase-wrapper']}>
       <h4 className="drawer-title" style={{ color: 'var(--accent-cyan)', margin: '0 0 1rem 0', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.15em' }}>
         {t('pages.gameRoom.campaign.levels.wiretap.activeIntercept')}
       </h4>
@@ -95,12 +95,12 @@ export default function WiretapPhase({
           const interceptNumber = String(qIdx + 1).padStart(2, '0');
 
           return (
-            <div key={q.id} className="question-item wiretap-item">
+            <div key={q.id} className={`question-item ${wiretapPhase['wiretap-item']}`}>
 
-              <div className="wiretap-sidebar">
-                <span className="question-number">{t('pages.gameRoom.campaign.levels.wiretap.interceptPrefix')}{interceptNumber}</span>
+              <div className={wiretapPhase['wiretap-sidebar']}>
+                <span className={wiretapPhase['question-number']}>{t('pages.gameRoom.campaign.levels.wiretap.interceptPrefix')}{interceptNumber}</span>
                 {isAudioIntercept && !hasBeenPlayed && (
-                  <span className="tactical-pulse">🎙️</span>
+                  <span className={wiretapPhase['tactical-pulse']}>🎙️</span>
                 )}
                 {isAudioIntercept && hasBeenPlayed && (
                   <span style={{ fontSize: '1.2rem', marginTop: '0.75rem', opacity: 0.5 }}>🔇</span>
@@ -124,17 +124,17 @@ export default function WiretapPhase({
 
                 {isAudioIntercept && (
                   <div 
-                    className={`wiretap-container ${hasBeenPlayed ? 'played' : ''}`}
+                    className={`${wiretapPhase['wiretap-container']}${hasBeenPlayed ? wiretapPhase['played'] : ''}`}
                     data-label={hasBeenPlayed ? t('pages.gameRoom.campaign.levels.wiretap.feedSeveredLabel') : t('pages.gameRoom.campaign.levels.wiretap.audioFeedLabel')}
                   >
                     {hasBeenPlayed ? (
-                      <div className="wiretap-burned">
+                      <div className={wiretapPhase['wiretap-burned']}>
                         <span style={{ fontSize: '1.2rem', marginInlineEnd: '0.5rem' }}>🔒</span>
                         {t('pages.gameRoom.campaign.levels.wiretap.connectionSevered')}
                       </div>
                     ) : (
                       <button
-                        className="btn-primary play-wiretap-btn"
+                        className={`btn-primary ${wiretapPhase['play-wiretap-btn']}`}
                         disabled={!isHost || isTriggeringWiretap}
                         onClick={(e) => { e.stopPropagation(); triggerWiretap(q.id, q.audio_url!); }}
                       >
@@ -152,7 +152,7 @@ export default function WiretapPhase({
 
                     let pillClass = 'choice-pill';
                     if (isNarrativeLocked) {
-                      pillClass = 'choice-pill locked-choice';
+                      pillClass = `choice-pill ${wiretapPhase['locked-choice']}`;
                     } else {
                       if (isSelected) pillClass += ' selected';
                       if (isHistoricalCorrect) pillClass += ' historical-correct';

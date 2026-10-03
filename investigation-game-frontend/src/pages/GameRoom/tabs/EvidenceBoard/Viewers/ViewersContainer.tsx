@@ -1,6 +1,6 @@
 import React, { useState, useRef, useLayoutEffect } from 'react';
 import { useEvidenceContext } from '../EvidenceContext';
-import './ViewersContainer.css';
+import viewersContainer from './ViewersContainer.module.css';
 
 interface ViewersContainerProps {
   evidence: { id: string | number; [key: string]: any };
@@ -126,10 +126,10 @@ const ViewersContainer: React.FC<ViewersContainerProps> = ({ children }) => {
   return (
     <div 
       ref={wrapperRef}
-      className={`viewers-container-wrapper ${isFullscreen ? 'fullscreen-mode' : ''}`}
+      className={`${viewersContainer['viewers-container-wrapper']}${isFullscreen ? viewersContainer['fullscreen-mode'] : ''}`}
     >
       <div
-        className={`viewers-zoom-overlay ${isFullscreen ? 'zoom-enabled' : 'native-scroll'}`}
+        className={`${viewersContainer['viewers-zoom-overlay']}${isFullscreen ? viewersContainer['zoom-enabled'] : viewersContainer['native-scroll']}`}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -139,7 +139,7 @@ const ViewersContainer: React.FC<ViewersContainerProps> = ({ children }) => {
       >
         <div
           ref={contentRef}
-          className={`viewers-content-area ${isFullscreen ? 'fullscreen-scaled' : ''}`}
+          className={`${viewersContainer['viewers-content-area']}${isFullscreen ? viewersContainer['fullscreen-scaled'] : ''}`}
           style={isFullscreen ? {
             transform: `translate(${position.x}px, ${position.y}px) scale(${baseScale * zoom})`,
             transition: isDragging ? 'none' : 'transform 0.1s ease-out',

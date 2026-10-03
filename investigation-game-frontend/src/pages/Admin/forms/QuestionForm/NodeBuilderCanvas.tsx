@@ -3,6 +3,7 @@ import { useAdminContext } from '@/pages/Admin/context/AdminContext';
 import LevelBuilderGuard from '../Shared/LevelBuilderGuard';
 import type { Question } from '@/types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import adminDashboard from '../../AdminDashboard.module.css';
 
 interface CanvasContext {
   levelId: string;
@@ -28,7 +29,7 @@ export default function NodeBuilderCanvas({ requiredType, title, children }: Nod
   return (
     <LevelBuilderGuard requiredType={requiredType}>
       <div className={`${requiredType}-builder-container`}>
-        <div className="admin-form-container glass-panel" style={{ padding: '1.5rem', marginBottom: '1rem' }}>
+        <div className={`${adminDashboard['admin-form-container']} glass-panel`} style={{ padding: '1.5rem', marginBottom: '1rem' }}>
           <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', margin: '0 0 0.5rem 0' }}>
             // {title}
           </h3>

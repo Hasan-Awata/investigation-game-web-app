@@ -16,25 +16,25 @@
   margin-top: 4px;
 }
 
-.tb-tone-info {
+.tb-status-banner.tb-tone-info {
   background: var(--term-panel-bg);
   border: 1px solid var(--term-info);
   color: var(--term-info);
 }
 
-.tb-tone-ok {
+.tb-status-banner.tb-tone-ok {
   background: var(--term-panel-bg);
   border: 1px solid var(--term-ok);
   color: var(--term-ok);
 }
 
-.tb-tone-warn {
+.tb-status-banner.tb-tone-warn {
   background: var(--term-panel-bg);
   border: 1px solid var(--term-warn);
   color: var(--term-warn);
 }
 
-.tb-tone-critical {
+.tb-status-banner.tb-tone-critical {
   background: var(--term-panel-bg);
   border: 1px solid var(--term-err);
   color: var(--term-err);

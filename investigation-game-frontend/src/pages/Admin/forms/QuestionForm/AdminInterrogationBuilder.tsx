@@ -4,7 +4,7 @@ import AdminInterrogationForm from './AdminInterrogationForm';
 import { AdminEntryToggle, JsonPopulator } from '@/pages/Admin/components/AdminUI';
 import type { Question, Choice } from '@/types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
-import './AdminInterrogationBuilder.css';
+import adminInterrogationBuilder from './AdminInterrogationBuilder.module.css';
 
 export default function AdminInterrogationBuilder() {
   const [draftNodes, setDraftNodes] = useState<any[]>([]);
@@ -87,7 +87,7 @@ export default function AdminInterrogationBuilder() {
             </div>
 
             {entryMode === 'form' ? (
-              <div className="interrogation-workspace">
+              <div className={adminInterrogationBuilder['interrogation-workspace']}>
                 {savedNodes.map((node) => (
                   <AdminInterrogationForm key={node.id} nodeData={node} levelId={levelId} onSaved={() => {}} onDeleted={() => {}} />
                 ))}

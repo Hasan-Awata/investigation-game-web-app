@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import type { Zone } from '@/types';
 import ZoneCard from './ZoneCard';
-import './CampaignMap.css';
+import campaignMap from './CampaignMap.module.css';
 
 interface CampaignMapProps {
   zones: Zone[];
@@ -12,7 +12,7 @@ interface CampaignMapProps {
 }
 
 const LocationPin = () => (
-  <svg width="40" height="48" viewBox="0 0 40 48" fill="none" className="tactical-svg-pin">
+  <svg width="40" height="48" viewBox="0 0 40 48" fill="none" className={campaignMap['tactical-svg-pin']}>
     <path d="M 20 44 L 11 30 A 15 15 0 1 1 29 30 Z" fill="#141518" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" />
     <circle cx="18" cy="16" r="4.5" fill="none" stroke="currentColor" strokeWidth="2" />
     <line x1="21" y1="19" x2="24.5" y2="22.5" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
@@ -20,14 +20,14 @@ const LocationPin = () => (
 );
 
 const InterrogationPin = () => (
-  <svg width="40" height="48" viewBox="0 0 40 48" fill="none" className="tactical-svg-pin">
+  <svg width="40" height="48" viewBox="0 0 40 48" fill="none" className={campaignMap['tactical-svg-pin']}>
     <path d="M 20 44 L 11 30 A 15 15 0 1 1 29 30 Z" fill="#141518" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" />
     <path d="M 25 12 H 15 C 13.3 12 12 13.3 12 15 V 20 C 12 21.7 13.3 23 15 23 H 17 L 17 26 L 21 23 H 25 C 26.7 23 28 21.7 28 20 V 15 C 28 13.3 26.7 12 25 12 Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
   </svg>
 );
 
 const WiretapPin = () => (
-  <svg width="40" height="48" viewBox="0 0 40 48" fill="none" className="tactical-svg-pin">
+  <svg width="40" height="48" viewBox="0 0 40 48" fill="none" className={campaignMap['tactical-svg-pin']}>
     <path d="M 20 44 L 11 30 A 15 15 0 1 1 29 30 Z" fill="#141518" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" />
     <g transform="translate(10, 8) scale(0.8)">
       <path d="M3 18v-6a9 9 0 0 1 18 0v6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
@@ -37,7 +37,7 @@ const WiretapPin = () => (
 );
 
 const MixedPin = () => (
-  <svg width="40" height="48" viewBox="0 0 40 48" fill="none" className="tactical-svg-pin">
+  <svg width="40" height="48" viewBox="0 0 40 48" fill="none" className={campaignMap['tactical-svg-pin']}>
     <path d="M 20 44 L 11 30 A 15 15 0 1 1 29 30 Z" fill="#141518" stroke="currentColor" strokeWidth="2.5" strokeLinejoin="round" />
     <path d="M12 13 H17 L19 15 H28 V23 H12 Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
     <path d="M12 16 H28" stroke="currentColor" strokeWidth="1.5" />
@@ -81,7 +81,7 @@ export default function CampaignMap({ zones, unlockedLevelIds, onEnterZone, mapI
   };
 
   return (
-    <div className="campaign-map-container">
+    <div className={campaignMap['campaign-map-container']}>
       <TransformWrapper
         initialScale={1.03} 
         minScale={1.03}     
@@ -94,12 +94,15 @@ export default function CampaignMap({ zones, unlockedLevelIds, onEnterZone, mapI
         panning={{ velocityDisabled: true }} 
       >
         {({ zoomToElement, centerView }) => (
-          <TransformComponent wrapperClass="map-transform-wrapper" contentClass="map-transform-content">
-            <div className="custom-map-canvas">
+          <TransformComponent
+            wrapperClass={campaignMap['map-transform-wrapper']}
+            contentClass={campaignMap['map-transform-content']}
+          >
+            <div className={campaignMap['custom-map-canvas']}>
               <img
                 src={mapImageUrl || '/Maps/tactical-damascus-blueprint.png'}
                 alt="Tactical Region Map"
-                className="custom-map-image"
+                className={campaignMap['custom-map-image']}
                 onLoad={() => {
                   if (targetPinId) {
                     zoomToElement(targetPinId, 1.03, 0);
@@ -109,7 +112,7 @@ export default function CampaignMap({ zones, unlockedLevelIds, onEnterZone, mapI
                 }}
               />
 
-              <div className="map-overlay-grid"></div>
+              <div className={campaignMap['map-overlay-grid']}></div>
 
               {visibleZones.map((zone, index) => {
                 const coords = zone.coord_x && zone.coord_y 
@@ -122,17 +125,17 @@ export default function CampaignMap({ zones, unlockedLevelIds, onEnterZone, mapI
                   <div
                     key={zone.id}
                     id={`zone-pin-${zone.id}`}
-                    className="map-pin-wrapper unlocked"
+                    className={campaignMap['map-pin-wrapper']}
                     style={{ ...coords, position: 'absolute' }}
                     onClick={() => setSelectedZone(zone)}
                   >
-                    <div className="pin-icon">
+                    <div>
                       {zoneType === 'interrogation' && <InterrogationPin />}
                       {zoneType === 'location' && <LocationPin />}
                       {zoneType === 'wiretap' && <WiretapPin />}
                       {(zoneType === 'mixed' || zoneType === 'standard' || !zoneType) && <MixedPin />}
                     </div>
-                    <div className="pin-tooltip">
+                    <div className={campaignMap['pin-tooltip']}>
                       {zone.title}
                     </div>
                   </div>

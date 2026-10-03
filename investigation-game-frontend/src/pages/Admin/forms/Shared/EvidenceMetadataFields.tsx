@@ -1,6 +1,6 @@
 import { AdminTextarea } from '@/pages/Admin/components/AdminUI';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
-import './AdminForms.css';
+import adminForms from './AdminForms.module.css';
 
 interface EvidenceMetadataFieldsProps {
   evidenceType: string;
@@ -22,10 +22,10 @@ export default function EvidenceMetadataFields({ evidenceType, metadata, updateM
   if (evidenceType === 'image' || evidenceType === 'audio') return null;
 
   return (
-    <div className="metadata-container">
-      <h4 className="metadata-title">{t?.sectionTitle ?? '[ Structured Metadata Injection ]'}</h4>
+    <div className={adminForms['metadata-container']}>
+      <h4 className={adminForms['metadata-title']}>{t?.sectionTitle ?? '[ Structured Metadata Injection ]'}</h4>
       {evidenceType === 'testimony' && (
-        <div className="metadata-inputs-wrapper">
+        <div className={adminForms['metadata-inputs-wrapper']}>
           <AdminTextarea
             label={t?.officialTranscriptLabel ?? 'Official Transcript'}
             minHeight="140px"

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import type { User } from '@/types';
-import './Auth.css';
+import authStyles from './Auth.module.css';
 
 interface AuthProps {
   // Update this interface to accept the User object
@@ -22,16 +22,16 @@ export default function Auth({ onSuccess }: AuthProps) {
   } = useAuth(onSuccess);
 
   return (
-    <div className="auth-container">
-      <div className="auth-panel glass-panel">
-        <h1 className="auth-title">{t('pages.auth.title')}</h1>
-        <p className="auth-subtitle">
+    <div className={authStyles['auth-container']}>
+      <div className={`${authStyles['auth-panel']} glass-panel`}>
+        <h1 className={authStyles['auth-title']}>{t('pages.auth.title')}</h1>
+        <p className={authStyles['auth-subtitle']}>
           {isLogin ? t('pages.auth.subtitleLogin') : t('pages.auth.subtitleRegister')}
         </p>
 
-        {error && <div className="auth-error">{error}</div>}
+        {error && <div className={authStyles['auth-error']}>{error}</div>}
 
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit} className={authStyles['auth-form']}>
           {!isLogin && (
             <>
               <input
@@ -40,7 +40,7 @@ export default function Auth({ onSuccess }: AuthProps) {
                 required 
                 value={username}
                 onChange={(e) => setUsername(e.target.value)} 
-                className="auth-input"
+                className={authStyles['auth-input']}
               />
               <input
                 type="text" 
@@ -48,7 +48,7 @@ export default function Auth({ onSuccess }: AuthProps) {
                 required 
                 value={name}
                 onChange={(e) => setName(e.target.value)} 
-                className="auth-input"
+                className={authStyles['auth-input']}
               />
             </>
           )}
@@ -58,7 +58,7 @@ export default function Auth({ onSuccess }: AuthProps) {
             required 
             value={email}
             onChange={(e) => setEmail(e.target.value)} 
-            className="auth-input"
+            className={authStyles['auth-input']}
           />
           <input
             type="password" 
@@ -66,7 +66,7 @@ export default function Auth({ onSuccess }: AuthProps) {
             required 
             value={password}
             onChange={(e) => setPassword(e.target.value)} 
-            className="auth-input"
+            className={authStyles['auth-input']}
           />
 
           <button type="submit" className="btn-primary" disabled={isLoading}>
@@ -76,7 +76,7 @@ export default function Auth({ onSuccess }: AuthProps) {
           </button>
         </form>
 
-        <button type="button" className="auth-toggle" onClick={toggleAuthMode}>
+        <button type="button" className={authStyles['auth-toggle']} onClick={toggleAuthMode}>
           {isLogin ? t('pages.auth.toggleToRegister') : t('pages.auth.toggleToLogin')}
         </button>
       </div>
