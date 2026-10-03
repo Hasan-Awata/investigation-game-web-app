@@ -126,10 +126,10 @@ const ViewersContainer: React.FC<ViewersContainerProps> = ({ children }) => {
   return (
     <div 
       ref={wrapperRef}
-      className={`${viewersContainer['viewers-container-wrapper']}${isFullscreen ? viewersContainer['fullscreen-mode'] : ''}`}
+      className={`${viewersContainer['viewers-container-wrapper']} ${isFullscreen ? viewersContainer['fullscreen-mode'] : ''}`}
     >
       <div
-        className={`${viewersContainer['viewers-zoom-overlay']}${isFullscreen ? viewersContainer['zoom-enabled'] : viewersContainer['native-scroll']}`}
+        className={`${viewersContainer['viewers-zoom-overlay']} ${isFullscreen ? viewersContainer['zoom-enabled'] : viewersContainer['native-scroll']}`}
         onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -139,7 +139,7 @@ const ViewersContainer: React.FC<ViewersContainerProps> = ({ children }) => {
       >
         <div
           ref={contentRef}
-          className={`${viewersContainer['viewers-content-area']}${isFullscreen ? viewersContainer['fullscreen-scaled'] : ''}`}
+          className={`${viewersContainer['viewers-content-area']} ${isFullscreen ? viewersContainer['fullscreen-scaled'] : ''}`}
           style={isFullscreen ? {
             transform: `translate(${position.x}px, ${position.y}px) scale(${baseScale * zoom})`,
             transition: isDragging ? 'none' : 'transform 0.1s ease-out',

@@ -71,7 +71,8 @@ export default function AdminInterrogationForm({
   };
 
   return (
-    <div className={`${adminInterrogationBuilder['dialogue-node-card']}${isSaved ? '' : adminInterrogationBuilder['unsaved']}`}>
+    <div 
+      className={`${adminInterrogationBuilder['dialogue-node-card']} ${isSaved ? '' : adminInterrogationBuilder['unsaved']}`}>
       <div className={adminInterrogationBuilder['node-header']}>
         <span className={adminInterrogationBuilder['node-id-badge']}>{isSaved ? t.nodeIdBadge(nodeData.id) : t.unsavedBadge}</span>
       </div>

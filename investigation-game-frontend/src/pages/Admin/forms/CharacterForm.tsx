@@ -91,7 +91,7 @@ export default function CharacterForm() {
       onClear={onClear} onEdit={onEdit} onDelete={(c) => handleDelete(c.id, t.deleteConfirm(c.name))}
       renderItemContent={(c) => (
         <>
-          <span className={`${adminForms['admin-list-id']}${c.is_guilty ? adminForms['admin-list-guilty'] : ''}`}>PID-{c.id.toString().padStart(4, '0')}</span>
+          <span className={`${adminForms['admin-list-id']} ${c.is_guilty ? adminForms['admin-list-guilty'] : ''}`}>PID-{c.id.toString().padStart(4, '0')}</span>
           <strong>{c.name}</strong>
           {c.default_status === 'deceased' && <span className={adminForms['admin-list-badge']} style={{ color: 'var(--accent-crimson)', borderColor: 'var(--accent-crimson)' }}>Deceased</span>}
         </>
@@ -135,7 +135,9 @@ export default function CharacterForm() {
           />
         )}
 
-        <button type="submit" className={`btn-primary ${adminForms['admin-submit-btn']}${editingId ? adminForms['editing'] : adminForms['creating']}`} disabled={isProcessing || entryMode === 'json'}>
+        <button type="submit" className={`btn-primary 
+          ${adminForms['admin-submit-btn']} ${editingId ? adminForms['editing'] : adminForms['creating']}`} 
+          disabled={isProcessing || entryMode === 'json'}>
           {isProcessing ? t.processingData : editingId ? t.updateCharacter : t.commitCharacter}
         </button>
       </form>

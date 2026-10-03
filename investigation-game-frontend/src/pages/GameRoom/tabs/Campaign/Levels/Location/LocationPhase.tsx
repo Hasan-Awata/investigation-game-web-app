@@ -365,7 +365,8 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
                 )}
 
                 {isBubbleActive && (
-                  <div className={`${locationPhase['loc-info-bubble']}${isCorrectFind ? locationPhase['success'] : locationPhase['error']}`}>
+                  <div 
+                    className={`${locationPhase['loc-info-bubble']} ${isCorrectFind ? locationPhase['success'] : locationPhase['error']}`}>
                     {choice.outcomes?.feedback || (isCorrectFind ? t('pages.gameRoom.campaign.levels.location.foundUseful') : t('pages.gameRoom.campaign.levels.location.nothingFound'))}
                   </div>
                 )}

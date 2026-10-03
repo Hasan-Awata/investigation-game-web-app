@@ -51,7 +51,7 @@ interface CheckboxProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>
 
 export const AdminCheckbox = ({ labelTitle, description, accentColor, bgColor, className = '', ...props }: CheckboxProps) => (
   <div 
-    className={`${adminForms['admin-checkbox-card']}${className}`} 
+    className={`${adminForms['admin-checkbox-card']} ${className}`} 
     style={{ background: bgColor, ...(accentColor ? { borderColor: accentColor } : {}) }}
   >
     <input type="checkbox" style={accentColor ? { accentColor } : undefined} {...props} />
@@ -163,13 +163,13 @@ export const CoordinatePicker = ({
         </div>
       )}
 
-      <div className={`${adminLocationBuilder['coordinate-picker-image-wrapper']}${isTargeting ? adminLocationBuilder['mapping-active'] : ''}`} onClick={handleImageClick}>
+      <div className={`${adminLocationBuilder['coordinate-picker-image-wrapper']} ${isTargeting ? adminLocationBuilder['mapping-active'] : ''}`} onClick={handleImageClick}>
         <img src={imageUrl} alt="Map Preview" />
         
         {markers.map((marker) => (
           <div
             key={marker.id}
-            className={`${locationPhase['loc-hover-zone']}${marker.isTargeting ? locationPhase['selected'] : locationPhase['investigated']}`}
+            className={`${locationPhase['loc-hover-zone']} ${marker.isTargeting ? locationPhase['selected'] : locationPhase['investigated']}`}
             style={{ 
               top: `${marker.y}%`, 
               left: `${marker.x}%`,

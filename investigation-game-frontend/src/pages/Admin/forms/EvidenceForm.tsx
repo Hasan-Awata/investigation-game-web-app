@@ -252,7 +252,9 @@ export default function EvidenceForm() {
         {requiresImage && <AdminFileInput label={t.evidenceImageLabel} hint={t.imageHint} accept="image/*" ref={registerFileRef('image')} onChange={(e) => handleFileChange(e, setImage, validateImageSize)} />}
         {formData.evidence_type === 'audio' && <AdminFileInput label={t.audioLabel} hint={t.audioHint} accept="audio/*" ref={registerFileRef('audio')} onChange={(e) => handleFileChange(e, setAudio, validateAudioSize)} />}
 
-        <button type="submit" className={`btn-primary ${adminForms['admin-submit-btn']}${editingId ? adminForms['editing'] : adminForms['creating']}`} disabled={isProcessing || entryMode === 'json'}>
+        <button type="submit" className={`btn-primary 
+          ${adminForms['admin-submit-btn']} ${editingId ? adminForms['editing'] : adminForms['creating']}`} 
+          disabled={isProcessing || entryMode === 'json'}>
           {isProcessing ? t.processingData : editingId ? t.updateEvidence : t.commitEvidence}
         </button>
       </form>

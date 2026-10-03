@@ -218,7 +218,9 @@ export default function CaseForm() {
           </div>
         )}
 
-        <button type="submit" className={`btn-primary ${adminForms['admin-submit-btn']}${editingId ? adminForms['editing'] : adminForms['creating']}`} disabled={isProcessing}>
+        <button type="submit" className={`btn-primary 
+          ${adminForms['admin-submit-btn']} ${editingId ? adminForms['editing'] : adminForms['creating']}`} 
+          disabled={isProcessing}>
           {isProcessing ? t.processingData : entryMode === 'json' ? "Execute Bulk Transaction" : editingId ? t.updateCase : t.commitCase}
         </button>
       </form>

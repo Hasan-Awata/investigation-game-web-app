@@ -103,7 +103,9 @@ export default function LevelForm() {
           <AdminFileInput label={`${t.bgImageLabel} ${editingId ? t.bgImageEditSuffix : ''}`} hint={t.bgImageHint} accept="image/*" ref={registerFileRef('image')} onChange={handleImageChange} />
           <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} description={t.storeLocallyDesc} className={adminForms['amber']} />
           
-          <button type="submit" className={`btn-primary ${adminForms['admin-submit-btn']}${editingId ? adminForms['editing'] : adminForms['creating']}`} disabled={isProcessing}>
+          <button type="submit" className={`btn-primary 
+            ${adminForms['admin-submit-btn']} ${editingId ? adminForms['editing'] : adminForms['creating']}`} 
+            disabled={isProcessing}>
             {isProcessing ? t.processingData : editingId ? t.updateLevel : t.commitLevel}
           </button>
         </form>

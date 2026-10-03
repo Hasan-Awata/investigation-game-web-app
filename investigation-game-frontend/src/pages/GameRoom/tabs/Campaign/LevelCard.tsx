@@ -48,9 +48,20 @@ export default function LevelCard({
 }: LevelCardProps) {
   const { t } = useTranslation();
 
+  const statusClass =
+    status === 'undiscovered'
+      ? levelCard['undiscovered']
+      : status === 'gated'
+      ? levelCard['gated']
+      : status === 'actionable'
+      ? levelCard['actionable'] || ''
+      : status === 'completed'
+      ? levelCard['completed'] || ''
+      : '';
+
   return (
     <div 
-      className={`${levelCard['level-list-item']}${status} ${isSelected ? levelCard['selected'] : ''}`}
+      className={`${levelCard['level-list-item']} ${statusClass} ${isSelected ? levelCard['selected'] : ''}`}
       onClick={onSelect}
     >
       {status === 'gated' && (

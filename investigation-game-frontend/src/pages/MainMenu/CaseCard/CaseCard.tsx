@@ -23,7 +23,7 @@ export default function CaseCard({ gameCase, imageUrl, userXp = 0 }: CaseCardPro
   const needsMoreXp = userXp < (gameCase.min_player_XP || 0);
 
   return (
-    <div className={`${caseCardStyles['case-card']}${isSolved ? caseCardStyles['is-solved'] : ''} ${isFailed ? caseCardStyles['is-failed'] : ''} ${needsMoreXp ? caseCardStyles['is-locked'] : ''}`}>
+    <div className={`${caseCardStyles['case-card']} ${isSolved ? caseCardStyles['is-solved'] : ''} ${isFailed ? caseCardStyles['is-failed'] : ''} ${needsMoreXp ? caseCardStyles['is-locked'] : ''}`}>
       
       {/* Top Image Area */}
       <div className={caseCardStyles['case-card-hero']}>

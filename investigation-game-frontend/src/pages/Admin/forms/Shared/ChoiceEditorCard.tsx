@@ -126,7 +126,7 @@ export default function ChoiceEditorCard({
           {canTarget && (
             <button
               type="button"
-              className={`btn-secondary ${choiceEditorCardStyles['target-btn']}${isTargeting ? choiceEditorCardStyles['active'] : ''}`}
+              className={`btn-secondary ${choiceEditorCardStyles['target-btn']} ${isTargeting ? choiceEditorCardStyles['active'] : ''}`}
               onClick={() => onToggleTarget ? onToggleTarget() : targeting?.toggleTarget(choice.id as string | number)}
             >
               {isTargeting ? t.targetingActive : t.targetingMap}

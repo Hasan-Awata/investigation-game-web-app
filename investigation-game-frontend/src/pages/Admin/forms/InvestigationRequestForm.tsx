@@ -91,7 +91,9 @@ export default function InvestigationRequestForm() {
           <AdminSelect label={t.rewardLevelLabel} value={formData.unlocks_level_id} onChange={(e) => updateField('unlocks_level_id', e.target.value)} options={[{ value: '', label: t.noLevelReward }, ...allCaseLevels.filter(l => !l.is_initial).map((l: Level) => ({ value: l.id.toString(), label: `Level ${l.order_index} : ${l.title}` }))] } />
         </div>
 
-        <button type="submit" className={`btn-primary ${adminForms['admin-submit-btn']}${editingId ? adminForms['editing'] : `${adminForms['cyan-accent']} ${adminForms['creating']}`}`} disabled={isProcessing}>
+        <button type="submit" className={`btn-primary 
+          ${adminForms['admin-submit-btn']} ${editingId ? adminForms['editing'] : `${adminForms['cyan-accent']} ${adminForms['creating']}`}`} 
+          disabled={isProcessing}>
           {isProcessing ? t.processingData : editingId ? t.updateProtocol : t.commitProtocol}
         </button>
       </form>

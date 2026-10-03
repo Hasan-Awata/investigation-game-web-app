@@ -76,7 +76,8 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
             <div className={testimonyViewer['transcript-content']}>
               {Array.isArray(transcript) ? (
                 transcript.map((line: any, idx: number) => (
-                  <div key={idx} className={`${testimonyViewer['transcript-line']}${line.type === 'q' ? testimonyViewer['transcript-q'] : testimonyViewer['transcript-a']}`}>
+                  <div key={idx} 
+                    className={`${testimonyViewer['transcript-line']} ${line.type === 'q' ? testimonyViewer['transcript-q'] : testimonyViewer['transcript-a']}`}>
                     <span className={testimonyViewer['speaker-tag']}>{line.speaker}:</span>
                     {line.text}
                   </div>

@@ -144,7 +144,9 @@ export default function ZoneForm() {
           </div>
         )}
 
-        <button type="submit" className={`btn-primary ${adminForms['admin-submit-btn']}${editingId ? adminForms['editing'] : adminForms['creating']}`} disabled={isProcessing}>
+        <button type="submit" className={`btn-primary 
+          ${adminForms['admin-submit-btn']} ${editingId ? adminForms['editing'] : adminForms['creating']}`} 
+          disabled={isProcessing}>
           {isProcessing ? (t.processingData || 'Processing...') : editingId ? (t.updateZone || 'UPDATE ZONE') : (t.commitZone || 'COMMIT ZONE')}
         </button>
       </form>

@@ -56,7 +56,7 @@ export default function GameEndOverlay({ status, resolutionMessage, finalStats }
             </div>
             <div className={gameEndOverlayStyles['stat-box']}>
               <span className={gameEndOverlayStyles['stat-label']}>{t('pages.gameRoom.gameEndOverlay.innocentsAccused')}</span>
-              <span className={`${gameEndOverlayStyles['stat-value']}${finalStats.innocents_accused > 0 ? gameEndOverlayStyles['error'] : gameEndOverlayStyles['success']}`}>
+              <span className={`${gameEndOverlayStyles['stat-value']} ${finalStats.innocents_accused > 0 ? gameEndOverlayStyles['error'] : gameEndOverlayStyles['success']}`}>
                 {finalStats.innocents_accused}
               </span>
             </div>

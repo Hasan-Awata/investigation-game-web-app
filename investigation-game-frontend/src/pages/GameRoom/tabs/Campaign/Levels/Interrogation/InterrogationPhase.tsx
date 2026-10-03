@@ -220,7 +220,7 @@ export default function InterrogationPhase({
               <>
                 {status === 'active' && !isGloballyLocked && (
                   <div className={interrogationPhase['investigator-interaction-area']}>
-                    <div className={`${interrogationPhase['vote-status-box']}${hasLocalVote ? interrogationPhase['has-vote'] : interrogationPhase['no-vote']}`}>
+                    <div className={`${interrogationPhase['vote-status-box']} ${hasLocalVote ? interrogationPhase['has-vote'] : interrogationPhase['no-vote']}`}>
                       <span className={interrogationPhase['speaker-label']} style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
                         {consensus.isTie
                           ? t('pages.gameRoom.campaign.levels.interrogation.tieDetected')

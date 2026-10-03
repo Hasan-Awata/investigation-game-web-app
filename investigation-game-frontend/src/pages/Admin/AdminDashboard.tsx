@@ -86,27 +86,27 @@ function AdminDashboardContent() {
         <div className={adminDashboardStyles['admin-nav-group']}>
           <h4 className={adminDashboardStyles['admin-nav-group-title']}>{t.narrativeHierarchyGroup}</h4>
           <nav className={adminDashboardStyles['admin-nav-menu']}>
-            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'cases' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('cases')}>{t.casesTab}</button>
-            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'zones' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('zones')}>{t.zonesTab || 'ZONES'}</button>
-            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'levels' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('levels')}>{t.levelsTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'cases' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('cases')}>{t.casesTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'zones' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('zones')}>{t.zonesTab || 'ZONES'}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'levels' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('levels')}>{t.levelsTab}</button>
           </nav>
         </div>
 
         <div className={adminDashboardStyles['admin-nav-group']}>
           <h4 className={adminDashboardStyles['admin-nav-group-title']}>{t.nodeBuildersGroup}</h4>
           <nav className={adminDashboardStyles['admin-nav-menu']}>
-            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'interrogation' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('interrogation')}>{t.interrogationTab}</button>
-            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'location' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('location')}>{t.locationTab}</button>
-            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'wiretap' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('wiretap')}>{t.wiretapTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'interrogation' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('interrogation')}>{t.interrogationTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'location' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('location')}>{t.locationTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'wiretap' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('wiretap')}>{t.wiretapTab}</button>
           </nav>
         </div>
 
         <div className={adminDashboardStyles['admin-nav-group']} style={{ borderBottom: 'none' }}>
           <h4 className={adminDashboardStyles['admin-nav-group-title']}>{t.databaseAssetsGroup}</h4>
           <nav className={adminDashboardStyles['admin-nav-menu']}>
-            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'evidences' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('evidences')}>{t.evidencesTab}</button>
-            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'characters' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('characters')}>{t.charactersTab}</button>
-            <button className={`${adminDashboardStyles['admin-tab-btn']}${activeTab === 'requests' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('requests')}>{t.requestsTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'evidences' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('evidences')}>{t.evidencesTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'characters' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('characters')}>{t.charactersTab}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'requests' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('requests')}>{t.requestsTab}</button>
           </nav>
         </div>
       </aside>

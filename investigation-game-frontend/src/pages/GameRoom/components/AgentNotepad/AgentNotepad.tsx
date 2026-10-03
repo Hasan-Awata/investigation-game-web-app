@@ -77,7 +77,7 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
         <h3 className={gameRoom['sidebar-heading']} style={{ marginBottom: 0, borderBottom: 'none', paddingBottom: 0 }}>
           {t('components.agentNotepad.fieldLedger')}
         </h3>
-        <span className={`${agentNotepadStyles['save-indicator']}${isSaved ? agentNotepadStyles['synced'] : agentNotepadStyles['saving']}`}>
+        <span className={`${agentNotepadStyles['save-indicator']} ${isSaved ? agentNotepadStyles['synced'] : agentNotepadStyles['saving']}`}>
           {isSaved ? t('components.agentNotepad.synced') : t('components.agentNotepad.saving')}
         </span>
       </div>

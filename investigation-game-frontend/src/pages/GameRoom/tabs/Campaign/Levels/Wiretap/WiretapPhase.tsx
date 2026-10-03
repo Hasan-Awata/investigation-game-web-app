@@ -124,7 +124,7 @@ export default function WiretapPhase({
 
                 {isAudioIntercept && (
                   <div 
-                    className={`${wiretapPhase['wiretap-container']}${hasBeenPlayed ? wiretapPhase['played'] : ''}`}
+                    className={`${wiretapPhase['wiretap-container']} ${hasBeenPlayed ? wiretapPhase['played'] : ''}`}
                     data-label={hasBeenPlayed ? t('pages.gameRoom.campaign.levels.wiretap.feedSeveredLabel') : t('pages.gameRoom.campaign.levels.wiretap.audioFeedLabel')}
                   >
                     {hasBeenPlayed ? (

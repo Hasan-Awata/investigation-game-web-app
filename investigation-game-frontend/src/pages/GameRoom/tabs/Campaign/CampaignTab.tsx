@@ -223,7 +223,7 @@ const CampaignTab = () => {
               })}
 
               <div 
-                className={`${campaignTab['return-map-card']}${hasActiveLevel ? campaignTab['locked'] : ''}`}
+                className={`${campaignTab['return-map-card']} ${hasActiveLevel ? campaignTab['locked'] : ''}`}
                 onClick={() => {
                   if (!hasActiveLevel) handleReturnToMap();
                 }}
@@ -245,14 +245,14 @@ const CampaignTab = () => {
               <div className={campaignTab['preview-column']}>
                 
                 <div 
-                  className={`${campaignTab['preview-bg-layer']}${showGameplay || previewStatus === 'gated' ? campaignTab['blurred'] : ''}`} 
+                  className={`${campaignTab['preview-bg-layer']} ${showGameplay || previewStatus === 'gated' ? campaignTab['blurred'] : ''}`} 
                   style={{ 
                     backgroundImage: `url(${displayLevelIsDiscovered ? (displayLevel.img_url || '/placeholder-crime-scene.jpg') : ''})`,
                     filter: previewStatus === 'gated' ? 'grayscale(100%) blur(12px) brightness(0.2)' : undefined
                   }}
                 />
                 
-                <div className={`${campaignTab['preview-overlay']}${(showGameplay || previewStatus === 'gated') ? campaignTab['hidden'] : ''}`}></div>
+                <div className={`${campaignTab['preview-overlay']} ${(showGameplay || previewStatus === 'gated') ? campaignTab['hidden'] : ''}`}></div>
 
                 <div className={campaignTab['top-right-actions']}>
                   {canSwap && previewStatus !== 'gated' && (
