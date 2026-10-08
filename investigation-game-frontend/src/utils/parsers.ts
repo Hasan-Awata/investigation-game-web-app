@@ -37,9 +37,6 @@ export const getSafeString = (val: unknown, fallback: string): string => {
   return fallback;
 };
 
-/** Anything that can be merged by identity -- every room entity has a numeric `id`. */
-export type Identifiable = { id: number | string };
-
 /**
  * Merges a realtime patch payload into an existing collection.
  *
@@ -55,7 +52,7 @@ export type Identifiable = { id: number | string };
  *
  * Pure: no mutation of either argument.
  */
-export const patchArray = <T extends Identifiable>(oldArr: T[] = [], newItems: T[] = []): T[] => {
+export const patchArray = <T extends { id: number | string }>(oldArr: T[] = [], newItems: T[] = []): T[] => {
   const map = new Map<number | string, T>();
   oldArr.forEach((item) => map.set(item.id, item));
   newItems.forEach((item) => map.set(item.id, item));

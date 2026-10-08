@@ -1,7 +1,8 @@
 import { useTranslation } from 'react-i18next';
-import { useRoomState } from '@/context/RoomContext';
+import { useRoomData } from '@/context/RoomContext.shared';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
-import type { Level, Choice, Question } from '@/types';
+import type { Level, Question } from '@/types';
+import { checkIsLockedByNarrative } from '@/utils/narrativeLocks';
 import wiretapPhase from './WiretapPhase.module.css';
 
 interface WiretapPhaseProps {
@@ -18,31 +19,10 @@ export default function WiretapPhase({
   level, status, totalPlayers, getQuestionConsensus, isHost, isSubmitting, handleSubmitTheory
 }: WiretapPhaseProps) {
   const { t } = useTranslation();
-  const { room, accumulatedEvidences } = useRoomState();
+  const { room, accumulatedEvidences } = useRoomData();
   const { localVotes, handleSelectChoice, triggerWiretap, isTriggeringWiretap } = useInvestigationPhase();
 
-  const playedWiretaps = new Set(room.played_wiretaps?.map((q: any) => q.id) || []);
-
-  const checkIsLockedByNarrative = (choice: Choice) => {
-    if (!choice.requirements) return false;
-    const reqs = choice.requirements;
-
-    if (reqs.required_evidence?.length > 0) {
-      const hasAllEvidence = reqs.required_evidence.every((id: number) =>
-        accumulatedEvidences.some(e => e.id === id)
-      );
-      if (!hasAllEvidence) return true;
-    }
-
-    if (reqs.required_choices?.length > 0) {
-      const hasAllChoices = reqs.required_choices.every((id: number) =>
-        room.votes?.some(v => v.choice_id === id)
-      );
-      if (!hasAllChoices) return true;
-    }
-
-    return false;
-  };
+  const playedWiretaps = new Set(room.played_wiretaps?.map((q: Question) => q.id) || []);
 
   if (!level.questions || level.questions.length === 0) return null;
 
@@ -148,7 +128,7 @@ export default function WiretapPhase({
                   {q.choices?.map(c => {
                     const isSelected = localVotes[q.id] === c.id;
                     const isHistoricalCorrect = status === 'completed' && !c.outcomes?.gives_strike;
-                    const isNarrativeLocked = checkIsLockedByNarrative(c);
+                    const isNarrativeLocked = checkIsLockedByNarrative(c, accumulatedEvidences, room.votes || []);
 
                     let pillClass = 'choice-pill';
                     if (isNarrativeLocked) {

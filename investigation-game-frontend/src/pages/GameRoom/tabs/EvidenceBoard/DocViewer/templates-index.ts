@@ -1,5 +1,5 @@
 import type { DocDocument } from '@/types/evidence/doc';
-import { DOC_TEMPLATES, resetTemplateSeq } from './templates';
+import { DOC_TEMPLATES } from './templates';
 
 /** Build a DocDocument from a template key. */
 export const buildTemplate = (key: string): DocDocument | undefined => {
@@ -25,5 +25,3 @@ export const templates: Record<TemplateName, () => DocDocument> = {
   digital_forensics: () => buildTemplate('digital_forensics')!,
   trace_analysis: () => buildTemplate('trace_analysis')!,
 };
-
-export { resetTemplateSeq };

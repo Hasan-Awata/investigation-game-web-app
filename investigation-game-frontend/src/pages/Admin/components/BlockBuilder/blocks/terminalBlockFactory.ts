@@ -6,11 +6,7 @@ const DEFAULT_SPANS: Record<TerminalBlockType, number> = {
   prompt_line: 12,
   output_stream: 12,
   status_banner: 12,
-  encryption_flow: 12,
-  hash_matrix: 12,
   file_tree: 12,
-  ascii_panel: 12,
-  packet_trace: 12,
   spacer: 12,
 };
 
@@ -18,11 +14,7 @@ const EMPTY_BLOCK_PROPS: Record<TerminalBlockType, TerminalBlock['props']> = {
   prompt_line: { prompt: '$', command: '', output: [], tone: 'stdout' },
   output_stream: { lines: [], tone: 'stdout', label: '' },
   status_banner: { text: '', tone: 'info', caption: '' },
-  encryption_flow: { steps: [], direction: 'v', algorithm: '' },
-  hash_matrix: { rows: [], algorithm: '' },
   file_tree: { entries: [], indent: 2 },
-  ascii_panel: { lines: [], caption: '', frame: 'box' },
-  packet_trace: { rows: [] },
   spacer: { height: 24 },
 };
 

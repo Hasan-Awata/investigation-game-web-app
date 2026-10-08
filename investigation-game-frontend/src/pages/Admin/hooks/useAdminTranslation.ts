@@ -11,12 +11,12 @@ export function useAdminTranslation() {
   return { adminT };
 }
 
-function buildKeyMap(obj: any, tFunc: (path: string) => string, currentPath = ''): any {
-  const result: any = {};
+function buildKeyMap(obj: Record<string, unknown>, tFunc: (path: string) => string, currentPath = ''): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
   for (const key in obj) {
     const fullPath = currentPath ? `${currentPath}.${key}` : key;
     if (typeof obj[key] === 'object' && obj[key] !== null) {
-      result[key] = buildKeyMap(obj[key], tFunc, fullPath);
+      result[key] = buildKeyMap(obj[key] as Record<string, unknown>, tFunc, fullPath);
     } else {
       result[key] = tFunc(fullPath);
     }

@@ -1,14 +1,14 @@
 import { AdminInput, AdminTextarea } from '@/pages/Admin/components/AdminUI';
-import type { DocBlock } from '@/types/evidence/doc';
+import type { DocBlock, AnnotationProps } from '@/types/evidence/doc';
 
 interface BlockEditorProps {
-  block: DocBlock;
+  block: DocBlock & { type: 'annotation'; props: AnnotationProps };
   onUpdate: (updates: Partial<DocBlock>) => void;
   evidenceId: number;
 }
 
 export function AnnotationEditor({ block, onUpdate }: BlockEditorProps) {
-  const props = block.props as any;
+  const props = block.props;
   return (
     <div className="block-editor">
       <AdminTextarea

@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import toast from 'react-hot-toast';
 import { useAdminCases } from '@/pages/Admin/hooks/useAdminData';
-import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
+import { useAdminForm } from '@/pages/Admin/hooks/useAdminForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
-import { AdminRow, AdminInput, AdminTextarea, AdminCheckbox, AdminFileInput, AdminEntryToggle, AdminSelect } from '@/pages/Admin/components/AdminUI';
-import { validateCaseForm, validateImageSize, validateJsonPayload } from '@/pages/Admin/utils/validators';
+import MediaUploader from '@/pages/Admin/components/MediaUploader';
+import { AdminRow, AdminInput, AdminTextarea, AdminCheckbox, AdminEntryToggle, AdminSelect } from '@/pages/Admin/components/AdminUI';
+import { validateCaseForm, validateJsonPayload } from '@/pages/Admin/utils/validators';
 import type { GameCase } from '@/types';
 import adminForms from './Shared/AdminForms.module.css';
 import adminDashboard from '../AdminDashboard.module.css';
@@ -55,39 +56,25 @@ export default function CaseForm() {
   const [entryMode, setEntryMode] = useState<'form' | 'json'>('form');
   const [jsonInput, setJsonInput] = useState('');
 
+  const initializedRef = useRef(false);
+
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.caseForm;
 
   const {
-    formData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing, importEntity
-  } = useValidatedForm({
+    formData, updateField, editingId, clearForm, handleSubmit, handleEditInit, handleDelete, isProcessing, importEntity
+  } = useAdminForm({
     entityType: 'case',
     initialState: initialFormState,
     validator: validateCaseForm
   });
 
   useEffect(() => {
-    if (entryMode === 'json' && !jsonInput && !editingId) {
+    if (!initializedRef.current && entryMode === 'json' && !jsonInput && !editingId) {
+      initializedRef.current = true;
       setJsonInput(JSON.stringify(bulkTemplate, null, 2));
     }
   }, [entryMode, jsonInput, editingId]);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFile: React.Dispatch<React.SetStateAction<File | null>>, validator: (file: File) => string | null) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setFile(null);
-      return;
-    }
-
-    const error = validator(file);
-    if (!error) {
-      setFile(file);
-    } else {
-      toast.error(error);
-      setFile(null);
-      e.target.value = '';
-    }
-  };
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -106,17 +93,26 @@ export default function CaseForm() {
         }
       });
     } else {
-      handleValidatedSubmit(e, { image });
+      handleSubmit(e, { image });
     }
   };
 
-  const onEdit = (c: GameCase | any) => {
+  const onEdit = (c: GameCase) => {
     handleEditInit(c, (caseObj) => ({
-      ...initialFormState, ...caseObj,
+      title: caseObj.title || '',
+      story: caseObj.story || '',
       map_url: caseObj.map_url || '',
+      min_player_XP: String(caseObj.min_player_XP),
+      XP_on_solve: String(caseObj.XP_on_solve),
+      max_strikes: String(caseObj.max_strikes),
+      rating_stars: String(caseObj.rating_stars ?? '5.0'),
+      age_rating: caseObj.age_rating || 'Mature 17+',
+      estimated_playtime: caseObj.estimated_playtime || '60 Minutes',
+      difficulty: caseObj.difficulty || 'Standard',
       tags: Array.isArray(caseObj.tags) ? caseObj.tags.join(', ') : (caseObj.tags || ''),
+      author_name: caseObj.author_name || 'System',
       is_published: !!caseObj.is_published,
-      store_locally: !!caseObj.store_locally
+      store_locally: false,
     }));
     setImage(null);
     setEntryMode('form');
@@ -129,6 +125,12 @@ export default function CaseForm() {
     setJsonInput('');
   };
 
+  const submitLabel = {
+    creating: t.commitCase,
+    editing: t.updateCase,
+    processing: t.processingData
+  };
+
   return (
     <EntityDashboard<GameCase>
       entityName={t.entityName}
@@ -136,7 +138,6 @@ export default function CaseForm() {
       items={cases}
       editingId={editingId}
       isProcessing={isProcessing}
-      isFetching={isFetchingCases}
       emptyMessage={isFetchingCases ? t.loadingArchive : t.noCases}
       keyExtractor={(c) => c.id}
       onClear={onClear}
@@ -151,6 +152,7 @@ export default function CaseForm() {
           <strong>{c.title}</strong>
         </>
       )}
+      submitLabel={submitLabel}
     >
       <form onSubmit={onSubmit} className={adminDashboard['admin-form']}>
         {!editingId && <AdminEntryToggle mode={entryMode} setMode={setEntryMode} labelForm="Standard Entry" labelJson="JSON Bulk Case Injection" />}
@@ -184,21 +186,21 @@ export default function CaseForm() {
             </AdminRow>
 
             <AdminRow>
-              <AdminInput label={t.userRatingLabel} type="number" step="0.1" required value={formData.rating_stars} onChange={(e) => updateField('rating_stars', e.target.value)} />
-              <AdminInput label={t.authorLabel} required value={formData.author_name} onChange={(e) => updateField('author_name', e.target.value)} />
+<AdminInput label={t.userRatingLabel} type="number" step="0.1" required value={formData.rating_stars} onChange={(e) => updateField('rating_stars', e.target.value)} />
+            <AdminInput label={t.authorLabel} required value={formData.author_name} onChange={(e) => updateField('author_name', e.target.value)} />
             </AdminRow>
 
             <AdminInput label={t.tagsLabel} placeholder={t.tagsPlaceholder} value={formData.tags} onChange={(e) => updateField('tags', e.target.value)} />
 
-            <AdminFileInput
+            <MediaUploader
               label={`${t.coverImageLabel} ${editingId ? t.coverImageEditSuffix : ''}`}
               hint={t.coverImageHint}
               accept="image/*"
-              ref={registerFileRef('image')}
-              onChange={(e) => handleFileChange(e, setImage, validateImageSize)}
+              previewUrl={image ? URL.createObjectURL(image) : null}
+              onChange={setImage}
             />
 
-            {image && (
+{image && (
               <AdminCheckbox
                 checked={formData.store_locally}
                 onChange={(e) => updateField('store_locally', e.target.checked)}
@@ -217,12 +219,6 @@ export default function CaseForm() {
             />
           </div>
         )}
-
-        <button type="submit" className={`btn-primary 
-          ${adminForms['admin-submit-btn']} ${editingId ? adminForms['editing'] : adminForms['creating']}`} 
-          disabled={isProcessing}>
-          {isProcessing ? t.processingData : entryMode === 'json' ? "Execute Bulk Transaction" : editingId ? t.updateCase : t.commitCase}
-        </button>
       </form>
     </EntityDashboard>
   );

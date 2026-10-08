@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { getSafeStorage, setSafeStorage } from '@/utils/storage';
 
-type TrackableEntity = 'evidence' | 'characters' | 'locations';
+type TrackableEntity = 'evidence' | 'characters';
 
 const readViewed = (storageKey: string): Set<number> => {
   return new Set(getSafeStorage<number[]>('session', storageKey, []));
@@ -15,9 +15,19 @@ export function useViewedItems(roomKey: string | number | undefined, entityType:
     return readViewed(storageKey);
   });
 
+  const prevStorageKeyRef = useRef(storageKey);
+
   useEffect(() => {
     if (!storageKey) return;
-    setViewedItems(readViewed(storageKey));
+    // Sync with storage when storageKey changes (e.g., room switch)
+    if (prevStorageKeyRef.current !== storageKey) {
+      prevStorageKeyRef.current = storageKey;
+      const next = readViewed(storageKey);
+      setViewedItems(prev => {
+        if (prev.size === next.size && [...prev].every(v => next.has(v))) return prev;
+        return next;
+      });
+    }
   }, [storageKey]);
 
   const markItemAsViewed = useCallback((id: number) => {

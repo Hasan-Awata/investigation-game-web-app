@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { TerminalBlock } from '@/types/evidence/terminal';
 import { clampTerminalSpan } from '@/types/evidence/terminal';
-import { getBlockComponent } from './blocks';
+import { getBlockComponent } from './blocks/blocks.registry';
 import './blocks.css';
 
 interface TerminalBlockRendererProps {

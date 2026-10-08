@@ -4,8 +4,8 @@ import adminForms from './AdminForms.module.css';
 
 interface EvidenceMetadataFieldsProps {
   evidenceType: string;
-  metadata: Record<string, any>;
-  updateMeta: (key: string, value: any) => void;
+  metadata: Record<string, unknown>;
+  updateMeta: (key: string, value: unknown) => void;
 }
 
 /**
@@ -29,7 +29,7 @@ export default function EvidenceMetadataFields({ evidenceType, metadata, updateM
           <AdminTextarea
             label={t?.officialTranscriptLabel ?? 'Official Transcript'}
             minHeight="140px"
-            value={metadata.transcript || ''}
+            value={String(metadata.transcript ?? '')}
             onChange={(e) => updateMeta('transcript', e.target.value)}
           />
         </div>

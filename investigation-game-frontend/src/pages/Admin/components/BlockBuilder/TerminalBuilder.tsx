@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { DndContext } from '@dnd-kit/core';
 import { type DragStartEvent, type DragOverEvent } from '@dnd-kit/core';
 import { TERMINAL_THEMES, type TerminalTheme, type TerminalDocument, type TerminalBlock, TERMINAL_BLOCK_TYPES } from '@/types/evidence/terminal';
+import type { DocBlock } from '@/types/evidence/doc';
 import { useBlockBuilder } from './useBlockBuilder';
 import { BuilderShell } from './BuilderShell';
 import { BlockPalette } from './BlockPalette';
@@ -58,7 +59,7 @@ export function TerminalBuilder({ doc, onChange }: TerminalBuilderProps) {
     selectTemplate(templateName);
   }, [selectTemplate]);
 
-  const updateBlock = useCallback((id: string, updates: Partial<any>) => {
+const updateBlock = useCallback((id: string, updates: Partial<DocBlock | TerminalBlock>) => {
     updateTerminalBlock(id, updates as Partial<TerminalBlock>);
   }, [updateTerminalBlock]);
 
@@ -118,7 +119,6 @@ export function TerminalBuilder({ doc, onChange }: TerminalBuilderProps) {
           <BlockPalette
             blockTypes={TERMINAL_BLOCK_TYPES}
             getBlockLabel={(type) => t[`block${type.charAt(0).toUpperCase() + type.slice(1)}` as keyof typeof t] as string || type}
-            getBlockIcon={() => null}
             onSelect={(type) => {
               const newBlock = createTerminalBlock(type);
               onChange({ ...doc, blocks: [...doc.blocks, newBlock] });

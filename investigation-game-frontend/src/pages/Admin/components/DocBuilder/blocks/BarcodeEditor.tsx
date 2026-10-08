@@ -1,14 +1,14 @@
 import { AdminInput } from '@/pages/Admin/components/AdminUI';
-import type { DocBlock } from '@/types/evidence/doc';
+import type { DocBlock, BarcodeProps } from '@/types/evidence/doc';
 
 interface BlockEditorProps {
-  block: DocBlock;
+  block: DocBlock & { type: 'barcode'; props: BarcodeProps };
   onUpdate: (updates: Partial<DocBlock>) => void;
   evidenceId: number;
 }
 
 export function BarcodeEditor({ block, onUpdate }: BlockEditorProps) {
-  const props = block.props as any;
+  const props = block.props;
   return (
     <div className="block-editor">
       <AdminInput

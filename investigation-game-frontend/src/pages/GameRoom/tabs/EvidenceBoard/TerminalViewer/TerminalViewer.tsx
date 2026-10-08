@@ -12,7 +12,7 @@ export default function TerminalViewer({ evidence, terminal }: TerminalViewerPro
   const resolved = useMemo(() => normalizeTerminal(terminal ?? evidence.metadata), [terminal, evidence.metadata]);
 
   return (
-    <ViewersContainer evidence={evidence as { id: number; [key: string]: unknown }}>
+    <ViewersContainer>
       <TerminalSheet doc={resolved} evidenceId={evidence.id} />
     </ViewersContainer>
   );

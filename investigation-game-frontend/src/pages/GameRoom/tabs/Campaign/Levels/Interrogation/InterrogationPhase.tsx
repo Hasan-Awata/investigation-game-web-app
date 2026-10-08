@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRoomState } from '@/context/RoomContext';
+import { useRoomData } from '@/context/RoomContext.shared';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import { getSafeStorage, setSafeStorage } from '@/utils/storage';
-import type { Level, Choice, Question } from '@/types';
+import type { Level, Question } from '@/types';
+import { checkIsLockedByNarrative } from '@/utils/narrativeLocks';
 import interrogationPhase from './InterrogationPhase.module.css';
 
 // --- MESSAGE REVEAL COMPONENT ---
@@ -62,29 +63,8 @@ export default function InterrogationPhase({
   level, status, totalPlayers, getQuestionConsensus, isHost, isSubmitting, handleSubmitTheory
 }: InterrogationPhaseProps) {
   const { t } = useTranslation();
-  const { room, accumulatedEvidences } = useRoomState();
+  const { room, accumulatedEvidences } = useRoomData();
   const { localVotes, handleSelectChoice } = useInvestigationPhase();
-
-  const checkIsLockedByNarrative = (choice: Choice) => {
-    if (!choice.requirements) return false;
-    const reqs = choice.requirements;
-
-    if (reqs.required_evidence?.length > 0) {
-      const hasAllEvidence = reqs.required_evidence.every((id: number) =>
-        accumulatedEvidences.some(e => e.id === id)
-      );
-      if (!hasAllEvidence) return true;
-    }
-
-    if (reqs.required_choices?.length > 0) {
-      const hasAllChoices = reqs.required_choices.every((id: number) =>
-        room.votes?.some(v => v.choice_id === id)
-      );
-      if (!hasAllChoices) return true;
-    }
-
-    return false;
-  };
 
   const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>(() => {
     const initial: Record<number, boolean> = {};
@@ -140,7 +120,7 @@ export default function InterrogationPhase({
     // `room.votes` from this list would not avoid the recomputation -- it would
     // only hide the real dependency behind a changing function reference.
     // Leave the array as-is.
-  }, [level.questions, room.votes, getQuestionConsensus]);
+  }, [level.questions, getQuestionConsensus]);
 
   const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
   const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
@@ -197,14 +177,13 @@ export default function InterrogationPhase({
         const hasLocalVote = !!localVotes[q.id];
 
         const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
-        const customReaction = winningChoice?.outcomes?.suspect_reaction;
 
         return (
           <div key={q.id} className={interrogationPhase['chat-exchange']}>
 
             <div className={`chat-bubble ${interrogationPhase['chat-bubble']} ${interrogationPhase['suspect-bubble']}`}>
               <span className={`${interrogationPhase['speaker-label']} ${interrogationPhase['suspect']}`}>
-                {t('pages.gameRoom.campaign.levels.interrogation.suspect')} {customReaction ? `[${customReaction}]` : ''}
+                {t('pages.gameRoom.campaign.levels.interrogation.suspect')}
               </span>
               <p>
                 <MessageReveal
@@ -232,7 +211,7 @@ export default function InterrogationPhase({
                       <div className={interrogationPhase['vote-choices-grid']}>
                         {q.choices?.map(c => {
                           const isSelected = localVotes[q.id] === c.id;
-                          const isNarrativeLocked = checkIsLockedByNarrative(c);
+                          const isNarrativeLocked = checkIsLockedByNarrative(c, accumulatedEvidences, room.votes || []);
                           const pillClass = isNarrativeLocked
                             ? `choice-pill ${interrogationPhase['locked-choice']}`
                             : `choice-pill interactable ${isSelected ? 'selected' : ''}`;

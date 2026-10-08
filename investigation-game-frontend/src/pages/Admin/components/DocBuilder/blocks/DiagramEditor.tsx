@@ -1,8 +1,8 @@
 import { AdminSelect, AdminInput } from '@/pages/Admin/components/AdminUI';
-import type { DocBlock, DiagramPreset } from '@/types/evidence/doc';
+import type { DocBlock, DiagramPreset, DiagramProps } from '@/types/evidence/doc';
 
 interface BlockEditorProps {
-  block: DocBlock;
+  block: DocBlock & { type: 'diagram'; props: DiagramProps };
   onUpdate: (updates: Partial<DocBlock>) => void;
   evidenceId: number;
 }
@@ -15,13 +15,13 @@ const PRESET_LABELS: Record<DiagramPreset, string> = {
 };
 
 export function DiagramEditor({ block, onUpdate }: BlockEditorProps) {
-  const props = block.props as any;
+  const props = block.props;
   return (
     <div className="block-editor">
       <AdminSelect
         label="Preset"
         value={props.preset || 'body_outline'}
-        onChange={(e) => onUpdate({ props: { ...props, preset: e.target.value } })}
+        onChange={(e) => onUpdate({ props: { ...props, preset: e.target.value as DiagramPreset } })}
         options={Object.entries(PRESET_LABELS).map(([value, label]) => ({ label, value }))}
       />
       <AdminInput

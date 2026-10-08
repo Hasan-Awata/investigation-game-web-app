@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDroppable } from '@dnd-kit/core';
 import { InvestigationRequestType } from '@/types';
-import type { Evidence } from '@/types';
-import type { FiledRequest } from '@/hooks/useInvestigationRequest';
+import type { Evidence, FiledRequest } from '@/types';
 import styles from './ProceduralRequestTray.module.css';
 
 interface ProceduralRequestTrayProps {
@@ -102,7 +101,7 @@ export default function ProceduralRequestTray({
                     {t(`pages.gameRoom.evidence.board.requestTypes.${req.request_type}`)}
                   </span>
                   <span className={styles.filedRequestMeta}>
-                    {t('pages.gameRoom.evidence.board.crossReferenced')} {req.evidence_ids.map(id => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
+                    {t('pages.gameRoom.evidence.board.crossReferenced')} {req.evidence_ids.map((id: number) => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
                   </span>
                 </div>
                 <div className={styles.filedRequestStatusRow}>

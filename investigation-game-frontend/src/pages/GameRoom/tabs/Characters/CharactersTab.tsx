@@ -1,14 +1,14 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDroppable } from '@dnd-kit/core';
-import { useRoomData, useRoomUI } from '@/context/RoomContext';
+import { useRoomData, useRoomUI } from '@/context/RoomContext.shared';
 import CharacterCard from './CharacterCard';
 import styles from './CharactersTab.module.css';
 
 interface CharactersTabProps {
   guiltyIds: number[];
   isSubmitting: boolean;
-  feedback: any;
+  feedback: { type: 'success' | 'error'; message: string } | null;
   submitVerdict: () => void;
   clearFeedback: () => void;
 }

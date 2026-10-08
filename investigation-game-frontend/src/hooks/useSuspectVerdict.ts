@@ -4,7 +4,11 @@ import { getSafeStorage, setSafeStorage, clearRoomSessionData } from '@/utils/st
 import { useGameMutation } from './useGameMutation';
 import type { GameRoom } from '@/types';
 
-export function useSuspectVerdict(room: GameRoom, refreshRoomData: () => void, setGameOverData: any) {
+export function useSuspectVerdict(
+  room: GameRoom,
+  refreshRoomData: () => void,
+  setGameOverData: (message: string, stats?: unknown) => void
+) {
   const guiltyStorageKey = `room_${room.invite_code}_guilty_characters`;
 
   const [guiltyIds, setGuiltyIds] = useState<number[]>(() =>
@@ -34,7 +38,7 @@ export function useSuspectVerdict(room: GameRoom, refreshRoomData: () => void, s
   });
 
   const handleCharacterDrop = (characterId: number, targetPool: 'guilty' | 'unassigned') => {
-    let nextGuilty = guiltyIds.filter(id => id !== characterId);
+    const nextGuilty = guiltyIds.filter(id => id !== characterId);
     if (targetPool === 'guilty') nextGuilty.push(characterId);
 
     setGuiltyIds(nextGuilty);

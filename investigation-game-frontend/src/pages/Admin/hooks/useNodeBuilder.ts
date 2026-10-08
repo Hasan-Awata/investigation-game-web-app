@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import toast from 'react-hot-toast';
-import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
 import { useAdminMutations } from '@/pages/Admin/hooks/useAdminMutations';
 import { buildNodeFormData } from '@/pages/Admin/utils/questionUtils';
 import type { Question, Choice } from '@/types';

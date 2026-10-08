@@ -6,8 +6,14 @@ import type { Question, Choice } from '@/types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import adminInterrogationBuilder from './AdminInterrogationBuilder.module.css';
 
+interface DraftNode {
+  id: string;
+  text: string;
+  choices: Choice[];
+}
+
 export default function AdminInterrogationBuilder() {
-  const [draftNodes, setDraftNodes] = useState<any[]>([]);
+  const [draftNodes, setDraftNodes] = useState<DraftNode[]>([]);
   const [entryMode, setEntryMode] = useState<'form' | 'json'>('form');
   const [jsonInput, setJsonInput] = useState('');
   
@@ -18,13 +24,17 @@ export default function AdminInterrogationBuilder() {
     setDraftNodes([...draftNodes, { id: `draft_${Date.now()}`, text: '', choices: [] }]);
   };
 
-  const handleJsonPopulate = (parsed: any) => {
-    if (parsed.nodes && Array.isArray(parsed.nodes)) {
-      const newDrafts = parsed.nodes.map((n: any, idx: number) => ({
-        id: `draft_${Date.now()}_${idx}`, // Prevents key collision on rapid map
-        text: n.text || '',
-        choices: n.choices || []
-      }));
+  const handleJsonPopulate = (parsed: unknown) => {
+    const p = parsed as { nodes?: unknown[] };
+    if (p.nodes && Array.isArray(p.nodes)) {
+      const newDrafts = p.nodes.map((n: unknown, idx: number) => {
+        const node = n as { text?: string; choices?: Choice[] };
+        return {
+          id: `draft_${Date.now()}_${idx}`,
+          text: node.text || '',
+          choices: node.choices || []
+        };
+      });
       setDraftNodes((prev) => [...prev, ...newDrafts]);
     }
     setEntryMode('form');
@@ -55,7 +65,7 @@ export default function AdminInterrogationBuilder() {
         // Domain-specific logic remains isolated here
         const hasTerminalNode = savedNodes.some((n: Question) => {
           if (!n.choices || n.choices.length === 0) return true;
-          return n.choices.some((c: Choice | any) => !c.outcomes?.next_question_id);
+          return n.choices.some((c: Choice) => !c.outcomes?.next_question_id);
         });
 
         return (

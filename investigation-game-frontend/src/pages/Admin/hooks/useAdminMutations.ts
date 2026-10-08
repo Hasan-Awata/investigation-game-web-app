@@ -1,6 +1,7 @@
 import toast from 'react-hot-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as adminApi from '@/services/adminApi';
+import type { Result } from '@/utils/Result';
 
 export type AdminEntityType =
   | 'case'
@@ -12,10 +13,10 @@ export type AdminEntityType =
   | 'character';
 
 interface ApiMethods {
-  create: (fd: FormData) => Promise<any>;
-  update: (id: number, fd: FormData) => Promise<any>;
-  del: (id: number) => Promise<any>;
-  import?: (payload: any) => Promise<any>;
+  create: (fd: FormData) => Promise<Result<unknown>>;
+  update: (id: number, fd: FormData) => Promise<Result<unknown>>;
+  del: (id: number) => Promise<Result<unknown>>;
+  import?: (payload: unknown) => Promise<Result<unknown>>;
   name: string;
 }
 
@@ -82,7 +83,7 @@ export function useAdminMutations(entityType: AdminEntityType) {
   });
 
   const importMutation = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: unknown) => {
       if (!methods.import) throw new Error(`Bulk import is not supported for ${methods.name}.`);
       const result = await methods.import(payload);
       if (!result.isSuccess) throw new Error(result.errorMessage);

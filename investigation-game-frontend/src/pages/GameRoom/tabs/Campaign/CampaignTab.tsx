@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRoomState } from '@/context/RoomContext';
+import { useRoomData } from '@/context/RoomContext.shared';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import { getLocalUser } from '@/utils/userState';
 import { getSafeStorage, setSafeStorage, removeSafeStorage } from '@/utils/storage';
-import type { Question, Zone, Level } from '@/types';
+import type { Question, Zone, Level, RoomVote, RoomUser } from '@/types';
 import CampaignMap from './CampaignMap';
 import LevelCard from './LevelCard';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
@@ -16,7 +16,7 @@ import levelCard from './LevelCard.module.css';
 
 const CampaignTab = () => {
   const { t } = useTranslation();
-  const { room } = useRoomState();
+  const { room } = useRoomData();
 
   const zones: Zone[] = room.game_case?.zones || [];
   const currentLevelId = room.current_level_id;
@@ -99,9 +99,9 @@ const CampaignTab = () => {
     let votesCast = 0;
     const participants = room.users || [];
 
-    room.votes?.forEach((v: any) => {
+    room.votes?.forEach((v: RoomVote) => {
       if (v.question_id === question.id) {
-        const role = participants.find((p: any) => p.user_id === v.user_id)?.role || 'participant';
+        const role = participants.find((p: RoomUser) => p.user_id === v.user_id)?.role || 'participant';
         const weight = role === 'host' ? 2 : 1;
         tally[v.choice_id] = (tally[v.choice_id] || 0) + weight;
         votesCast++;
@@ -109,7 +109,7 @@ const CampaignTab = () => {
     });
 
     if (question.assigned_user_id !== undefined && question.assigned_user_id !== null) {
-      const assignedVote = room.votes?.find((v: any) => v.question_id === question.id && v.user_id === question.assigned_user_id);
+      const assignedVote = room.votes?.find((v: RoomVote) => v.question_id === question.id && v.user_id === question.assigned_user_id);
       return { votesCast, isResolved: !!assignedVote, isTie: false, winningChoiceId: assignedVote ? assignedVote.choice_id : null };
     }
 

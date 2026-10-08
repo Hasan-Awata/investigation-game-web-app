@@ -1,14 +1,14 @@
 import { AdminInput } from '@/pages/Admin/components/AdminUI';
-import type { DocBlock } from '@/types/evidence/doc';
+import type { DocBlock, RedactionProps } from '@/types/evidence/doc';
 
 interface BlockEditorProps {
-  block: DocBlock;
+  block: DocBlock & { type: 'redaction'; props: RedactionProps };
   onUpdate: (updates: Partial<DocBlock>) => void;
   evidenceId: number;
 }
 
 export function RedactionEditor({ block, onUpdate }: BlockEditorProps) {
-  const props = block.props as any;
+  const props = block.props;
   return (
     <div className="block-editor">
       <AdminInput

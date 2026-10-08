@@ -2,7 +2,12 @@ import { useCallback, useState } from 'react';
 import { closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragStartEvent, type DragOverEvent } from '@dnd-kit/core';
 import type { BlockBase } from '@/types/evidence/shared';
 
-interface UseBlockBuilderArgs<TBlock extends BlockBase, TDoc extends { blocks: TBlock[] }> {
+interface ThemedDoc {
+  blocks: BlockBase[];
+  theme?: string;
+}
+
+interface UseBlockBuilderArgs<TBlock extends BlockBase, TDoc extends ThemedDoc> {
   doc: TDoc;
   onChange: (doc: TDoc) => void;
   createBlock: (type: string) => TBlock;
@@ -54,7 +59,7 @@ export function useBlockBuilder<TBlock extends BlockBase, TDoc extends { blocks:
         const blocks = template.blocks.map((b) => cloneBlock(b)) as TBlock[];
         const newDoc = { ...doc, blocks: [...doc.blocks, ...blocks] } as TDoc;
         if (template.theme) {
-          (newDoc as any).theme = template.theme;
+          (newDoc as ThemedDoc).theme = template.theme;
         }
         onChange(newDoc);
       }
@@ -90,7 +95,7 @@ export function useBlockBuilder<TBlock extends BlockBase, TDoc extends { blocks:
       const blocks = template.blocks.map((b) => cloneBlock(b)) as TBlock[];
       const newDoc = { ...doc, blocks: [...doc.blocks, ...blocks] } as TDoc;
       if (template.theme) {
-        (newDoc as any).theme = template.theme;
+        (newDoc as ThemedDoc).theme = template.theme;
       }
       onChange(newDoc);
     }

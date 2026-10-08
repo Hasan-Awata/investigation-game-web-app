@@ -9,7 +9,6 @@ interface EntityDashboardProps<T> {
   items: T[];
   editingId: number | string | null;
   isProcessing: boolean;
-  isFetching?: boolean;
   contextHeader?: string;
   emptyMessage: string; 
   keyExtractor: (item: T) => string | number;
@@ -18,12 +17,16 @@ interface EntityDashboardProps<T> {
   onDelete: (item: T) => void;
   renderItemContent: (item: T) => ReactNode;
   children: ReactNode;
+  contextMissing?: ReactNode;
+  submitLabel?: { creating: string; editing: string; processing: string };
 }
 
 export default function EntityDashboard<T>({
   entityName, listTitle, items, editingId, isProcessing,
   contextHeader, emptyMessage, keyExtractor,
-  onClear, onEdit, onDelete, renderItemContent, children
+  onClear, onEdit, onDelete, renderItemContent, children,
+  contextMissing,
+  submitLabel
 }: EntityDashboardProps<T>) {
 
   return (
@@ -33,9 +36,11 @@ export default function EntityDashboard<T>({
         entityName={entityName}
         contextHeader={contextHeader}
         onCancel={onClear}
-      >
-        {children}
-      </AdminFormLayout>
+        children={children}
+        contextMissing={contextMissing}
+        submitLabel={submitLabel}
+        isProcessing={isProcessing}
+      />
 
       <EntityList<T>
         title={listTitle}

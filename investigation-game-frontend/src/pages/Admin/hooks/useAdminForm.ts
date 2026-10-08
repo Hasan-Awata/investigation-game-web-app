@@ -1,15 +1,17 @@
 import React, { useState, useRef } from 'react';
 import { useAdminMutations, type AdminEntityType } from '@/pages/Admin/hooks/useAdminMutations';
-import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
 import { objectToFormData } from '@/pages/Admin/utils/formUtils';
+import toast from 'react-hot-toast';
 
 interface UseAdminFormProps<T> {
   entityType: AdminEntityType;
   initialState: T;
-  basePayload?: Record<string, any>;
+  basePayload?: Record<string, unknown>;
+  validator?: (data: T) => string | null; // Returns error message or null if valid
 }
 
-export function useAdminForm<T extends Record<string, any>>({ entityType, initialState, basePayload = {} }: UseAdminFormProps<T>) {
+export function useAdminForm<T extends Record<string, unknown>>({ entityType, initialState, basePayload = {}, validator }: UseAdminFormProps<T>) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<T>(initialState);
 
@@ -18,7 +20,7 @@ export function useAdminForm<T extends Record<string, any>>({ entityType, initia
   const { createEntity, updateEntity, deleteEntity, importEntity, isProcessing } = useAdminMutations(entityType);
   const { setIsDirty } = useAdminContext();
 
-  const updateField = (field: keyof T, value: any) => {
+  const updateField = (field: keyof T, value: T[keyof T] | unknown) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setIsDirty(true);
   };
@@ -34,9 +36,16 @@ export function useAdminForm<T extends Record<string, any>>({ entityType, initia
     fileInputRefs.current[key] = el;
   };
 
-  // STRICT TYPING APPLIED HERE
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>, files: Record<string, File | null> = {}) => {
     e.preventDefault();
+
+    if (validator) {
+      const error = validator(formData);
+      if (error) {
+        toast.error(error);
+        return;
+      }
+    }
 
     const payloadData = { ...basePayload, ...formData };
     const payload = objectToFormData(payloadData);
@@ -52,9 +61,9 @@ export function useAdminForm<T extends Record<string, any>>({ entityType, initia
     }
   };
 
-  const handleEditInit = (entity: any, mappingFn?: (e: any) => T) => {
+  const handleEditInit = <E extends { id: number }>(entity: E, mappingFn?: (e: E) => T) => {
     setEditingId(entity.id);
-    setFormData(mappingFn ? mappingFn(entity) : { ...initialState, ...entity });
+    setFormData(mappingFn ? mappingFn(entity) : { ...initialState, ...entity } as T);
     setIsDirty(false);
 
     Object.values(fileInputRefs.current).forEach(ref => { if (ref) ref.value = ''; });

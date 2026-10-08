@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import adminDashboard from '../../AdminDashboard.module.css';
 

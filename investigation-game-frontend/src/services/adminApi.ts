@@ -1,57 +1,29 @@
-import { type Result, success, failure } from '@/utils/Result';
-import { getToken } from './auth';
+import { type Result, success } from '@/utils/Result';
+import { request } from './request';
+import type { GameCase, Zone, Level } from '@/types';
 
-const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
-const API_BASE_URL = `${BASE_URL}/admin`;
-
-const handleUnauthorized = () => {
-  window.dispatchEvent(new CustomEvent('auth:unauthorized')); 
-};
-
-/**
- * Centralized API Request Handler
- */
-const adminRequest = async <T = any>(endpoint: string, options: RequestInit): Promise<Result<T>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`,
-        ...options.headers,
-      },
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
-      const data = await response.json().catch(() => ({}));
-      return failure(data.message || `Operation failed (${response.status}).`);
-    }
-    
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+const adminRequest = async <T>(endpoint: string, options: RequestInit): Promise<Result<T>> => {
+  return request<T>(`/admin${endpoint}`, options);
 };
 
 // ==========================================
 // CASES
 // ==========================================
-export const fetchAdminCases = async (): Promise<Result<any[]>> => {
-  const result = await adminRequest('/cases', { method: 'GET' });
+export const fetchAdminCases = async (): Promise<Result<GameCase[]>> => {
+  const result = await adminRequest<{ cases: GameCase[] }>('/cases', { method: 'GET' });
   return result.isSuccess ? success(result.value.cases) : result;
 };
 export const createAdminCase = (fd: FormData) => adminRequest('/cases', { method: 'POST', body: fd });
 export const updateAdminCase = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/cases/${id}`, { method: 'POST', body: fd }); };
 export const deleteAdminCase = (id: number) => adminRequest(`/cases/${id}`, { method: 'DELETE' });
-export const importAdminCase = (payload: any) => adminRequest('/cases/import', { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
+export const importAdminCase = (payload: unknown) => adminRequest('/cases/import', { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
 
 // ==========================================
 // ZONES (Formerly Phases)
 // ==========================================
-export const fetchAdminZones = async (caseId: string | number): Promise<Result<any[]>> => {
+export const fetchAdminZones = async (caseId: string | number): Promise<Result<Zone[]>> => {
   if (!caseId) return success([]);
-  return await adminRequest(`/cases/${caseId}/zones`, { method: 'GET' });
+  return await adminRequest<Zone[]>(`/cases/${caseId}/zones`, { method: 'GET' });
 };
 
 export const createAdminZone = (fd: FormData) => adminRequest('/zones', { method: 'POST', body: fd });
@@ -61,9 +33,9 @@ export const deleteAdminZone = (id: number) => adminRequest(`/zones/${id}`, { me
 // ==========================================
 // LEVELS
 // ==========================================
-export const fetchAdminLevels = async (zoneId: string | number): Promise<Result<any[]>> => {
+export const fetchAdminLevels = async (zoneId: string | number): Promise<Result<Level[]>> => {
   if (!zoneId) return success([]);
-  return await adminRequest(`/zones/${zoneId}/levels`, { method: 'GET' });
+  return await adminRequest<Level[]>(`/zones/${zoneId}/levels`, { method: 'GET' });
 };
 
 export const createAdminLevel = (fd: FormData) => adminRequest('/levels', { method: 'POST', body: fd });
@@ -89,7 +61,7 @@ export const deleteAdminEvidence = (id: number) => adminRequest(`/evidences/${id
  * call: an `image` block's URL lives in `metadata.doc`, and the author uploads
  * it long before the evidence row exists. See AdminMediaController.
  */
-export const uploadAdminBlockImage = (fd: FormData) => adminRequest('/media/block-image', { method: 'POST', body: fd });
+export const uploadAdminBlockImage = (fd: FormData) => adminRequest<{ url: string }>('/media/block-image', { method: 'POST', body: fd });
 
 // ==========================================
 // INVESTIGATION REQUESTS (Combos)

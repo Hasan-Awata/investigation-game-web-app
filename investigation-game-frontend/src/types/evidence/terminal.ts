@@ -35,29 +35,6 @@ export interface StatusBannerProps {
   caption?: string;
 }
 
-export interface EncryptionFlowStep {
-  label: string;
-  detail?: string;
-  token?: string;
-}
-
-export interface EncryptionFlowProps {
-  steps: EncryptionFlowStep[];
-  direction: 'h' | 'v';
-  algorithm?: string;
-}
-
-export interface HashMatrixRow {
-  offset: string;
-  bytes: string[];
-  ascii: string;
-}
-
-export interface HashMatrixProps {
-  rows: HashMatrixRow[];
-  algorithm: string;
-}
-
 export interface FileTreeEntry {
   path: string;
   size?: string;
@@ -69,24 +46,6 @@ export interface FileTreeEntry {
 export interface FileTreeProps {
   entries: FileTreeEntry[];
   indent?: number;
-}
-
-export interface AsciiPanelProps {
-  lines: string[];
-  caption?: string;
-  frame: 'box' | 'heavy' | 'none';
-}
-
-export interface PacketTraceRow {
-  src: string;
-  dst: string;
-  proto: string;
-  bytes: string;
-  state: string;
-}
-
-export interface PacketTraceProps {
-  rows: PacketTraceRow[];
 }
 
 /* ------------------------------------------------------------------ *
@@ -110,8 +69,6 @@ export const TERMINAL_BLOCK_TYPES: readonly TerminalBlockType[] = [
   'file_tree',
   'spacer',
 ] as const;
-
-export const TERMINAL_OVERLAY_BLOCK_TYPES: readonly TerminalBlockType[] = [] as const;
 
 /* ------------------------------------------------------------------ *
  * The document envelope
@@ -176,23 +133,3 @@ export const isTerminalBlock = <T extends TerminalBlockType>(
   block: TerminalBlock,
   type: T
 ): block is Extract<TerminalBlock, { type: T }> => block.type === type;
-
-export const isTerminalBlockType = (block: TerminalBlock, type: TerminalBlockType): boolean =>
-  block.type === type;
-
-export function assertTerminalBlock<T extends TerminalBlockType>(
-  block: TerminalBlock,
-  type: T
-): asserts block is Extract<TerminalBlock, { type: T }> {
-  if (block.type !== type) {
-    throw new Error(`Expected block type "${type}", got "${block.type}"`);
-  }
-}
-
-export function getTerminalBlockProps(
-  block: TerminalBlock,
-  type: TerminalBlockType
-): TerminalBlock['props'] | null {
-  if (block.type !== type) return null;
-  return block.props;
-}

@@ -1,15 +1,15 @@
 import { AdminInput, AdminCheckbox, DynamicListHeader, RemoveButton } from '@/pages/Admin/components/AdminUI';
 import { useDynamicList } from '@/hooks/useDynamicList';
-import type { DocBlock } from '@/types/evidence/doc';
+import type { DocBlock, ListProps } from '@/types/evidence/doc';
 
 interface BlockEditorProps {
-  block: DocBlock;
+  block: DocBlock & { type: 'list'; props: ListProps };
   onUpdate: (updates: Partial<DocBlock>) => void;
   evidenceId: number;
 }
 
 export function ListEditor({ block, onUpdate }: BlockEditorProps) {
-  const props = block.props as any;
+  const props = block.props;
   const items = (props.items || []) as string[];
 
   const { items: itemList, add, updatePrimitive, remove } = useDynamicList(items, (newItems) =>

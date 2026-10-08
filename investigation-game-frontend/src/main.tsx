@@ -11,7 +11,7 @@ import { getToken } from '@/services/auth';
 declare global {
   interface Window {
     Pusher: typeof Pusher;
-    Echo: Echo<any>;
+    Echo: Echo<'reverb' | 'pusher'>;
   }
 }
 

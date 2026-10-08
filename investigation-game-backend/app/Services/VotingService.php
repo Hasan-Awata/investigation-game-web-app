@@ -26,6 +26,23 @@ class VotingService
             return Result::failure("Invalid choice for the given verdict.");
         }
 
+        // Enforce Choice::requirements server-side
+        $requirements = $choice->requirements;
+        if ($requirements) {
+            if (!empty($requirements['required_evidence'])) {
+                $roomEvidenceIds = $room->evidences()->pluck('evidence_id')->toArray();
+                if (array_diff($requirements['required_evidence'], $roomEvidenceIds)) {
+                    throw new \Exception('Missing required evidence.');
+                }
+            }
+            if (!empty($requirements['required_choices'])) {
+                $votedChoiceIds = $room->votes()->where('user_id', $user->id)->pluck('choice_id')->toArray();
+                if (array_diff($requirements['required_choices'], $votedChoiceIds)) {
+                    throw new \Exception('Missing required prior choices.');
+                }
+            }
+        }
+
         $vote = RoomVote::updateOrCreate(
             [
                 'room_id' => $room->id,

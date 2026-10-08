@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRoomData, useRoomUI } from '@/context/RoomContext';
+import { useRoomData, useRoomUI } from '@/context/RoomContext.shared';
 import type { Evidence } from '@/types';
 import EvidenceCard from './EvidenceCard';
 import EvidenceModal from './EvidenceModal';

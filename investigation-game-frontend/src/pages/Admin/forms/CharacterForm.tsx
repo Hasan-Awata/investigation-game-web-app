@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import toast from 'react-hot-toast';
-import { useAdminContext } from '@/pages/Admin/context/AdminContext';
-import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
+import { useState } from 'react';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
+import { useAdminForm } from '@/pages/Admin/hooks/useAdminForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
-import { AdminInput, AdminTextarea, AdminCheckbox, AdminSelect, AdminFileInput, AdminEntryToggle, JsonPopulator } from '@/pages/Admin/components/AdminUI';
+import MediaUploader from '@/pages/Admin/components/MediaUploader';
+import { AdminInput, AdminTextarea, AdminCheckbox, AdminSelect, AdminEntryToggle, JsonPopulator } from '@/pages/Admin/components/AdminUI';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
-import { validateCharacterForm, validateImageSize } from '../utils/validators';
+import { validateCharacterForm } from '../utils/validators';
 import { CharacterCharge, CharacterStatus, type Character } from '@/types';
 import adminForms from './Shared/AdminForms.module.css';
 import adminDashboard from '../AdminDashboard.module.css';
@@ -29,65 +29,61 @@ export default function CharacterForm() {
   const [entryMode, setEntryMode] = useState<'form' | 'json'>('form');
   const [jsonInput, setJsonInput] = useState('');
 
-  const handleJsonPopulate = (parsed: any) => {
-    if (parsed.name) updateField('name', parsed.name);
-    if (parsed.background) updateField('background', parsed.background);
-    if (typeof parsed.is_initial !== 'undefined') updateField('is_initial', parsed.is_initial);
-    if (typeof parsed.is_guilty !== 'undefined') updateField('is_guilty', parsed.is_guilty);
-    if (parsed.charge) updateField('charge', parsed.charge);
-    if (parsed.default_status) updateField('default_status', parsed.default_status);
-    if (typeof parsed.store_locally !== 'undefined') updateField('store_locally', parsed.store_locally);
+  const handleJsonPopulate = (parsed: unknown) => {
+    const p = parsed as Record<string, unknown>;
+    if (p.name) updateField('name', String(p.name));
+    if (p.background) updateField('background', String(p.background));
+    if (typeof p.is_initial !== 'undefined') updateField('is_initial', Boolean(p.is_initial));
+    if (typeof p.is_guilty !== 'undefined') updateField('is_guilty', Boolean(p.is_guilty));
+    if (p.charge) updateField('charge', String(p.charge));
+    if (p.default_status) updateField('default_status', String(p.default_status));
+    if (typeof p.store_locally !== 'undefined') updateField('store_locally', Boolean(p.store_locally));
     
     setEntryMode('form');
     setJsonInput('');
   };
 
   const {
-    formData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing
-  } = useValidatedForm({
+    formData, updateField, editingId, clearForm, handleSubmit, handleEditInit, handleDelete, isProcessing
+  } = useAdminForm({
     entityType: 'character',
     initialState: initialFormState,
     basePayload: { case_id: caseId },
     validator: validateCharacterForm 
   });
 
-  if (!caseId || !selectedCase) {
-    return (
-      <div className={`${adminDashboard['admin-form-container']} glass-panel ${adminForms['admin-missing-context']}`}>
-        <h3>{t.missingContextTitle || 'Context Missing'}</h3><p>{t.missingContextDesc || 'Select a case first.'}</p>
-      </div>
-    );
-  }
-
   const onEdit = (character: Character) => {
     handleEditInit(character, (c) => ({
-      name: c.name, background: c.background || '', is_initial: !!c.is_initial, is_guilty: !!c.is_guilty,
-      charge: c.charge || '', default_status: c.default_status || CharacterStatus.Available, store_locally: false
+      name: c.name,
+      background: c.background || '',
+      is_initial: !!c.is_initial,
+      is_guilty: !!c.is_guilty,
+      charge: c.charge || '',
+      default_status: CharacterStatus.Available,
+      store_locally: false
     }));
     setImage(null);
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) { setImage(null); return; }
-    
-    const error = validateImageSize(file);
-    if (!error) { 
-      setImage(file); 
-    } else { 
-      toast.error(error);
-      setImage(null); 
-      e.target.value = ''; 
-    }
-  };
-
   const onClear = () => { clearForm(); setImage(null); };
+
+  const contextMissing = !caseId || !selectedCase ? (
+    <div className={`${adminDashboard['admin-form-container']} glass-panel ${adminForms['admin-missing-context']}`}>
+      <h3>{t.missingContextTitle || 'Context Missing'}</h3><p>{t.missingContextDesc || 'Select a case first.'}</p>
+    </div>
+  ) : null;
+
+  const submitLabel = {
+    creating: t.commitCharacter,
+    editing: t.updateCharacter,
+    processing: t.processingData
+  };
 
   return (
     <EntityDashboard<Character>
-      entityName={t.entityName} listTitle={t.manageTitle} items={selectedCase.characters || []}
+      entityName={t.entityName} listTitle={t.manageTitle} items={selectedCase?.characters || []}
       editingId={editingId} isProcessing={isProcessing} emptyMessage={t.emptyMessage}
-      contextHeader={`CASE: ${selectedCase.title}`} keyExtractor={(c) => c.id}
+      contextHeader={`CASE: ${selectedCase?.title || ''}`} keyExtractor={(c) => c.id}
       onClear={onClear} onEdit={onEdit} onDelete={(c) => handleDelete(c.id, t.deleteConfirm(c.name))}
       renderItemContent={(c) => (
         <>
@@ -96,8 +92,10 @@ export default function CharacterForm() {
           {c.default_status === 'deceased' && <span className={adminForms['admin-list-badge']} style={{ color: 'var(--accent-crimson)', borderColor: 'var(--accent-crimson)' }}>Deceased</span>}
         </>
       )}
+      contextMissing={contextMissing}
+      submitLabel={submitLabel}
     >
-      <form onSubmit={(e) => handleValidatedSubmit(e, { image })} className={adminDashboard['admin-form']}>
+      <form onSubmit={(e) => handleSubmit(e, { image })} className={adminDashboard['admin-form']}>
         <AdminEntryToggle mode={entryMode} setMode={setEntryMode} />
 
         {entryMode === 'form' ? (
@@ -124,8 +122,8 @@ export default function CharacterForm() {
               />
             )}
 
-            <AdminTextarea label={t.backgroundLabel} value={formData.background} onChange={(e) => updateField('background', e.target.value)} />
-            <AdminFileInput label="Mugshot Photo" hint={t.imageHint} accept="image/*" ref={registerFileRef('image')} onChange={handleImageChange} />
+<AdminTextarea label={t.backgroundLabel} value={formData.background} onChange={(e) => updateField('background', e.target.value)} />
+            <MediaUploader label="Mugshot Photo" hint={t.imageHint} accept="image/*" previewUrl={image ? URL.createObjectURL(image) : null} onChange={setImage} />
             <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} className={adminForms['amber']} />
           </>
         ) : (
@@ -134,12 +132,6 @@ export default function CharacterForm() {
             template={{ name: "", background: "", is_initial: true, is_guilty: false, default_status: "available", charge: "", store_locally: false }}
           />
         )}
-
-        <button type="submit" className={`btn-primary 
-          ${adminForms['admin-submit-btn']} ${editingId ? adminForms['editing'] : adminForms['creating']}`} 
-          disabled={isProcessing || entryMode === 'json'}>
-          {isProcessing ? t.processingData : editingId ? t.updateCharacter : t.commitCharacter}
-        </button>
       </form>
     </EntityDashboard>
   );

@@ -1,14 +1,14 @@
 import { AdminInput, AdminCheckbox } from '@/pages/Admin/components/AdminUI';
-import type { DocBlock } from '@/types/evidence/doc';
+import type { DocBlock, LetterheadProps } from '@/types/evidence/doc';
 
 interface BlockEditorProps {
-  block: DocBlock;
+  block: DocBlock & { type: 'letterhead'; props: LetterheadProps };
   onUpdate: (updates: Partial<DocBlock>) => void;
   evidenceId: number;
 }
 
 export function LetterheadEditor({ block, onUpdate }: BlockEditorProps) {
-  const props = block.props as any;
+  const props = block.props;
   return (
     <div className="block-editor">
       <AdminInput

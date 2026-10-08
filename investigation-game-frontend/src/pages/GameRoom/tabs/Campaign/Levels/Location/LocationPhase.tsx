@@ -2,12 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRoomState } from '@/context/RoomContext';
+import { useRoomData } from '@/context/RoomContext.shared';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import { getLocalUser } from '@/utils/userState';
 import { getSafeStorage, setSafeStorage } from '@/utils/storage';
-import type { Level, Choice } from '@/types';
+import type { Level, Choice, RoomInspection, RoomVote, GameRoom } from '@/types';
 import * as api from '@/services/api'; 
+import { checkIsLockedByNarrative } from '@/utils/narrativeLocks';
+import { hasUnlocks, isCorrectFind } from '@/utils/unlockPredicates';
 import locationPhase from './LocationPhase.module.css';
 
 interface LocationPhaseProps {
@@ -18,31 +20,10 @@ interface LocationPhaseProps {
 export default function LocationPhase({ level }: LocationPhaseProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { room, accumulatedEvidences } = useRoomState();
+  const { room, accumulatedEvidences } = useRoomData();
   const { localVotes, handleSelectChoice, addToast } = useInvestigationPhase();
 
   const currentUserId = getLocalUser()?.id;
-
-  const checkIsLockedByNarrative = (choice: Choice) => {
-    if (!choice.requirements) return false;
-    const reqs = choice.requirements;
-
-    if (reqs.required_evidence?.length > 0) {
-      const hasAllEvidence = reqs.required_evidence.every((id: number) =>
-        accumulatedEvidences.some(e => e.id === id)
-      );
-      if (!hasAllEvidence) return true;
-    }
-
-    if (reqs.required_choices?.length > 0) {
-      const hasAllChoices = reqs.required_choices.every((id: number) =>
-        room.votes?.some(v => v.choice_id === id)
-      );
-      if (!hasAllChoices) return true;
-    }
-
-    return false;
-  };
 
   const [inspectingQuestionId, setInspectingQuestionId] = useState<number | null>(null);
 
@@ -81,11 +62,11 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
   }, [activeBubbles, storageKeyBase]);
 
   const foundPoints = new Set([
-    ...(room.inspections?.filter((i: any) => !i.is_dead_end).map((i: any) => i.choice_id) || []),
+    ...(room.inspections?.filter((i: RoomInspection) => !i.is_dead_end).map((i: RoomInspection) => i.choice_id) || []),
     ...localFound
   ]);
   const clickedDeadEnds = new Set([
-    ...(room.inspections?.filter((i: any) => i.is_dead_end).map((i: any) => i.choice_id) || []),
+    ...(room.inspections?.filter((i: RoomInspection) => i.is_dead_end).map((i: RoomInspection) => i.choice_id) || []),
     ...localDeadEnds
   ]);
 
@@ -99,14 +80,14 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
       await queryClient.cancelQueries({ queryKey: ['gameRoom', room.invite_code] });
       const previousRoom = queryClient.getQueryData(['gameRoom', room.invite_code]);
 
-      queryClient.setQueryData(['gameRoom', room.invite_code], (old: any) => {
+      queryClient.setQueryData(['gameRoom', room.invite_code], (old: GameRoom | undefined) => {
         if (!old) return old;
         
         let isCorrectFind = false;
         level.questions?.forEach(q => {
           const c = q.choices?.find(x => x.id === choiceId);
           if (c) {
-            isCorrectFind = !!(c.outcomes?.next_question_id || c.outcomes?.unlock_evidence?.length || c.outcomes?.unlock_levels?.length || c.outcomes?.unlock_suspects?.length || c.outcomes?.unlock_victims?.length);
+            isCorrectFind = hasUnlocks(c);
           }
         });
 
@@ -167,7 +148,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
 
     if (isDragging) return;
 
-    const isAlreadyDiscovered = foundPoints.has(choice.id) || clickedDeadEnds.has(choice.id) || room.votes?.some((v: any) => v.choice_id === choice.id);
+    const isAlreadyDiscovered = foundPoints.has(choice.id) || clickedDeadEnds.has(choice.id) || room.votes?.some((v: RoomVote) => v.choice_id === choice.id);
 
     if (isAlreadyDiscovered) {
       setActiveBubbles(prev => {
@@ -179,17 +160,9 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
       return; 
     }
 
-    const hasUnlocks = choice.outcomes && (
-      (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) ||
-      (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) ||
-      (choice.outcomes.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) ||
-      (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0) ||
-      (choice.outcomes.next_question_id)
-    );
+    const result = isCorrectFind(choice);
 
-    const isCorrectFind = !!hasUnlocks;
-
-    if (isCorrectFind) {
+    if (result) {
       setLocalFound(prev => new Set(prev).add(choice.id));
     } else {
       setLocalDeadEnds(prev => new Set(prev).add(choice.id));
@@ -198,7 +171,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
     setActiveBubbles(prev => new Set(prev).add(choice.id));
     inspectMutation.mutate(choice.id);
 
-    if (isCorrectFind) {
+    if (result) {
       if (choice.outcomes?.next_question_id) {
         addToast({
           type: 'level',
@@ -310,20 +283,13 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
             const x = coordParts[0].trim();
             const y = coordParts[1].trim();
 
-            const hasUnlocks = choice.outcomes && (
-              (choice.outcomes.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) ||
-              (choice.outcomes.unlock_levels && choice.outcomes.unlock_levels.length > 0) ||
-              (choice.outcomes.unlock_suspects && choice.outcomes.unlock_suspects.length > 0) ||
-              (choice.outcomes.unlock_victims && choice.outcomes.unlock_victims.length > 0) ||
-              (choice.outcomes.next_question_id)
-            );
-            const isCorrectFind = !!hasUnlocks;
+            const correctFind = isCorrectFind(choice);
 
-            const isSelected = localVotes[activeQuestion.id] === choice.id || foundPoints.has(choice.id) || room.votes?.some((v: any) => v.choice_id === choice.id);
+            const isSelected = localVotes[activeQuestion.id] === choice.id || foundPoints.has(choice.id) || room.votes?.some((v: RoomVote) => v.choice_id === choice.id);
             const isDeadEndClicked = clickedDeadEnds.has(choice.id);
             
             // STRICT FILTER CHECK
-            const isNarrativeLocked = checkIsLockedByNarrative(choice);
+            const isNarrativeLocked = checkIsLockedByNarrative(choice, accumulatedEvidences, room.votes || []);
             const isDiscovered = isSelected || isDeadEndClicked;
 
             let zoneClass = locationPhase['loc-hover-zone'];
@@ -364,10 +330,10 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
                   </div>
                 )}
 
-                {isBubbleActive && (
+{isBubbleActive && (
                   <div 
-                    className={`${locationPhase['loc-info-bubble']} ${isCorrectFind ? locationPhase['success'] : locationPhase['error']}`}>
-                    {choice.outcomes?.feedback || (isCorrectFind ? t('pages.gameRoom.campaign.levels.location.foundUseful') : t('pages.gameRoom.campaign.levels.location.nothingFound'))}
+                    className={`${locationPhase['loc-info-bubble']} ${correctFind ? locationPhase['success'] : locationPhase['error']}`}>
+                    {choice.outcomes?.feedback || (correctFind ? t('pages.gameRoom.campaign.levels.location.foundUseful') : t('pages.gameRoom.campaign.levels.location.nothingFound'))}
                   </div>
                 )}
               </div>

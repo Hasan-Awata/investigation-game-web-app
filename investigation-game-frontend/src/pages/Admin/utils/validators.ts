@@ -29,6 +29,12 @@ export const validateLevelForm = (data: { order_index: string | number; zone_id?
 const isDocEvidenceType = (t: string): boolean => t === 'document' || t === 'forensic';
 const isDigitalEvidenceType = (t: string): boolean => t === 'digital';
 
+const hasBlocks = (v: unknown): boolean => {
+  if (!v || typeof v !== 'object') return false;
+  const blocks = (v as { blocks?: unknown }).blocks;
+  return Array.isArray(blocks) && blocks.length > 0;
+};
+
 /**
  * `document` / `forensic` must carry a non-empty `metadata.doc.blocks` array,
  * since the viewer renders an empty sheet as "contents illegible" -- saving one
@@ -36,13 +42,10 @@ const isDigitalEvidenceType = (t: string): boolean => t === 'digital';
  * 
  * `digital` must carry a non-empty `metadata.terminal.blocks` array.
  */
-export const validateEvidenceForm = (data: { evidence_type: string; metadata?: Record<string, any> }) => {
+export const validateEvidenceForm = (data: { evidence_type: string; metadata?: Record<string, unknown> }) => {
   if (isDocEvidenceType(data.evidence_type)) {
     const doc = data.metadata?.doc;
-    if (!doc || typeof doc !== 'object') {
-      return 'This evidence needs a document. Compose it in the builder before saving.';
-    }
-    if (!Array.isArray(doc.blocks) || doc.blocks.length === 0) {
+    if (!doc || !hasBlocks(doc)) {
       return 'Add at least one block to the document. An empty document renders as illegible.';
     }
     return null;
@@ -50,10 +53,7 @@ export const validateEvidenceForm = (data: { evidence_type: string; metadata?: R
 
   if (isDigitalEvidenceType(data.evidence_type)) {
     const terminal = data.metadata?.terminal;
-    if (!terminal || typeof terminal !== 'object') {
-      return 'This evidence needs a terminal session. Compose it in the builder before saving.';
-    }
-    if (!Array.isArray(terminal.blocks) || terminal.blocks.length === 0) {
+    if (!terminal || !hasBlocks(terminal)) {
       return 'Add at least one block to the terminal session. An empty session renders as empty.';
     }
     return null;
@@ -87,7 +87,7 @@ export const validateAudioSize = (file: File | undefined): string | null => {
   return null;
 };
 
-export const validateJsonPayload = (jsonString: string, requiredFields: string[] = []): { valid: boolean; parsed?: any; error?: string } => {
+export const validateJsonPayload = (jsonString: string, requiredFields: string[] = []): { valid: boolean; parsed?: unknown; error?: string } => {
   try {
     const parsed = JSON.parse(jsonString);
 
@@ -103,7 +103,7 @@ export const validateJsonPayload = (jsonString: string, requiredFields: string[]
     }
     
     return { valid: true, parsed };
-  } catch (e: any) {
-    return { valid: false, error: `Invalid JSON format: ${e.message}` };
+  } catch (e: unknown) {
+    return { valid: false, error: `Invalid JSON format: ${e instanceof Error ? e.message : String(e)}` };
   }
 };

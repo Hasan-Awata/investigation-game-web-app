@@ -36,8 +36,10 @@ return new class extends Migration {
         });
     }
 
-    public function down(): void {
-        Schema::dropIfExists('room_characters');
-        Schema::dropIfExists('characters');
+    public function down(): void
+    {
+        // Cannot safely reverse: suspects/victims data was merged into characters.
+        // If rollback needed, restore from backup.
+        throw new \Exception('This migration is not reversible. Restore from backup.');
     }
 };

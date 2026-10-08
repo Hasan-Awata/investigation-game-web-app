@@ -1,6 +1,7 @@
 import { useDraggable } from '@dnd-kit/core';
 import { DOC_BLOCK_TYPES } from '@/types/evidence/doc';
-import type { DocBlockType, TemplateName } from '@/types/evidence/doc';
+import type { DocBlockType } from '@/types/evidence/doc';
+import type { TemplateName } from '@/pages/GameRoom/tabs/EvidenceBoard/DocViewer/templates-index';
 import { templates } from '@/pages/GameRoom/tabs/EvidenceBoard/DocViewer/templates-index';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import styles from './BlockPalette.module.css';

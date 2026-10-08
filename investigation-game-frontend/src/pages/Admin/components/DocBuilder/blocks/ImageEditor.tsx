@@ -1,15 +1,15 @@
 import { AdminInput, AdminSelect, AdminRow } from '@/pages/Admin/components/AdminUI';
-import type { DocBlock } from '@/types/evidence/doc';
+import type { DocBlock, ImageBlockProps } from '@/types/evidence/doc';
 
 interface BlockEditorProps {
-  block: DocBlock;
+  block: DocBlock & { type: 'image'; props: ImageBlockProps };
   onUpdate: (updates: Partial<DocBlock>) => void;
   onUploadImage?: (blockId: string) => void;
   evidenceId: number;
 }
 
 export function ImageEditor({ block, onUpdate, onUploadImage }: BlockEditorProps) {
-  const props = block.props as any;
+  const props = block.props;
   return (
     <div className="block-editor">
       <AdminInput
@@ -45,7 +45,7 @@ export function ImageEditor({ block, onUpdate, onUploadImage }: BlockEditorProps
       <AdminSelect
         label="Filter"
         value={props.filter || 'plain'}
-        onChange={(e) => onUpdate({ props: { ...props, filter: e.target.value } })}
+        onChange={(e) => onUpdate({ props: { ...props, filter: e.target.value as ImageBlockProps['filter'] } })}
         options={[
           { label: 'Plain', value: 'plain' },
           { label: 'Polaroid', value: 'polaroid' },

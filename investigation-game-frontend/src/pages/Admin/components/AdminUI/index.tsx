@@ -94,33 +94,6 @@ export const RemoveButton = ({ onClick, title = "Remove Item", style }: { onClic
   <button type="button" onClick={onClick} title={title} style={{ background: 'transparent', border: 'none', color: 'var(--accent-crimson)', cursor: 'pointer', fontSize: '1.2rem', padding: '0 0.5rem', ...style }}>×</button>
 );
 
-interface ResourceSelectorProps {
-  label: string;
-  items: { id: number | string; name?: string; title?: string; order_index?: number }[];
-  selectedValues: string[];
-  onChange: (values: number[]) => void;
-  getName?: (item: any) => string;
-}
-
-export const ResourceSelectorGrid = ({ label, items, selectedValues, onChange, getName }: ResourceSelectorProps) => (
-  <div className={adminDashboard['form-group']} style={{ flex: 1, margin: 0 }}>
-    <label style={{ fontSize: '0.7rem' }}>{label}</label>
-    <select 
-      multiple 
-      className={adminDashboard['admin-input']} 
-      style={{ height: '80px', padding: '0.25rem' }} 
-      value={selectedValues} 
-      onChange={(e) => onChange(Array.from(e.target.selectedOptions, opt => Number(opt.value)))}
-    >
-      {items.map((item) => (
-        <option key={item.id} value={item.id.toString()}>
-          {getName ? getName(item) : (item.name || item.title)}
-        </option>
-      ))}
-    </select>
-  </div>
-);
-
 export interface CoordinateMarker {
   id: string | number;
   x: string | number;
@@ -209,9 +182,9 @@ export const JsonPopulator = ({
 }: { 
   jsonInput: string, 
   setJsonInput: (v: string) => void, 
-  onPopulate: (parsed: any) => void, 
+  onPopulate: (parsed: unknown) => void, 
   requiredFields?: string[],
-  template?: Record<string, any>,
+  template?: Record<string, unknown>,
   label?: string 
 }) => {
   

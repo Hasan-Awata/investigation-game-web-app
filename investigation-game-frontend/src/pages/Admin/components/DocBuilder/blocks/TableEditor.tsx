@@ -1,27 +1,15 @@
 import { AdminInput, AdminSelect, DynamicListHeader, RemoveButton } from '@/pages/Admin/components/AdminUI';
 import { useDynamicList } from '@/hooks/useDynamicList';
-import type { DocBlock } from '@/types/evidence/doc';
+import type { DocBlock, TableBlockProps, TableColumn, TableRow, TableTone } from '@/types/evidence/doc';
 
 interface BlockEditorProps {
-  block: DocBlock;
+  block: DocBlock & { type: 'table'; props: TableBlockProps };
   onUpdate: (updates: Partial<DocBlock>) => void;
   evidenceId: number;
 }
 
-interface TableColumn {
-  key: string;
-  label: string;
-  align?: 'start' | 'center' | 'end';
-  type?: 'text' | 'number' | 'mono' | 'badge';
-  tones?: Record<string, string>;
-}
-
-interface TableRow {
-  [key: string]: string | number;
-}
-
 export function TableEditor({ block, onUpdate }: BlockEditorProps) {
-  const props = block.props as any;
+  const props = block.props;
   const columns = (props.columns || []) as TableColumn[];
   const rows = (props.rows || []) as TableRow[];
 
@@ -46,7 +34,7 @@ export function TableEditor({ block, onUpdate }: BlockEditorProps) {
         <AdminSelect
           label="Tone"
           value={props.tone || 'ledger'}
-          onChange={(e) => onUpdate({ props: { ...props, tone: e.target.value } })}
+          onChange={(e) => onUpdate({ props: { ...props, tone: e.target.value as TableTone } })}
           options={[
             { label: 'Ledger', value: 'ledger' },
             { label: 'Log', value: 'log' },

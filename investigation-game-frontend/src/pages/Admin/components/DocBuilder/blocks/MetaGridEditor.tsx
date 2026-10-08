@@ -1,20 +1,15 @@
 import { AdminInput, AdminSelect, DynamicListHeader, RemoveButton } from '@/pages/Admin/components/AdminUI';
 import { useDynamicList } from '@/hooks/useDynamicList';
-import type { DocBlock } from '@/types/evidence/doc';
+import type { DocBlock, MetaGridProps, MetaRow, MetaGridTone } from '@/types/evidence/doc';
 
 interface BlockEditorProps {
-  block: DocBlock;
+  block: DocBlock & { type: 'meta_grid'; props: MetaGridProps };
   onUpdate: (updates: Partial<DocBlock>) => void;
   evidenceId: number;
 }
 
-interface MetaRow {
-  label: string;
-  value: string;
-}
-
 export function MetaGridEditor({ block, onUpdate }: BlockEditorProps) {
-  const props = block.props as any;
+  const props = block.props;
   const rows = (props.rows || []) as MetaRow[];
 
   const { items, add, update, remove } = useDynamicList(rows, (newRows) =>
@@ -29,7 +24,7 @@ export function MetaGridEditor({ block, onUpdate }: BlockEditorProps) {
         <AdminSelect
           label="Tone"
           value={props.tone || 'rows'}
-          onChange={(e) => onUpdate({ props: { ...props, tone: e.target.value } })}
+          onChange={(e) => onUpdate({ props: { ...props, tone: e.target.value as MetaGridTone } })}
           options={[
             { label: 'Rows', value: 'rows' },
             { label: 'Boxed', value: 'boxed' },

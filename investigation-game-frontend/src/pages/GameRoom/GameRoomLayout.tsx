@@ -13,7 +13,7 @@ import {
 } from '@dnd-kit/core';
 import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 
-import { useRoomData, useRoomUI } from '@/context/RoomContext';
+import { useRoomData, useRoomUI } from '@/context/RoomContext.shared';
 import type { ToastNotification } from '@/context/RoomContext';
 import { leaveRoom } from '@/services/api';
 import { clearRoomSessionData } from '@/utils/storage';
@@ -35,9 +35,11 @@ import styles from './GameRoomLayout.module.css';
 type Tab = 'details' | 'evidences' | 'campaign' | 'characters';
 type SidebarTab = 'ledger' | 'agents' | 'procedural';
 
+import type { FinalStats } from '@/types';
+
 interface GameRoomLayoutProps {
   resolutionMessage: string | null;
-  finalStats: any;
+  finalStats: FinalStats | null;
   toasts: ToastNotification[];
 }
 
@@ -60,7 +62,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
 
   const {
     trayEvidences, requestType, setRequestType, addToTray, removeFromTray,
-    isSubmitting, feedback: requestFeedback, toasts: requestToasts,
+    isSubmitting, feedback: requestFeedback,
     clearFeedback: clearRequestFeedback, submitRequest, filedRequests
   } = useInvestigationRequest(room, refreshRoomData);
 
@@ -144,7 +146,6 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
 
   const hasUnreadEvidence = accumulatedEvidences.some(ev => !viewedEvidences.has(ev.id));
   const hasUnreadCharacters = accumulatedCharacters.some(c => !viewedCharacters.has(c.id));
-  const allToasts = [...toasts, ...requestToasts];
 
   const maxStrikes = room.game_case?.max_strikes || 5;
   const currentStrikes = room.strikes || 0;
@@ -199,7 +200,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
 
         {createPortal(
           <div className="toast-container">
-            {allToasts.map((toast) => (
+            {toasts.map((toast) => (
               <div key={toast.id} className="system-toast-notification">
                 <div className="toast-icon pulse-icon"><img src={toast.icon} alt={toast.type} className="toast-svg-graphic" /></div>
                 <div className="toast-text-block">

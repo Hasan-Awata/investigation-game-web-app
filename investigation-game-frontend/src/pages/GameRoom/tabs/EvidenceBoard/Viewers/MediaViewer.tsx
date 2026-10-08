@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next'; 
 import type { Evidence } from '@/types/evidence';
 import ViewersContainer from './ViewersContainer';
@@ -15,14 +15,21 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [isImageLoaded, setIsImageLoaded] = useState<boolean>(false);
   
-  const mediaUrl = evidence.img_url || (evidence.metadata as Record<string, any>)?.url;
+  const mediaUrl = evidence.img_url || ((evidence.metadata as Record<string, unknown> | null)?.url as string | undefined);
 
-  useEffect(() => {
+  const prevMediaUrlRef = useRef<string | null>(null);
+
+  useLayoutEffect(() => {
     if (evidence.evidence_type !== 'image' || !mediaUrl) return;
+    
+    // Only reset state if mediaUrl actually changed
+    if (prevMediaUrlRef.current !== mediaUrl) {
+      prevMediaUrlRef.current = mediaUrl;
+      setIsImageLoaded(false);
+      setDimensions(null);
+    }
 
     let isMounted = true;
-    setIsImageLoaded(false);
-    setDimensions(null);
 
     const img = new Image();
     img.src = mediaUrl;
@@ -45,7 +52,7 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
 
   if (!mediaUrl) {
     return (
-      <ViewersContainer evidence={evidence}>
+      <ViewersContainer>
         <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
           {t('pages.gameRoom.evidence.viewers.media.noMediaFound')}
         </div>
@@ -58,7 +65,7 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
     : { minHeight: '300px' };
 
   return (
-    <ViewersContainer evidence={evidence}>
+    <ViewersContainer>
       <div className={mediaViewer['media-viewer-wrapper']}>
         {evidence.evidence_type === 'image' ? (
           <div className={mediaViewer['media-image-container']} style={containerStyle}>

@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { useAdminContext } from '@/pages/Admin/context/AdminContext';
-import { useTargeting } from '@/context/TargetingContext';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
-import type { Evidence, Level, Zone, Character } from '@/types';
+import type { Evidence, Level, Character } from '@/types';
 import choiceEditorCardStyles from './ChoiceEditorCard.module.css';
 import adminDashboard from '../../AdminDashboard.module.css';
 
@@ -21,16 +20,6 @@ export interface DraftChoice {
     required_evidence?: number[];
     required_choices?: number[];
   };
-}
-
-export interface LevelWithZone extends Level {
-  zone?: Zone;
-  zone_title?: string;
-}
-
-export interface FlattenedChoice extends DraftChoice {
-  question_id?: number;
-  question_text?: string;
 }
 
 interface ChoiceEditorCardProps {
@@ -55,7 +44,6 @@ export default function ChoiceEditorCard({
   );
 
   const { selectedCase } = useAdminContext();
-  const targeting = useTargeting();
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.choiceEditorCard;
 
@@ -100,8 +88,8 @@ export default function ChoiceEditorCard({
   const hasCoords = choice.text.includes('|') && !choice.text.startsWith('|');
   const coordPreview = hasCoords ? choice.text.split('|')[0].trim() : null;
   
-  const isTargeting = propIsTargeting !== undefined ? propIsTargeting : targeting?.activeTarget === choice.id;
-  const canTarget = onToggleTarget || targeting;
+  const isTargeting = propIsTargeting !== undefined ? propIsTargeting : false;
+  const canTarget = onToggleTarget !== undefined;
 
   return (
     <div className={choiceEditorCardStyles['choice-editor-card']}>
@@ -127,7 +115,7 @@ export default function ChoiceEditorCard({
             <button
               type="button"
               className={`btn-secondary ${choiceEditorCardStyles['target-btn']} ${isTargeting ? choiceEditorCardStyles['active'] : ''}`}
-              onClick={() => onToggleTarget ? onToggleTarget() : targeting?.toggleTarget(choice.id as string | number)}
+              onClick={() => onToggleTarget ? onToggleTarget() : undefined}
             >
               {isTargeting ? t.targetingActive : t.targetingMap}
             </button>

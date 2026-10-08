@@ -1,14 +1,14 @@
 import { AdminInput, AdminSelect } from '@/pages/Admin/components/AdminUI';
-import type { DocBlock } from '@/types/evidence/doc';
+import type { DocBlock, StampProps, StampTone } from '@/types/evidence/doc';
 
 interface BlockEditorProps {
-  block: DocBlock;
+  block: DocBlock & { type: 'stamp'; props: StampProps };
   onUpdate: (updates: Partial<DocBlock>) => void;
   evidenceId: number;
 }
 
 export function StampEditor({ block, onUpdate }: BlockEditorProps) {
-  const props = block.props as any;
+  const props = block.props;
   return (
     <div className="block-editor">
       <AdminInput
@@ -19,7 +19,7 @@ export function StampEditor({ block, onUpdate }: BlockEditorProps) {
       <AdminSelect
         label="Tone"
         value={props.tone || 'official'}
-        onChange={(e) => onUpdate({ props: { ...props, tone: e.target.value } })}
+        onChange={(e) => onUpdate({ props: { ...props, tone: e.target.value as StampTone } })}
         options={[
           { label: 'Official', value: 'official' },
           { label: 'Forged', value: 'forged' },

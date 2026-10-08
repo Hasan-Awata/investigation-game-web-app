@@ -1,8 +1,8 @@
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import type { TerminalBlock, TerminalDocument } from '@/types/evidence/terminal';
-import { TERMINAL_OVERLAY_BLOCK_TYPES, ensureTerminalBlockIds } from '@/types/evidence/terminal';
-import { getBlockComponent } from './blocks';
+import { ensureTerminalBlockIds } from '@/types/evidence/terminal';
+import { getBlockComponent } from './blocks/blocks.registry';
 import TerminalBlockRenderer from './TerminalBlockRenderer';
 import './themes.css';
 import './TerminalViewer.css';
@@ -15,7 +15,7 @@ interface TerminalSheetProps {
   interactiveOverlay?: boolean;
 }
 
-const OVERLAY = new Set<string>(TERMINAL_OVERLAY_BLOCK_TYPES);
+const OVERLAY = new Set<string>([]);
 
 export default function TerminalSheet({
   doc,

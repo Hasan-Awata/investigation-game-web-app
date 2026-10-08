@@ -39,23 +39,26 @@ interface InspectorProps {
   };
 }
 
-const EDITORS: Record<DocBlockType, (props: { block: DocBlock; onUpdate: (updates: Partial<DocBlock>) => void; onUploadImage?: (blockId: string) => void; evidenceId: number }) => React.ReactElement> = {
-  letterhead: LetterheadEditor,
-  meta_grid: MetaGridEditor,
-  prose: ProseEditor,
-  two_column: TwoColumnEditor,
-  table: TableEditor,
-  list: ListEditor,
-  signature_row: SignatureRowEditor,
-  stamp: StampEditor,
-  barcode: BarcodeEditor,
-  watermark: WatermarkEditor,
-  rule: RuleEditor,
-  spacer: SpacerEditor,
-  image: ImageEditor,
-  annotation: AnnotationEditor,
-  redaction: RedactionEditor,
-  diagram: DiagramEditor,
+type EditorComponent = (props: { block: DocBlock; onUpdate: (updates: Partial<DocBlock>) => void; onUploadImage?: (blockId: string) => void; evidenceId: number }) => React.ReactElement;
+
+// Use type assertions to allow the discriminated union types to be assigned
+const EDITORS: Record<DocBlockType, EditorComponent> = {
+  letterhead: LetterheadEditor as EditorComponent,
+  meta_grid: MetaGridEditor as EditorComponent,
+  prose: ProseEditor as EditorComponent,
+  two_column: TwoColumnEditor as EditorComponent,
+  table: TableEditor as EditorComponent,
+  list: ListEditor as EditorComponent,
+  signature_row: SignatureRowEditor as EditorComponent,
+  stamp: StampEditor as EditorComponent,
+  barcode: BarcodeEditor as EditorComponent,
+  watermark: WatermarkEditor as EditorComponent,
+  rule: RuleEditor as EditorComponent,
+  spacer: SpacerEditor as EditorComponent,
+  image: ImageEditor as EditorComponent,
+  annotation: AnnotationEditor as EditorComponent,
+  redaction: RedactionEditor as EditorComponent,
+  diagram: DiagramEditor as EditorComponent,
 };
 
 export function Inspector({ block, onUpdate, onRemove, onDuplicate, onUploadImage, evidenceId, t }: InspectorProps) {

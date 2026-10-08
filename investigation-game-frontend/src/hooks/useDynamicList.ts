@@ -8,7 +8,7 @@ export function useDynamicList<T>(
     onChange([...list, newItem]);
   }, [list, onChange]);
 
-  const update = useCallback((index: number, field: keyof T, value: any) => {
+  const update = useCallback((index: number, field: keyof T, value: T[keyof T]) => {
     const newList = [...list];
     newList[index] = { ...newList[index], [field]: value };
     onChange(newList);
@@ -20,12 +20,8 @@ export function useDynamicList<T>(
     onChange(newList);
   }, [list, onChange]);
 
-  const remove = useCallback((index: number, resequenceField?: keyof T) => {
-    let newList = list.filter((_, i) => i !== index);
-    if (resequenceField) {
-      // Safely map and re-assign the sequence field (e.g., page_number)
-      newList = newList.map((item, i) => ({ ...item, [resequenceField]: i + 1 }));
-    }
+  const remove = useCallback((index: number) => {
+    const newList = list.filter((_, i) => i !== index);
     onChange(newList);
   }, [list, onChange]);
 

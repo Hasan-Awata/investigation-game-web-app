@@ -1,19 +1,15 @@
 import { AdminInput, DynamicListHeader, RemoveButton } from '@/pages/Admin/components/AdminUI';
 import { useDynamicList } from '@/hooks/useDynamicList';
-import type { DocBlock } from '@/types/evidence/doc';
+import type { DocBlock, SignatureRowProps, SignatureColumn } from '@/types/evidence/doc';
 
 interface BlockEditorProps {
-  block: DocBlock;
+  block: DocBlock & { type: 'signature_row'; props: SignatureRowProps };
   onUpdate: (updates: Partial<DocBlock>) => void;
   evidenceId: number;
 }
 
-interface SignatureColumn {
-  caption: string;
-}
-
 export function SignatureRowEditor({ block, onUpdate }: BlockEditorProps) {
-  const props = block.props as any;
+  const props = block.props;
   const columns = (props.columns || []) as SignatureColumn[];
 
   const { items, add, update, remove } = useDynamicList(columns, (newCols) =>

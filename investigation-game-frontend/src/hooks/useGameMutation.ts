@@ -1,6 +1,7 @@
 import { useMutation, type UseMutationResult } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { useRoomActions, type ToastNotification } from '@/context/RoomContext';
+import { useRoomUI } from '@/context/RoomContext.shared';
+import type { ToastNotification } from '@/context/RoomContext';
 import type { Result } from '@/utils/Result';
 import { getSafeString } from '@/utils/parsers';
 
@@ -104,7 +105,7 @@ export function useGameMutation<TData, TVars = void, TContext = unknown>(
   config: GameMutationConfig<TData, TVars, TContext>,
 ): UseMutationResult<TData, Error, TVars, TContext> {
   const { t } = useTranslation();
-  const { setGlobalFeedback, addGlobalToast } = useRoomActions();
+  const { setGlobalFeedback, addGlobalToast } = useRoomUI();
 
   const {
     mutationFn,

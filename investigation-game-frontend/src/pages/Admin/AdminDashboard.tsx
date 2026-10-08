@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { AdminProvider, useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { AdminProvider } from '@/pages/Admin/context/AdminContext';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
 
 import CaseForm from './forms/CaseForm';
 import ZoneForm from './forms/ZoneForm';

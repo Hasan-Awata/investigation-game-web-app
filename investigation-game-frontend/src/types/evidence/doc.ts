@@ -324,20 +324,3 @@ export const ensureBlockIds = (blocks: DocBlock[]): DocBlock[] =>
     return withId;
   });
 
-/* ------------------------------------------------------------------ *
- * Templates (imported from viewer to keep single source of truth)
- * ------------------------------------------------------------------ */
-
-export type TemplateName =
-  | 'correspondence'
-  | 'financial_record'
-  | 'journal'
-  | 'contract'
-  | 'memo'
-  | 'background_check'
-  | 'phone_records'
-  | 'autopsy'
-  | 'ballistics'
-  | 'dna'
-  | 'digital_forensics'
-  | 'trace_analysis';

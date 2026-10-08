@@ -3,7 +3,6 @@ import { useEvidenceContext } from '../EvidenceContext';
 import viewersContainer from './ViewersContainer.module.css';
 
 interface ViewersContainerProps {
-  evidence: { id: string | number; [key: string]: any };
   children: React.ReactNode;
 }
 
@@ -19,11 +18,15 @@ const ViewersContainer: React.FC<ViewersContainerProps> = ({ children }) => {
   
   const contentRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const prevFullscreenRef = useRef(isFullscreen);
 
   // Reset zoom and pan when entering or exiting fullscreen
   useLayoutEffect(() => {
-    setZoom(1);
-    setPosition({ x: 0, y: 0 });
+    if (prevFullscreenRef.current !== isFullscreen) {
+      prevFullscreenRef.current = isFullscreen;
+      setZoom(prev => (prev === 1 ? prev : 1));
+      setPosition(prev => (prev.x === 0 && prev.y === 0 ? prev : { x: 0, y: 0 }));
+    }
   }, [isFullscreen]);
 
   useLayoutEffect(() => {

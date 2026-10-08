@@ -1,33 +1,36 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRoomState, useRoomActions } from '@/context/RoomContext';
+import { useRoomData, useRoomUI } from '@/context/RoomContext.shared';
 import { useGameMutation } from './useGameMutation';
 import { getLocalUser } from '@/utils/userState';
 import { getSafeString } from '@/utils/parsers';
-import type { Choice } from '@/types';
+import type { Choice, RoomVote } from '@/types';
 import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/services/api';
 
 export type { ToastNotification, GlobalFeedback } from '@/context/RoomContext';
 
+interface CharacterUpdate {
+  is_unlocked?: boolean;
+  status?: string;
+}
+
 export function useInvestigationPhase() {
   const { t } = useTranslation();
-  const { room } = useRoomState();
-  const { refreshRoomData, addGlobalToast, setGlobalFeedback } = useRoomActions();
+  const { room, refreshRoomData } = useRoomData();
+  const { addGlobalToast, setGlobalFeedback } = useRoomUI();
 
-  const [localVotes, setLocalVotes] = useState<Record<number, number>>({});
   const roomId = room.id;
 
-  useEffect(() => {
+  const localVotes = useMemo(() => {
     const currentUser = getLocalUser();
-    if (!currentUser) return;
-
+    if (!currentUser) return {};
     const serverVotes: Record<number, number> = {};
-    room.votes?.forEach((vote: any) => {
+    room.votes?.forEach((vote: RoomVote) => {
       if (vote.user_id === currentUser.id) {
         serverVotes[vote.question_id] = vote.choice_id;
       }
     });
-    setLocalVotes(serverVotes);
+    return serverVotes;
   }, [room.votes]);
 
   const voteMutation = useGameMutation({
@@ -56,8 +59,6 @@ export function useInvestigationPhase() {
           message: getSafeString(data.message, '')
         });
 
-        // 1. UPDATE STATE IMMEDIATELY (Eliminates the 4-second block)
-        setLocalVotes({});
         refreshRoomData();
 
         // 2. ONLY DELAY THE MODAL DISMISSAL
@@ -70,7 +71,6 @@ export function useInvestigationPhase() {
           title: t('pages.gameRoom.hooks.phase.theoryRejected'),
           message: getSafeString(data.message, t('pages.gameRoom.hooks.phase.systemError'))
         });
-        setLocalVotes({});
         refreshRoomData();
       }
     }
@@ -89,11 +89,11 @@ export function useInvestigationPhase() {
   });
 
   // --- NEW: Safe Event Handling ---
-  const handleSelectChoice = (e: React.MouseEvent | any, questionId: number, choice: Choice, status: string) => {
+  type EventWithStop = React.MouseEvent | React.KeyboardEvent | undefined;
+
+  const handleSelectChoice = (e: EventWithStop, questionId: number, choice: Choice, status: string) => {
     if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
     if (status !== 'active') return;
-
-    setLocalVotes(prev => ({ ...prev, [questionId]: choice.id }));
 
     if (choice.outcomes?.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) {
       addGlobalToast({
@@ -112,10 +112,10 @@ export function useInvestigationPhase() {
       });
     }
     if (choice.outcomes?.character_updates && choice.outcomes.character_updates.length > 0) {
-      choice.outcomes.character_updates.forEach((update: any) => {
+      (choice.outcomes.character_updates as CharacterUpdate[]).forEach((update) => {
         if (update.is_unlocked) {
           addGlobalToast({
-            type: 'character', // Custom type for styling
+            type: 'character',
             title: t('pages.gameRoom.hooks.phase.personOfInterest'),
             message: t('pages.gameRoom.hooks.phase.personOfInterestMsg'),
             icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232'
@@ -135,7 +135,7 @@ export function useInvestigationPhase() {
     voteMutation.mutate({ questionId, choiceId: choice.id });
   };
 
-  const handleSubmitTheory = useCallback((e?: React.MouseEvent | any) => {
+  const handleSubmitTheory = useCallback((e?: EventWithStop) => {
     if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
 
     // STRICT GUARD: Block submission entirely if the room has no active level currently in play
@@ -146,7 +146,7 @@ export function useInvestigationPhase() {
     submitTheoryMutation.mutate();
   }, [room.current_level_id, submitTheoryMutation]);
 
-  const clearFeedback = (e?: React.MouseEvent | any) => {
+  const clearFeedback = (e?: EventWithStop) => {
     if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
     setGlobalFeedback(null);
   };

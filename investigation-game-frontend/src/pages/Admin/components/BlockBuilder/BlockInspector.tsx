@@ -1,25 +1,7 @@
 import type { FC } from 'react';
-import type { DocBlock } from '@/types/evidence/doc';
-import type { TerminalBlock } from '@/types/evidence/terminal';
-import type { BlockAlign } from '@/types/evidence/shared';
+import type { BlockAlign, BlockBase } from '@/types/evidence/shared';
 import { clampSpan } from '@/types/evidence/shared';
 import styles from './BlockInspector.module.css';
-
-type AnyBlock = DocBlock | TerminalBlock;
-
-interface DocEditorProps {
-  block: DocBlock;
-  onUpdate: (updates: Partial<DocBlock>) => void;
-  evidenceId: number;
-}
-
-interface TerminalEditorProps {
-  block: TerminalBlock;
-  onUpdate: (updates: Partial<TerminalBlock>) => void;
-  evidenceId: number;
-}
-
-type AnyEditor = FC<DocEditorProps> | FC<TerminalEditorProps>;
 
 interface InspectorTranslations {
   inspectorTitle: string;
@@ -36,18 +18,22 @@ interface InspectorTranslations {
   alignEnd?: string;
 }
 
-interface BlockInspectorProps {
-  block: AnyBlock | null;
-  onUpdate: (id: string, updates: Partial<AnyBlock>) => void;
+interface TypedBlockBase extends BlockBase {
+  type: string;
+}
+
+interface BlockInspectorProps<TBlock extends TypedBlockBase> {
+  block: TBlock | null;
+  onUpdate: (id: string, updates: Partial<BlockBase>) => void;
   onRemove: (id: string) => void;
   onDuplicate: (id: string) => void;
   onUploadImage?: (blockId: string) => void;
   evidenceId: number;
-  editors: Record<string, AnyEditor>;
+  editors: Record<string, FC<{ block: TBlock; onUpdate: (updates: Partial<BlockBase>) => void; evidenceId: number }>>;
   t: InspectorTranslations;
 }
 
-export function BlockInspector({
+export function BlockInspector<TBlock extends TypedBlockBase>({
   block,
   onUpdate,
   onRemove,
@@ -56,7 +42,7 @@ export function BlockInspector({
   evidenceId,
   editors,
   t,
-}: BlockInspectorProps) {
+}: BlockInspectorProps<TBlock>) {
   if (!block) {
     return (
       <div className={styles.inspector}>
@@ -130,7 +116,7 @@ export function BlockInspector({
 
       {Editor && (
         <div className={styles.editorWrapper}>
-          <Editor block={block as any} onUpdate={(updates) => onUpdate(block.id, updates)} evidenceId={evidenceId} />
+          <Editor block={block} onUpdate={(updates) => onUpdate(block.id, updates)} evidenceId={evidenceId} />
         </div>
       )}
 

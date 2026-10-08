@@ -5,14 +5,42 @@ interface AdminFormLayoutProps {
   editingId: number | string | null;
   entityName: string;
   contextHeader?: string;
-  feedback?: { type: 'success' | 'error'; message: string } | null;
   onCancel?: () => void;
   children: ReactNode;
+  contextMissing?: ReactNode;
+  submitLabel?: { creating: string; editing: string; processing: string };
+  isProcessing?: boolean;
 }
 
-export default function AdminFormLayout({ editingId, entityName, contextHeader, onCancel, children }: AdminFormLayoutProps) {
+export default function AdminFormLayout({ 
+  editingId, 
+  entityName, 
+  contextHeader, 
+  onCancel, 
+  children, 
+  contextMissing,
+  submitLabel,
+  isProcessing = false 
+}: AdminFormLayoutProps) {
   const { adminT } = useAdminTranslation();
-  const t = adminT.component.adminFormLayout;
+  const t = adminT.component.adminFormLayout as Record<string, string>;
+
+  const defaultLabels = {
+    creating: t.commitEntity ?? `Create ${entityName}`,
+    editing: t.updateEntity ?? `Update ${entityName}`,
+    processing: t.processingData ?? 'Processing...'
+  };
+
+  const labels = submitLabel || defaultLabels;
+  const submitText = isProcessing ? labels.processing : (editingId ? labels.editing : labels.creating);
+
+  if (contextMissing) {
+    return (
+      <div className="admin-form-wrapper glass-panel">
+        {contextMissing}
+      </div>
+    );
+  }
 
   return (
     <div className="admin-form-wrapper glass-panel">
@@ -35,6 +63,9 @@ export default function AdminFormLayout({ editingId, entityName, contextHeader, 
           )}
         </div>
         {children}
+        <button type="submit" className={`btn-primary ${editingId ? 'editing' : 'creating'}`} style={{ marginTop: '1.5rem', width: '100%' }}>
+          {submitText}
+        </button>
       </div>
     </div>
   );

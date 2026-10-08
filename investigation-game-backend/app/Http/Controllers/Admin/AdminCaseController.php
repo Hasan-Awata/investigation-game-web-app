@@ -350,68 +350,104 @@ class AdminCaseController extends Controller
             }
 
             // PASS 6: Questions and Choices
-            foreach ($zonesDataArray as $ldata) {$nodeIndexMap = []; // Maps JSON node array index to actual question DB ID
+            foreach ($zonesDataArray as $ldata) {
+                $nodeIndexMap = []; // Maps JSON node array index to actual question DB ID
 
                 // Sub-Pass A: Insert Questions First (to generate IDs for dialogue trees)
-                foreach ($ldata['nodes'] as$index => $nodeData) {$question = \App\Models\Question::create([
+                foreach ($ldata['nodes'] as $index => $nodeData) {
+                    $question = \App\Models\Question::create([
                         'level_id' => $ldata['level_id'],
                         'text' => $nodeData['text'],
                     ]);
-                    $nodeIndexMap[$index] =$question->id;
+                    $nodeIndexMap[$index] = $question->id;
                 }
 
-                // Sub-Pass B: Insert Choices and connect internal routing
-                foreach ($ldata['nodes'] as$index => $nodeData) {$questionId = $nodeIndexMap[$index];
-
-                    foreach ($nodeData['choices'] as$choiceData) {
-                        $outcomes =$choiceData['outcomes'] ?? [];
-                        $requirements =$choiceData['requirements'] ?? [];
-
-                        // Build Outcomes Array
+                // Sub-Pass B1: Insert Choices First (to populate choice ref map for requirements)
+                $choiceDataByQuestion = [];
+                foreach ($ldata['nodes'] as $index => $nodeData) {
+                    $questionId = $nodeIndexMap[$index];
+                    $choiceDataByQuestion[$questionId] = $nodeData['choices'] ?? [];
+                    
+                    foreach ($nodeData['choices'] as $choiceData) {
+                        $outcomes = $choiceData['outcomes'] ?? [];
+                        
+                        // Build Outcomes Array (without requirements that need choice refs)
                         $mappedOutcomes = [];
-                        if (isset($outcomes['feedback'])) $mappedOutcomes['feedback'] =$outcomes['feedback'];
-                        if (isset($outcomes['gives_strike'])) $mappedOutcomes['gives_strike'] =$outcomes['gives_strike'];
-                        if (isset($outcomes['next_question_index']) && $outcomes['next_question_index'] !== null) {$mappedOutcomes['next_question_id'] = $nodeIndexMap[$outcomes['next_question_index']] ?? null;
+                        if (isset($outcomes['feedback'])) $mappedOutcomes['feedback'] = $outcomes['feedback'];
+                        if (isset($outcomes['gives_strike'])) $mappedOutcomes['gives_strike'] = $outcomes['gives_strike'];
+                        if (isset($outcomes['next_question_index']) && $outcomes['next_question_index'] !== null) {
+                            $mappedOutcomes['next_question_id'] = $nodeIndexMap[$outcomes['next_question_index']] ?? null;
                         }
 
-                        $mapRefs = function($refs, $type) use ($refMaps) {
+                        $mapRefs = function ($refs, $type) use ($refMaps) {
                             if (!is_array($refs)) return [];
                             return array_values(array_filter(array_map(fn($r) => $refMaps[$type][$r] ?? null, $refs)));
                         };
 
-                        if (!empty($outcomes['unlock_evidence_refs']))$mappedOutcomes['unlock_evidence'] = $mapRefs($outcomes['unlock_evidence_refs'], 'evidence');
-                        if (!empty($outcomes['unlock_levels_refs']))$mappedOutcomes['unlock_levels'] = $mapRefs($outcomes['unlock_levels_refs'], 'level');
+                        if (!empty($outcomes['unlock_evidence_refs'])) $mappedOutcomes['unlock_evidence'] = $mapRefs($outcomes['unlock_evidence_refs'], 'evidence');
+                        if (!empty($outcomes['unlock_levels_refs'])) $mappedOutcomes['unlock_levels'] = $mapRefs($outcomes['unlock_levels_refs'], 'level');
 
                         // Map the dynamic character updates array
-                        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {$mappedCharUpdates = [];
-                            foreach ($outcomes['character_updates'] as$update) {
-                                if (isset($update['ref_id']) && isset($refMaps['character'][$update['ref_id']])) {$mappedUpdate = ['id' => $refMaps['character'][$update['ref_id']]];
-                                    if (isset($update['is_unlocked'])) $mappedUpdate['is_unlocked'] =$update['is_unlocked'];
-                                    if (isset($update['status'])) $mappedUpdate['status'] =$update['status'];
-                                    $mappedCharUpdates[] =$mappedUpdate;
+                        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {
+                            $mappedCharUpdates = [];
+                            foreach ($outcomes['character_updates'] as $update) {
+                                if (isset($update['ref_id']) && isset($refMaps['character'][$update['ref_id']])) {
+                                    $mappedUpdate = ['id' => $refMaps['character'][$update['ref_id']]];
+                                    if (isset($update['is_unlocked'])) $mappedUpdate['is_unlocked'] = $update['is_unlocked'];
+                                    if (isset($update['status'])) $mappedUpdate['status'] = $update['status'];
+                                    $mappedCharUpdates[] = $mappedUpdate;
                                 }
                             }
                             if (!empty($mappedCharUpdates)) {
-                                $mappedOutcomes['character_updates'] =$mappedCharUpdates;
+                                $mappedOutcomes['character_updates'] = $mappedCharUpdates;
                             }
                         }
 
-                        // Build Requirements Array
-                        $mappedReqs = [];
-                        if (!empty($requirements['required_evidence_refs'])) {$mappedReqs['required_evidence'] = $mapRefs($requirements['required_evidence_refs'], 'evidence');
-                        }
-                        if (!empty($requirements['required_choice_refs'])) {$mappedReqs['required_choices'] = $mapRefs($requirements['required_choice_refs'], 'choice');
-                        }
-
                         // Create choice so Eloquent arrays are casted to JSON properly and we retrieve the auto-increment ID
+                        // Note: requirements will be added in Sub-Pass B2
                         $choice = \App\Models\Choice::create([
                             'question_id' => $questionId,
                             'text' => $choiceData['text'],
-                            'outcomes' => !empty($mappedOutcomes) ?$mappedOutcomes : null,
-                            'requirements' => !empty($mappedReqs) ?$mappedReqs : null,
+                            'outcomes' => !empty($mappedOutcomes) ? $mappedOutcomes : null,
+                            'requirements' => null,
                         ]);
 
-                        if (isset($choiceData['ref_id'])) {$refMaps['choice'][$choiceData['ref_id']] =$choice->id;
+                        if (isset($choiceData['ref_id'])) {
+                            $refMaps['choice'][$choiceData['ref_id']] = $choice->id;
+                        }
+                    }
+                }
+
+                // Sub-Pass B2: Update Choices with requirements (now all choice refs are in the map)
+                foreach ($choiceDataByQuestion as $questionId => $choicesData) {
+                    foreach ($choicesData as $choiceData) {
+                        $requirements = $choiceData['requirements'] ?? [];
+                        
+                        $mapRefs = function ($refs, $type) use ($refMaps) {
+                            if (!is_array($refs)) return [];
+                            return array_values(array_filter(array_map(fn($r) => $refMaps[$type][$r] ?? null, $refs)));
+                        };
+
+                        // Build Requirements Array
+                        $mappedReqs = [];
+                        if (!empty($requirements['required_evidence_refs'])) {
+                            $mappedReqs['required_evidence'] = $mapRefs($requirements['required_evidence_refs'], 'evidence');
+                        }
+                        if (!empty($requirements['required_choice_refs'])) {
+                            $mappedReqs['required_choices'] = $mapRefs($requirements['required_choice_refs'], 'choice');
+                        }
+
+                        // Update the choice with requirements
+                        if (!empty($mappedReqs)) {
+                            // Find the choice we just created (by question_id and text matching)
+                            // Since we don't have a direct mapping, we need to query
+                            $choice = \App\Models\Choice::where('question_id', $questionId)
+                                ->where('text', $choiceData['text'])
+                                ->first();
+                            
+                            if ($choice) {
+                                $choice->update(['requirements' => $mappedReqs]);
+                            }
                         }
                     }
                 }

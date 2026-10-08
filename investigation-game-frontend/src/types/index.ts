@@ -141,12 +141,28 @@ export interface FinalStats {
   innocents_accused: number;
 }
 
+export interface ChoiceOutcomes {
+  feedback?: string;
+  next_question_id?: number | null;
+  gives_strike?: boolean;
+  unlock_evidence?: number[];
+  unlock_levels?: number[];
+  unlock_suspects?: number[];
+  unlock_victims?: number[];
+  character_updates?: { id: number; is_unlocked?: boolean; status?: string }[];
+}
+
+export interface ChoiceRequirements {
+  required_evidence?: number[];
+  required_choices?: number[];
+}
+
 export interface Choice {
   id: number;
   question_id: number;
   text: string;
-  outcomes?: Record<string, any> | null; 
-  requirements?: Record<string, any> | null; 
+  outcomes?: ChoiceOutcomes | null;
+  requirements?: ChoiceRequirements | null;
 }
 
 export interface Question {

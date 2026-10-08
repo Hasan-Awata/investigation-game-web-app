@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { sanitizeHtml } from '@/utils/sanitize';
 import type { TestimonyEvidence } from '@/types/evidence'; 
 import ViewersContainer from './ViewersContainer';
+import { signatureUrl } from '@/pages/GameRoom/tabs/EvidenceBoard/DocViewer/blocks/signatureAsset';
 import testimonyViewer from './TestimonyViewer.module.css';
 
 interface TestimonyViewerProps {
@@ -23,15 +24,8 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
     transcript = []
   } = evidence.metadata || {};
 
-  const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-  const getSignature = (seed: number) => {
-    const idx = (seed % 18) + 1; 
-    const fileName = idx === 1 ? 'signature.svg' : `signature-${idx}.svg`;
-    return `${backendUrl}/assets/signatures/${fileName}`;
-  };
-
   return (
-    <ViewersContainer evidence={evidence}>
+    <ViewersContainer>
       <div className={testimonyViewer['testimony-modal-viewer']}>
         <div className={testimonyViewer['testimony-paper']}>
           
@@ -75,7 +69,7 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
             
             <div className={testimonyViewer['transcript-content']}>
               {Array.isArray(transcript) ? (
-                transcript.map((line: any, idx: number) => (
+                transcript.map((line: { speaker: string; text: string; type?: string }, idx: number) => (
                   <div key={idx} 
                     className={`${testimonyViewer['transcript-line']} ${line.type === 'q' ? testimonyViewer['transcript-q'] : testimonyViewer['transcript-a']}`}>
                     <span className={testimonyViewer['speaker-tag']}>{line.speaker}:</span>
@@ -96,7 +90,7 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
             <div className={testimonyViewer['signature-area']}>
               <div className={testimonyViewer['steno-signature']}>
                 <img 
-                  src={getSignature(evidence.id)} 
+                  src={signatureUrl(evidence.id % 19)} 
                   alt="Stenographer Signature" 
                   className={testimonyViewer['steno-signature-img']} 
                 />

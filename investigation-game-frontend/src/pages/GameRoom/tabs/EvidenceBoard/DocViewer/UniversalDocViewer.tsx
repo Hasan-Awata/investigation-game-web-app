@@ -24,7 +24,7 @@ export default function UniversalDocViewer({ evidence, doc }: UniversalDocViewer
   const resolved = useMemo(() => normalizeDoc(doc ?? evidence.metadata), [doc, evidence.metadata]);
 
   return (
-    <ViewersContainer evidence={evidence as { id: number; [key: string]: unknown }}>
+    <ViewersContainer>
       <DocSheet doc={resolved} evidenceId={evidence.id} />
     </ViewersContainer>
   );

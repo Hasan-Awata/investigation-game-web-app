@@ -3,14 +3,20 @@ import toast from 'react-hot-toast';
 import { useAdminMutations } from '@/pages/Admin/hooks/useAdminMutations';
 import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
 import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '@/pages/Admin/utils/questionUtils';
-import type { Question } from '@/types';
+import type { Choice } from '@/types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import choiceEditorCard from '../Shared/ChoiceEditorCard.module.css';
 import adminInterrogationBuilder from './AdminInterrogationBuilder.module.css';
 import adminDashboard from '../../AdminDashboard.module.css';
 
+interface NodeData {
+  id: number | string;
+  text: string;
+  choices?: Choice[];
+}
+
 interface AdminInterrogationFormProps {
-  nodeData: Question | any;
+  nodeData: NodeData;
   levelId: string;
   onSaved: () => void;
   onDeleted: () => void;
@@ -20,11 +26,11 @@ export default function AdminInterrogationForm({
   nodeData, levelId, onSaved, onDeleted
 }: AdminInterrogationFormProps) {
   const [text, setText] = useState(nodeData.text || '');
-  const isSaved = typeof nodeData.id === 'number';
+  const savedId = typeof nodeData.id === 'number' ? nodeData.id : null;
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.interrogationForm;
 
-  const initialChoices: DraftChoice[] = (nodeData.choices || []).map((c: any) => ({
+  const initialChoices: DraftChoice[] = (nodeData.choices || []).map((c: Choice) => ({
     id: c.id || crypto.randomUUID(),
     text: c.text || '',
     outcomes: { ...defaultOutcomes(), ...(c.outcomes || {}) },
@@ -57,8 +63,8 @@ export default function AdminInterrogationForm({
       choices: choicesState,
     });
 
-    if (isSaved) {
-      updateEntity({ id: nodeData.id, formData }, { onSuccess: onSaved });
+    if (savedId !== null) {
+      updateEntity({ id: savedId, formData }, { onSuccess: onSaved });
     } else {
       createEntity(formData, { onSuccess: onSaved });
     }
@@ -66,15 +72,17 @@ export default function AdminInterrogationForm({
 
   const handleDelete = () => {
     if (window.confirm(t.deleteConfirm)) {
-      deleteEntity(nodeData.id, { onSuccess: onDeleted });
+      if (savedId !== null) {
+        deleteEntity(savedId, { onSuccess: onDeleted });
+      }
     }
   };
 
-  return (
+return (
     <div 
-      className={`${adminInterrogationBuilder['dialogue-node-card']} ${isSaved ? '' : adminInterrogationBuilder['unsaved']}`}>
+      className={`${adminInterrogationBuilder['dialogue-node-card']} ${savedId !== null ? '' : adminInterrogationBuilder['unsaved']}`}>
       <div className={adminInterrogationBuilder['node-header']}>
-        <span className={adminInterrogationBuilder['node-id-badge']}>{isSaved ? t.nodeIdBadge(nodeData.id) : t.unsavedBadge}</span>
+        <span className={adminInterrogationBuilder['node-id-badge']}>{savedId !== null ? t.nodeIdBadge(savedId) : t.unsavedBadge}</span>
       </div>
 
       <div className={adminInterrogationBuilder['node-body']}>
@@ -117,9 +125,9 @@ export default function AdminInterrogationForm({
 
       <div className={adminInterrogationBuilder['node-footer']}>
         <button className="btn-primary" onClick={handleSave} disabled={isProcessing}>
-          {isProcessing ? t.syncingBtn : isSaved ? t.updateBtn : t.commitBtn}
+          {isProcessing ? t.syncingBtn : savedId !== null ? t.updateBtn : t.commitBtn}
         </button>
-        {isSaved && (
+        {savedId !== null && (
           <button className={`btn-secondary ${choiceEditorCard['delete-btn']}`} style={{ borderColor: 'var(--accent-crimson)', color: 'var(--accent-crimson)' }} onClick={handleDelete} disabled={isProcessing}>
             {t.deleteBtn}
           </button>

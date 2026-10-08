@@ -4,14 +4,12 @@ import styles from './BlockPalette.module.css';
 interface BlockPaletteProps<TBlockType extends string> {
   blockTypes: readonly TBlockType[];
   getBlockLabel: (type: TBlockType) => string;
-  getBlockIcon: (type: TBlockType) => React.ReactNode;
   onSelect: (type: TBlockType) => void;
 }
 
 export function BlockPalette<TBlockType extends string>({
   blockTypes,
   getBlockLabel,
-  getBlockIcon,
   onSelect,
 }: BlockPaletteProps<TBlockType>) {
   const { adminT } = useAdminTranslation();
@@ -28,7 +26,6 @@ export function BlockPalette<TBlockType extends string>({
             onClick={() => onSelect(type)}
             data-type={type}
           >
-            <span className={styles.paletteIcon}>{getBlockIcon(type)}</span>
             <span className={styles.paletteLabel}>{getBlockLabel(type)}</span>
           </button>
         ))}

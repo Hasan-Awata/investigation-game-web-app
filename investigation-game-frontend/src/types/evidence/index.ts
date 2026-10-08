@@ -61,13 +61,13 @@ export interface MediaEvidence extends BaseEvidence {
 // 3. THE MASTER TYPE
 export type Evidence = DocEvidence | DigitalEvidence | TestimonyEvidence | MediaEvidence;
 
-/** True for the types that render through the block engine (paper surface). */
-export const isDocEvidence = (e: Evidence): e is DocEvidence =>
-  e.evidence_type === 'document' || e.evidence_type === 'forensic';
-
 /** True for digital evidence (terminal surface). */
 export const isDigitalEvidence = (e: Evidence): e is DigitalEvidence =>
   e.evidence_type === 'digital';
+
+/** True for document / forensic evidence (paper surface). */
+export const isDocEvidence = (e: Evidence): e is DocEvidence =>
+  e.evidence_type === 'document' || e.evidence_type === 'forensic';
 
 /**
  * Single authority for surface routing. Replaces the ad-hoc `isDocType()`/`isDocEvidenceType()`.

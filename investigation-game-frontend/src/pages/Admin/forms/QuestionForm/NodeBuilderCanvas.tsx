@@ -1,15 +1,15 @@
 import type { ReactNode } from 'react';
-import { useAdminContext } from '@/pages/Admin/context/AdminContext';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
 import LevelBuilderGuard from '../Shared/LevelBuilderGuard';
-import type { Question } from '@/types';
+import type { Question, GameCase, Zone, Level } from '@/types';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import adminDashboard from '../../AdminDashboard.module.css';
 
 interface CanvasContext {
   levelId: string;
-  selectedCase: any;
-  selectedZone: any;
-  selectedLevel: any;
+  selectedCase: GameCase | undefined;
+  selectedZone: Zone | undefined;
+  selectedLevel: Level | undefined;
   savedNodes: Question[];
 }
 

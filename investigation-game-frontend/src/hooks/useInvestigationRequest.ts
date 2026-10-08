@@ -4,14 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { submitInvestigationRequest } from '@/services/api';
 import { useGameMutation } from './useGameMutation';
 import type { GameRoom } from '@/types';
-import type { ToastNotification } from './useInvestigationPhase';
-
-export interface FiledRequest {
-  id: number | string;
-  request_type: string;
-  created_at: string;
-  evidence_ids: number[];
-}
+import type { FiledRequest } from '@/types';
+import { useRoomUI } from '@/context/RoomContext.shared';
 
 interface RequestRollback {
   previousRoom: unknown;
@@ -20,11 +14,11 @@ interface RequestRollback {
 export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => void) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { addGlobalToast } = useRoomUI();
   
   const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
   const [requestType, setRequestType] = useState<string>('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-  const [toasts, setToasts] = useState<ToastNotification[]>([]);
 
   // Derived directly from the authoritative room payload
   const filedRequests: FiledRequest[] = room.filed_requests || [];
@@ -48,7 +42,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
         evidence_ids: [...trayEvidences]
       };
 
-      queryClient.setQueryData(['gameRoom', room.invite_code], (old: any) => {
+      queryClient.setQueryData(['gameRoom', room.invite_code], (old: GameRoom | undefined) => {
         if (!old) return old;
         return {
           ...old,
@@ -71,11 +65,8 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
 
       // Trigger respective toast notifications based on what the DA unlocked
       setTimeout(() => {
-        const newToasts: ToastNotification[] = [];
-
         if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
-          newToasts.push({
-            id: crypto.randomUUID(),
+          addGlobalToast({
             type: 'evidence',
             title: t('pages.gameRoom.hooks.request.proceduralApproved'),
             message: t('pages.gameRoom.hooks.request.proceduralApprovedMsg'),
@@ -84,20 +75,12 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
         }
 
         if (data.unlocked_levels && data.unlocked_levels.length > 0) {
-          newToasts.push({
-            id: crypto.randomUUID(),
+          addGlobalToast({
             type: 'level',
             title: t('pages.gameRoom.hooks.request.warrantExecuted'),
             message: t('pages.gameRoom.hooks.request.warrantExecutedMsg'),
             icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e'
           });
-        }
-
-        if (newToasts.length > 0) {
-          setToasts(prev => [...prev, ...newToasts]);
-          setTimeout(() => {
-            setToasts((prev) => prev.filter((t) => !newToasts.some((nt) => nt.id === t.id)));
-          }, 5000);
         }
       }, 500);
     }
@@ -123,7 +106,6 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
     removeFromTray,
     isSubmitting: requestMutation.isPending,
     feedback,
-    toasts,
     clearFeedback,
     submitRequest: requestMutation.mutate,
     filedRequests

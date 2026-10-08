@@ -4,16 +4,17 @@ import { useTranslation } from 'react-i18next';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useViewedItems } from '@/hooks/useViewedItems';
 import { patchArray } from '@/utils/parsers';
-import { RoomDataProvider, RoomUIProvider, type ToastNotification, type GlobalFeedback } from '@/context/RoomContext';
+import { RoomDataProvider, RoomUIProvider } from '@/context/RoomContext';
+import type { ToastNotification, GlobalFeedback } from '@/context/RoomContext.shared';
 import GameRoomLayout from './GameRoomLayout';
-import type { GameRoom, Evidence, Character, Level } from '@/types';
+import type { GameRoom, Evidence, Character, Level, Question, RoomVote, RoomInspection, FinalStats, FiledRequest } from '@/types';
 import './GameRoom.module.css';
 
 // --- ENRICHED PAYLOAD TYPINGS ---
 interface LevelTransitionedPayload {
   message: string;
   status: string;
-  stats?: any;
+  stats?: FinalStats;
   room_patch?: {
     current_level_id?: number | null;
     status?: string;
@@ -25,17 +26,24 @@ interface WiretapTriggeredPayload {
   question_id: number;
   audio_url: string | null;
   message?: string;
-  played_wiretap?: any;
+  played_wiretap?: Question | null;
 }
 
 interface VoteLockedInPayload {
-  vote: any;
+  vote: RoomVote;
+}
+
+interface CharacterUpdatePayload {
+  id: number;
+  is_unlocked?: boolean;
+  status?: string;
+  character_id?: number;
 }
 
 interface ItemsUnlockedPayload {
   unlocked_evidences?: Evidence[];
   unlocked_levels?: Level[];
-  character_updates?: any[];
+  character_updates?: CharacterUpdatePayload[];
   strikes?: number;
 }
 
@@ -44,6 +52,14 @@ interface HostMigratedPayload {
   new_host_id: number;
   new_host_name: string;
   message: string;
+}
+
+interface LocationInspectedPayload {
+  inspection: RoomInspection;
+}
+
+interface RequestFiledPayload {
+  filed_request: FiledRequest;
 }
 
 export default function GameRoom() {
@@ -63,13 +79,13 @@ export default function GameRoom() {
   const { viewedItems: viewedCharacters, markItemAsViewed: markCharacterAsViewed } = useViewedItems(room?.invite_code, 'characters');
 
   const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
-  const [finalStats, setFinalStats] = useState<any>(room?.final_stats || null);
+  const [finalStats, setFinalStats] = useState<FinalStats | null>(room?.final_stats || null);
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const [globalFeedback, setGlobalFeedback] = useState<GlobalFeedback | null>(null);
 
   const playedAudioTracker = useRef<Set<number>>(new Set());
 
-  const setGameOverData = useCallback((message: string, stats?: any) => {
+  const setGameOverData = useCallback((message: string, stats?: FinalStats) => {
     setResolutionMessage(message);
     if (stats) setFinalStats(stats);
   }, []);
@@ -146,10 +162,11 @@ export default function GameRoom() {
       });
 
       if (e.played_wiretap) {
+        const playedWiretap = e.played_wiretap;
         patchRoomData((oldRoom: GameRoom) => {
           const playedWiretaps = [...(oldRoom.played_wiretaps || [])];
-          if (!playedWiretaps.some(w => w.id === e.played_wiretap.id)) {
-            playedWiretaps.push(e.played_wiretap);
+          if (!playedWiretaps.some(w => w.id === playedWiretap.id)) {
+            playedWiretaps.push(playedWiretap);
           }
           return { ...oldRoom, played_wiretaps: playedWiretaps };
         });
@@ -161,7 +178,7 @@ export default function GameRoom() {
       patchRoomData((oldRoom: GameRoom) => {
         
         // Process character updates dynamically
-        let updatedCharacters = [...(oldRoom.accumulated_characters || [])];
+        const updatedCharacters = [...(oldRoom.accumulated_characters || [])];
         
         if (e.character_updates && e.character_updates.length > 0) {
           e.character_updates.forEach(update => {
@@ -198,14 +215,14 @@ export default function GameRoom() {
       });
     });
 
-    channel.listen('LocationInspected', (e: any) => {
+    channel.listen('LocationInspected', (e: LocationInspectedPayload) => {
       patchRoomData((oldRoom: GameRoom) => ({
         ...oldRoom,
         inspections: [...(oldRoom.inspections || []), e.inspection]
       }));
     });
 
-    channel.listen('RequestFiled', (e: any) => {
+    channel.listen('RequestFiled', (e: RequestFiledPayload) => {
       patchRoomData((oldRoom: GameRoom) => ({
         ...oldRoom,
         filed_requests: [e.filed_request, ...(oldRoom.filed_requests || [])]
@@ -250,7 +267,7 @@ export default function GameRoom() {
 
       window.Echo.leave(`room.${room.id}`);
     };
-  }, [room?.id, patchRoomData, setGameOverData, addGlobalToast, t]);
+  }, [room, room?.id, patchRoomData, setGameOverData, addGlobalToast, t]);
 
   if (isLoading) return <div className="terminal-text">{t('pages.gameRoom.synchronizing')}</div>;
   if (error || !room) return <div className="terminal-text error">{error || t('pages.gameRoom.sessionNotFound')}</div>;
@@ -265,7 +282,7 @@ export default function GameRoom() {
       <RoomUIProvider
         viewedEvidences={viewedEvidences} markEvidenceAsViewed={markEvidenceAsViewed}
         viewedCharacters={viewedCharacters} markCharacterAsViewed={markCharacterAsViewed}
-        setGameOverData={setGameOverData} addGlobalToast={addGlobalToast}
+        setGameOverData={setGameOverData as (message: string, stats?: unknown) => void} addGlobalToast={addGlobalToast}
         globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback}
       >
         <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={finalStats} toasts={toasts} />

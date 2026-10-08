@@ -1,11 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import gameEndOverlayStyles from './GameEndOverlay.module.css'; 
+import type { FinalStats } from '@/types';
+import gameEndOverlayStyles from './GameEndOverlay.module.css';
 
 interface GameEndOverlayProps {
   status: 'solved' | 'failed' | string;
   resolutionMessage: string | null;
-  finalStats: any;
+  finalStats: FinalStats | null;
 }
 
 export default function GameEndOverlay({ status, resolutionMessage, finalStats }: GameEndOverlayProps) {

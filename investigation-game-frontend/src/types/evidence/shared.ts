@@ -33,5 +33,3 @@ export const clampSpan = (span?: number): number => {
   if (!Number.isFinite(n)) return 12;
   return Math.min(12, Math.max(1, Math.round(n)));
 };
-
-export const blockSeqFn = () => blockSeq;

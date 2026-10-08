@@ -3,8 +3,6 @@
 namespace App\Services;
 
 use App\Models\GameRoom;
-use App\Models\Choice;
-use App\Models\User;
 use App\Models\Character;
 use Illuminate\Support\Facades\DB;
 use App\Support\Result;
@@ -15,7 +13,6 @@ use App\Enums\CaseUserStatus;
 
 class AssessmentService
 {
-    public function __construct(private readonly VotingService $votingService) {}
 
     public function evaluateSubmission(GameRoom $room): Result
     {

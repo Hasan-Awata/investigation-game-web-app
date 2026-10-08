@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useAdminContext } from '@/pages/Admin/context/AdminContext';
-import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
+import { useAdminForm } from '@/pages/Admin/hooks/useAdminForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
 import { AdminInput, AdminTextarea, CoordinatePicker } from '@/pages/Admin/components/AdminUI';
@@ -26,9 +26,9 @@ export default function ZoneForm() {
   const [isTargeting, setIsTargeting] = useState(false);
 
   const {
-    formData, updateField, editingId, clearForm, handleValidatedSubmit,
+    formData, updateField, editingId, clearForm, handleSubmit,
     handleEditInit, handleDelete, isProcessing
-  } = useValidatedForm({
+  } = useAdminForm({
       entityType: 'zone',
       initialState: initialFormState,
       basePayload: { case_id: caseId },
@@ -43,18 +43,27 @@ export default function ZoneForm() {
         : 0;
       updateField('order_index', (maxIndex + 1).toString());
     }
-  }, [editingId, availableZones]);
+  }, [editingId, availableZones, updateField]);
 
-  if (!caseId || !selectedCase) {
-    return (
-      <div className={`${adminDashboard['admin-form-container']} glass-panel ${adminForms['admin-missing-context']}`}>
-        <h3>{t.missingContextTitle || 'Missing Context'}</h3>
-        <p>{t.missingContextDesc || 'Please select a Case from the sidebar to manage its Zones.'}</p>
-      </div>
-    );
-  }
+  const onClear = () => {
+    clearForm();
+    setIsTargeting(false);
+  };
 
-  const caseMapUrl = (selectedCase as any)?.map_url;
+  const contextMissing = !caseId || !selectedCase ? (
+    <div className={`${adminDashboard['admin-form-container']} glass-panel ${adminForms['admin-missing-context']}`}>
+      <h3>{t.missingContextTitle || 'Missing Context'}</h3>
+      <p>{t.missingContextDesc || 'Please select a Case from the sidebar to manage its Zones.'}</p>
+    </div>
+  ) : null;
+
+  const submitLabel = {
+    creating: t.commitZone || 'COMMIT ZONE',
+    editing: t.updateZone || 'UPDATE ZONE',
+    processing: t.processingData || 'Processing...'
+  };
+
+  const caseMapUrl = selectedCase?.map_url;
 
   const onEdit = (zone: Zone) => {
     handleEditInit(zone, (z) => ({
@@ -64,11 +73,6 @@ export default function ZoneForm() {
       coord_x: z.coord_x?.toString() || '',
       coord_y: z.coord_y?.toString() || ''
     }));
-    setIsTargeting(false);
-  };
-
-  const onClear = () => {
-    clearForm();
     setIsTargeting(false);
   };
 
@@ -88,12 +92,12 @@ export default function ZoneForm() {
   return (
     <EntityDashboard<Zone>
       entityName={t.entityName || 'Zone'}
-      listTitle={t.manageTitle ? t.manageTitle(selectedCase.title) : `Manage Zones: ${selectedCase.title}`}
+      listTitle={t.manageTitle ? t.manageTitle(selectedCase?.title || '') : `Manage Zones: ${selectedCase?.title || ''}`}
       items={availableZones}
       editingId={editingId}
       isProcessing={isProcessing}
       emptyMessage={t.emptyMessage || 'No zones found.'}
-      contextHeader={t.targetCaseHeader ? t.targetCaseHeader(selectedCase.title) : `Targeting Case: ${selectedCase.title}`}
+      contextHeader={t.targetCaseHeader ? t.targetCaseHeader(selectedCase?.title || '') : `Targeting Case: ${selectedCase?.title || ''}`}
       keyExtractor={(z) => z.id.toString()}
       onClear={onClear}
       onEdit={onEdit}
@@ -105,8 +109,10 @@ export default function ZoneForm() {
           {z.coord_x && z.coord_y && <span className={adminForms['admin-list-badge']}>📍 {z.coord_x}%, {z.coord_y}%</span>}
         </>
       )}
+      contextMissing={contextMissing}
+      submitLabel={submitLabel}
     >
-      <form onSubmit={handleValidatedSubmit} className={adminDashboard['admin-form']}>
+      <form onSubmit={handleSubmit} className={adminDashboard['admin-form']}>
         <AdminInput label={t.titleLabel || 'Zone Title'} type="text" required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
         <AdminTextarea label={t.descriptionLabel || 'Zone Description'} style={{ minHeight: '100px' }} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
 
@@ -143,12 +149,6 @@ export default function ZoneForm() {
             </p>
           </div>
         )}
-
-        <button type="submit" className={`btn-primary 
-          ${adminForms['admin-submit-btn']} ${editingId ? adminForms['editing'] : adminForms['creating']}`} 
-          disabled={isProcessing}>
-          {isProcessing ? (t.processingData || 'Processing...') : editingId ? (t.updateZone || 'UPDATE ZONE') : (t.commitZone || 'COMMIT ZONE')}
-        </button>
       </form>
     </EntityDashboard>
   );

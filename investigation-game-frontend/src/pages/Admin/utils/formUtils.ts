@@ -1,4 +1,4 @@
-export const objectToFormData = (obj: Record<string, any>): FormData => {
+export const objectToFormData = (obj: Record<string, unknown>): FormData => {
   const formData = new FormData();
   Object.entries(obj).forEach(([key, value]) => {
     if (value === null || value === undefined) return;
@@ -25,7 +25,7 @@ import { DEFAULT_TERMINAL } from '@/types/evidence/terminal';
  * sub-type are gone with the legacy viewers -- there is nothing left that could
  * read them, and keeping them would imply the classifications still exist.
  */
-export const getEvidenceMetadataTemplate = (evidenceType: string): Record<string, any> => {
+export const getEvidenceMetadataTemplate = (evidenceType: string): Record<string, unknown> => {
   if (evidenceType === 'testimony') {
     return {
       agency: "",

@@ -451,11 +451,3 @@ export const DOC_TEMPLATES: DocTemplate[] = [
       ]),
   },
 ];
-
-export const getTemplate = (key: string): DocTemplate | undefined =>
-  DOC_TEMPLATES.find((t) => t.key === key);
-
-/** Reset for tests and the Phase 3 builder's "new document" flow. */
-export const resetTemplateSeq = (): void => {
-  seq = 0;
-};

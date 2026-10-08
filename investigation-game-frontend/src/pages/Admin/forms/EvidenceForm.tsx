@@ -1,19 +1,19 @@
-import React, { useState, useEffect } from 'react';
-import toast from 'react-hot-toast';
-import { useAdminContext } from '@/pages/Admin/context/AdminContext';
-import { useValidatedForm } from '@/pages/Admin/hooks/useValidatedForm';
+import { useState, useEffect, useRef } from 'react';
+import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
+import { useAdminForm } from '@/pages/Admin/hooks/useAdminForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
+import MediaUploader from '@/pages/Admin/components/MediaUploader';
 import { DocBuilder } from '@/pages/Admin/components/DocBuilder/DocBuilder';
 import { TerminalBuilder } from '@/pages/Admin/components/BlockBuilder/TerminalBuilder';
 import EvidenceMetadataFields from './Shared/EvidenceMetadataFields';
-import { AdminCheckbox, AdminInput, AdminFileInput, AdminEntryToggle, JsonPopulator } from '@/pages/Admin/components/AdminUI';
-import { validateEvidenceForm, validateImageSize, validateAudioSize } from '../utils/validators';
+import { AdminCheckbox, AdminInput, AdminEntryToggle, JsonPopulator } from '@/pages/Admin/components/AdminUI';
+import { validateEvidenceForm } from '../utils/validators';
 import { getEvidenceMetadataTemplate } from '@/pages/Admin/utils/formUtils';
 import { DEFAULT_DOC, DEFAULT_PAGE, DOC_THEMES, normalizeDoc } from '@/types/evidence/doc';
 import { DEFAULT_TERMINAL, normalizeTerminal } from '@/types/evidence/terminal';
 import type { Evidence } from '@/types/evidence';
-import { surfaceOf } from '@/types/evidence';
+import { surfaceOf, isDigitalEvidence, isDocEvidence } from '@/types/evidence';
 import adminForms from './Shared/AdminForms.module.css';
 import adminDashboard from '../AdminDashboard.module.css';
 
@@ -21,7 +21,7 @@ const initialFormState = {
   title: '',
   description: '',
   evidence_type: 'document',
-  metadata: {} as Record<string, any>,
+  metadata: {} as Record<string, unknown>,
   is_initial: true,
   is_vital_for_conviction: false,
   store_locally: false,
@@ -39,8 +39,8 @@ export default function EvidenceForm() {
   const [audio, setAudio] = useState<File | null>(null);
 
   const {
-    formData, setFormData, updateField, editingId, clearForm, handleValidatedSubmit, handleEditInit, handleDelete, registerFileRef, isProcessing
-  } = useValidatedForm({
+    formData, setFormData, updateField, editingId, clearForm, handleSubmit, handleEditInit, handleDelete, isProcessing
+  } = useAdminForm({
     entityType: 'evidence',
     initialState: initialFormState,
     basePayload: { case_id: caseId },
@@ -50,12 +50,17 @@ export default function EvidenceForm() {
   const [entryMode, setEntryMode] = useState<'form' | 'json'>('form');
   const [jsonInput, setJsonInput] = useState('');
 
+  const prevEvidenceTypeRef = useRef(formData.evidence_type);
+
   const surface = surfaceOf(formData.evidence_type);
   const isDocType = surface === 'paper';
   const isDigitalType = surface === 'terminal';
 
   useEffect(() => {
-    setJsonInput('');
+    if (prevEvidenceTypeRef.current !== formData.evidence_type) {
+      prevEvidenceTypeRef.current = formData.evidence_type;
+      setJsonInput('');
+    }
   }, [formData.evidence_type]);
 
   // The builder is controlled off `formData.metadata.doc` or `formData.metadata.terminal`, normalized so a hand
@@ -71,23 +76,25 @@ export default function EvidenceForm() {
     setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, terminal } }));
   };
 
-  const handleJsonPopulate = (parsed: any) => {
+  const handleJsonPopulate = (parsed: unknown) => {
+    const p = parsed as Record<string, unknown>;
     const newState = { ...formData };
 
-    if (parsed.title !== undefined) newState.title = parsed.title;
-    if (parsed.description !== undefined) newState.description = parsed.description;
-    if (parsed.evidence_type !== undefined) newState.evidence_type = parsed.evidence_type;
-    if (parsed.is_initial !== undefined) newState.is_initial = parsed.is_initial;
-    if (parsed.is_vital_for_conviction !== undefined) newState.is_vital_for_conviction = parsed.is_vital_for_conviction;
-    if (parsed.store_locally !== undefined) newState.store_locally = parsed.store_locally;
-    if (parsed.metadata !== undefined) {
-      const newSurface = surfaceOf(newState.evidence_type);
-      if (newSurface === 'paper' && !parsed.metadata?.doc) {
-        newState.metadata = { ...parsed.metadata, doc: normalizeDoc(parsed.metadata?.doc ?? parsed) };
-      } else if (newSurface === 'terminal' && !parsed.metadata?.terminal) {
-        newState.metadata = { ...parsed.metadata, terminal: normalizeTerminal(parsed.metadata?.terminal ?? parsed) };
+    if (p.title !== undefined) newState.title = String(p.title);
+    if (p.description !== undefined) newState.description = String(p.description);
+    if (p.evidence_type !== undefined) newState.evidence_type = String(p.evidence_type);
+    if (p.is_initial !== undefined) newState.is_initial = Boolean(p.is_initial);
+    if (p.is_vital_for_conviction !== undefined) newState.is_vital_for_conviction = Boolean(p.is_vital_for_conviction);
+    if (p.store_locally !== undefined) newState.store_locally = Boolean(p.store_locally);
+    if (p.metadata !== undefined && typeof p.metadata === 'object' && p.metadata !== null) {
+      const newSurface = surfaceOf(String(newState.evidence_type));
+      const meta = p.metadata as Record<string, unknown>;
+      if (newSurface === 'paper' && !meta.doc) {
+        newState.metadata = { ...meta, doc: normalizeDoc(meta.doc ?? meta) };
+      } else if (newSurface === 'terminal' && !meta.terminal) {
+        newState.metadata = { ...meta, terminal: normalizeTerminal(meta.terminal ?? meta) };
       } else {
-        newState.metadata = parsed.metadata;
+        newState.metadata = meta;
       }
     }
 
@@ -106,31 +113,6 @@ export default function EvidenceForm() {
     metadata: getEvidenceMetadataTemplate(formData.evidence_type),
   };
 
-  if (!caseId || !selectedCase) {
-    return (
-      <div className={`${adminDashboard['admin-form-container']} glass-panel ${adminForms['admin-missing-context']}`}>
-        <h3>{t.missingContextTitle}</h3><p>{t.missingContextDesc}</p>
-      </div>
-    );
-  }
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setFile: React.Dispatch<React.SetStateAction<File | null>>, validator: (file: File) => string | null) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      setFile(null);
-      return;
-    }
-
-    const error = validator(file);
-    if (!error) {
-      setFile(file);
-    } else {
-      toast.error(error);
-      setFile(null);
-      e.target.value = '';
-    }
-  };
-
   const onClear = () => {
     clearForm();
     setImage(null);
@@ -143,24 +125,24 @@ export default function EvidenceForm() {
     const files: Record<string, File | null> = {};
     if (formData.evidence_type === 'image' && image) files.image = image;
     if (formData.evidence_type === 'audio' && audio) files.audio = audio;
-    handleValidatedSubmit(e, files);
+    handleSubmit(e, files);
   };
 
-  const onEdit = (ev: Evidence | any) => {
+  const onEdit = (ev: Evidence) => {
     const surface = surfaceOf(ev.evidence_type);
-    handleEditInit(ev, (ed) => ({
+    handleEditInit(ev, (ed): typeof initialFormState => ({
       title: ed.title,
       description: ed.description || '',
       evidence_type: ed.evidence_type,
       // A stored doc row keeps its block tree verbatim; a pre-cutover row with
       // only a flat sub_type metadata object normalizes to an empty sheet the
       // author must fill in. Both land on the same shape.
-      metadata: surface === 'paper' ? { ...(ed.metadata || {}), doc: normalizeDoc(ed.metadata) }
+      metadata: (surface === 'paper' ? { ...(ed.metadata || {}), doc: normalizeDoc(ed.metadata) }
         : surface === 'terminal' ? { ...(ed.metadata || {}), terminal: normalizeTerminal(ed.metadata) }
-        : (ed.metadata || {}),
+        : (ed.metadata || {})) as Record<string, unknown>,
       is_initial: !!ed.is_initial,
       is_vital_for_conviction: !!ed.is_vital_for_conviction,
-      store_locally: !!ed.store_locally,
+      store_locally: false,
     }));
     setImage(null);
     setAudio(null);
@@ -172,23 +154,37 @@ export default function EvidenceForm() {
   const requiresImage = formData.evidence_type === 'image';
   const requiresLocalToggle = requiresImage || formData.evidence_type === 'audio' || isDocType;
 
+  const contextMissing = !caseId || !selectedCase ? (
+    <div className={`${adminDashboard['admin-form-container']} glass-panel ${adminForms['admin-missing-context']}`}>
+      <h3>{t.missingContextTitle}</h3><p>{t.missingContextDesc}</p>
+    </div>
+  ) : null;
+
+  const submitLabel = {
+    creating: t.commitEvidence,
+    editing: t.updateEvidence,
+    processing: t.processingData
+  };
+
   return (
     <EntityDashboard<Evidence>
-      entityName={t.entityName} listTitle={t.manageTitle} items={selectedCase.evidences || []}
+      entityName={t.entityName} listTitle={t.manageTitle} items={selectedCase?.evidences || []}
       editingId={editingId} isProcessing={isProcessing} emptyMessage={t.emptyMessage}
-      contextHeader={t.targetCaseHeader(selectedCase.title)} keyExtractor={(ev) => ev.id.toString()}
+      contextHeader={t.targetCaseHeader(selectedCase?.title || '')} keyExtractor={(ev) => ev.id.toString()}
       onClear={onClear} onEdit={onEdit} onDelete={(ev) => handleDelete(ev.id, t.deleteConfirm(ev.title))}
-      renderItemContent={(ev: any) => (
+      renderItemContent={(ev) => (
         <>
           <span className={adminForms['admin-list-id']}>EX-{ev.id.toString().padStart(3, '0')}</span>
           <strong>{ev.title}</strong>
           <span className={adminForms['admin-list-badge']}>{ev.evidence_type}</span>
-          {ev.metadata?.doc?.theme && DOC_THEMES.includes(ev.metadata.doc.theme) && (
+          {isDocEvidence(ev) && ev.metadata.doc.theme && DOC_THEMES.includes(ev.metadata.doc.theme) && (
             <span className={adminForms['admin-list-badge']}>{ev.metadata.doc.theme.replace('_', ' ')}</span>
           )}
-          {ev.metadata?.terminal?.theme && <span className={adminForms['admin-list-badge']}>{ev.metadata.terminal.theme}</span>}
+          {isDigitalEvidence(ev) && ev.metadata.terminal.theme && <span className={adminForms['admin-list-badge']}>{ev.metadata.terminal.theme}</span>}
         </>
       )}
+      contextMissing={contextMissing}
+      submitLabel={submitLabel}
     >
       <form onSubmit={onSubmit} className={adminDashboard['admin-form']}>
         <AdminEntryToggle mode={entryMode} setMode={setEntryMode} />
@@ -249,14 +245,8 @@ export default function EvidenceForm() {
           />
         )}
 
-        {requiresImage && <AdminFileInput label={t.evidenceImageLabel} hint={t.imageHint} accept="image/*" ref={registerFileRef('image')} onChange={(e) => handleFileChange(e, setImage, validateImageSize)} />}
-        {formData.evidence_type === 'audio' && <AdminFileInput label={t.audioLabel} hint={t.audioHint} accept="audio/*" ref={registerFileRef('audio')} onChange={(e) => handleFileChange(e, setAudio, validateAudioSize)} />}
-
-        <button type="submit" className={`btn-primary 
-          ${adminForms['admin-submit-btn']} ${editingId ? adminForms['editing'] : adminForms['creating']}`} 
-          disabled={isProcessing || entryMode === 'json'}>
-          {isProcessing ? t.processingData : editingId ? t.updateEvidence : t.commitEvidence}
-        </button>
+{requiresImage && <MediaUploader label={t.evidenceImageLabel} hint={t.imageHint} accept="image/*" previewUrl={image ? URL.createObjectURL(image) : null} onChange={setImage} />}
+        {formData.evidence_type === 'audio' && <MediaUploader label={t.audioLabel} hint={t.audioHint} accept="audio/*" previewUrl={audio ? URL.createObjectURL(audio) : null} onChange={setAudio} />}
       </form>
     </EntityDashboard>
   );

@@ -21,34 +21,34 @@ export const defaultOutcomes = (): ChoiceOutcomes => ({
   unlock_evidence: [], unlock_levels: [], character_updates: [],
 });
 
-const appendToFormData = (fd: FormData, rootKey: string, obj: any) => {
+const appendToFormData = (fd: FormData, rootKey: string, obj: unknown) => {
   if (obj === null || obj === undefined) return;
   if (Array.isArray(obj)) {
       obj.forEach((val, i) => appendToFormData(fd, `${rootKey}[${i}]`, val));
   } else if (typeof obj === 'object' && !(obj instanceof File)) {
-      Object.keys(obj).forEach(key => appendToFormData(fd, `${rootKey}[${key}]`, obj[key]));
+      Object.keys(obj).forEach(key => appendToFormData(fd, `${rootKey}[${key}]`, (obj as Record<string, unknown>)[key]));
   } else {
       fd.append(rootKey, obj instanceof File ? obj : obj.toString());
   }
 };
 
-export const appendChoicesToFormData = (formData: FormData, choices: any[]) => {
+export const appendChoicesToFormData = (formData: FormData, choices: DraftChoice[]) => {
   for (let i = 0; i < choices.length; i++) {
     const choice = choices[i];
-    formData.append(`choices[${i}][text]`, choice.text);
+    formData.append(`choices[${i}][text]`, String(choice.text));
     
-    const cleanReqs: any = {};
-    if (choice.requirements?.required_evidence?.length > 0) cleanReqs.required_evidence = choice.requirements.required_evidence.map(Number);
-    if (choice.requirements?.required_choices?.length > 0) cleanReqs.required_choices = choice.requirements.required_choices.map(Number);
+    const cleanReqs: Record<string, unknown> = {};
+    if (Array.isArray(choice.requirements?.required_evidence) && choice.requirements.required_evidence.length > 0) cleanReqs.required_evidence = choice.requirements.required_evidence.map(Number);
+    if (Array.isArray(choice.requirements?.required_choices) && choice.requirements.required_choices.length > 0) cleanReqs.required_choices = choice.requirements.required_choices.map(Number);
     if (Object.keys(cleanReqs).length > 0) appendToFormData(formData, `choices[${i}][requirements]`, cleanReqs);
 
-    const cleanOutcomes: any = {};
+    const cleanOutcomes: Record<string, unknown> = {};
     if (choice.outcomes?.gives_strike) cleanOutcomes.gives_strike = true;
     if (choice.outcomes?.feedback?.trim()) cleanOutcomes.feedback = choice.outcomes.feedback.trim();
     if (choice.outcomes?.next_question_id) cleanOutcomes.next_question_id = Number(choice.outcomes.next_question_id);
-    if (choice.outcomes?.unlock_evidence?.length > 0) cleanOutcomes.unlock_evidence = choice.outcomes.unlock_evidence.map(Number);
-    if (choice.outcomes?.unlock_levels?.length > 0) cleanOutcomes.unlock_levels = choice.outcomes.unlock_levels.map(Number);
-    if (choice.outcomes?.character_updates?.length > 0) cleanOutcomes.character_updates = choice.outcomes.character_updates;
+    if (Array.isArray(choice.outcomes?.unlock_evidence) && choice.outcomes.unlock_evidence.length > 0) cleanOutcomes.unlock_evidence = choice.outcomes.unlock_evidence.map(Number);
+    if (Array.isArray(choice.outcomes?.unlock_levels) && choice.outcomes.unlock_levels.length > 0) cleanOutcomes.unlock_levels = choice.outcomes.unlock_levels.map(Number);
+    if (Array.isArray(choice.outcomes?.character_updates) && choice.outcomes.character_updates.length > 0) cleanOutcomes.character_updates = choice.outcomes.character_updates;
     if (Object.keys(cleanOutcomes).length > 0) appendToFormData(formData, `choices[${i}][outcomes]`, cleanOutcomes);
   }
 };
@@ -57,7 +57,7 @@ interface NodePayload {
   level_id: string;
   text: string;
   store_locally: boolean;
-  choices: any[];
+  choices: DraftChoice[];
   image?: File | null;
   audio?: File | null;
 }
@@ -79,7 +79,7 @@ export const buildNodeFormData = (payload: NodePayload): FormData => {
 export interface BaseNodeFormProps {
   state: { editingId: number | null; text: string; storeLocally: boolean; choices: DraftChoice[] };
   setters: { setText: (t: string) => void; setStoreLocally: (v: boolean) => void; setChoices: (c: DraftChoice[]) => void };
-  actions: { registerFileRef: (key: string) => any; handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void; handleCancel: () => void };
+  actions: { registerFileRef: (key: string) => (el: HTMLInputElement | null) => void; handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void; handleCancel: () => void };
   status: { isProcessing: boolean }; 
   previews: { image?: string | null; audio?: string | null };
 }

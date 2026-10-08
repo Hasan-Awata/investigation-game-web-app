@@ -13,18 +13,6 @@ enum EvidenceType: string
     case Forensic = 'forensic';
     case Digital = 'digital';
 
-    public function label(): string
-    {
-        return match ($this) {
-            self::Document => 'Written Document',
-            self::Testimony => 'Witness Testimony',
-            self::Audio => 'Audio Recording',
-            self::Image => 'Photographic Evidence',
-            self::Forensic => 'Forensic Report',
-            self::Digital => 'Digital Evidence',
-        };
-    }
-
     public function surface(): EvidenceSurface
     {
         return match ($this) {

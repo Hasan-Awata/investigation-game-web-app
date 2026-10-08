@@ -106,6 +106,11 @@ class GameRoomController extends Controller
             'choice_id' => 'required|exists:choices,id',
         ]);
 
+        $roomUser = $room->users()->where('user_id', $request->user()->id)->first();
+        if (!$roomUser) {
+            return response()->json(['message' => 'Not a participant in this room.'], 403);
+        }
+
         $choice = Choice::findOrFail($validated['choice_id']);
         $outcomes = $choice->outcomes ?? [];
 

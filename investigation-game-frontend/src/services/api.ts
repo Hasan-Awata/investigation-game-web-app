@@ -1,333 +1,138 @@
-import { type Result, success, failure } from '../utils/Result';
-import type { GameCase, GameRoom, User } from '../types'; 
-import { getToken, logout } from './auth';
+import { type Result, success } from '../utils/Result';
+import type { GameCase, GameRoom, User, FinalStats, RoomVote, Question, RoomInspection } from '../types'; 
+import { request } from './request';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
+interface RoomResponse {
+  message?: string;
+  room: GameRoom;
+}
 
-const handleUnauthorized = () => {
-  logout();
-  window.dispatchEvent(new CustomEvent('auth:unauthorized')); 
-};
+interface LockVoteResponse {
+  vote: RoomVote;
+}
 
-/**
- * Collapses a Laravel error payload into a single renderable string.
- *
- * `Result`'s error channel is a `string` by contract. The room mutations below
- * used to smuggle a `{ title, message }` object through it instead, which no
- * consumer could actually read: `useInvestigationPhase` re-threw it as
- * `{ message: result.errorMessage }`, silently dropping `title`, and then had
- * to dig one level down through `message` to recover a string. A bare string
- * keeps the contract honest and puts the backend's own wording on screen.
- *
- * `message` wins because it is the human-readable field; `error` is Laravel's
- * short error key and is the next best thing.
- */
-const toFailureMessage = (data: unknown, fallback: string): string => {
-  if (data !== null && typeof data === 'object') {
-    const payload = data as { message?: unknown; error?: unknown };
-    if (typeof payload.message === 'string' && payload.message) return payload.message;
-    if (typeof payload.error === 'string' && payload.error) return payload.error;
-  }
-  return fallback;
-};
+interface InitiatePhaseResponse {
+  room: GameRoom;
+}
+
+interface SubmitSuspectVerdictResponse {
+  status: string;
+  message: string;
+  room?: GameRoom;
+  stats?: FinalStats;
+}
+
+interface TriggerWiretapResponse {
+  played_wiretap: Question;
+  message?: string;
+}
+
+interface InspectLocationResponse {
+  inspection: RoomInspection;
+}
+
+interface LeaveRoomResponse {
+  message: string;
+}
 
 export const fetchCases = async (): Promise<Result<{ cases: GameCase[], user: User }>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/cases`, {
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      }
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401) {
-        handleUnauthorized();
-        return failure('Session expired.');
-      }
-      return failure(`Server responded with status: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    // Return both pieces of data
-    return success({ cases: data.cases, user: data.user });
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+  const result = await request<{ cases: GameCase[], user: User }>('/cases');
+  return result;
 };
 
 export const createRoom = async (caseId: number): Promise<Result<GameRoom>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/rooms`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: JSON.stringify({ case_id: caseId }),
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401) {
-        handleUnauthorized();
-        return failure('Session expired.');
-      }
-      const data = await response.json();
-      return failure(data.message || 'Failed to create session.');
-    }
-    
-    const data = await response.json();
-    return success(data.room);
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+  const result = await request<RoomResponse>('/rooms', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ case_id: caseId }),
+  });
+  return result.isSuccess ? success(result.value.room) : result;
 };
 
 export const joinRoom = async (inviteCode: string): Promise<Result<GameRoom>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/rooms/join`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: JSON.stringify({ invite_code: inviteCode }),
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401) {
-        handleUnauthorized();
-        return failure('Session expired.');
-      }
-      const data = await response.json();
-      return failure(data.message || 'Failed to join session.');
-    }
-    
-    const data = await response.json();
-    return success(data.room);
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+  const result = await request<RoomResponse>('/rooms/join', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ invite_code: inviteCode }),
+  });
+  return result.isSuccess ? success(result.value.room) : result;
 };
 
 export const fetchRoomState = async (roomId: number): Promise<Result<GameRoom>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}`, {
-      method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      }
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401) {
-        handleUnauthorized();
-        return failure('Session expired.');
-      }
-      const data = await response.json();
-      return failure(data.message || 'Failed to fetch room state.');
-    }
-    
-    const data = await response.json();
-    return success(data.room);
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+  const result = await request<RoomResponse>(`/rooms/${roomId}`);
+  return result.isSuccess ? success(result.value.room) : result;
 };
 
-export const lockVote = async (roomId: number, questionId: number, choiceId: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/questions/${questionId}/vote`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: JSON.stringify({ choice_id: choiceId }),
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401) handleUnauthorized();
-      return failure('Failed to lock vote.');
-    }
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+export const lockVote = async (roomId: number, questionId: number, choiceId: number): Promise<Result<LockVoteResponse>> => {
+  const result = await request<LockVoteResponse>(`/rooms/${roomId}/questions/${questionId}/vote`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ choice_id: choiceId }),
+  });
+  return result;
 };
 
-export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string; }>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/submit`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      }
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) handleUnauthorized();
-      const data = await response.json().catch(() => null);
-      return failure(toFailureMessage(data, 'Failed to submit theory.'));
-    }
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string }>> => {
+  const result = await request<{ status: string; message: string }>(`/rooms/${roomId}/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return result;
 };
 
-export const initiatePhase = async (roomId: number, levelId: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/levels/${levelId}/start`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      }
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401) handleUnauthorized();
-      const data = await response.json().catch(() => null);
-      return failure(toFailureMessage(data, 'Failed to initiate phase.'));
-    }
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+export const initiatePhase = async (roomId: number, levelId: number): Promise<Result<InitiatePhaseResponse>> => {
+  const result = await request<InitiatePhaseResponse>(`/rooms/${roomId}/levels/${levelId}/start`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return result;
 };
 
 export const submitSuspectVerdict = async (
   roomId: number,
   guiltyCharacterIds: number[]
-): Promise<Result<{ status: string; message: string; room?: GameRoom; stats?: any }>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/suspects/submit`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: JSON.stringify({ guilty_character_ids: guiltyCharacterIds })
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) handleUnauthorized();
-      const data = await response.json().catch(() => null);
-      return failure(data?.message || 'Failed to submit final verdict.');
-    }
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+): Promise<Result<SubmitSuspectVerdictResponse>> => {
+  const result = await request<SubmitSuspectVerdictResponse>(`/rooms/${roomId}/suspects/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ guilty_character_ids: guiltyCharacterIds })
+  });
+  return result;
 };
 
 export const submitInvestigationRequest = async (
   roomId: number, 
   evidenceIds: number[]
 ): Promise<Result<{ status: string; message: string; unlocked_evidence: number[]; unlocked_levels?: number[] }>> => {  
-  try {
-    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/investigate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: JSON.stringify({ evidence_ids: evidenceIds })
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401) handleUnauthorized();
-      const data = await response.json().catch(() => null);
-      return failure(data?.message || 'The DA denied your request.');
-    }
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+  const result = await request<{ status: string; message: string; unlocked_evidence: number[]; unlocked_levels?: number[] }>(`/rooms/${roomId}/investigate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ evidence_ids: evidenceIds })
+  });
+  return result;
 };
 
-export const triggerWiretap = async (roomId: number, questionId: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/questions/${questionId}/wiretap/play`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      }
-    });
-    
-    if (!response.ok) {
-      if (response.status === 401) handleUnauthorized();
-      const data = await response.json().catch(() => null);
-      return failure(toFailureMessage(data, 'Failed to trigger wiretap.'));
-    }
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+export const triggerWiretap = async (roomId: number, questionId: number): Promise<Result<TriggerWiretapResponse>> => {
+  const result = await request<TriggerWiretapResponse>(`/rooms/${roomId}/questions/${questionId}/wiretap/play`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return result;
 };
 
-export const inspectLocation = async (roomId: number, choiceId: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/inspect`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-      body: JSON.stringify({ choice_id: choiceId }),
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        handleUnauthorized();
-        return failure('Session expired.');
-      }
-      const data = await response.json().catch(() => null);
-      return failure(data?.message || 'Failed to inspect location.');
-    }
-
-    const data = await response.json();
-    return success(data);
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+export const inspectLocation = async (roomId: number, choiceId: number): Promise<Result<InspectLocationResponse>> => {
+  const result = await request<InspectLocationResponse>(`/rooms/${roomId}/inspect`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ choice_id: choiceId }),
+  });
+  return result;
 };
 
-export const leaveRoom = async (roomId: number): Promise<Result<any>> => {
-  try {
-    const response = await fetch(`${API_BASE_URL}/rooms/${roomId}/leave`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`
-      },
-    });
-
-    if (!response.ok) {
-      if (response.status === 401) {
-        handleUnauthorized();
-        return failure('Session expired.');
-      }
-      const data = await response.json().catch(() => null);
-      return failure(data?.message || 'Failed to disconnect from session.');
-    }
-
-    return success(await response.json());
-  } catch (error) {
-    return failure(error instanceof Error ? error.message : 'Network error');
-  }
+export const leaveRoom = async (roomId: number): Promise<Result<LeaveRoomResponse>> => {
+  const result = await request<LeaveRoomResponse>(`/rooms/${roomId}/leave`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  return result;
 };

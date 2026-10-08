@@ -12,7 +12,8 @@ class InvestigationRequest extends Model
     protected $fillable = [
         'case_id',
         'request_type',
-        'unlocks_evidence_id'
+        'unlocks_evidence_id',
+        'unlocks_level_id'
     ];
 
     protected function casts(): array
