@@ -2,14 +2,14 @@ import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
 import { useAdminForm } from '@/pages/Admin/hooks/useAdminForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
-import { getInvestigationRequestLabel } from '@/types';
-import type { Evidence, Level, InvestigationRequest } from '@/types';
+import { getInvestigationRequestLabel, InvestigationRequestType } from '@/types';
+import type { Character, Evidence, Level, InvestigationRequest } from '@/types';
 import { AdminSelect } from '@/pages/Admin/components/AdminUI';
 import { validateInvestigationRequestForm } from '@/pages/Admin/utils/validators';
 import adminForms from './Shared/AdminForms.module.css';
 import adminDashboard from '../AdminDashboard.module.css';
 
-const initialFormState = { request_type: 'search_warrant', required_evidence_ids: [] as string[], unlocks_evidence_id: '', unlocks_level_id: '' };
+const initialFormState = { request_type: 'search_warrant', required_evidence_ids: [] as string[], required_character_ids: [] as string[], unlocks_evidence_id: '', unlocks_level_id: '' };
 
 export default function InvestigationRequestForm() {
   const { caseId, selectedCase } = useAdminContext();
@@ -33,6 +33,7 @@ export default function InvestigationRequestForm() {
     handleEditInit(req, (r) => ({
       request_type: r.request_type,
       required_evidence_ids: r.required_evidences?.map((ev: Evidence) => ev.id.toString()) || [],
+      required_character_ids: r.required_characters?.map((c: Character) => c.id.toString()) || [],
       unlocks_evidence_id: r.unlocks_evidence_id?.toString() || '',
       unlocks_level_id: r.unlocks_level_id?.toString() || ''
     }));
@@ -63,7 +64,7 @@ export default function InvestigationRequestForm() {
           <span className={`${adminForms['admin-list-id']} ${adminForms['cyan']}`}>REQ-{req.id}</span>
           <strong>{getInvestigationRequestLabel(req.request_type)}</strong>
           <div className={adminForms['admin-list-meta']}>
-            {t.requiresCount(req.required_evidences?.length || 0)}
+            {t.requiresCount((req.required_evidences?.length || 0) + (req.required_characters?.length || 0))}
             {(req.unlocks_evidence_id || req.unlocks_level_id) && ` ${t.hasReward}`}
           </div>
         </>
@@ -72,15 +73,12 @@ export default function InvestigationRequestForm() {
       submitLabel={submitLabel}
     >
       <form onSubmit={handleSubmit} className={adminDashboard['admin-form']}>
-        <AdminSelect label={t.requestCategoryLabel} required value={formData.request_type} onChange={(e) => updateField('request_type', e.target.value)} options={[
-          { value: 'search_warrant', label: getInvestigationRequestLabel('search_warrant') },
-          { value: 'financial_subpoena', label: getInvestigationRequestLabel('financial_subpoena') },
-          { value: 'toxicology_report', label: getInvestigationRequestLabel('toxicology_report') },
-          { value: 'wiretap_authorization', label: getInvestigationRequestLabel('wiretap_authorization') },
-          { value: 'ballistics_analysis', label: getInvestigationRequestLabel('ballistics_analysis') },
-          { value: 'digital_forensics', label: getInvestigationRequestLabel('digital_forensics') },
-          { value: 'exhumation_order', label: getInvestigationRequestLabel('exhumation_order') }
-        ]} />
+        <AdminSelect label={t.requestCategoryLabel} required value={formData.request_type} onChange={(e) => updateField('request_type', e.target.value)} options={
+          Object.values(InvestigationRequestType).map(type => ({
+            value: type,
+            label: getInvestigationRequestLabel(type)
+          }))
+        } />
 
         <div className={`${adminDashboard['form-group']} ${adminForms['admin-multiselect-group']}`}>
           <label className={adminForms['admin-multiselect-label']}>{t.puzzleHeader}</label>
@@ -88,6 +86,16 @@ export default function InvestigationRequestForm() {
           <select multiple className={`${adminDashboard['admin-input']} ${adminForms['admin-multiselect-box']}`} value={formData.required_evidence_ids} onChange={(e) => updateField('required_evidence_ids', Array.from(e.target.selectedOptions, opt => opt.value))}>
             {selectedCase?.evidences?.map((ev: Evidence) => (
               <option key={ev.id} value={ev.id.toString()}>EX-{ev.id.toString().padStart(3, '0')} : {ev.title}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className={`${adminDashboard['form-group']} ${adminForms['admin-multiselect-group']}`}>
+          <label className={adminForms['admin-multiselect-label']}>{t.charactersHeader}</label>
+          <p className={adminForms['admin-multiselect-hint']}>{t.charactersHint}</p>
+          <select multiple className={`${adminDashboard['admin-input']} ${adminForms['admin-multiselect-box']}`} value={formData.required_character_ids} onChange={(e) => updateField('required_character_ids', Array.from(e.target.selectedOptions, opt => opt.value))}>
+            {selectedCase?.characters?.map((character: Character) => (
+              <option key={character.id} value={character.id.toString()}>CH-{character.id.toString().padStart(3, '0')} : {character.name}</option>
             ))}
           </select>
         </div>

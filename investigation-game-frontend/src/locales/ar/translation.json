@@ -180,12 +180,10 @@
           "approvedStatus": "موافق عليه",
           "requestTypes": {
             "search_warrant": "مذكرة تفتيش",
-            "financial_subpoena": "استدعاء سجلات مالية",
-            "toxicology_report": "تقرير سموم",
-            "wiretap_authorization": "تصريح تنصت",
-            "ballistics_analysis": "تحليل مقذوفات",
-            "digital_forensics": "فحص الأدلة الرقمية",
-            "exhumation_order": "أمر استخراج جثة"
+            "wiretap_warrant": "تصريح تنصت",
+            "financial_records": "استدعاء سجلات مالية",
+            "dna_test": "تحليل الحمض النووي",
+            "phone_records": "سجلات الهاتف"
           }
         },
         "variants": {

@@ -41,3 +41,6 @@ auth.json
 .impeccable/
 ai_project_context.xmpl
 ai_backend_project_context.xmpl
+
+# Game files
+story-building-guides/

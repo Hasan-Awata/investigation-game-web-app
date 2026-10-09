@@ -33,6 +33,16 @@ class InvestigationRequest extends Model
         );
     }
 
+    public function requiredCharacters(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Character::class,
+            'investigation_request_characters',
+            'request_id',
+            'character_id',
+        );
+    }
+
     public function unlockedEvidence(): BelongsTo
     {
         return $this->belongsTo(Evidence::class, 'unlocks_evidence_id');

@@ -2,27 +2,33 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDroppable } from '@dnd-kit/core';
 import { InvestigationRequestType } from '@/types';
-import type { Evidence, FiledRequest } from '@/types';
+import type { Character, Evidence, FiledRequest } from '@/types';
 import styles from './ProceduralRequestTray.module.css';
 
 interface ProceduralRequestTrayProps {
   accumulatedEvidences: Evidence[];
+  accumulatedCharacters: Character[];
   trayEvidences: number[];
+  trayCharacters: number[];
   requestType: string;
   setRequestType: (type: string) => void;
-  addToTray: (id: number) => void;
-  removeFromTray: (id: number) => void;
+  removeItem: (id: number, type: 'evidence' | 'character') => void;
   isSubmitting: boolean;
   submitRequest: () => void;
   filedRequests: FiledRequest[];
 }
 
+const toEvidenceRef = (id: number) => `EX-${id.toString().padStart(3, '0')}`;
+const toCharacterRef = (id: number) => `CH-${id.toString().padStart(3, '0')}`;
+
 export default function ProceduralRequestTray({
   accumulatedEvidences,
+  accumulatedCharacters,
   trayEvidences,
+  trayCharacters,
   requestType,
   setRequestType,
-  removeFromTray,
+  removeItem,
   isSubmitting,
   submitRequest,
   filedRequests
@@ -34,22 +40,40 @@ export default function ProceduralRequestTray({
     id: 'procedural-tray'
   });
 
+  const totalItems = trayEvidences.length + trayCharacters.length;
+  const hasTrayItems = totalItems > 0;
+
+  const formatFiledRefs = (req: FiledRequest) => [
+    ...(req.evidence_ids ?? []).map(toEvidenceRef),
+    ...(req.character_ids ?? []).map(toCharacterRef)
+  ].join(', ');
+
   return (
     <div className={styles.sidebarTrayContainer}>
-      <div 
-        ref={setNodeRef} 
+      <div
+        ref={setNodeRef}
         className={`${styles.trayDropzone} ${isOver ? styles.isDragOver : ''}`}
       >
-        {trayEvidences.length === 0 ? (
+        {!hasTrayItems ? (
           <span className={styles.trayPlaceholder}>{t('pages.gameRoom.evidence.board.dragAndDrop')}</span>
         ) : (
           <div className={styles.trayItems}>
             {trayEvidences.map(id => {
               const ev = accumulatedEvidences.find(e => e.id === id);
               return (
-                <div key={id} className={styles.trayItemPill}>
+                <div key={`evidence-${id}`} className={styles.trayItemPill}>
                   <span className={styles.trayItemTitle}>{ev?.title || t('pages.gameRoom.evidence.board.unknownFile')}</span>
-                  <button className={styles.trayItemRemove} onClick={() => removeFromTray(id)}>✕</button>
+                  <button className={styles.trayItemRemove} onClick={() => removeItem(id, 'evidence')}>✕</button>
+                </div>
+              );
+            })}
+            {trayCharacters.map(id => {
+              const character = accumulatedCharacters.find(c => c.id === id);
+              const characterRef = toCharacterRef(id);
+              return (
+                <div key={`character-${id}`} className={`${styles.trayItemPill} ${styles.trayItemCharacter}`}>
+                  <span className={styles.trayItemTitle}>{character ? `${characterRef} : ${character.name}` : characterRef}</span>
+                  <button className={styles.trayItemRemove} onClick={() => removeItem(id, 'character')}>✕</button>
                 </div>
               );
             })}
@@ -73,7 +97,7 @@ export default function ProceduralRequestTray({
 
         <button
           className={styles.traySubmitBtn}
-          disabled={trayEvidences.length < 2 || !requestType || isSubmitting}
+          disabled={totalItems < 2 || !requestType || isSubmitting}
           onClick={() => submitRequest()}
         >
           {isSubmitting ? t('pages.gameRoom.evidence.board.filing') : t('pages.gameRoom.evidence.board.submitToDa')}
@@ -101,7 +125,7 @@ export default function ProceduralRequestTray({
                     {t(`pages.gameRoom.evidence.board.requestTypes.${req.request_type}`)}
                   </span>
                   <span className={styles.filedRequestMeta}>
-                    {t('pages.gameRoom.evidence.board.crossReferenced')} {req.evidence_ids.map((id: number) => `EX-${id.toString().padStart(3, '0')}`).join(', ')}
+                    {t('pages.gameRoom.evidence.board.crossReferenced')} {formatFiledRefs(req)}
                   </span>
                 </div>
                 <div className={styles.filedRequestStatusRow}>

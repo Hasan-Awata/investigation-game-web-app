@@ -106,6 +106,7 @@ export interface FiledRequest {
   request_type: string;
   created_at: string;
   evidence_ids: number[];
+  character_ids?: number[];
 }
 
 export interface GameRoom {
@@ -210,25 +211,21 @@ export interface Level {
 
 export const InvestigationRequestType = {
   SearchWarrant: 'search_warrant',
-  FinancialSubpoena: 'financial_subpoena',
-  ToxicologyReport: 'toxicology_report',
-  WiretapAuthorization: 'wiretap_authorization',
-  BallisticsAnalysis: 'ballistics_analysis',
-  DigitalForensics: 'digital_forensics',
-  ExhumationOrder: 'exhumation_order',
+  WiretapWarrant: 'wiretap_warrant',
+  FinancialRecords: 'financial_records',
+  DnaTest: 'dna_test',
+  PhoneRecords: 'phone_records',
 } as const;
 
 export type InvestigationRequestType = typeof InvestigationRequestType[keyof typeof InvestigationRequestType];
 
 export const getInvestigationRequestLabel = (type: string): string => {
   const labels: Record<string, string> = {
-    search_warrant: 'Search Warrant Execution',
-    financial_subpoena: 'Subpoena of Financial Records',
-    toxicology_report: 'Advanced Toxicology Screen',
-    wiretap_authorization: 'Communications Wiretap',
-    ballistics_analysis: 'Firearm Ballistics Match',
-    digital_forensics: 'Device Decryption & Forensics',
-    exhumation_order: 'Coroner Exhumation Order',
+    search_warrant: 'Search Warrant',
+    wiretap_warrant: 'Wiretap Warrant',
+    financial_records: 'Retrieve financial records',
+    dna_test: 'DNA test',
+    phone_records: 'phone records',
   };
   return labels[type] || 'Procedural Request';
 };
@@ -239,7 +236,8 @@ export interface InvestigationRequest {
   request_type: InvestigationRequestType | string; 
   unlocks_evidence_id?: number | null;
   unlocks_level_id?: number | null;
-  required_evidences?: Evidence[]; 
+  required_evidences?: Evidence[];
+  required_characters?: Character[];
   created_at?: string;
   updated_at?: string;
 }

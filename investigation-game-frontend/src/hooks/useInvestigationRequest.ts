@@ -17,6 +17,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
   const { addGlobalToast } = useRoomUI();
   
   const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
+  const [trayCharacters, setTrayCharacters] = useState<number[]>([]);
   const [requestType, setRequestType] = useState<string>('');
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
@@ -28,7 +29,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
     void,
     RequestRollback
   >({
-    mutationFn: () => submitInvestigationRequest(room.id, trayEvidences),
+    mutationFn: () => submitInvestigationRequest(room.id, { evidenceIds: trayEvidences, characterIds: trayCharacters }),
     // GameRoomLayout renders the request verdict in its own modal.
     dispatchErrorFeedback: false,
     onMutate: async () => {
@@ -39,7 +40,8 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
         id: `temp-${Date.now()}`,
         request_type: requestType,
         created_at: new Date().toISOString(),
-        evidence_ids: [...trayEvidences]
+        evidence_ids: [...trayEvidences],
+        character_ids: [...trayCharacters]
       };
 
       queryClient.setQueryData(['gameRoom', room.invite_code], (old: GameRoom | undefined) => {
@@ -56,10 +58,12 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
       queryClient.setQueryData(['gameRoom', room.invite_code], context?.previousRoom);
       setFeedback({ type: 'error', message: error.message });
       setTrayEvidences([]);
+      setTrayCharacters([]);
     },
     onSuccess: (data) => {
       setFeedback({ type: 'success', message: data.message });
       setTrayEvidences([]);
+      setTrayCharacters([]);
       setRequestType('');
       refreshRoomData();
 
@@ -86,24 +90,36 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
     }
   });
 
-  const addToTray = (evidenceId: number) => {
+  const addEvidenceToTray = (evidenceId: number) => {
     if (!trayEvidences.includes(evidenceId)) {
       setTrayEvidences([...trayEvidences, evidenceId]);
     }
   };
 
-  const removeFromTray = (evidenceId: number) => {
-    setTrayEvidences(trayEvidences.filter(id => id !== evidenceId));
+  const addCharacterToTray = (characterId: number) => {
+    if (!trayCharacters.includes(characterId)) {
+      setTrayCharacters([...trayCharacters, characterId]);
+    }
+  };
+
+  const removeItem = (id: number, type: 'evidence' | 'character') => {
+    if (type === 'evidence') {
+      setTrayEvidences(prev => prev.filter(itemId => itemId !== id));
+    } else {
+      setTrayCharacters(prev => prev.filter(itemId => itemId !== id));
+    }
   };
 
   const clearFeedback = () => setFeedback(null);
 
   return {
     trayEvidences,
+    trayCharacters,
     requestType,
     setRequestType,
-    addToTray,
-    removeFromTray,
+    addEvidenceToTray,
+    addCharacterToTray,
+    removeItem,
     isSubmitting: requestMutation.isPending,
     feedback,
     clearFeedback,

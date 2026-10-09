@@ -66,8 +66,40 @@ export const uploadAdminBlockImage = (fd: FormData) => adminRequest<{ url: strin
 // ==========================================
 // INVESTIGATION REQUESTS (Combos)
 // ==========================================
-export const createAdminInvestigationRequest = (fd: FormData) => adminRequest('/investigation-requests', { method: 'POST', body: fd });
-export const updateAdminInvestigationRequest = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/investigation-requests/${id}`, { method: 'POST', body: fd }); };
+const REQUIRED_ITEM_KEYS = ['required_evidence_ids', 'required_character_ids'];
+
+const withRequiredItemArrays = (fd: FormData): FormData => {
+  if (!REQUIRED_ITEM_KEYS.some((key) => fd.has(key))) return fd;
+
+  const normalized = new FormData();
+  fd.forEach((value, key) => {
+    if (!REQUIRED_ITEM_KEYS.includes(key)) {
+      normalized.append(key, value);
+      return;
+    }
+
+    const raw = typeof value === 'string' ? value.trim() : '';
+    if (!raw) return;
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      parsed = raw;
+    }
+    const ids: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
+
+    ids.forEach((id) => {
+      const idValue = String(id).trim();
+      if (idValue !== '') normalized.append(`${key}[]`, idValue);
+    });
+  });
+
+  return normalized;
+};
+
+export const createAdminInvestigationRequest = (fd: FormData) => adminRequest('/investigation-requests', { method: 'POST', body: withRequiredItemArrays(fd) });
+export const updateAdminInvestigationRequest = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/investigation-requests/${id}`, { method: 'POST', body: withRequiredItemArrays(fd) }); };
 export const deleteAdminInvestigationRequest = (id: number) => adminRequest(`/investigation-requests/${id}`, { method: 'DELETE' });
 
 // ==========================================

@@ -101,13 +101,13 @@ export const submitSuspectVerdict = async (
 };
 
 export const submitInvestigationRequest = async (
-  roomId: number, 
-  evidenceIds: number[]
-): Promise<Result<{ status: string; message: string; unlocked_evidence: number[]; unlocked_levels?: number[] }>> => {  
+  roomId: number,
+  payload: { evidenceIds?: number[]; characterIds?: number[] }
+): Promise<Result<{ status: string; message: string; unlocked_evidence: number[]; unlocked_levels?: number[] }>> => {
   const result = await request<{ status: string; message: string; unlocked_evidence: number[]; unlocked_levels?: number[] }>(`/rooms/${roomId}/investigate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ evidence_ids: evidenceIds })
+    body: JSON.stringify({ evidence_ids: payload.evidenceIds ?? [], character_ids: payload.characterIds ?? [] })
   });
   return result;
 };

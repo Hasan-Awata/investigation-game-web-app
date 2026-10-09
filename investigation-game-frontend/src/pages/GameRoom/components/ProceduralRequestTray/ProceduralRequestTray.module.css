@@ -91,6 +91,10 @@
   text-overflow: ellipsis;
 }
 
+.trayItemCharacter {
+  border-inline-start: 2px solid var(--accent-amber, #c48b36);
+}
+
 .trayItemRemove {
   background: transparent;
   border: none;

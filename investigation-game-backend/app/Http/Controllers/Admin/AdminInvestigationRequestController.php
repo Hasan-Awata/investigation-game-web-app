@@ -19,9 +19,15 @@ class AdminInvestigationRequestController extends Controller
             'request_type' => ['required', new Enum(InvestigationRequestType::class)],
             'unlocks_evidence_id' => 'nullable|exists:evidences,id',
             'unlocks_level_id' => 'nullable|exists:levels,id',
-            'required_evidence_ids' => 'required|array|min:2',
+            'required_evidence_ids' => 'nullable|array',
             'required_evidence_ids.*' => 'exists:evidences,id',
+            'required_character_ids' => 'nullable|array',
+            'required_character_ids.*' => 'exists:characters,id',
         ]);
+
+        if ($this->totalRequired($validated) < 2) {
+            return $this->tooFewItemsResponse();
+        }
 
         return DB::transaction(function () use ($validated) {
             $investigationRequest = InvestigationRequest::create([
@@ -31,12 +37,13 @@ class AdminInvestigationRequestController extends Controller
                 'unlocks_level_id' => $validated['unlocks_level_id'] ?? null,
             ]);
 
-            // Automatically populate the investigation_request_items pivot table
-            $investigationRequest->requiredEvidences()->sync($validated['required_evidence_ids']);
+            // Automatically populate the pivot tables (evidences + characters)
+            $investigationRequest->requiredEvidences()->sync($validated['required_evidence_ids'] ?? []);
+            $investigationRequest->requiredCharacters()->sync($validated['required_character_ids'] ?? []);
 
             return response()->json([
                 'message' => 'Investigation request created successfully.',
-                'investigation_request' => $investigationRequest->load('requiredEvidences')
+                'investigation_request' => $investigationRequest->load(['requiredEvidences', 'requiredCharacters'])
             ], 201);
         });
     }
@@ -50,9 +57,15 @@ class AdminInvestigationRequestController extends Controller
             'request_type' => ['required', new Enum(InvestigationRequestType::class)],
             'unlocks_evidence_id' => 'nullable|exists:evidences,id',
             'unlocks_level_id' => 'nullable|exists:levels,id',
-            'required_evidence_ids' => 'required|array|min:2',
+            'required_evidence_ids' => 'nullable|array',
             'required_evidence_ids.*' => 'exists:evidences,id',
+            'required_character_ids' => 'nullable|array',
+            'required_character_ids.*' => 'exists:characters,id',
         ]);
+
+        if ($this->totalRequired($validated) < 2) {
+            return $this->tooFewItemsResponse();
+        }
 
         return DB::transaction(function () use ($investigationRequest, $validated) {
             $investigationRequest->update([
@@ -62,14 +75,31 @@ class AdminInvestigationRequestController extends Controller
                 'unlocks_level_id' => $validated['unlocks_level_id'] ?? null,
             ]);
 
-            // Sync automatically updates the pivot table
-            $investigationRequest->requiredEvidences()->sync($validated['required_evidence_ids']);
+            // Sync automatically updates the pivot tables
+            $investigationRequest->requiredEvidences()->sync($validated['required_evidence_ids'] ?? []);
+            $investigationRequest->requiredCharacters()->sync($validated['required_character_ids'] ?? []);
 
             return response()->json([
                 'message' => 'Investigation request updated.',
-                'investigation_request' => $investigationRequest->load('requiredEvidences')
+                'investigation_request' => $investigationRequest->load(['requiredEvidences', 'requiredCharacters'])
             ], 200);
         });
+    }
+
+    private function totalRequired(array $validated): int
+    {
+        return count($validated['required_evidence_ids'] ?? [])
+            + count($validated['required_character_ids'] ?? []);
+    }
+
+    private function tooFewItemsResponse(): JsonResponse
+    {
+        return response()->json([
+            'message' => 'A request must require at least two items (evidences and/or characters).',
+            'errors' => [
+                'required_evidence_ids' => ['A request must require at least two items in total.'],
+            ],
+        ], 422);
     }
 
     public function destroy($id): JsonResponse

@@ -70,7 +70,8 @@ class AdminCaseController extends Controller
         $cases = GameCase::with([
             'evidences',
             'characters',
-            'investigationRequests.requiredEvidences'
+            'investigationRequests.requiredEvidences',
+            'investigationRequests.requiredCharacters'
         ])
         ->orderBy('created_at', 'desc')
         ->get();

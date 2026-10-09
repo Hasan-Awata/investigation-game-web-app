@@ -14,8 +14,8 @@ export const validateZoneForm = (data: { order_index: string | number; coord_x?:
   return null;
 };
 
-export const validateInvestigationRequestForm = (data: { required_evidence_ids: string[]; unlocks_evidence_id: string; unlocks_level_id: string }, minEvidenceAlert: string, rewardAlert: string) => {
-  if (data.required_evidence_ids.length < 2) return minEvidenceAlert;
+export const validateInvestigationRequestForm = (data: { required_evidence_ids: string[]; required_character_ids?: string[]; unlocks_evidence_id: string; unlocks_level_id: string }, minItemsAlert: string, rewardAlert: string) => {
+  if (data.required_evidence_ids.length + (data.required_character_ids?.length || 0) < 2) return minItemsAlert;
   if (!data.unlocks_evidence_id && !data.unlocks_level_id) return rewardAlert;
   return null;
 };

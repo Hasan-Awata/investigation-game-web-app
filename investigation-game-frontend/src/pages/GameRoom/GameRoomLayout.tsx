@@ -61,7 +61,8 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
   const [activeDragSource, setActiveDragSource] = useState<'unassigned' | 'guilty' | null>(null);
 
   const {
-    trayEvidences, requestType, setRequestType, addToTray, removeFromTray,
+    trayEvidences, trayCharacters, requestType, setRequestType,
+    addEvidenceToTray, addCharacterToTray, removeItem,
     isSubmitting, feedback: requestFeedback,
     clearFeedback: clearRequestFeedback, submitRequest, filedRequests
   } = useInvestigationRequest(room, refreshRoomData);
@@ -111,7 +112,9 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
     setActiveDragId(type === 'CHARACTER' ? characterId : (event.active.id as number));
     setActiveDragSource(sourcePool || null);
 
-    if (type === 'EVIDENCE' && sidebarTab !== 'procedural') {
+    // Both evidences and characters can be filed on a procedural request;
+    // surface the tray so its droppable zone exists while dragging.
+    if ((type === 'EVIDENCE' || type === 'CHARACTER') && sidebarTab !== 'procedural') {
       setSidebarTab('procedural');
     }
   };
@@ -123,9 +126,10 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
       const dragType = active.data.current?.type;
       
       if (dragType === 'EVIDENCE' && over.id === 'procedural-tray') {
-        addToTray(active.id as number);
+        addEvidenceToTray(active.id as number);
       } else if (dragType === 'CHARACTER') {
         const charId = active.data.current?.characterId;
+        if (over.id === 'procedural-tray') addCharacterToTray(charId);
         if (over.id === 'guilty-zone') handleCharacterDrop(charId, 'guilty');
         if (over.id === 'unassigned-zone') handleCharacterDrop(charId, 'unassigned');
       }
@@ -260,11 +264,12 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
               ) : sidebarTab === 'procedural' ? (
                 <ProceduralRequestTray
                   accumulatedEvidences={accumulatedEvidences}
+                  accumulatedCharacters={accumulatedCharacters}
                   trayEvidences={trayEvidences}
+                  trayCharacters={trayCharacters}
                   requestType={requestType}
                   setRequestType={setRequestType}
-                  addToTray={addToTray}
-                  removeFromTray={removeFromTray}
+                  removeItem={removeItem}
                   isSubmitting={isSubmitting}
                   submitRequest={submitRequest}
                   filedRequests={filedRequests}
