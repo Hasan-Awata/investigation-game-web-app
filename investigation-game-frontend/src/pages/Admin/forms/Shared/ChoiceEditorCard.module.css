@@ -39,23 +39,23 @@
 }
 
 .badge-coord {
-  font-family: var(--font-mono);
+  font-family: var(--font-terminal);
   font-size: 0.75rem;
   padding: 0.1rem 0.4rem;
-  background: rgba(0, 229, 255, 0.1);
+  background: rgba(var(--accent-cyan-rgb), 0.1);
   color: var(--accent-cyan);
-  border: 1px solid rgba(0, 229, 255, 0.3);
-  border-radius: 4px;
+  border: 1px solid rgba(var(--accent-cyan-rgb), 0.3);
+  border-radius: var(--radius-md);
 }
 
 .badge-strike {
   font-size: 0.7rem;
   padding: 0.1rem 0.4rem;
-  background: rgba(255, 75, 75, 0.2);
+  background: rgba(var(--accent-crimson-rgb), 0.2);
   color: var(--accent-crimson);
   border: 1px solid var(--accent-crimson);
-  border-radius: 4px;
-  font-family: var(--font-mono);
+  border-radius: var(--radius-md);
+  font-family: var(--font-terminal);
 }
 
 .header-actions-group {
@@ -135,12 +135,13 @@
   cursor: pointer;
 }
 
-.outcomes-panel :global(.admin-textarea) {
+.outcomes-panel textarea {
   min-height: 60px;
 }
 
-.outcomes-panel :global(.admin-input)[multiple], .requirements-panel :global(.admin-input)[multiple] {
-  height: 100px;
+.outcomes-panel select[multiple],
+.requirements-panel select[multiple] {
+  min-height: 100px;
 }
 
 .requirements-panel {
@@ -153,8 +154,4 @@
 
 .requirements-panel h6 {
   color: var(--accent-amber);
-}
-
-.admin-form-row :global(.form-group) {
-  flex: 1;
 }

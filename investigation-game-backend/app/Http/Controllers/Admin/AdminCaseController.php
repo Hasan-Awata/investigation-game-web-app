@@ -3,49 +3,34 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\MediaService;
+use App\Http\Requests\Admin\ImportCaseBundleRequest;
+use App\Http\Requests\Admin\StoreCaseRequest;
+use App\Http\Requests\Admin\UpdateCaseRequest;
 use App\Models\GameCase;
-use Illuminate\Http\Request;
+use App\Services\Case\CaseExportService;
+use App\Services\Case\CaseImportService;
+use App\Services\MediaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AdminCaseController extends Controller
 {
-    public function __construct(private readonly MediaService $mediaService) {}
+    public function __construct(
+        private readonly MediaService $mediaService,
+        private readonly CaseImportService $caseImportService,
+        private readonly CaseExportService $caseExportService,
+    ) {}
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreCaseRequest $request): JsonResponse
     {
-        $validated =$request->validate([
-            'title' => 'required|string|max:255',
-            'story' => 'required|string',
-            'map_url' => 'nullable|string',
-            'min_player_XP' => 'required|integer|min:0',
-            'XP_on_solve' => 'required|integer|min:0',
-            'max_strikes' => 'required|integer|min:1',
-            'rating_stars' => 'required|numeric|min:0|max:5',
-            'age_rating' => 'required|string|max:50',
-            'estimated_playtime' => 'required|string|max:100',
-            'difficulty' => 'required|string|max:50',
-            'tags' => 'nullable|string',
-            'author_name' => 'required|string|max:100',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
-            'is_published' => 'required|boolean',
-            'store_locally' => 'required|boolean',
-        ]);
+        $validated = $request->validated();
+        $storeLocally = $request->boolean('store_locally');
 
-        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
+        $imageUrl = $this->mediaService->store($request->file('image'), $validated['title'], 'Cover', $storeLocally);
 
-        $imageUrl =$this->mediaService->store(
-            $request->file('image'),$validated['title'],
-            'Cover',
-            $storeLocally
-        );
-
-        $tagsArray =$request->filled('tags')
-            ? array_map('trim', explode(',', $validated['tags']))
-            : [];
-
-        $case = GameCase::create([
+        $case = DB::transaction(fn () => GameCase::create([
             'title' => $validated['title'],
             'story' => $validated['story'],
             'map_url' => $validated['map_url'] ?? null,
@@ -56,11 +41,11 @@ class AdminCaseController extends Controller
             'age_rating' => $validated['age_rating'],
             'estimated_playtime' => $validated['estimated_playtime'],
             'difficulty' => $validated['difficulty'],
-            'tags' => $tagsArray,
+            'tags' => $this->parseTags($validated['tags'] ?? null),
             'author_name' => $validated['author_name'],
             'img_url' => $imageUrl,
-            'is_published' => filter_var($request->is_published, FILTER_VALIDATE_BOOLEAN),
-        ]);
+            'is_published' => $request->boolean('is_published'),
+        ]));
 
         return response()->json(['message' => 'Case created successfully.', 'case' => $case], 201);
     }
@@ -68,52 +53,29 @@ class AdminCaseController extends Controller
     public function index(): JsonResponse
     {
         $cases = GameCase::with([
+            'zones.levels.questions.choices',
             'evidences',
             'characters',
             'investigationRequests.requiredEvidences',
-            'investigationRequests.requiredCharacters'
+            'investigationRequests.requiredCharacters',
         ])
-        ->orderBy('created_at', 'desc')
-        ->get();
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return response()->json(['cases' => $cases], 200);
     }
 
-    public function update(Request $request,$id): JsonResponse
+    public function update(UpdateCaseRequest $request, GameCase $case): JsonResponse
     {
-        $case = GameCase::findOrFail($id);
+        $validated = $request->validated();
+        $storeLocally = $request->boolean('store_locally');
 
-        $validated =$request->validate([
-            'title' => 'required|string|max:255',
-            'story' => 'required|string',
-            'map_url' => 'nullable|string',
-            'min_player_XP' => 'required|integer|min:0',
-            'XP_on_solve' => 'required|integer|min:0',
-            'max_strikes' => 'required|integer|min:1',
-            'rating_stars' => 'required|numeric|min:0|max:5',
-            'age_rating' => 'required|string|max:50',
-            'estimated_playtime' => 'required|string|max:100',
-            'difficulty' => 'required|string|max:50',
-            'tags' => 'nullable|string',
-            'author_name' => 'required|string|max:100',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
-            'is_published' => 'required|boolean',
-            'store_locally' => 'required|boolean',
-        ]);
+        $oldImage = $case->getRawOriginal('img_url');
+        $newImage = $request->hasFile('image')
+            ? $this->mediaService->store($request->file('image'), $validated['title'], 'Cover', $storeLocally)
+            : null;
 
-        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-
-        if ($request->hasFile('image')) {
-            $this->mediaService->delete($case->getRawOriginal('img_url'));
-
-            $case->img_url =$this->mediaService->store(
-                $request->file('image'),$validated['title'],
-                'Cover',
-                $storeLocally
-            );
-        }
-
-        $case->update([
+        $updateData = [
             'title' => $validated['title'],
             'story' => $validated['story'],
             'map_url' => $validated['map_url'] ?? null,
@@ -124,340 +86,105 @@ class AdminCaseController extends Controller
             'age_rating' => $validated['age_rating'],
             'estimated_playtime' => $validated['estimated_playtime'],
             'difficulty' => $validated['difficulty'],
-            'tags' => $request->filled('tags') ? array_map('trim', explode(',', $validated['tags'])) : [],
+            'tags' => $this->parseTags($validated['tags'] ?? null),
             'author_name' => $validated['author_name'],
-            'is_published' => filter_var($request->is_published, FILTER_VALIDATE_BOOLEAN),
-        ]);
+            'is_published' => $request->boolean('is_published'),
+        ];
+
+        if ($newImage !== null) {
+            $updateData['img_url'] = $newImage;
+        }
+
+        DB::transaction(fn () => $case->update($updateData));
+
+        if ($newImage !== null && $newImage !== $oldImage) {
+            $this->mediaService->delete($oldImage);
+        }
 
         return response()->json(['message' => 'Case updated successfully.', 'case' => $case], 200);
     }
 
-    public function destroy($id): JsonResponse
+    public function destroy(GameCase $case): JsonResponse
     {
-        // Eager load all related entities that contain media attachments
-        $case = GameCase::with(['levels.questions', 'evidences', 'characters'])->findOrFail($id);
+        $case->load(['levels.questions', 'evidences', 'characters']);
 
-        // 1. Delete Case Cover Image
-        $this->mediaService->delete($case->getRawOriginal('img_url'));
+        $cover = $case->getRawOriginal('img_url');
+        $evidenceMedia = [];
+        $levelMedia = [];
+        $questionMedia = [];
+        $characterMedia = [];
 
-        // 2. Delete Evidence Media
-        foreach ($case->evidences as$evidence) {
-            $this->mediaService->delete($evidence->getRawOriginal('img_url'));
-            $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
+        foreach ($case->evidences as $evidence) {
+            $evidenceMedia[] = $evidence->getRawOriginal('img_url');
+            $evidenceMedia[] = $evidence->getRawOriginal('audio_url');
         }
 
-        // 3. Delete Level and Question Media
-        foreach ($case->levels as$level) {
-            $this->mediaService->delete($level->getRawOriginal('img_url'));
+        foreach ($case->levels as $level) {
+            $levelMedia[] = $level->getRawOriginal('img_url');
 
-            foreach ($level->questions as$question) {
-                $this->mediaService->delete($question->getRawOriginal('img_url'));
-                $this->mediaService->delete($question->getRawOriginal('audio_url'));
+            foreach ($level->questions as $question) {
+                $questionMedia[] = $question->getRawOriginal('img_url');
+                $questionMedia[] = $question->getRawOriginal('audio_url');
             }
         }
 
-        // 4. Delete Character Media
-        foreach ($case->characters as$character) {
-            $this->mediaService->delete($character->getRawOriginal('img_url'));
+        foreach ($case->characters as $character) {
+            $characterMedia[] = $character->getRawOriginal('img_url');
         }
 
-        // Database cascadeOnDelete handles the actual row removals
-        $case->delete();
+        // Database cascadeOnDelete handles the actual row removals.
+        DB::transaction(fn () => $case->delete());
+
+        foreach (array_merge([$cover], $evidenceMedia, $levelMedia, $questionMedia, $characterMedia) as $url) {
+            $this->mediaService->delete($url);
+        }
 
         return response()->json(['message' => 'Case and all associated media completely wiped.'], 200);
     }
 
     /**
-     * Handles the bulk JSON import of an entire case via the Multi-Pass Ref ID strategy.
+     * Import a full case bundle (`case-bundle.zip`) including media.
+     *
+     * Delegates the multi-pass ref resolution and media ingestion to
+     * {@see CaseImportService}. Add-only: duplicate titles are rejected with a
+     * clean 422 by the service.
      */
-    public function import(Request $request): JsonResponse
+    public function import(ImportCaseBundleRequest $request): JsonResponse
     {
-        // Secure endpoint but don't bind to $validated directly for data retrieval, 
-        // to prevent Laravel's aggressive key stripping from dropping our `ref_ids`.
-        $request->validate([
-            'case_details' => 'required|array',
-            'evidences' => ['present', 'array'],
-            'evidences.*.title' => ['required', 'string', 'max:255'],
-            'evidences.*.evidence_type' => ['required', new \Illuminate\Validation\Rules\Enum(\App\Enums\EvidenceType::class)],
-            'evidences.*.metadata' => ['nullable'],
-            'characters' => 'present|array',
-            'investigation_requests' => 'present|array',
-            'zones' => 'present|array',
-        ]);
+        $case = $this->caseImportService->import(
+            $request->file('file'),
+            $request->boolean('store_locally', true),
+        );
 
-        // Access raw JSON request to bypass missing un-validated keys
-        $rawEvidences =$request->input('evidences', []);
+        return response()->json([
+            'message' => 'Case bundle imported successfully.',
+            'case_id' => $case->id,
+        ], 201);
+    }
 
-        // Validate each evidence's metadata against its evidence_type
-        // First, ensure all evidence items are arrays (not stdClass objects)
-        $evidences = array_map(function ($ev) {
-            return is_object($ev) ? (array) $ev :$ev;
-        }, $rawEvidences);
+    /**
+     * Export a single case (graph + media) as a downloadable ZIP bundle.
+     */
+    public function export(GameCase $case): BinaryFileResponse
+    {
+        $path = $this->caseExportService->export($case);
 
-        foreach ($evidences as $i =>$evData) {
-            if (!is_array($evData)) {
-                continue; // Skip invalid entries
-            }
+        $filename = (Str::slug($case->title) ?: 'case').'-case-bundle.zip';
 
-            // Ensure we can access the evidence_type
-            $evidenceType =$evData['evidence_type'] ?? null;
-            if (!$evidenceType) {
-                continue; // Skip if no evidence_type
-            }
+        return response()
+            ->download($path, $filename, ['Content-Type' => 'application/zip'])
+            ->deleteFileAfterSend(true);
+    }
 
-            // Cast metadata to array if it's an object
-            $metadata =$evData['metadata'] ?? null;
-            if (is_object($metadata)) {
-                $metadata = (array)$metadata;
-            }
-
-            $rule = new \App\Rules\EvidenceMetadataMatchesType;
-            // Manually set the rule's data to include this evidence's evidence_type
-            $rule->setData(['evidence_type' =>$evidenceType]);
-
-            $validator = \Illuminate\Support\Facades\Validator::make(
-                ['metadata' => $metadata],
-                ['metadata' => ['nullable', $rule]]
-            );
-
-            if ($validator->fails()) {
-                $errors =$validator->errors()->get('metadata');
-                foreach ($errors as$error) {
-                    throw new \Illuminate\Validation\ValidationException(
-                        $validator,
-                        response()->json([
-                            'message' => "Evidence #{$i}: {$error}",
-                        ], 422)
-                    );
-                }
-            }
+    /**
+     * @return array<int, string>
+     */
+    private function parseTags(?string $tags): array
+    {
+        if ($tags === null || trim($tags) === '') {
+            return [];
         }
 
-        // Gather completely raw payload for mapping
-        $importData =$request->all();
-
-        return DB::transaction(function () use ($importData) {
-            // PASS 1: Master Case Creation
-            $caseData = $importData['case_details'];$case = GameCase::create([
-                'title' => $caseData['title'],
-                'story' => $caseData['story'],
-                'map_url' => $caseData['map_url'] ?? null,
-                'min_player_XP' => $caseData['min_player_XP'] ?? 0,                 'XP_on_solve' =>$caseData['XP_on_solve'],
-                'max_strikes' => $caseData['max_strikes'] ?? 3,
-                'rating_stars' => $caseData['rating_stars'] ?? 5.0,                 'age_rating' =>$caseData['age_rating'] ?? 'Unrated',
-                'estimated_playtime' => $caseData['estimated_playtime'] ?? null,
-                'difficulty' => $caseData['difficulty'] ?? 'Standard',
-                'tags' => $caseData['tags'] ?? [],
-                'author_name' => $caseData['author_name'] ?? 'System Admin',
-                'is_published' => $caseData['is_published'] ?? false,
-            ]);
-
-            // Dictionaries to map the JSON ref_id strings to the actual database IDs generated
-            $refMaps = [
-                'evidence' => [],
-                'character' => [],
-                'level' => [],
-                'request' => [],
-                'choice' => [],
-            ];
-
-            // PASS 2: Base Entities (Evidences, Characters)
-            foreach ($importData['evidences'] as $evData) {$evidence = \App\Models\Evidence::create([
-                    'case_id' => $case->id,
-                    'title' => $evData['title'],
-                    'description' => $evData['description'] ?? null,
-                    'evidence_type' => $evData['evidence_type'],
-                    'metadata' => $evData['metadata'] ?? null,
-                    'is_initial' => $evData['is_initial'] ?? false,
-                    'is_vital_for_conviction' => $evData['is_vital_for_conviction'] ?? false,
-                ]);
-                if (isset($evData['ref_id'])) {$refMaps['evidence'][$evData['ref_id']] =$evidence->id;
-                }
-            }
-
-            foreach ($importData['characters'] as $charData) {$character = \App\Models\Character::create([
-                    'case_id' => $case->id,
-                    'name' => $charData['name'],
-                    'background' => $charData['background'] ?? null,
-                    'is_initial' => $charData['is_initial'] ?? false,
-                    'is_guilty' => $charData['is_guilty'] ?? false,
-                    'charge' => $charData['charge'] ?? null,
-                    'default_status' => $charData['default_status'] ?? 'available',
-                ]);
-                if (isset($charData['ref_id'])) {$refMaps['character'][$charData['ref_id']] =$character->id;
-                }
-            }
-
-            // PASS 3: Zones and Levels
-            $levelDataWithRefs = [];$zonesDataArray = [];
-
-            foreach ($importData['zones'] as $zoneData) {$zone = \App\Models\Zone::create([
-                    'case_id' => $case->id,
-                    'title' => $zoneData['title'],
-                    'description' => $zoneData['description'] ?? null,
-                    'order_index' => $zoneData['order_index'],
-                    'map_url' => $zoneData['map_url'] ?? null,
-                    'coord_x' => $zoneData['coord_x'] ?? null,
-                    'coord_y' => $zoneData['coord_y'] ?? null,
-                ]);
-
-                foreach ($zoneData['levels'] as $lvlData) {$level = \App\Models\Level::create([
-                        'zone_id' => $zone->id,
-                        'title' => $lvlData['title'],
-                        'details' => $lvlData['details'],
-                        'order_index' => $lvlData['order_index'],
-                        'is_initial' => $lvlData['is_initial'] ?? false,
-                        'presentation_type' => $lvlData['presentation_type'],
-                        'required_request_id' => null,
-                    ]);
-
-                    if (isset($lvlData['ref_id'])) {$refMaps['level'][$lvlData['ref_id']] =$level->id;
-                    }
-
-                    $levelDataWithRefs[] = [
-                        'level_id' => $level->id,
-                        'req_ref' => $lvlData['required_request_ref'] ?? null,
-                    ];
-
-                    $zonesDataArray[] = [
-                        'level_id' => $level->id,
-                        'nodes' => $lvlData['nodes'] ?? []
-                    ];
-                }
-            }
-
-            // PASS 4: Investigation Requests (Mapping unlocks to the levels we just created)
-            foreach ($importData['investigation_requests'] as $reqData) {$req = \App\Models\InvestigationRequest::create([
-                    'case_id' => $case->id,
-                    'request_type' => $reqData['request_type'],
-                    'unlocks_evidence_id' => isset($reqData['unlocks_evidence_ref']) && isset($refMaps['evidence'][$reqData['unlocks_evidence_ref']]) ? $refMaps['evidence'][$reqData['unlocks_evidence_ref']] : null,
-                    'unlocks_level_id' => isset($reqData['unlocks_level_ref']) && isset($refMaps['level'][$reqData['unlocks_level_ref']]) ? $refMaps['level'][$reqData['unlocks_level_ref']] : null,
-                ]);
-
-                if (isset($reqData['ref_id'])) {$refMaps['request'][$reqData['ref_id']] =$req->id;
-                }
-
-                if (!empty($reqData['required_evidence_refs'])) {$evIds = array_map(fn($ref) =>$refMaps['evidence'][$ref] ?? null, $reqData['required_evidence_refs']);
-                    $req->requiredEvidences()->sync(array_filter($evIds));
-                }
-            }
-
-            // PASS 5: Update Levels with their required Investigation Requests
-            foreach ($levelDataWithRefs as$ldata) {
-                if ($ldata['req_ref'] && isset($refMaps['request'][$ldata['req_ref']])) {                     \App\Models\Level::where('id',$ldata['level_id'])->update([
-                        'required_request_id' => $refMaps['request'][$ldata['req_ref']]
-                    ]);
-                }
-            }
-
-            // PASS 6: Questions and Choices
-            foreach ($zonesDataArray as $ldata) {
-                $nodeIndexMap = []; // Maps JSON node array index to actual question DB ID
-
-                // Sub-Pass A: Insert Questions First (to generate IDs for dialogue trees)
-                foreach ($ldata['nodes'] as $index => $nodeData) {
-                    $question = \App\Models\Question::create([
-                        'level_id' => $ldata['level_id'],
-                        'text' => $nodeData['text'],
-                    ]);
-                    $nodeIndexMap[$index] = $question->id;
-                }
-
-                // Sub-Pass B1: Insert Choices First (to populate choice ref map for requirements)
-                $choiceDataByQuestion = [];
-                foreach ($ldata['nodes'] as $index => $nodeData) {
-                    $questionId = $nodeIndexMap[$index];
-                    $choiceDataByQuestion[$questionId] = $nodeData['choices'] ?? [];
-                    
-                    foreach ($nodeData['choices'] as $choiceData) {
-                        $outcomes = $choiceData['outcomes'] ?? [];
-                        
-                        // Build Outcomes Array (without requirements that need choice refs)
-                        $mappedOutcomes = [];
-                        if (isset($outcomes['feedback'])) $mappedOutcomes['feedback'] = $outcomes['feedback'];
-                        if (isset($outcomes['gives_strike'])) $mappedOutcomes['gives_strike'] = $outcomes['gives_strike'];
-                        if (isset($outcomes['next_question_index']) && $outcomes['next_question_index'] !== null) {
-                            $mappedOutcomes['next_question_id'] = $nodeIndexMap[$outcomes['next_question_index']] ?? null;
-                        }
-
-                        $mapRefs = function ($refs, $type) use ($refMaps) {
-                            if (!is_array($refs)) return [];
-                            return array_values(array_filter(array_map(fn($r) => $refMaps[$type][$r] ?? null, $refs)));
-                        };
-
-                        if (!empty($outcomes['unlock_evidence_refs'])) $mappedOutcomes['unlock_evidence'] = $mapRefs($outcomes['unlock_evidence_refs'], 'evidence');
-                        if (!empty($outcomes['unlock_levels_refs'])) $mappedOutcomes['unlock_levels'] = $mapRefs($outcomes['unlock_levels_refs'], 'level');
-
-                        // Map the dynamic character updates array
-                        if (!empty($outcomes['character_updates']) && is_array($outcomes['character_updates'])) {
-                            $mappedCharUpdates = [];
-                            foreach ($outcomes['character_updates'] as $update) {
-                                if (isset($update['ref_id']) && isset($refMaps['character'][$update['ref_id']])) {
-                                    $mappedUpdate = ['id' => $refMaps['character'][$update['ref_id']]];
-                                    if (isset($update['is_unlocked'])) $mappedUpdate['is_unlocked'] = $update['is_unlocked'];
-                                    if (isset($update['status'])) $mappedUpdate['status'] = $update['status'];
-                                    $mappedCharUpdates[] = $mappedUpdate;
-                                }
-                            }
-                            if (!empty($mappedCharUpdates)) {
-                                $mappedOutcomes['character_updates'] = $mappedCharUpdates;
-                            }
-                        }
-
-                        // Create choice so Eloquent arrays are casted to JSON properly and we retrieve the auto-increment ID
-                        // Note: requirements will be added in Sub-Pass B2
-                        $choice = \App\Models\Choice::create([
-                            'question_id' => $questionId,
-                            'text' => $choiceData['text'],
-                            'outcomes' => !empty($mappedOutcomes) ? $mappedOutcomes : null,
-                            'requirements' => null,
-                        ]);
-
-                        if (isset($choiceData['ref_id'])) {
-                            $refMaps['choice'][$choiceData['ref_id']] = $choice->id;
-                        }
-                    }
-                }
-
-                // Sub-Pass B2: Update Choices with requirements (now all choice refs are in the map)
-                foreach ($choiceDataByQuestion as $questionId => $choicesData) {
-                    foreach ($choicesData as $choiceData) {
-                        $requirements = $choiceData['requirements'] ?? [];
-                        
-                        $mapRefs = function ($refs, $type) use ($refMaps) {
-                            if (!is_array($refs)) return [];
-                            return array_values(array_filter(array_map(fn($r) => $refMaps[$type][$r] ?? null, $refs)));
-                        };
-
-                        // Build Requirements Array
-                        $mappedReqs = [];
-                        if (!empty($requirements['required_evidence_refs'])) {
-                            $mappedReqs['required_evidence'] = $mapRefs($requirements['required_evidence_refs'], 'evidence');
-                        }
-                        if (!empty($requirements['required_choice_refs'])) {
-                            $mappedReqs['required_choices'] = $mapRefs($requirements['required_choice_refs'], 'choice');
-                        }
-
-                        // Update the choice with requirements
-                        if (!empty($mappedReqs)) {
-                            // Find the choice we just created (by question_id and text matching)
-                            // Since we don't have a direct mapping, we need to query
-                            $choice = \App\Models\Choice::where('question_id', $questionId)
-                                ->where('text', $choiceData['text'])
-                                ->first();
-                            
-                            if ($choice) {
-                                $choice->update(['requirements' => $mappedReqs]);
-                            }
-                        }
-                    }
-                }
-            }
-
-            return response()->json([
-                'message' => 'Bulk Case Import Successful.',
-                'case_id' => $case->id,
-            ], 201);
-        });
+        return array_values(array_filter(array_map('trim', explode(',', $tags)), fn ($tag) => $tag !== ''));
     }
 }

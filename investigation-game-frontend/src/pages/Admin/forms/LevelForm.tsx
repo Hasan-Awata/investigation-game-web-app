@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
 import { useAdminForm } from '@/pages/Admin/hooks/useAdminForm';
+import { useObjectUrl } from '@/pages/Admin/hooks/useObjectUrl';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import MediaUploader from '@/pages/Admin/components/MediaUploader';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
@@ -19,6 +20,7 @@ export default function LevelForm() {
   const t = adminT.forms.levelForm;
 
   const [image, setImage] = useState<File | null>(null);
+  const imagePreviewUrl = useObjectUrl(image);
 
   const {
     formData, updateField, editingId, clearForm, handleSubmit, handleEditInit, handleDelete, isProcessing
@@ -52,7 +54,7 @@ export default function LevelForm() {
   return (
     <EntityDashboard<Level>
       entityName={t.entityName}
-      listTitle={t.zoneLevelsTitle ? t.zoneLevelsTitle(selectedCase?.title || '') : `Levels in Case: ${selectedCase?.title || ''}`}
+      listTitle={t.zoneLevelsTitle(selectedCase?.title || '')}
       items={availableZones.flatMap(z => z.levels || [])}
       editingId={editingId}
       isProcessing={isProcessing}
@@ -90,10 +92,10 @@ export default function LevelForm() {
           <AdminSelect label={t.gatekeeperLabel} value={formData.required_request_id} onChange={(e) => updateField('required_request_id', e.target.value)} options={requestOptions} />
         </AdminRow>
         
-        <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialLevelLabel || 'INITIAL LEAD'} description={t.initialLevelDesc || 'Visible by default'} className={adminForms['status-live']} />
+        <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialLevelLabel} description={t.initialLevelDesc} className={adminForms['status-live']} />
         <AdminInput label={t.levelTitleLabel} type="text" required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
         <AdminTextarea label={t.levelDetailsLabel} required value={formData.details} onChange={(e) => updateField('details', e.target.value)} />
-        <MediaUploader label={`${t.bgImageLabel} ${editingId ? t.bgImageEditSuffix : ''}`} hint={t.bgImageHint} accept="image/*" previewUrl={image ? URL.createObjectURL(image) : null} onChange={setImage} />
+        <MediaUploader label={`${t.bgImageLabel} ${editingId ? t.bgImageEditSuffix : ''}`} hint={t.bgImageHint} accept="image/*" previewUrl={imagePreviewUrl} onChange={setImage} />
         <AdminCheckbox checked={formData.store_locally} onChange={(e) => updateField('store_locally', e.target.checked)} labelTitle={t.storeLocallyLabel} description={t.storeLocallyDesc} className={adminForms['amber']} />
       </form>
     </EntityDashboard>

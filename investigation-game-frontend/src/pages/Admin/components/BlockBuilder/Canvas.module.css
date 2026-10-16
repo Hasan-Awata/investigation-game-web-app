@@ -25,15 +25,3 @@
   border-radius: 50%;
   pointer-events: none;
 }
-
-.emptyState {
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 200px;
-  color: var(--term-ink-muted);
-  font-style: italic;
-  border: 2px dashed var(--term-rule);
-  border-radius: var(--term-radius);
-}

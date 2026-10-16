@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
+import { getChoiceCoordinate, type ChoiceCoordinate } from '@/pages/Admin/utils/coordinates';
 import type { Evidence, Level, Character } from '@/types';
 import choiceEditorCardStyles from './ChoiceEditorCard.module.css';
 import adminDashboard from '../../AdminDashboard.module.css';
@@ -8,6 +9,7 @@ import adminDashboard from '../../AdminDashboard.module.css';
 export interface DraftChoice {
   id?: number | string;
   text: string;
+  coordinate?: ChoiceCoordinate;
   outcomes?: {
     unlock_evidence?: number[];
     unlock_levels?: number[];
@@ -85,8 +87,8 @@ export default function ChoiceEditorCard({
     updateOutcomes('character_updates', Array.from(updatesMap.values()));
   };
 
-  const hasCoords = choice.text.includes('|') && !choice.text.startsWith('|');
-  const coordPreview = hasCoords ? choice.text.split('|')[0].trim() : null;
+  const coordinate = getChoiceCoordinate(choice);
+  const coordPreview = coordinate ? `${coordinate.x},${coordinate.y}` : null;
   
   const isTargeting = propIsTargeting !== undefined ? propIsTargeting : false;
   const canTarget = onToggleTarget !== undefined;
@@ -189,13 +191,13 @@ export default function ChoiceEditorCard({
 
             <div className={adminDashboard['admin-form-row']}>
               <div className={adminDashboard['form-group']}>
-                <label>{t.unlockCharactersLabel || 'Unlock Characters'}</label>
+                <label>{t.unlockCharactersLabel}</label>
                 <select multiple className={adminDashboard['admin-input']} value={unlockedCh} onChange={(e) => handleCharacterUpdate(Array.from(e.target.selectedOptions, opt => Number(opt.value)), deceasedCh.map(Number))}>
                   {availableCharacters.map((c: Character) => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
                 </select>
               </div>
               <div className={adminDashboard['form-group']}>
-                <label style={{ color: 'var(--accent-crimson)' }}>{t.markDeceasedLabel || 'Report as Deceased'}</label>
+                <label style={{ color: 'var(--accent-crimson)' }}>{t.markDeceasedLabel}</label>
                 <select multiple className={adminDashboard['admin-input']} value={deceasedCh} onChange={(e) => handleCharacterUpdate(unlockedCh.map(Number), Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
                   {availableCharacters.map((c: Character) => <option key={c.id} value={c.id.toString()}>{c.name}</option>)}
                 </select>

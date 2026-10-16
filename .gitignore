@@ -39,6 +39,7 @@ auth.json
 .claude/
 .gemini/
 .impeccable/
+.opencode/
 ai_project_context.xmpl
 ai_backend_project_context.xmpl
 

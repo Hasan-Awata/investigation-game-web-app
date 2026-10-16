@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\MediaService;
+use App\Http\Requests\Admin\StoreBlockImageRequest;
 use App\Models\GameCase;
-use Illuminate\Http\Request;
+use App\Services\MediaService;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -28,16 +28,11 @@ class AdminMediaController extends Controller
 {
     public function __construct(private readonly MediaService $mediaService) {}
 
-    public function storeBlockImage(Request $request): JsonResponse
+    public function storeBlockImage(StoreBlockImageRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'case_id' => 'required|exists:cases,id',
-            'image' => 'required|image|mimes:jpeg,png,jpg,webp|max:4096',
-            'store_locally' => 'required|boolean',
-        ]);
-
-        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
+        $validated = $request->validated();
+        $storeLocally = $request->boolean('store_locally');
+        $caseTitle = GameCase::whereKey($validated['case_id'])->value('title') ?? 'General';
 
         $url = $this->mediaService->store(
             $request->file('image'),

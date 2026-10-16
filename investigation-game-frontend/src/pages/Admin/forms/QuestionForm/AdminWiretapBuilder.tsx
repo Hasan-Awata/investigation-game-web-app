@@ -3,7 +3,8 @@ import toast from 'react-hot-toast';
 import NodeBuilderCanvas from './NodeBuilderCanvas';
 import AdminWiretapForm from './AdminWiretapForm';
 import EntityList from '../Shared/EntityList';
-import { useNodeBuilder } from '@/pages/Admin/hooks/useNodeBuilder';
+import { useObjectUrl } from '@/pages/Admin/hooks/useObjectUrl';
+import { useNodeForm } from '@/pages/Admin/hooks/useAdminForm';
 import type { Question } from '@/types';
 import { type DraftChoice } from '../Shared/ChoiceEditorCard';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
@@ -11,10 +12,12 @@ import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 export default function AdminWiretapBuilder() {
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
+  const imageObjectUrl = useObjectUrl(image);
+  const audioObjectUrl = useObjectUrl(audio);
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.wiretapBuilder;
 
-  const { state, setters, actions, status } = useNodeBuilder([
+  const { state, setters, actions, status } = useNodeForm([
     { id: crypto.randomUUID(), text: '', outcomes: {}, requirements: {} },
     { id: crypto.randomUUID(), text: '', outcomes: {}, requirements: {} }
   ]);
@@ -40,8 +43,8 @@ export default function AdminWiretapBuilder() {
     <NodeBuilderCanvas requiredType="wiretap" title={t.canvasTitle}>
       {({ savedNodes }) => {
         const activeNode = savedNodes.find((q: Question) => q.id === state.editingId);
-        const previewUrl = image ? URL.createObjectURL(image) : (activeNode?.img_url || null);
-        const audioPreviewUrl = audio ? URL.createObjectURL(audio) : (activeNode?.audio_url || null);
+        const previewUrl = imageObjectUrl ?? (activeNode?.img_url || null);
+        const audioPreviewUrl = audioObjectUrl ?? (activeNode?.audio_url || null);
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>

@@ -17,15 +17,16 @@ import styles from './TerminalBuilder.module.css';
 interface TerminalBuilderProps {
   doc: TerminalDocument;
   onChange: (doc: TerminalDocument) => void;
+  evidenceId: number;
 }
 
-export function TerminalBuilder({ doc, onChange }: TerminalBuilderProps) {
+export function TerminalBuilder({ doc, onChange, evidenceId }: TerminalBuilderProps) {
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.terminalBuilder;
 
   const [theme, setTheme] = useState<TerminalTheme>(doc.theme);
 
-  const { sensors, collisionDetection, dndHandlers, selectedBlock, selectedBlockId, selectBlock, selectTemplate, updateBlock: updateTerminalBlock, removeBlock, duplicateBlock } = useBlockBuilder<
+  const { sensors, collisionDetection, dndHandlers, selectedBlock, selectedBlockId, selectBlock, selectTemplate, updateBlock: updateTerminalBlock, removeBlock, duplicateBlock, clear } = useBlockBuilder<
     TerminalBlock,
     TerminalDocument
   >({
@@ -62,11 +63,6 @@ export function TerminalBuilder({ doc, onChange }: TerminalBuilderProps) {
 const updateBlock = useCallback((id: string, updates: Partial<DocBlock | TerminalBlock>) => {
     updateTerminalBlock(id, updates as Partial<TerminalBlock>);
   }, [updateTerminalBlock]);
-
-  const handleClear = useCallback(() => {
-    if (!window.confirm(t.clearConfirm)) return;
-    onChange(emptyTerminalDoc());
-  }, [t, onChange]);
 
   return (
     <DndContext
@@ -110,7 +106,7 @@ const updateBlock = useCallback((id: string, updates: Partial<DocBlock | Termina
             <div className={styles.toolbarGroup}>
               <label className={styles.toolbarLabel}>{t.blocksWord}: {doc.blocks.length}</label>
             </div>
-            <button type="button" className={styles.clearBtn} onClick={handleClear}>
+            <button type="button" className={styles.clearBtn} onClick={() => clear()}>
               {t.clear}
             </button>
           </>
@@ -126,7 +122,7 @@ const updateBlock = useCallback((id: string, updates: Partial<DocBlock | Termina
           />
         }
         canvas={
-          <Canvas doc={doc} selectedBlockId={selectedBlockId} onBlockSelect={handleBlockSelect} />
+          <Canvas doc={doc} evidenceId={evidenceId} selectedBlockId={selectedBlockId} onBlockSelect={handleBlockSelect} />
         }
         inspector={
           <BlockInspector
@@ -134,7 +130,7 @@ const updateBlock = useCallback((id: string, updates: Partial<DocBlock | Termina
             onUpdate={updateBlock}
             onRemove={removeBlock}
             onDuplicate={duplicateBlock}
-            evidenceId={0}
+            evidenceId={evidenceId}
             editors={TERMINAL_EDITORS}
             t={adminT.forms.blockBuilder}
           />

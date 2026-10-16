@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAdminMutations } from '@/pages/Admin/hooks/useAdminMutations';
+import { useConfirm } from '@/pages/Admin/components/AdminUI/ConfirmContext';
 import ChoiceEditorCard, { type DraftChoice } from '../Shared/ChoiceEditorCard';
 import { defaultRequirements, defaultOutcomes, buildNodeFormData } from '@/pages/Admin/utils/questionUtils';
 import type { Choice } from '@/types';
@@ -29,6 +30,7 @@ export default function AdminInterrogationForm({
   const savedId = typeof nodeData.id === 'number' ? nodeData.id : null;
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.interrogationForm;
+  const confirm = useConfirm();
 
   const initialChoices: DraftChoice[] = (nodeData.choices || []).map((c: Choice) => ({
     id: c.id || crypto.randomUUID(),
@@ -70,8 +72,8 @@ export default function AdminInterrogationForm({
     }
   };
 
-  const handleDelete = () => {
-    if (window.confirm(t.deleteConfirm)) {
+  const handleDelete = async () => {
+    if (await confirm({ message: t.deleteConfirm, danger: true })) {
       if (savedId !== null) {
         deleteEntity(savedId, { onSuccess: onDeleted });
       }

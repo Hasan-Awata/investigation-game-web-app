@@ -2,6 +2,7 @@ import { forwardRef } from 'react';
 import toast from 'react-hot-toast';
 import { AdminFileInput } from './AdminUI';
 import { validateImageSize, validateAudioSize } from '../utils/validators';
+import adminForms from '../forms/Shared/AdminForms.module.css';
 
 interface MediaUploaderProps {
   label: string;
@@ -32,7 +33,7 @@ const MediaUploader = forwardRef<HTMLInputElement, MediaUploaderProps>(({
   };
 
   return (
-    <div className="media-uploader-group" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+    <div className={adminForms['media-uploader-group']}>
       <AdminFileInput
         label={label}
         hint={hint}
@@ -43,17 +44,17 @@ const MediaUploader = forwardRef<HTMLInputElement, MediaUploaderProps>(({
       
       {/* Abstracted Preview Handlers */}
       {previewUrl && accept === 'image/*' && (
-        <img 
-          src={previewUrl} 
-          alt="Upload Preview" 
-          style={{ maxHeight: '100px', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.1)', alignSelf: 'flex-start' }} 
+        <img
+          src={previewUrl}
+          alt="Upload Preview"
+          className={adminForms['media-uploader-preview']}
         />
       )}
       {previewUrl && accept === 'audio/*' && (
-        <audio 
-          controls 
-          src={previewUrl} 
-          style={{ height: '32px', width: '100%' }} 
+        <audio
+          controls
+          src={previewUrl}
+          className={adminForms['media-uploader-audio']}
         />
       )}
     </div>

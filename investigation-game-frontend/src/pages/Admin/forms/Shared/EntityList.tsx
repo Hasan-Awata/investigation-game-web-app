@@ -10,6 +10,7 @@ interface EntityListProps<T> {
   renderItemContent: (item: T) => ReactNode;
   onEdit: (item: T) => void;
   onDelete: (item: T) => void;
+  onExport?: (item: T) => void;
   isProcessing: boolean;
 }
 
@@ -21,16 +22,16 @@ export default function EntityList<T>({
   renderItemContent,
   onEdit,
   onDelete,
+  onExport,
   isProcessing
 }: EntityListProps<T>) {
   const { adminT } = useAdminTranslation();
-  // Fallback safe reference if key isn't added yet, or standard lookup:
-  const t = adminT.forms.entityList || { editBtn: 'Edit', deleteBtn: 'Delete' };
+  const t = adminT.forms.entityList;
 
   return (
     <div className={adminForms['admin-entity-list-container']}>
       <h3 className={adminForms['admin-entity-list-title']}>
-        // {title}
+        {title}
       </h3>
       
       {items.length === 0 ? (
@@ -45,6 +46,16 @@ export default function EntityList<T>({
                 {renderItemContent(item)}
               </div>
               <div className={adminForms['admin-entity-actions']}>
+                {onExport && (
+                  <button 
+                    type="button" 
+                    onClick={() => onExport(item)} 
+                    disabled={isProcessing} 
+                    className={`${adminForms['admin-action-btn']} ${adminForms['export']}`}
+                  >
+                    {t.exportBtn}
+                  </button>
+                )}
                 <button 
                   type="button" 
                   onClick={() => onEdit(item)} 

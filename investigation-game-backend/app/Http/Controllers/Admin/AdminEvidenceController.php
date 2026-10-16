@@ -5,10 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreEvidenceRequest;
 use App\Http\Requests\Admin\UpdateEvidenceRequest;
-use App\Services\MediaService;
 use App\Models\Evidence;
 use App\Models\GameCase;
+use App\Services\MediaService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class AdminEvidenceController extends Controller
 {
@@ -17,85 +18,105 @@ class AdminEvidenceController extends Controller
     public function store(StoreEvidenceRequest $request): JsonResponse
     {
         $validated = $request->validated();
-
-        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
+        $storeLocally = $request->boolean('store_locally');
+        $caseTitle = GameCase::whereKey($validated['case_id'])->value('title') ?? 'General';
 
         $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'Evidences', $storeLocally);
         $audioUrl = $this->mediaService->store($request->file('audio'), $caseTitle, 'Evidences', $storeLocally);
 
-        $metadataPayload = null;
-        if (!empty($validated['metadata'])) {
-            $metadataPayload = is_string($validated['metadata'])
-                ? json_decode($validated['metadata'], true)
-                : $validated['metadata'];
-        }
-
-        $evidence = Evidence::create([
+        $evidence = DB::transaction(fn () => Evidence::create([
             'case_id' => $validated['case_id'],
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'evidence_type' => $validated['evidence_type'],
-            'metadata' => $metadataPayload,
-            'is_initial' => $validated['is_initial'],
-            'is_vital_for_conviction' => $validated['is_vital_for_conviction'],
+            'metadata' => $this->normalizeMetadata($validated['metadata'] ?? null),
+            'is_initial' => $request->boolean('is_initial'),
+            'is_vital_for_conviction' => $request->boolean('is_vital_for_conviction'),
             'img_url' => $imageUrl,
             'audio_url' => $audioUrl,
-        ]);
+        ]));
 
         return response()->json(['message' => 'Evidence added successfully.', 'evidence' => $evidence], 201);
     }
 
-    public function update(UpdateEvidenceRequest $request, $id): JsonResponse
+    public function update(UpdateEvidenceRequest $request, Evidence $evidence): JsonResponse
     {
-        $evidence = Evidence::findOrFail($id);
-
         $validated = $request->validated();
+        $storeLocally = $request->boolean('store_locally');
+        $caseTitle = GameCase::whereKey($validated['case_id'])->value('title') ?? 'General';
 
-        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-        $caseTitle = GameCase::where('id', $validated['case_id'])->value('title') ?? 'General';
+        $oldImage = $evidence->getRawOriginal('img_url');
+        $oldAudio = $evidence->getRawOriginal('audio_url');
 
-        $metadataPayload = null;
-        if (!empty($validated['metadata'])) {
-            $metadataPayload = is_string($validated['metadata'])
-                ? json_decode($validated['metadata'], true)
-                : $validated['metadata'];
-        }
+        $newImage = $request->hasFile('image')
+            ? $this->mediaService->store($request->file('image'), $caseTitle, 'Evidences', $storeLocally)
+            : null;
+        $newAudio = $request->hasFile('audio')
+            ? $this->mediaService->store($request->file('audio'), $caseTitle, 'Evidences', $storeLocally)
+            : null;
 
         $updateData = [
             'case_id' => $validated['case_id'],
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'evidence_type' => $validated['evidence_type'],
-            'metadata' => $metadataPayload,
-            'is_initial' => $validated['is_initial'],
-            'is_vital_for_conviction' => $validated['is_vital_for_conviction'],
+            'metadata' => $this->normalizeMetadata($validated['metadata'] ?? null),
+            'is_initial' => $request->boolean('is_initial'),
+            'is_vital_for_conviction' => $request->boolean('is_vital_for_conviction'),
         ];
 
-        if ($request->hasFile('image')) {
-            $this->mediaService->delete($evidence->getRawOriginal('img_url'));
-            $updateData['img_url'] = $this->mediaService->store($request->file('image'), $caseTitle, 'Evidences', $storeLocally);
+        if ($newImage !== null) {
+            $updateData['img_url'] = $newImage;
         }
 
-        if ($request->hasFile('audio')) {
-            $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
-            $updateData['audio_url'] = $this->mediaService->store($request->file('audio'), $caseTitle, 'Evidences', $storeLocally);
+        if ($newAudio !== null) {
+            $updateData['audio_url'] = $newAudio;
         }
 
-        $evidence->update($updateData);
+        DB::transaction(fn () => $evidence->update($updateData));
+
+        if ($newImage !== null && $newImage !== $oldImage) {
+            $this->mediaService->delete($oldImage);
+        }
+
+        if ($newAudio !== null && $newAudio !== $oldAudio) {
+            $this->mediaService->delete($oldAudio);
+        }
 
         return response()->json(['message' => 'Evidence updated successfully.', 'evidence' => $evidence], 200);
     }
 
-    public function destroy($id): JsonResponse
+    public function destroy(Evidence $evidence): JsonResponse
     {
-        $evidence = Evidence::findOrFail($id);
+        $image = $evidence->getRawOriginal('img_url');
+        $audio = $evidence->getRawOriginal('audio_url');
 
-        $this->mediaService->delete($evidence->getRawOriginal('img_url'));
-        $this->mediaService->delete($evidence->getRawOriginal('audio_url'));
+        DB::transaction(fn () => $evidence->delete());
 
-        $evidence->delete();
+        $this->mediaService->delete($image);
+        $this->mediaService->delete($audio);
 
         return response()->json(['message' => 'Evidence deleted.'], 200);
+    }
+
+    /**
+     * The evidence metadata may arrive as a JSON string (multipart form) or as
+     * an already-decoded array (JSON body).
+     *
+     * @return array<string, mixed>|null
+     */
+    private function normalizeMetadata(mixed $metadata): ?array
+    {
+        if (empty($metadata)) {
+            return null;
+        }
+
+        if (is_string($metadata)) {
+            $decoded = json_decode($metadata, true);
+
+            return is_array($decoded) ? $decoded : null;
+        }
+
+        return is_array($metadata) ? $metadata : null;
     }
 }

@@ -3,60 +3,43 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\StoreZoneRequest;
+use App\Http\Requests\Admin\UpdateZoneRequest;
+use App\Models\GameCase;
 use App\Models\Zone;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class AdminZoneController extends Controller
 {
-    public function store(Request $request): JsonResponse
+    public function store(StoreZoneRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'case_id' => 'required|exists:cases,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'order_index' => 'required|integer|min:1',
-            'map_url'     => 'nullable|string',
-            'coord_x'     => 'nullable|numeric|required_with:map_url',
-            'coord_y'     => 'nullable|numeric|required_with:map_url',
-        ]);
-
-        $zone = Zone::create($validated);
+        $zone = DB::transaction(fn () => Zone::create($request->validated()));
 
         return response()->json([
             'message' => 'Zone created successfully.',
-            'zone' => $zone
+            'zone' => $zone,
         ], 201);
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateZoneRequest $request, Zone $zone): JsonResponse
     {
-        $zone = Zone::findOrFail($id);
-        $validated = $request->validate([
-            'case_id' => 'required|exists:cases,id',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'order_index' => 'required|integer|min:1',
-            'map_url'     => 'nullable|string',
-            'coord_x'     => 'nullable|numeric|required_with:map_url',
-            'coord_y'     => 'nullable|numeric|required_with:map_url',
-        ]);
-        
-        $zone->update($validated);
+        DB::transaction(fn () => $zone->update($request->validated()));
+
         return response()->json(['message' => 'Zone updated.', 'zone' => $zone], 200);
     }
 
-    public function destroy($id): JsonResponse
+    public function destroy(Zone $zone): JsonResponse
     {
-        $zone = Zone::findOrFail($id);
-        $zone->delete();
+        DB::transaction(fn () => $zone->delete());
+
         return response()->json(['message' => 'Zone deleted.'], 200);
     }
 
-    public function indexByCase($caseId): JsonResponse
+    public function indexByCase(GameCase $case): JsonResponse
     {
         $zones = Zone::with(['levels.questions.choices'])
-            ->where('case_id', $caseId)
+            ->where('case_id', $case->id)
             ->orderBy('order_index', 'asc')
             ->get();
 

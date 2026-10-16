@@ -1,12 +1,21 @@
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { translations } from '@/locales/ar/translationAdmin';
 
 export type AdminTranslationSchema = typeof translations;
 
+/**
+ * Resolves the entire admin translation tree against i18next once per language
+ * instead of rebuilding ~500 `t()` lookups on every render. `t` and
+ * `i18n.language` are the only inputs that can change the resolved values.
+ */
 export function useAdminTranslation() {
   const { t } = useTranslation('admin');
 
-  const adminT = buildKeyMap(translations, (path) => t(path)) as AdminTranslationSchema;
+  const adminT = useMemo(
+    () => buildKeyMap(translations, (path) => t(path)) as AdminTranslationSchema,
+    [t],
+  );
 
   return { adminT };
 }

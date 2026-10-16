@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import type { DraftChoice } from '@/pages/Admin/forms/Shared/ChoiceEditorCard';
+import { formatCoordinateText, getChoiceCoordinate } from '@/pages/Admin/utils/coordinates';
 
 export function useCoordinateMapper(
   choices: DraftChoice[],
@@ -11,17 +12,16 @@ export function useCoordinateMapper(
     if (!activeCoordinateTarget) return;
 
     const targetChoice = choices.find(c => c.id === activeCoordinateTarget);
-    let title = 'New Point';
+    const existing = targetChoice ? getChoiceCoordinate(targetChoice) : null;
+    const label = existing
+      ? existing.label
+      : (targetChoice?.text.trim() || 'New Point');
 
-    if (targetChoice && targetChoice.text.includes('|')) {
-      title = targetChoice.text.split('|')[1].trim();
-    } else if (targetChoice && targetChoice.text.trim() !== '') {
-      title = targetChoice.text.trim();
-    }
+    const coordinate = { x, y, label };
 
     setChoices(choices.map(c =>
       c.id === activeCoordinateTarget
-        ? { ...c, text: `${x},${y} | ${title}` }
+        ? { ...c, coordinate, text: formatCoordinateText(coordinate) }
         : c
     ));
 

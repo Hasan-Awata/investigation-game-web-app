@@ -1,0 +1,62 @@
+/* ==========================================
+   ADMIN SHELL — fixed viewport, floating glass header
+   ========================================== */
+
+.admin-layout {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: var(--bg-dark);
+  overflow: hidden;
+}
+
+.admin-header {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: var(--space-4) var(--space-6);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  border-bottom: 1px solid var(--glass-border);
+  box-shadow: var(--shadow-inset);
+  z-index: 10;
+}
+
+.admin-header-title {
+  margin: 0;
+  color: var(--accent-crimson);
+  font-family: var(--font-terminal);
+  font-size: 1rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* No padding here: the dashboard owns its own spacing and
+   the workspace scrolls beneath the glass header. */
+.admin-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.admin-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: var(--bg-dark);
+}
+
+.admin-loading-text {
+  color: var(--accent-cyan);
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .admin-header {
+    background: var(--bg-panel);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

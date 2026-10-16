@@ -16,7 +16,7 @@ export function BlockPalette<TBlockType extends string>({
 
   return (
     <div className={styles.palette}>
-      <h4 className={styles.paletteTitle}>{adminT.forms.blockBuilder.paletteTitle ?? 'Blocks'}</h4>
+      <h4 className={styles.paletteTitle}>{adminT.forms.blockBuilder.paletteTitle}</h4>
       <div className={styles.paletteList} role="listbox" aria-label="Block palette">
         {blockTypes.map((type) => (
           <button

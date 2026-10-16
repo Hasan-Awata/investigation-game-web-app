@@ -1,5 +1,6 @@
 import { type ReactNode } from 'react';
 import { useAdminTranslation } from '../hooks/useAdminTranslation';
+import adminDashboard from '../AdminDashboard.module.css';
 
 interface AdminFormLayoutProps {
   editingId: number | string | null;
@@ -36,14 +37,14 @@ export default function AdminFormLayout({
 
   if (contextMissing) {
     return (
-      <div className="admin-form-wrapper glass-panel">
+      <div className={`${adminDashboard['admin-form-wrapper']} glass-panel`}>
         {contextMissing}
       </div>
     );
   }
 
   return (
-    <div className="admin-form-wrapper glass-panel">
+    <div className={`${adminDashboard['admin-form-wrapper']} glass-panel`}>
       <div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
           <div>

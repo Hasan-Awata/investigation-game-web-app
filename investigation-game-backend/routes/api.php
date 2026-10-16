@@ -59,8 +59,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware([IsAdmin::class])->prefix('admin')->group(function () {
         // GET (Fetch) Granular Endpoints
         Route::get('/cases', [AdminCaseController::class, 'index']);
-        Route::get('/cases/{caseId}/zones', [AdminZoneController::class, 'indexByCase']);
-        Route::get('/zones/{zoneId}/levels', [AdminLevelController::class, 'indexByZone']);
+        Route::get('/cases/{case}/export', [AdminCaseController::class, 'export']);
+        Route::get('/cases/{case}/zones', [AdminZoneController::class, 'indexByCase']);
+        Route::get('/zones/{zone}/levels', [AdminLevelController::class, 'indexByZone']);
 
         // POST (Create)
         Route::post('/cases', [AdminCaseController::class, 'store']);
@@ -82,7 +83,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/evidences/{evidence}', [AdminEvidenceController::class, 'update']);
         Route::put('/questions/{question}', [AdminQuestionController::class, 'update']);
         Route::put('/characters/{character}', [AdminCharacterController::class, 'update']);
-        Route::put('/investigation-requests/{request}', [AdminInvestigationRequestController::class, 'update']);
+        Route::put('/investigation-requests/{investigationRequest}', [AdminInvestigationRequestController::class, 'update']);
 
         // DELETE (Destroy)
         Route::delete('/cases/{case}', [AdminCaseController::class, 'destroy']);
@@ -91,6 +92,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/evidences/{evidence}', [AdminEvidenceController::class, 'destroy']);
         Route::delete('/questions/{question}', [AdminQuestionController::class, 'destroy']);
         Route::delete('/characters/{character}', [AdminCharacterController::class, 'destroy']);
-        Route::delete('/investigation-requests/{request}', [AdminInvestigationRequestController::class, 'destroy']);
+        Route::delete('/investigation-requests/{investigationRequest}', [AdminInvestigationRequestController::class, 'destroy']);
     });
 });

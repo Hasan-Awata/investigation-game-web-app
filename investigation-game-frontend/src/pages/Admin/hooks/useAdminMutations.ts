@@ -16,8 +16,13 @@ interface ApiMethods {
   create: (fd: FormData) => Promise<Result<unknown>>;
   update: (id: number, fd: FormData) => Promise<Result<unknown>>;
   del: (id: number) => Promise<Result<unknown>>;
-  import?: (payload: unknown) => Promise<Result<unknown>>;
+  import?: (file: File, storeLocally: boolean) => Promise<Result<unknown>>;
   name: string;
+}
+
+export interface ImportBundlePayload {
+  file: File;
+  storeLocally: boolean;
 }
 
 export function useAdminMutations(entityType: AdminEntityType) {
@@ -83,13 +88,13 @@ export function useAdminMutations(entityType: AdminEntityType) {
   });
 
   const importMutation = useMutation({
-    mutationFn: async (payload: unknown) => {
-      if (!methods.import) throw new Error(`Bulk import is not supported for ${methods.name}.`);
-      const result = await methods.import(payload);
+    mutationFn: async ({ file, storeLocally }: ImportBundlePayload) => {
+      if (!methods.import) throw new Error(`Bundle import is not supported for ${methods.name}.`);
+      const result = await methods.import(file, storeLocally);
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
     },
-    onSuccess: () => handleSuccess('imported successfully via transaction'),
+    onSuccess: () => handleSuccess('imported successfully'),
     onError: handleError,
   });
 

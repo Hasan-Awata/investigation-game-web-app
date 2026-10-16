@@ -3,99 +3,89 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Services\MediaService;
+use App\Http\Requests\Admin\StoreLevelRequest;
+use App\Http\Requests\Admin\UpdateLevelRequest;
 use App\Models\Level;
 use App\Models\Zone;
-use App\Enums\LevelPresentationType;
-use Illuminate\Validation\Rules\Enum;
-use Illuminate\Http\Request;
+use App\Services\MediaService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 
 class AdminLevelController extends Controller
 {
     public function __construct(private readonly MediaService $mediaService) {}
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreLevelRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'zone_id' => 'required|exists:zones,id',
-            'title' => 'required|string|max:255',
-            'details' => 'required|string',
-            'order_index' => 'required|integer|min:1',
-            'presentation_type' => ['required', new Enum(LevelPresentationType::class)],
-            'required_request_id' => 'nullable|exists:investigation_requests,id',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
-            'store_locally' => 'required|boolean',
-        ]);
+        $validated = $request->validated();
+        $storeLocally = $request->boolean('store_locally');
+        $caseTitle = Zone::with('gameCase')->find($validated['zone_id'])?->gameCase?->title ?? 'General';
 
-        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-        $caseTitle = Zone::with('gameCase')->where('id', $validated['zone_id'])->first()?->gameCase?->title ?? 'General';
         $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'Levels', $storeLocally);
 
-        $level = Level::create([
+        $level = DB::transaction(fn () => Level::create([
             'zone_id' => $validated['zone_id'],
             'title' => $validated['title'],
             'details' => $validated['details'],
             'order_index' => $validated['order_index'],
-            'is_initial' => filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN),
+            'is_initial' => $request->boolean('is_initial'),
             'presentation_type' => $validated['presentation_type'],
             'required_request_id' => $validated['required_request_id'] ?? null,
             'img_url' => $imageUrl,
-        ]);
+        ]));
 
         return response()->json(['message' => 'Level created successfully.', 'level' => $level], 201);
     }
 
-    public function update(Request $request, $id): JsonResponse
+    public function update(UpdateLevelRequest $request, Level $level): JsonResponse
     {
-        $level = Level::findOrFail($id);
+        $validated = $request->validated();
+        $storeLocally = $request->boolean('store_locally');
+        $caseTitle = Zone::with('gameCase')->find($validated['zone_id'])?->gameCase?->title ?? 'General';
 
-        $validated = $request->validate([
-            'zone_id' => 'required|exists:zones,id',
-            'title' => 'required|string|max:255',
-            'details' => 'required|string',
-            'order_index' => 'required|integer|min:1',
-            'presentation_type' => ['required', new Enum(LevelPresentationType::class)],
-            'required_request_id' => 'nullable|exists:investigation_requests,id',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
-            'store_locally' => 'required|boolean',
-        ]);
-
-        $storeLocally = filter_var($validated['store_locally'], FILTER_VALIDATE_BOOLEAN);
-        $caseTitle = Zone::with('gameCase')->where('id', $validated['zone_id'])->first()?->gameCase?->title ?? 'General';
+        $oldImage = $level->getRawOriginal('img_url');
+        $newImage = $request->hasFile('image')
+            ? $this->mediaService->store($request->file('image'), $caseTitle, 'Levels', $storeLocally)
+            : null;
 
         $updateData = [
             'zone_id' => $validated['zone_id'],
             'title' => $validated['title'],
             'details' => $validated['details'],
             'order_index' => $validated['order_index'],
-            'is_initial' => filter_var($request->is_initial, FILTER_VALIDATE_BOOLEAN),
+            'is_initial' => $request->boolean('is_initial'),
             'presentation_type' => $validated['presentation_type'],
             'required_request_id' => $validated['required_request_id'] ?? null,
         ];
 
-        if ($request->hasFile('image')) {
-            $this->mediaService->delete($level->getRawOriginal('img_url'));
-            $updateData['img_url'] = $this->mediaService->store($request->file('image'), $caseTitle, 'Levels', $storeLocally);
+        if ($newImage !== null) {
+            $updateData['img_url'] = $newImage;
         }
 
-        $level->update($updateData);
+        DB::transaction(fn () => $level->update($updateData));
+
+        if ($newImage !== null && $newImage !== $oldImage) {
+            $this->mediaService->delete($oldImage);
+        }
 
         return response()->json(['message' => 'Level updated successfully.', 'level' => $level], 200);
     }
 
-    public function destroy($id): JsonResponse
+    public function destroy(Level $level): JsonResponse
     {
-        $level = Level::findOrFail($id);
-        $this->mediaService->delete($level->getRawOriginal('img_url'));
-        $level->delete();
+        $image = $level->getRawOriginal('img_url');
+
+        DB::transaction(fn () => $level->delete());
+
+        $this->mediaService->delete($image);
+
         return response()->json(['message' => 'Level deleted.'], 200);
     }
 
-    public function indexByZone($zoneId): JsonResponse
+    public function indexByZone(Zone $zone): JsonResponse
     {
         $levels = Level::with(['questions.choices'])
-            ->where('zone_id', $zoneId)
+            ->where('zone_id', $zone->id)
             ->orderBy('order_index', 'asc')
             ->get();
 

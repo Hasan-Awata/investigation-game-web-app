@@ -32,7 +32,7 @@ def clean_code(content):
 def gather_project_code(root_dir, output_file):
     ignore_dirs = {
         '.git', '.vscode', '.idea', 'vendor', 'node_modules', 
-        'storage', 'public', 'cache', 'coverage', '.husky'
+        'storage', 'public', 'cache', 'coverage', '.husky', 'tests', 'docs'
     }
     
     allowed_extensions = {'.php', '.json', '.yml', '.yaml'}

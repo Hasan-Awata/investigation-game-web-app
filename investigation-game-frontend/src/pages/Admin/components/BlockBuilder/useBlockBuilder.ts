@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragStartEvent, type DragOverEvent } from '@dnd-kit/core';
 import type { BlockBase } from '@/types/evidence/shared';
+import { useConfirm } from '@/pages/Admin/components/AdminUI/ConfirmContext';
 
 interface ThemedDoc {
   blocks: BlockBase[];
@@ -44,6 +45,7 @@ export function useBlockBuilder<TBlock extends BlockBase, TDoc extends { blocks:
   clearConfirmMessage,
 }: UseBlockBuilderArgs<TBlock, TDoc>): UseBlockBuilderReturn<TBlock> {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const confirm = useConfirm();
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -126,11 +128,11 @@ export function useBlockBuilder<TBlock extends BlockBase, TDoc extends { blocks:
     onChange({ ...doc, blocks: newBlocks } as TDoc);
   }, [doc, onChange, cloneBlock]);
 
-  const clear = useCallback(() => {
-    if (!window.confirm(clearConfirmMessage)) return;
+  const clear = useCallback(async () => {
+    if (!(await confirm({ message: clearConfirmMessage, danger: true }))) return;
     onChange(emptyDoc());
     setSelectedBlockId(null);
-  }, [onChange, emptyDoc, clearConfirmMessage]);
+  }, [onChange, emptyDoc, clearConfirmMessage, confirm]);
 
   const selectedBlock = selectedBlockId ? doc.blocks.find((b) => b.id === selectedBlockId) || null : null;
 

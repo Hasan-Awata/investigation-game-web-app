@@ -32,6 +32,11 @@ export const translations = {
     adminGuard: {
       loading: "جاري إنشاء التصريح الأمني...",
       dashboardTitle: "// وصول مقيد: قيادة مسؤولي التحقيق"
+    },
+    confirmDialog: {
+      defaultTitle: "تأكيد الإجراء",
+      confirmBtn: "تأكيد",
+      cancelBtn: "إلغاء"
     }
   },
   context: {
@@ -91,7 +96,6 @@ export const translations = {
       imageOption: "دليل فوتوغرافي",
       evidenceTitleLabel: "عنوان الدليل",
       evidenceDescLabel: "وصف قصير (نص التمرير / التعليق التوضيحي)",
-      mugshotLabel: "صورة المتهم / صورة الهوية",
       evidenceImageLabel: "صورة الدليل",
       imageHint: "الأمثل: نسبة 1:1 أو 3:4 عمودي. WEBP أو JPG. بحد أقصى 4 ميجابايت.",
       audioLabel: "تسجيل صوتي",
@@ -151,12 +155,9 @@ export const translations = {
       storeLocallyLabel: "التخزين محلياً على الخادم",
       storeLocallyDesc: "حفظ الأصول مباشرة في مجلدات الخادم العام بدلاً من السحابة.",
       processingData: "جاري معالجة البيانات...",
-      updateLevel: "تحديث المستوى",
-      commitLevel: "اعتماد المستوى في قاعدة البيانات",
       emptyMessage: "لا توجد مستويات أو خيوط معينة لهذه المنطقة.",
       zoneLevelsTitle: (zoneTitle: string) => `الخيوط النشطة في منطقة: ${zoneTitle}`,
-      deleteConfirm: (title: string) => `هل أنت متأكد تماماً من رغبتك في حذف "${title}"؟ سيتم مسح جميع البيانات المتداخلة بشكل دائم.`,
-      targetContextHeader: (caseTitle: string, zoneTitle: string) => `الاستهداف: ${caseTitle} > ${zoneTitle}`
+      deleteConfirm: (title: string) => `هل أنت متأكد تماماً من رغبتك في حذف "${title}"؟ سيتم مسح جميع البيانات المتداخلة بشكل دائم.`
     },
     zoneForm: {
       entityName: "المنطقة",
@@ -172,8 +173,6 @@ export const translations = {
       manageTitle: (caseTitle: string) => `المناطق الجغرافية في ${caseTitle}`,
       deleteConfirm: (title: string) => `هل أنت متأكد تماماً من رغبتك في حذف منطقة "${title}"؟ سيصبح كافة المستويات والخيوط بداخلها بلا مأوى أو سيتم حذفها.`,
       targetCaseHeader: (title: string) => `استهداف القضية: ${title}`,
-      mapUrlLabel: "خريطة الحملة التكتيكية",
-      mapUrlPlaceholder: "-- اختر الخريطة --",
       targetingBanner: "⚠️ مصفوفة التحديد مفعلة: انقر فوق الخريطة لقفل موقع المنطقة.",
       cancelTargetBtn: "إلغاء",
       mapCoordinateBtn: "تعيين إحداثيات المنطقة على الخريطة",
@@ -227,7 +226,8 @@ export const translations = {
     },
     entityList: {
       editBtn: "تعديل", 
-      deleteBtn: "حذف"  
+      deleteBtn: "حذف",
+      exportBtn: "تصدير"
     },
     docBuilder: {
       paletteTitle: "الكتل",
@@ -241,7 +241,6 @@ export const translations = {
       clear: "تفريغ",
       clearConfirm: "تفريغ جميع الكتل؟ لا يمكن التراجع.",
       uploadImage: "رفع صورة",
-      uploading: "جارٍ الرفع...",
       duplicate: "تكرار",
       remove: "حذف",
       uploadSuccess: "تم رفع الصورة بنجاح",
@@ -309,19 +308,12 @@ export const translations = {
     },
     evidenceMetadata: {
       sectionTitle: "[ حقن البيانات الوصفية المنظمة ]",
-      forensicAutopsy: "تقرير التشريح",
-      forensicBallistics: "تحليل المقذوفات",
-      forensicDna: "ملف الحمض النووي / الأمصال",
-      forensicDigital: "الطب الشرعي الرقمي",
-      forensicTrace: "تحليل الآثار / المواد",
       docCorrespondence: "مراسلات (بريد إلكتروني / خطاب)",
       docFinancial: "سجل مالي",
       docJournal: "مذكرات شخصية / يوميات",
       docContract: "عقد رسمي / صك",
       docMemo: "مذكرة شركة / ملاحظة",
       docBackground: "تحقيق خلفية / ملف",
-      selectForensicPlaceholder: "-- اختر تصنيف الطب الشرعي --",
-      selectDocPlaceholder: "-- اختر تصنيف المستند --",
       officialTranscriptLabel: "النص الرسمي",
       docPhoneRecords: "سجلات الهاتف",
       autopsy: {

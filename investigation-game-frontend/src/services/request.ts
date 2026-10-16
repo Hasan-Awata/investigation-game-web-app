@@ -30,3 +30,23 @@ export async function request<T>(endpoint: string, options: RequestInit = {}): P
     return failure(error instanceof Error ? error.message : 'Network error');
   }
 }
+
+export async function requestBlob(endpoint: string, options: RequestInit = {}): Promise<Result<Blob>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+      ...options,
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+        ...options.headers,
+      },
+    });
+    if (!response.ok) {
+      if (response.status === 401 || response.status === 403) handleUnauthorized();
+      const data = await response.json().catch(() => ({}));
+      return failure(data.message || `Operation failed (${response.status}).`);
+    }
+    return success(await response.blob());
+  } catch (error) {
+    return failure(error instanceof Error ? error.message : 'Network error');
+  }
+}

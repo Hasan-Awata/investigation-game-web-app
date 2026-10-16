@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useCoordinateMapper } from '@/pages/Admin/hooks/useCoordinateMapper';
-import { useNodeBuilder } from '@/pages/Admin/hooks/useNodeBuilder';
+import { useObjectUrl } from '@/pages/Admin/hooks/useObjectUrl';
+import { useNodeForm } from '@/pages/Admin/hooks/useAdminForm';
 import NodeBuilderCanvas from './NodeBuilderCanvas';
 import AdminLocationForm from './AdminLocationForm';
 import EntityList from '../Shared/EntityList';
@@ -11,10 +12,11 @@ import adminLocationBuilder from './AdminLocationBuilder.module.css';
 
 export default function AdminLocationBuilder() {
   const [image, setImage] = useState<File | null>(null);
+  const imageObjectUrl = useObjectUrl(image);
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.locationBuilder;
 
-  const { state, setters, actions, status } = useNodeBuilder();
+  const { state, setters, actions, status } = useNodeForm();
   const { activeCoordinateTarget, setActiveCoordinateTarget, handleCoordinateSelect } = useCoordinateMapper(state.choices, setters.setChoices);
 
   const handleCreateNewScene = () => {
@@ -37,7 +39,7 @@ export default function AdminLocationBuilder() {
     <NodeBuilderCanvas requiredType="location" title={t.canvasTitle}>
       {({ savedNodes }) => {
         const activeNode = savedNodes.find((q: Question) => q.id === state.editingId);
-        const previewUrl = image ? URL.createObjectURL(image) : (activeNode?.img_url || null);
+        const previewUrl = imageObjectUrl ?? (activeNode?.img_url || null);
 
         return (
           <>

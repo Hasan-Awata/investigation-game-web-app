@@ -7,7 +7,6 @@ import { AdminInput, AdminTextarea, CoordinatePicker } from '@/pages/Admin/compo
 import type { Zone } from '@/types';
 import { validateZoneForm } from '@/pages/Admin/utils/validators';
 import adminForms from './Shared/AdminForms.module.css';
-import './QuestionForm/AdminLocationBuilder.module.css'; 
 import adminDashboard from '../AdminDashboard.module.css';
 
 const initialFormState = { 
@@ -52,15 +51,15 @@ export default function ZoneForm() {
 
   const contextMissing = !caseId || !selectedCase ? (
     <div className={`${adminDashboard['admin-form-container']} glass-panel ${adminForms['admin-missing-context']}`}>
-      <h3>{t.missingContextTitle || 'Missing Context'}</h3>
-      <p>{t.missingContextDesc || 'Please select a Case from the sidebar to manage its Zones.'}</p>
+      <h3>{t.missingContextTitle}</h3>
+      <p>{t.missingContextDesc}</p>
     </div>
   ) : null;
 
   const submitLabel = {
-    creating: t.commitZone || 'COMMIT ZONE',
-    editing: t.updateZone || 'UPDATE ZONE',
-    processing: t.processingData || 'Processing...'
+    creating: t.commitZone,
+    editing: t.updateZone,
+    processing: t.processingData
   };
 
   const caseMapUrl = selectedCase?.map_url;
@@ -91,17 +90,17 @@ export default function ZoneForm() {
 
   return (
     <EntityDashboard<Zone>
-      entityName={t.entityName || 'Zone'}
-      listTitle={t.manageTitle ? t.manageTitle(selectedCase?.title || '') : `Manage Zones: ${selectedCase?.title || ''}`}
+      entityName={t.entityName}
+      listTitle={t.manageTitle(selectedCase?.title || '')}
       items={availableZones}
       editingId={editingId}
       isProcessing={isProcessing}
-      emptyMessage={t.emptyMessage || 'No zones found.'}
-      contextHeader={t.targetCaseHeader ? t.targetCaseHeader(selectedCase?.title || '') : `Targeting Case: ${selectedCase?.title || ''}`}
+      emptyMessage={t.emptyMessage}
+      contextHeader={t.targetCaseHeader(selectedCase?.title || '')}
       keyExtractor={(z) => z.id.toString()}
       onClear={onClear}
       onEdit={onEdit}
-      onDelete={(z) => handleDelete(z.id, t.deleteConfirm ? t.deleteConfirm(z.title) : `Delete ${z.title}?`)}
+      onDelete={(z) => handleDelete(z.id, t.deleteConfirm(z.title))}
       renderItemContent={(z) => (
         <>
           <span className={adminForms['admin-list-id']}>IDX: {z.order_index}</span>
@@ -113,16 +112,16 @@ export default function ZoneForm() {
       submitLabel={submitLabel}
     >
       <form onSubmit={handleSubmit} className={adminDashboard['admin-form']}>
-        <AdminInput label={t.titleLabel || 'Zone Title'} type="text" required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
-        <AdminTextarea label={t.descriptionLabel || 'Zone Description'} style={{ minHeight: '100px' }} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
+        <AdminInput label={t.titleLabel} type="text" required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
+        <AdminTextarea label={t.descriptionLabel} style={{ minHeight: '100px' }} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
 
         {caseMapUrl ? (
           <div style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}>
             <CoordinatePicker
               imageUrl={caseMapUrl}
               isTargeting={isTargeting}
-              targetingBannerText={t.targetingBanner || 'Click anywhere on the map to set coordinates'}
-              cancelTargetBtnText={t.cancelTargetBtn || 'Cancel'}
+              targetingBannerText={t.targetingBanner}
+              cancelTargetBtnText={t.cancelTargetBtn}
               onCancelTargeting={() => setIsTargeting(false)}
               onCoordinateSelect={handleCoordinateSelect}
               markers={currentMarker}
@@ -130,7 +129,7 @@ export default function ZoneForm() {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '-0.5rem' }}>
               <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
-                {t.coordinateLabel || 'Coordinates:'} {formData.coord_x ? `${formData.coord_x}%, ${formData.coord_y}%` : 'N/A'}
+                {t.coordinateLabel} {formData.coord_x ? `${formData.coord_x}%, ${formData.coord_y}%` : 'N/A'}
               </span>
               <button 
                 type="button" 
@@ -138,7 +137,7 @@ export default function ZoneForm() {
                 className="btn-secondary" 
                 style={{ padding: '0.5rem 1rem', width: 'auto' }}
               >
-                {t.mapCoordinateBtn || 'Target Coordinates'}
+                {t.mapCoordinateBtn}
               </button>
             </div>
           </div>

@@ -12,10 +12,10 @@ interface InspectorTranslations {
   alignLabel: string;
   toneLabel: string;
   padLabel: string;
-  uploadImage?: string;
-  alignStart?: string;
-  alignCenter?: string;
-  alignEnd?: string;
+  uploadImage: string;
+  alignStart: string;
+  alignCenter: string;
+  alignEnd: string;
 }
 
 interface TypedBlockBase extends BlockBase {
@@ -97,9 +97,9 @@ export function BlockInspector<TBlock extends TypedBlockBase>({
         <div className={styles.field}>
           <label className={styles.fieldLabel}>{t.alignLabel}</label>
           <select className={styles.fieldSelect} value={align} onChange={handleAlignChange}>
-            <option value="start">{t.alignStart ?? 'Start'}</option>
-            <option value="center">{t.alignCenter ?? 'Center'}</option>
-            <option value="end">{t.alignEnd ?? 'End'}</option>
+            <option value="start">{t.alignStart}</option>
+            <option value="center">{t.alignCenter}</option>
+            <option value="end">{t.alignEnd}</option>
           </select>
         </div>
 
@@ -123,7 +123,7 @@ export function BlockInspector<TBlock extends TypedBlockBase>({
       {onUploadImage && block.type === 'image' && (
         <div className={styles.uploadWrapper}>
           <button className={styles.uploadBtn} onClick={() => onUploadImage(block.id)}>
-            {t.uploadImage ?? 'Upload Image'}
+            {t.uploadImage}
           </button>
         </div>
       )}

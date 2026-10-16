@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { AdminProvider } from '@/pages/Admin/context/AdminContext';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
+import { ConfirmProvider } from '@/pages/Admin/components/AdminUI';
+import { useConfirm } from '@/pages/Admin/components/AdminUI/ConfirmContext';
 
 import CaseForm from './forms/CaseForm';
 import ZoneForm from './forms/ZoneForm';
@@ -20,16 +22,18 @@ function AdminDashboardContent() {
   const [activeTab, setActiveTab] = useState<AdminTab>('cases');
   const { adminT } = useAdminTranslation();
   const t = adminT.adminDashboard;
-  
+  const confirm = useConfirm();
+
   const {
     isLoading, error, cases, availableZones, availableLevels,
     caseId, setCaseId, zoneId, setZoneId, levelId, setLevelId,
     isDirty, setIsDirty
   } = useAdminContext();
 
-  const handleTabChange = (tab: AdminTab) => {
+  const handleTabChange = async (tab: AdminTab) => {
     if (isDirty) {
-      if (!window.confirm(t.unsavedChangesConfirm)) return;
+      const leave = await confirm({ message: t.unsavedChangesConfirm, danger: true });
+      if (!leave) return;
       setIsDirty(false);
     }
     setActiveTab(tab);
@@ -58,25 +62,25 @@ function AdminDashboardContent() {
         
         {/* GLOBAL CONTEXT SELECTORS */}
         <div className={adminDashboardStyles['admin-global-selectors']}>
-          <div className={adminDashboardStyles['form-group']} style={{ gap: '0.25rem' }}>
-            <label style={{ color: 'var(--accent-amber)', fontSize: '0.75rem' }}>{t.activeCaseLabel}</label>
-            <select className={adminDashboardStyles['admin-input']} style={{ padding: '0.5rem' }} value={caseId} onChange={(e) => setCaseId(e.target.value)}>
+          <div className={adminDashboardStyles['form-group']}>
+            <label>{t.activeCaseLabel}</label>
+            <select className={adminDashboardStyles['admin-input']} value={caseId} onChange={(e) => setCaseId(e.target.value)}>
               <option value="">{t.globalDatabaseOption}</option>
               {cases.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
             </select>
           </div>
           
-          <div className={adminDashboardStyles['form-group']} style={{ gap: '0.25rem' }}>
-            <label style={{ color: 'var(--accent-amber)', fontSize: '0.75rem' }}>{t.activeZoneLabel || 'ACTIVE ZONE'}</label>
-            <select className={adminDashboardStyles['admin-input']} style={{ padding: '0.5rem' }} value={zoneId} onChange={(e) => setZoneId(e.target.value)} disabled={!caseId}>
-              <option value="">{t.allZonesOption || '-- ALL ZONES --'}</option>
+          <div className={adminDashboardStyles['form-group']}>
+            <label>{t.activeZoneLabel}</label>
+            <select className={adminDashboardStyles['admin-input']} value={zoneId} onChange={(e) => setZoneId(e.target.value)} disabled={!caseId}>
+              <option value="">{t.allZonesOption}</option>
               {availableZones.map(z => <option key={z.id} value={z.id}>{z.order_index}: {z.title}</option>)}
             </select>
           </div>
 
-          <div className={adminDashboardStyles['form-group']} style={{ gap: '0.25rem' }}>
-            <label style={{ color: 'var(--accent-amber)', fontSize: '0.75rem' }}>{t.activeLevelLabel}</label>
-            <select className={adminDashboardStyles['admin-input']} style={{ padding: '0.5rem' }} value={levelId} onChange={(e) => setLevelId(e.target.value)} disabled={!zoneId}>
+          <div className={adminDashboardStyles['form-group']}>
+            <label>{t.activeLevelLabel}</label>
+            <select className={adminDashboardStyles['admin-input']} value={levelId} onChange={(e) => setLevelId(e.target.value)} disabled={!zoneId}>
               <option value="">{t.allLevelsOption}</option>
               {availableLevels.map(l => <option key={l.id} value={l.id}>{l.order_index}: {l.title} ({l.presentation_type})</option>)}
             </select>
@@ -88,7 +92,7 @@ function AdminDashboardContent() {
           <h4 className={adminDashboardStyles['admin-nav-group-title']}>{t.narrativeHierarchyGroup}</h4>
           <nav className={adminDashboardStyles['admin-nav-menu']}>
             <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'cases' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('cases')}>{t.casesTab}</button>
-            <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'zones' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('zones')}>{t.zonesTab || 'ZONES'}</button>
+            <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'zones' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('zones')}>{t.zonesTab}</button>
             <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'levels' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('levels')}>{t.levelsTab}</button>
           </nav>
         </div>
@@ -102,7 +106,7 @@ function AdminDashboardContent() {
           </nav>
         </div>
 
-        <div className={adminDashboardStyles['admin-nav-group']} style={{ borderBottom: 'none' }}>
+        <div className={adminDashboardStyles['admin-nav-group']}>
           <h4 className={adminDashboardStyles['admin-nav-group-title']}>{t.databaseAssetsGroup}</h4>
           <nav className={adminDashboardStyles['admin-nav-menu']}>
             <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'evidences' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('evidences')}>{t.evidencesTab}</button>
@@ -130,8 +134,10 @@ function AdminDashboardContent() {
 
 export default function AdminDashboard() {
   return (
-    <AdminProvider>
-      <AdminDashboardContent />
-    </AdminProvider>
+    <ConfirmProvider>
+      <AdminProvider>
+        <AdminDashboardContent />
+      </AdminProvider>
+    </ConfirmProvider>
   );
 }

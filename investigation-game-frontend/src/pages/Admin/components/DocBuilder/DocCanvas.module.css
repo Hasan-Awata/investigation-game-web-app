@@ -1,9 +1,12 @@
+/* The A4 sheet is rendered at its fixed player size (800x1131). The canvas
+   itself must NOT clip or scroll: it grows with the sheet and lets the admin
+   workspace own the scrollbars, so `overflow` stays visible and the sheet's own
+   `margin: 0 auto` handles centring. Flex centring is avoided on purpose -- an
+   over-wide centred child clips its start edge and cannot be scrolled to. */
 .canvas {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  width: 100%;
   padding: 2rem 1rem;
-  overflow: auto;
+  overflow: visible;
   background: linear-gradient(135deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.5) 100%);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.05);

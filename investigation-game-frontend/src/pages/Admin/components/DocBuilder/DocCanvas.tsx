@@ -6,11 +6,12 @@ import styles from './DocCanvas.module.css';
 
 interface DocCanvasProps {
   doc: DocDocument;
+  evidenceId: number;
   selectedBlockId: string | null;
   onBlockSelect: (id: string | null) => void;
 }
 
-export function DocCanvas({ doc, selectedBlockId, onBlockSelect }: DocCanvasProps) {
+export function DocCanvas({ doc, evidenceId, selectedBlockId, onBlockSelect }: DocCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
 
   const { setNodeRef, isOver } = useDroppable({ id: 'doc-canvas' });
@@ -44,8 +45,8 @@ export function DocCanvas({ doc, selectedBlockId, onBlockSelect }: DocCanvasProp
     >
       <DocSheet
         doc={doc}
-        evidenceId={0}
-        fluid={true}
+        evidenceId={evidenceId}
+        fluid={false}
         cellWrapper={cellWrapper}
         interactiveOverlay={true}
       />

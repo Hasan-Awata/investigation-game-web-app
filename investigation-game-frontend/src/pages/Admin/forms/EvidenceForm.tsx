@@ -1,13 +1,14 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
 import { useAdminForm } from '@/pages/Admin/hooks/useAdminForm';
+import { useObjectUrl } from '@/pages/Admin/hooks/useObjectUrl';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
 import MediaUploader from '@/pages/Admin/components/MediaUploader';
 import { DocBuilder } from '@/pages/Admin/components/DocBuilder/DocBuilder';
 import { TerminalBuilder } from '@/pages/Admin/components/BlockBuilder/TerminalBuilder';
 import EvidenceMetadataFields from './Shared/EvidenceMetadataFields';
-import { AdminCheckbox, AdminInput, AdminEntryToggle, JsonPopulator } from '@/pages/Admin/components/AdminUI';
+import { AdminCheckbox, AdminInput } from '@/pages/Admin/components/AdminUI';
 import { validateEvidenceForm } from '../utils/validators';
 import { getEvidenceMetadataTemplate } from '@/pages/Admin/utils/formUtils';
 import { DEFAULT_DOC, DEFAULT_PAGE, DOC_THEMES, normalizeDoc } from '@/types/evidence/doc';
@@ -37,6 +38,8 @@ export default function EvidenceForm() {
 
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
+  const imagePreviewUrl = useObjectUrl(image);
+  const audioPreviewUrl = useObjectUrl(audio);
 
   const {
     formData, setFormData, updateField, editingId, clearForm, handleSubmit, handleEditInit, handleDelete, isProcessing
@@ -47,21 +50,9 @@ export default function EvidenceForm() {
     validator: validateEvidenceForm
   });
 
-  const [entryMode, setEntryMode] = useState<'form' | 'json'>('form');
-  const [jsonInput, setJsonInput] = useState('');
-
-  const prevEvidenceTypeRef = useRef(formData.evidence_type);
-
   const surface = surfaceOf(formData.evidence_type);
   const isDocType = surface === 'paper';
   const isDigitalType = surface === 'terminal';
-
-  useEffect(() => {
-    if (prevEvidenceTypeRef.current !== formData.evidence_type) {
-      prevEvidenceTypeRef.current = formData.evidence_type;
-      setJsonInput('');
-    }
-  }, [formData.evidence_type]);
 
   // The builder is controlled off `formData.metadata.doc` or `formData.metadata.terminal`, normalized so a hand
   // written JSON payload (or a legacy row) can never hand it a malformed tree.
@@ -76,49 +67,10 @@ export default function EvidenceForm() {
     setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, terminal } }));
   };
 
-  const handleJsonPopulate = (parsed: unknown) => {
-    const p = parsed as Record<string, unknown>;
-    const newState = { ...formData };
-
-    if (p.title !== undefined) newState.title = String(p.title);
-    if (p.description !== undefined) newState.description = String(p.description);
-    if (p.evidence_type !== undefined) newState.evidence_type = String(p.evidence_type);
-    if (p.is_initial !== undefined) newState.is_initial = Boolean(p.is_initial);
-    if (p.is_vital_for_conviction !== undefined) newState.is_vital_for_conviction = Boolean(p.is_vital_for_conviction);
-    if (p.store_locally !== undefined) newState.store_locally = Boolean(p.store_locally);
-    if (p.metadata !== undefined && typeof p.metadata === 'object' && p.metadata !== null) {
-      const newSurface = surfaceOf(String(newState.evidence_type));
-      const meta = p.metadata as Record<string, unknown>;
-      if (newSurface === 'paper' && !meta.doc) {
-        newState.metadata = { ...meta, doc: normalizeDoc(meta.doc ?? meta) };
-      } else if (newSurface === 'terminal' && !meta.terminal) {
-        newState.metadata = { ...meta, terminal: normalizeTerminal(meta.terminal ?? meta) };
-      } else {
-        newState.metadata = meta;
-      }
-    }
-
-    setFormData(newState);
-    setEntryMode('form');
-    setJsonInput('');
-  };
-
-  const combinedTemplate = {
-    is_initial: formData.is_initial,
-    is_vital_for_conviction: formData.is_vital_for_conviction,
-    store_locally: formData.store_locally,
-    evidence_type: formData.evidence_type,
-    title: formData.title || '',
-    description: formData.description || '',
-    metadata: getEvidenceMetadataTemplate(formData.evidence_type),
-  };
-
   const onClear = () => {
     clearForm();
     setImage(null);
     setAudio(null);
-    setEntryMode('form');
-    setJsonInput('');
   };
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -146,7 +98,6 @@ export default function EvidenceForm() {
     }));
     setImage(null);
     setAudio(null);
-    setEntryMode('form');
   };
 
   // Block images upload through their own endpoint, so `store_locally` has to
@@ -187,66 +138,52 @@ export default function EvidenceForm() {
       submitLabel={submitLabel}
     >
       <form onSubmit={onSubmit} className={adminDashboard['admin-form']}>
-        <AdminEntryToggle mode={entryMode} setMode={setEntryMode} />
+        <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialEvidenceLabel} description={t.initialEvidenceDesc} className={adminForms['status-live']} />
+        <AdminCheckbox checked={formData.is_vital_for_conviction} onChange={(e) => updateField('is_vital_for_conviction', e.target.checked)} labelTitle={t.vitalEvidenceLabel} description={t.vitalEvidenceDesc} className={adminForms['status-draft']} />
+        <div className={adminDashboard['form-group']}>
+          <label>{t.masterCategoryLabel}</label>
+          <select
+            className={adminDashboard['admin-input']}
+            value={formData.evidence_type}
+            onChange={(e) => {
+              const type = e.target.value;
+              setFormData(prev => ({
+                ...prev,
+                evidence_type: type,
+                // Metadata is type-specific; carrying a doc envelope into a
+                // testimony row (or vice versa) would ship dead payload.
+                metadata: getEvidenceMetadataTemplate(type),
+              }));
+            }}
+          >
+            <option value="document">{t.docOption}</option>
+            <option value="forensic">{t.forensicOption}</option>
+            <option value="digital">{t.digitalOption}</option>
+            <option value="testimony">{t.testimonyOption}</option>
+            <option value="audio">{t.audioOption}</option>
+            <option value="image">{t.imageOption}</option>
+          </select>
+        </div>
+        <AdminInput label={t.evidenceTitleLabel} required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
+        <AdminInput label={t.evidenceDescLabel} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
 
-        {entryMode === 'form' ? (
-          <>
-            <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialEvidenceLabel} description={t.initialEvidenceDesc} className={adminForms['status-live']} />
-            <AdminCheckbox checked={formData.is_vital_for_conviction} onChange={(e) => updateField('is_vital_for_conviction', e.target.checked)} labelTitle={t.vitalEvidenceLabel} description={t.vitalEvidenceDesc} className={adminForms['status-draft']} />
-            <div className={adminDashboard['form-group']}>
-              <label>{t.masterCategoryLabel}</label>
-              <select
-                className={adminDashboard['admin-input']}
-                value={formData.evidence_type}
-                onChange={(e) => {
-                  const type = e.target.value;
-                  setFormData(prev => ({
-                    ...prev,
-                    evidence_type: type,
-                    // Metadata is type-specific; carrying a doc envelope into a
-                    // testimony row (or vice versa) would ship dead payload.
-                    metadata: getEvidenceMetadataTemplate(type),
-                  }));
-                }}
-              >
-                <option value="document">{t.docOption}</option>
-                <option value="forensic">{t.forensicOption}</option>
-                <option value="digital">{t.digitalOption}</option>
-                <option value="testimony">{t.testimonyOption}</option>
-                <option value="audio">{t.audioOption}</option>
-                <option value="image">{t.imageOption}</option>
-              </select>
-            </div>
-            <AdminInput label={t.evidenceTitleLabel} required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
-            <AdminInput label={t.evidenceDescLabel} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
+        {isDocType
+          ? <DocBuilder doc={currentDoc} onChange={setDoc} caseId={caseId} storeLocally={!!formData.store_locally} evidenceId={editingId ?? 0} />
+          : isDigitalType
+          ? <TerminalBuilder doc={currentTerminal} onChange={setTerminal} evidenceId={editingId ?? 0} />
+          : <EvidenceMetadataFields evidenceType={formData.evidence_type} metadata={formData.metadata} updateMeta={(key, value) => setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: value } }))} />}
 
-            {isDocType
-              ? <DocBuilder doc={currentDoc} onChange={setDoc} caseId={caseId} storeLocally={!!formData.store_locally} />
-              : isDigitalType
-              ? <TerminalBuilder doc={currentTerminal} onChange={setTerminal} />
-              : <EvidenceMetadataFields evidenceType={formData.evidence_type} metadata={formData.metadata} updateMeta={(key, value) => setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: value } }))} />}
-
-            {requiresLocalToggle && (
-              <AdminCheckbox
-                checked={formData.store_locally}
-                onChange={(e) => updateField('store_locally', e.target.checked)}
-                labelTitle={t.storeLocallyLabel}
-                className={adminForms['amber']}
-              />
-            )}
-          </>
-        ) : (
-          <JsonPopulator
-            jsonInput={jsonInput}
-            setJsonInput={setJsonInput}
-            onPopulate={handleJsonPopulate}
-            requiredFields={['title', 'evidence_type']}
-            template={combinedTemplate}
+        {requiresLocalToggle && (
+          <AdminCheckbox
+            checked={formData.store_locally}
+            onChange={(e) => updateField('store_locally', e.target.checked)}
+            labelTitle={t.storeLocallyLabel}
+            className={adminForms['amber']}
           />
         )}
 
-{requiresImage && <MediaUploader label={t.evidenceImageLabel} hint={t.imageHint} accept="image/*" previewUrl={image ? URL.createObjectURL(image) : null} onChange={setImage} />}
-        {formData.evidence_type === 'audio' && <MediaUploader label={t.audioLabel} hint={t.audioHint} accept="audio/*" previewUrl={audio ? URL.createObjectURL(audio) : null} onChange={setAudio} />}
+{requiresImage && <MediaUploader label={t.evidenceImageLabel} hint={t.imageHint} accept="image/*" previewUrl={imagePreviewUrl} onChange={setImage} />}
+        {formData.evidence_type === 'audio' && <MediaUploader label={t.audioLabel} hint={t.audioHint} accept="audio/*" previewUrl={audioPreviewUrl} onChange={setAudio} />}
       </form>
     </EntityDashboard>
   );

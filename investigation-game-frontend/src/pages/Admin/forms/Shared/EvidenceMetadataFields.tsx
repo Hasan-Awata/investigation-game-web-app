@@ -23,11 +23,11 @@ export default function EvidenceMetadataFields({ evidenceType, metadata, updateM
 
   return (
     <div className={adminForms['metadata-container']}>
-      <h4 className={adminForms['metadata-title']}>{t?.sectionTitle ?? '[ Structured Metadata Injection ]'}</h4>
+      <h4 className={adminForms['metadata-title']}>{t.sectionTitle}</h4>
       {evidenceType === 'testimony' && (
         <div className={adminForms['metadata-inputs-wrapper']}>
           <AdminTextarea
-            label={t?.officialTranscriptLabel ?? 'Official Transcript'}
+            label={t.officialTranscriptLabel}
             minHeight="140px"
             value={String(metadata.transcript ?? '')}
             onChange={(e) => updateMeta('transcript', e.target.value)}

@@ -31,7 +31,7 @@ export default function NodeBuilderCanvas({ requiredType, title, children }: Nod
       <div className={`${requiredType}-builder-container`}>
         <div className={`${adminDashboard['admin-form-container']} glass-panel`} style={{ padding: '1.5rem', marginBottom: '1rem' }}>
           <h3 style={{ fontFamily: 'var(--font-mono)', color: 'var(--accent-cyan)', margin: '0 0 0.5rem 0' }}>
-            // {title}
+            {title}
           </h3>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
             {t.targetingHeader(selectedCase?.title, selectedZone?.title, selectedLevel?.title)}

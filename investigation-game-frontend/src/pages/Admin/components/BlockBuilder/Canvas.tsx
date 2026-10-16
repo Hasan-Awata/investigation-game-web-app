@@ -5,11 +5,12 @@ import styles from './Canvas.module.css';
 
 interface CanvasProps {
   doc: TerminalDocument;
+  evidenceId: number;
   selectedBlockId: string | null;
   onBlockSelect: (id: string | null) => void;
 }
 
-export function Canvas({ doc, selectedBlockId, onBlockSelect }: CanvasProps) {
+export function Canvas({ doc, evidenceId, selectedBlockId, onBlockSelect }: CanvasProps) {
   const cellWrapper = useCallback((content: React.ReactNode, block: TerminalBlock) => (
     <div
       className={`${styles.blockWrapper} ${block.id === selectedBlockId ? styles.selected : ''}`}
@@ -24,7 +25,7 @@ export function Canvas({ doc, selectedBlockId, onBlockSelect }: CanvasProps) {
     <div className={styles.canvas}>
       <TerminalSheet
         doc={doc}
-        evidenceId={0}
+        evidenceId={evidenceId}
         fluid
         cellWrapper={cellWrapper}
         interactiveOverlay

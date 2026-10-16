@@ -1,5 +1,5 @@
 import { type Result, success } from '@/utils/Result';
-import { request } from './request';
+import { request, requestBlob } from './request';
 import type { GameCase, Zone, Level } from '@/types';
 
 const adminRequest = async <T>(endpoint: string, options: RequestInit): Promise<Result<T>> => {
@@ -16,7 +16,22 @@ export const fetchAdminCases = async (): Promise<Result<GameCase[]>> => {
 export const createAdminCase = (fd: FormData) => adminRequest('/cases', { method: 'POST', body: fd });
 export const updateAdminCase = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/cases/${id}`, { method: 'POST', body: fd }); };
 export const deleteAdminCase = (id: number) => adminRequest(`/cases/${id}`, { method: 'DELETE' });
-export const importAdminCase = (payload: unknown) => adminRequest('/cases/import', { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'application/json' } });
+
+/**
+ * Import a full case bundle (`case-bundle.zip`) including media. Multipart, so
+ * the archive travels as a binary field rather than a JSON string.
+ */
+export const importAdminCase = (file: File, storeLocally: boolean) => {
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('store_locally', storeLocally ? '1' : '0');
+  return adminRequest<{ message: string; case_id: number }>('/cases/import', { method: 'POST', body: fd });
+};
+
+/**
+ * Export a single case (graph + media) as a downloadable ZIP bundle.
+ */
+export const exportAdminCase = (id: number): Promise<Result<Blob>> => requestBlob(`/admin/cases/${id}/export`, { method: 'GET' });
 
 // ==========================================
 // ZONES (Formerly Phases)
@@ -66,40 +81,8 @@ export const uploadAdminBlockImage = (fd: FormData) => adminRequest<{ url: strin
 // ==========================================
 // INVESTIGATION REQUESTS (Combos)
 // ==========================================
-const REQUIRED_ITEM_KEYS = ['required_evidence_ids', 'required_character_ids'];
-
-const withRequiredItemArrays = (fd: FormData): FormData => {
-  if (!REQUIRED_ITEM_KEYS.some((key) => fd.has(key))) return fd;
-
-  const normalized = new FormData();
-  fd.forEach((value, key) => {
-    if (!REQUIRED_ITEM_KEYS.includes(key)) {
-      normalized.append(key, value);
-      return;
-    }
-
-    const raw = typeof value === 'string' ? value.trim() : '';
-    if (!raw) return;
-
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      parsed = raw;
-    }
-    const ids: unknown[] = Array.isArray(parsed) ? parsed : [parsed];
-
-    ids.forEach((id) => {
-      const idValue = String(id).trim();
-      if (idValue !== '') normalized.append(`${key}[]`, idValue);
-    });
-  });
-
-  return normalized;
-};
-
-export const createAdminInvestigationRequest = (fd: FormData) => adminRequest('/investigation-requests', { method: 'POST', body: withRequiredItemArrays(fd) });
-export const updateAdminInvestigationRequest = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/investigation-requests/${id}`, { method: 'POST', body: withRequiredItemArrays(fd) }); };
+export const createAdminInvestigationRequest = (fd: FormData) => adminRequest('/investigation-requests', { method: 'POST', body: fd });
+export const updateAdminInvestigationRequest = (id: number, fd: FormData) => { fd.append('_method', 'PUT'); return adminRequest(`/investigation-requests/${id}`, { method: 'POST', body: fd }); };
 export const deleteAdminInvestigationRequest = (id: number) => adminRequest(`/investigation-requests/${id}`, { method: 'DELETE' });
 
 // ==========================================

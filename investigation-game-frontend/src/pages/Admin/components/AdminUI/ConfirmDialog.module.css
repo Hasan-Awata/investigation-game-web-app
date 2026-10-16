@@ -1,0 +1,177 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-5);
+  background: rgba(0, 0, 0, 0.55);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  opacity: 0;
+  animation: overlay-in var(--dur-med) var(--ease-spring) forwards;
+}
+
+.overlay.closing {
+  animation: overlay-out var(--dur-fast) ease forwards;
+}
+
+.dialog {
+  width: min(440px, 100%);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-panel), var(--shadow-inset);
+  opacity: 0;
+  transform: scale(0.94) translateY(8px);
+  animation: dialog-in var(--dur-med) var(--ease-bounce) forwards;
+}
+
+.overlay.closing .dialog {
+  animation: dialog-out var(--dur-fast) var(--ease-spring) forwards;
+}
+
+@keyframes overlay-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes overlay-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    filter: blur(8px);
+    transform: scale(0.94) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+    transform: scale(1) translateY(0);
+  }
+}
+
+@keyframes dialog-out {
+  to {
+    opacity: 0;
+    filter: blur(6px);
+    transform: scale(0.96) translateY(6px);
+  }
+}
+
+.title {
+  margin: 0 0 var(--space-3) 0;
+  font-family: var(--font-terminal);
+  color: var(--accent-cyan);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+.message {
+  margin: 0 0 var(--space-5) 0;
+  color: var(--text-primary);
+  line-height: 1.55;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.cancelBtn,
+.confirmBtn {
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-terminal);
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-spring),
+    border-color var(--dur-fast) var(--ease-spring),
+    color var(--dur-fast) var(--ease-spring),
+    transform var(--dur-fast) var(--ease-spring);
+}
+
+.cancelBtn:active,
+.confirmBtn:active {
+  transform: scale(0.97);
+}
+
+.cancelBtn {
+  background: transparent;
+  border: 1px solid rgba(var(--border-light-rgb), 0.3);
+  color: var(--text-secondary);
+}
+
+.cancelBtn:hover {
+  border-color: rgba(var(--border-light-rgb), 0.55);
+  color: var(--text-primary);
+}
+
+.confirmBtn {
+  background: rgba(var(--accent-cyan-rgb), 0.16);
+  border: 1px solid var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.confirmBtn:hover {
+  background: rgba(var(--accent-cyan-rgb), 0.3);
+}
+
+.confirmBtn.danger {
+  background: rgba(var(--accent-crimson-rgb), 0.16);
+  border-color: var(--accent-crimson);
+  color: var(--accent-crimson);
+}
+
+.confirmBtn.danger:hover {
+  background: rgba(var(--accent-crimson-rgb), 0.3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    animation: none;
+    opacity: 1;
+  }
+
+  .overlay.closing {
+    animation: none;
+    opacity: 0;
+  }
+
+  .dialog {
+    animation: none;
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+
+  .overlay.closing .dialog {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .overlay {
+    background: rgba(0, 0, 0, 0.8);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .dialog {
+    background: var(--bg-panel);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

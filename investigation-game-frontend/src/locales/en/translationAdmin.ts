@@ -32,6 +32,11 @@ export const translations = {
     adminGuard: {
       loading: "Establishing Secure Clearance...",
       dashboardTitle: "// RESTRICTED ACCESS: INVESTIGATION ADMIN COMMAND"
+    },
+    confirmDialog: {
+      defaultTitle: "Confirm Action",
+      confirmBtn: "Confirm",
+      cancelBtn: "Cancel"
     }
   },
   context: {
@@ -91,7 +96,6 @@ export const translations = {
       imageOption: "Photographic Evidence",
       evidenceTitleLabel: "Evidence Title",
       evidenceDescLabel: "Short Description (Hover text / Caption)",
-      mugshotLabel: "Subject Mugshot / ID Photo",
       evidenceImageLabel: "Evidence Image",
       imageHint: "Optimal: 1:1 or 3:4 portrait. WEBP or JPG. Max 4MB.",
       audioLabel: "Audio Recording",
@@ -151,12 +155,9 @@ export const translations = {
       storeLocallyLabel: "Store Locally on Server",
       storeLocallyDesc: "Save assets directly to public server folders instead of Cloudinary.",
       processingData: "Processing Data...",
-      updateLevel: "Update Level",
-      commitLevel: "Commit Level to Database",
       emptyMessage: "No levels assigned to this zone.",
       zoneLevelsTitle: (zoneTitle: string) => `Levels in Zone: ${zoneTitle}`,
-      deleteConfirm: (title: string) => `Are you absolutely sure you want to delete "${title}"? All nested questions and media will be wiped permanently.`,
-      targetContextHeader: (caseTitle: string, zoneTitle: string) => `Targeting: ${caseTitle} > ${zoneTitle}`
+      deleteConfirm: (title: string) => `Are you absolutely sure you want to delete "${title}"? All nested questions and media will be wiped permanently.`
     },
     zoneForm: {
       entityName: "Zone",
@@ -172,8 +173,6 @@ export const translations = {
       manageTitle: (caseTitle: string) => `Active Zones in ${caseTitle}`,
       deleteConfirm: (title: string) => `Are you absolutely sure you want to delete the "${title}" zone? All levels and questions inside it will be orphaned or deleted.`,
       targetCaseHeader: (title: string) => `Targeting Case: ${title}`,
-      mapUrlLabel: "Campaign Map",
-      mapUrlPlaceholder: "-- Select Map --",
       targetingBanner: "⚠️ TARGETING MATRIX ENGAGED: Click map to lock zone location.",
       cancelTargetBtn: "Cancel",
       mapCoordinateBtn: "Map Zone Coordinate",
@@ -227,7 +226,8 @@ export const translations = {
     },
     entityList: {
       editBtn: "Edit", 
-      deleteBtn: "Delete"  
+      deleteBtn: "Delete",
+      exportBtn: "Export"
     },
     docBuilder: {
       paletteTitle: "Blocks",
@@ -241,7 +241,6 @@ export const translations = {
       clear: "Clear",
       clearConfirm: "Clear all blocks? This cannot be undone.",
       uploadImage: "Upload image",
-      uploading: "Uploading...",
       duplicate: "Duplicate",
       remove: "Remove",
       uploadSuccess: "Image uploaded successfully",
@@ -309,19 +308,12 @@ export const translations = {
     },
     evidenceMetadata: {
       sectionTitle: "[ Structured Metadata Injection ]",
-      forensicAutopsy: "Autopsy Report",
-      forensicBallistics: "Ballistics Analysis",
-      forensicDna: "DNA / Serology Profile",
-      forensicDigital: "Digital Forensics",
-      forensicTrace: "Trace / Material Analysis",
       docCorrespondence: "Correspondence (Email/Letter)",
       docFinancial: "Financial Record",
       docJournal: "Personal Diary / Journal",
       docContract: "Official Contract / Deed",
       docMemo: "Corporate Memo / Note",
       docBackground: "Background Check / Dossier",
-      selectForensicPlaceholder: "-- Select Forensic Classification --",
-      selectDocPlaceholder: "-- Select Document Classification --",
       officialTranscriptLabel: "Official Transcript",
       docPhoneRecords: "Telecom / Phone Records",
       autopsy: {

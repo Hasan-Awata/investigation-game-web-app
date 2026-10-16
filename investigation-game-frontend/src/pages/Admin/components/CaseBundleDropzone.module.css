@@ -1,0 +1,136 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.dropzone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 1.75rem 1.5rem;
+  border: 1px dashed var(--accent-cyan);
+  border-radius: var(--radius-xl);
+  background: rgba(var(--accent-cyan-rgb), 0.04);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.dropzone:hover {
+  background: rgba(var(--accent-cyan-rgb), 0.08);
+}
+
+.dropzone.active {
+  border-color: var(--accent-amber);
+  background: rgba(255, 191, 0, 0.1);
+}
+
+.dropzone.error {
+  border-color: var(--accent-crimson);
+  background: rgba(163, 50, 50, 0.08);
+}
+
+.input {
+  display: none;
+}
+
+.badge {
+  font-family: var(--font-mono);
+  color: var(--accent-cyan);
+  letter-spacing: 0.15em;
+  font-size: 0.75rem;
+}
+
+.title {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  font-size: 0.95rem;
+}
+
+.hint {
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.meta {
+  color: var(--text-secondary);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  opacity: 0.8;
+}
+
+.errorText {
+  margin: 0;
+  color: var(--accent-crimson);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+.fileRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+}
+
+.fileMeta {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.fileMeta strong {
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileMeta span {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+}
+
+.removeBtn {
+  flex: none;
+  background: transparent;
+  border: 1px solid var(--accent-crimson);
+  color: var(--accent-crimson);
+  border-radius: 4px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.removeBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.importBtn {
+  align-self: flex-start;
+  background: var(--accent-cyan);
+  color: var(--bg-dark);
+  border: none;
+  border-radius: 4px;
+  padding: 0.75rem 2rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.importBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -265,3 +265,42 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 0 0 0 rgba(var(--accent-success-rgb), 0);
   }
 }
+
+/* =========================================
+   ADMIN DASHBOARD TOKENS (additive)
+   These are declared globally but only ever
+   referenced by Admin* CSS modules. No
+   existing value is changed, so screens
+   outside the admin dashboard are unaffected.
+   ========================================= */
+:root {
+  /* Consistent Apple-style spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  /* Admin shell dimensions */
+  --admin-sidebar-w: 320px;
+  --admin-sidebar-w-md: 260px;
+
+  /* Glassmorphism / depth */
+  --glass-blur: 18px;
+  --glass-bg: rgba(var(--bg-panel-rgb), 0.55);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-highlight: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --shadow-panel: 0 16px 48px rgba(0, 0, 0, 0.5);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+
+  /* Fluid motion (spring-like, no JS dependency) */
+  --ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --dur-fast: 140ms;
+  --dur-med: 260ms;
+  --dur-slow: 420ms;
+
+  /* Tactile focus ring */
+  --focus-ring: 0 0 0 3px rgba(var(--accent-cyan-rgb), 0.28);
+}

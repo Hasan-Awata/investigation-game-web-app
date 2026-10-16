@@ -15,6 +15,7 @@ interface EntityDashboardProps<T> {
   onClear: () => void;
   onEdit: (item: T) => void;
   onDelete: (item: T) => void;
+  onExport?: (item: T) => void;
   renderItemContent: (item: T) => ReactNode;
   children: ReactNode;
   contextMissing?: ReactNode;
@@ -24,7 +25,7 @@ interface EntityDashboardProps<T> {
 export default function EntityDashboard<T>({
   entityName, listTitle, items, editingId, isProcessing,
   contextHeader, emptyMessage, keyExtractor,
-  onClear, onEdit, onDelete, renderItemContent, children,
+  onClear, onEdit, onDelete, onExport, renderItemContent, children,
   contextMissing,
   submitLabel
 }: EntityDashboardProps<T>) {
@@ -50,6 +51,7 @@ export default function EntityDashboard<T>({
         isProcessing={isProcessing}
         onEdit={onEdit}
         onDelete={onDelete}
+        onExport={onExport}
         renderItemContent={renderItemContent}
       />
     </div>

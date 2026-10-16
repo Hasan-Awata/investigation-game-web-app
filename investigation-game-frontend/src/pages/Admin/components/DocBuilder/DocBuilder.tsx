@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { DndContext } from '@dnd-kit/core';
 import { BuilderShell } from '@/pages/Admin/components/BlockBuilder/BuilderShell';
 import { BlockPalette } from './BlockPalette';
 import { DocCanvas } from './DocCanvas';
@@ -17,9 +18,10 @@ interface DocBuilderProps {
   onChange: (doc: DocDocument) => void;
   caseId: number | string;
   storeLocally: boolean;
+  evidenceId: number;
 }
 
-export function DocBuilder({ doc, onChange, caseId, storeLocally }: DocBuilderProps) {
+export function DocBuilder({ doc, onChange, caseId, storeLocally, evidenceId }: DocBuilderProps) {
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.docBuilder;
 
@@ -33,6 +35,9 @@ export function DocBuilder({ doc, onChange, caseId, storeLocally }: DocBuilderPr
   }, []);
 
   const {
+    sensors,
+    collisionDetection,
+    dndHandlers,
     selectedBlockId,
     selectedBlock,
     selectBlock,
@@ -77,7 +82,7 @@ export function DocBuilder({ doc, onChange, caseId, storeLocally }: DocBuilderPr
         updateBlock(blockId, { props: { ...doc.blocks.find(b => b.id === blockId)!.props, url: result.value.url } });
         toast.success(t.uploadSuccess);
       } else {
-        toast.error(t.uploadError || result.errorMessage || 'Upload failed');
+        toast.error(result.errorMessage || t.uploadError);
       }
     };
     input.click();
@@ -138,6 +143,7 @@ export function DocBuilder({ doc, onChange, caseId, storeLocally }: DocBuilderPr
   const canvas = (
     <DocCanvas
       doc={doc}
+      evidenceId={evidenceId}
       selectedBlockId={selectedBlockId}
       onBlockSelect={selectBlock}
     />
@@ -150,17 +156,25 @@ export function DocBuilder({ doc, onChange, caseId, storeLocally }: DocBuilderPr
       onRemove={removeBlock}
       onDuplicate={duplicateBlock}
       onUploadImage={handleImageUpload}
-      evidenceId={0}
+      evidenceId={evidenceId}
       t={t}
     />
   );
 
   return (
-    <BuilderShell
-      toolbar={toolbar}
-      palette={palette}
-      canvas={canvas}
-      inspector={inspector}
-    />
+    <DndContext
+      sensors={sensors}
+      collisionDetection={collisionDetection}
+      onDragStart={dndHandlers.onDragStart}
+      onDragOver={dndHandlers.onDragOver}
+    >
+      <BuilderShell
+        variant="stacked"
+        toolbar={toolbar}
+        palette={palette}
+        canvas={canvas}
+        inspector={inspector}
+      />
+    </DndContext>
   );
 }

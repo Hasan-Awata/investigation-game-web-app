@@ -2,6 +2,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthSession } from '@/hooks/useAuth';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import '@/i18n';
+import styles from './AdminGuard.module.css';
 
 export default function AdminGuard() {
   const { adminT } = useAdminTranslation();
@@ -13,10 +14,10 @@ export default function AdminGuard() {
   // Secure Loading State ensuring no premature rendering of the admin layout
   if (isLoading) {
     return (
-      <div className="admin-layout" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh', backgroundColor: 'var(--bg-dark)' }}>
-         <div className="terminal-text" style={{ color: 'var(--accent-cyan)' }}>
-           {t.loading}
-         </div>
+      <div className={styles['admin-loading']}>
+        <div className={`terminal-text ${styles['admin-loading-text']}`}>
+          {t.loading}
+        </div>
       </div>
     );
   }
@@ -29,11 +30,11 @@ export default function AdminGuard() {
 
   // Verification passed - yield nested routes
   return (
-    <div className="admin-layout">
-      <header className="admin-header glass-panel" style={{ padding: '1rem 2rem', borderBottom: '1px solid rgba(255,51,102,0.3)' }}>
-        <h2 style={{ margin: 0, color: 'var(--accent-crimson)', fontFamily: 'var(--font-mono)' }}>{t.dashboardTitle}</h2>
+    <div className={styles['admin-layout']}>
+      <header className={styles['admin-header']}>
+        <h2 className={styles['admin-header-title']}>{t.dashboardTitle}</h2>
       </header>
-      <main className="admin-content" style={{ padding: '2rem' }}>
+      <main className={styles['admin-content']}>
         <Outlet />
       </main>
     </div>

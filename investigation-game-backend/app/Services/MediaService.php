@@ -12,6 +12,37 @@ class MediaService
     {
         if (!$file) return null;
 
+        return $this->storeFile($file, $caseTitle, $subfolder, $storeLocally);
+    }
+
+    /**
+     * Store a file that already exists on disk (e.g. extracted from an imported
+     * case bundle), reusing the exact hashing/dedup/Cloudinary pipeline as a
+     * regular upload.
+     */
+    public function storeFromPath(
+        string $absolutePath,
+        string $originalName,
+        string $caseTitle,
+        string $subfolder,
+        bool $storeLocally
+    ): ?string {
+        if (!is_file($absolutePath) || !is_readable($absolutePath)) {
+            return null;
+        }
+
+        $mimeType = @mime_content_type($absolutePath) ?: null;
+
+        // `test: true` allows wrapping a file that did not arrive via an HTTP
+        // upload; `move()` falls back to a rename for such files.
+        $file = new UploadedFile($absolutePath, $originalName, $mimeType, null, true);
+
+        return $this->storeFile($file, $caseTitle, $subfolder, $storeLocally);
+    }
+
+    private function storeFile(UploadedFile $file, string $caseTitle, string $subfolder, bool $storeLocally): ?string
+    {
+
         $caseSlug = Str::slug($caseTitle);
 
         // 1. Local Server Storage Path with Hashing Deduplication

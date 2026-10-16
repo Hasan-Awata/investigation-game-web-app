@@ -44,15 +44,6 @@
   color: var(--bg-dark);
 }
 
-.paletteIcon {
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
 .paletteLabel {
   flex: 1;
   white-space: nowrap;

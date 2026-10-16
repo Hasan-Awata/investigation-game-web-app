@@ -19,58 +19,6 @@
   border-bottom: var(--border-thin);
 }
 
-.toolbarGroup {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.toolbarLabel {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-secondary);
-  white-space: nowrap;
-}
-
-.toolbarSelect,
-.toolbarInput {
-  padding: 6px 10px;
-  background: var(--bg-panel);
-  border: var(--border-thin);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-family: var(--font-primary);
-  font-size: 0.85rem;
-  min-width: 160px;
-}
-
-.toolbarInput {
-  width: 70px;
-}
-
-.clearBtn {
-  margin-left: auto;
-  padding: 6px 16px;
-  background: transparent;
-  border: 1px solid var(--accent-crimson);
-  border-radius: var(--radius-sm);
-  color: var(--accent-crimson);
-  font-family: var(--font-primary);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.clearBtn:hover {
-  background: var(--accent-crimson);
-  color: var(--bg-dark);
-}
-
 .panes {
   display: grid;
   grid-template-columns: 280px 1fr 320px;
@@ -102,14 +50,54 @@
   background: var(--bg-dark);
 }
 
+/* --- STACKED VARIANT -------------------------------------------------------
+   Palette stays a left sidebar; canvas and inspector share the right column so
+   the canvas keeps the full remaining width. The shell grows with the sheet
+   (no inner scroll / clipping) and the admin workspace owns the scrollbars. */
+.builderStacked {
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+}
+
+.panesStacked {
+  grid-template-columns: 280px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  grid-template-areas:
+    'palette canvas'
+    'palette inspector';
+  height: auto;
+  overflow: visible;
+}
+
+.panesStacked .palettePane {
+  grid-area: palette;
+  align-self: start;
+  position: sticky;
+  top: 0;
+  max-height: calc(100vh - 220px);
+  overflow: auto;
+}
+
+.panesStacked .canvasPane {
+  grid-area: canvas;
+  overflow: visible;
+}
+
+.panesStacked .inspectorPane {
+  grid-area: inspector;
+  border-left: none;
+  border-top: var(--border-thin);
+}
+
 @media (max-width: 1200px) {
-  .panes {
+  .panes:not(.panesStacked) {
     grid-template-columns: 260px 1fr 300px;
   }
 }
 
 @media (max-width: 900px) {
-  .panes {
+  .panes:not(.panesStacked) {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto 1fr;
   }
@@ -124,5 +112,19 @@
   .inspectorPane {
     border-left: none;
     border-top: var(--border-thin);
+  }
+
+  /* Stacked collapses to a single column: palette, then canvas, then inspector. */
+  .panesStacked {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      'palette'
+      'canvas'
+      'inspector';
+  }
+
+  .panesStacked .palettePane {
+    position: static;
+    max-height: 200px;
   }
 }

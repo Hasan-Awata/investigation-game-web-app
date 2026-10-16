@@ -1,6 +1,7 @@
 import ChoiceEditorCard from '../Shared/ChoiceEditorCard';
 import MediaUploader from '@/pages/Admin/components/MediaUploader';
 import { CoordinatePicker, type CoordinateMarker } from '@/pages/Admin/components/AdminUI';
+import { getChoiceCoordinate } from '@/pages/Admin/utils/coordinates';
 import type { BaseNodeFormProps } from '@/pages/Admin/utils/questionUtils';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import adminDashboard from '../../AdminDashboard.module.css';
@@ -18,20 +19,17 @@ export default function AdminLocationForm({
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.locationForm;
 
-  // Transform the choice strings back into visual markers
+  // Transform the structured choice metadata into visual markers
   const markers: CoordinateMarker[] = state.choices.reduce<CoordinateMarker[]>((acc, c) => {
-    const parts = c.text.split('|');
-    if (parts.length >= 2) {
-      const coords = parts[0].split(',');
-      if (coords.length >= 2) {
-        acc.push({
-          id: c.id!,
-          x: coords[0].trim(),
-          y: coords[1].trim(),
-          label: parts[1].trim(),
-          isTargeting: activeCoordinateTarget === c.id
-        });
-      }
+    const coordinate = getChoiceCoordinate(c);
+    if (coordinate) {
+      acc.push({
+        id: c.id!,
+        x: coordinate.x,
+        y: coordinate.y,
+        label: coordinate.label,
+        isTargeting: activeCoordinateTarget === c.id
+      });
     }
     return acc;
   }, []);
