@@ -24,11 +24,6 @@ class VoteController extends Controller
         $choice = Choice::find($validated['choice_id']);
         $user = $request->user();
 
-        $roomUser = $room->users()->where('user_id', $user->id)->first();
-        if (!$roomUser) {
-            return response()->json(['message' => 'Not a participant in this room.'], 403);
-        }
-
         $result = $this->votingService->lockInVote($room, $user, $question, $choice);
 
         if ($result->isFailure()) {
@@ -39,12 +34,11 @@ class VoteController extends Controller
         }
 
         return response()->json([
-            'message' => 'Vote locked in successfully.',
-            'data' => $result->value['vote'],
-            'unlocked_evidence' => $result->value['unlocked']['evidence'], 
-            'unlocked_levels' => $result->value['unlocked']['levels'],     
-            'unlocked_suspects' => $result->value['unlocked']['suspects'], 
-            'unlocked_victims' => $result->value['unlocked']['victims']    
+            'message' => 'Vote locked in.',
+            'vote' => $result->value['vote'],
+            'unlocked_evidence' => $result->value['unlocked']['evidence'],
+            'unlocked_levels' => $result->value['unlocked']['levels'],
+            'character_updates' => $result->value['unlocked']['character_updates'],
         ], 200);
     }
 }

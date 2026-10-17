@@ -89,6 +89,19 @@ class InvestigationRequestSubmissionTest extends TestCase
             'status' => 'active',
         ]);
 
+        // Possession is runtime pivot state, seeded on room creation. Mirror
+        // that contract here so the room "possesses" its initial items.
+        $this->room->unlockedEvidences()->sync([
+            $this->initialEvidenceA->id,
+            $this->initialEvidenceB->id,
+        ]);
+        $this->room->characters()->sync([
+            $this->initialCharacter->id => [
+                'status' => 'available',
+                'is_unlocked' => true,
+            ],
+        ]);
+
         Sanctum::actingAs($this->user);
     }
 
@@ -143,7 +156,24 @@ class InvestigationRequestSubmissionTest extends TestCase
             ->assertJsonFragment(['message' => 'The DA rejected your request. The provided items do not establish sufficient grounds.']);
 
         $this->assertDatabaseCount('room_filed_requests', 0);
-        $this->assertDatabaseMissing('room_evidences', ['room_id' => $this->room->id]);
+        $this->assertDatabaseMissing('room_evidences', [
+            'room_id' => $this->room->id,
+            'evidence_id' => $this->rewardEvidence->id,
+        ]);
+        $this->assertFalse($this->room->completedRequests()->exists());
+    }
+
+    public function test_superset_of_valid_combination_explains_that_extra_items_must_be_removed(): void
+    {
+        $this->submit([
+            'evidence_ids' => [$this->initialEvidenceA->id, $this->initialEvidenceB->id],
+            'character_ids' => [$this->initialCharacter->id],
+        ])->assertStatus(422)
+            ->assertJsonFragment([
+                'message' => 'Your request contains unnecessary items that muddy the warrant. Narrow your selection to only the directly connected evidence and characters.',
+            ]);
+
+        $this->assertDatabaseCount('room_filed_requests', 0);
         $this->assertFalse($this->room->completedRequests()->exists());
     }
 

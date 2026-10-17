@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\GameRoom;
+use App\Models\InvestigationRequest;
 use App\Services\InvestigationRequestService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -26,10 +27,10 @@ class InvestigationRequestController extends Controller
         $evidenceIds = $validated['evidence_ids'] ?? [];
         $characterIds = $validated['character_ids'] ?? [];
 
-        if (count($evidenceIds) + count($characterIds) < 2) {
+        if (!InvestigationRequest::hasMinimumItems(count($evidenceIds), count($characterIds))) {
             return response()->json([
                 'error' => 'Request Denied',
-                'message' => 'A procedural request requires at least two items.'
+                'message' => InvestigationRequest::MIN_ITEMS_MESSAGE
             ], 422);
         }
 

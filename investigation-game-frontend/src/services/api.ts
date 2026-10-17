@@ -1,15 +1,14 @@
 import { type Result, success } from '../utils/Result';
-import type { GameCase, GameRoom, User, FinalStats, RoomVote, Question, RoomInspection } from '../types'; 
-import { request } from './request';
+import type { GameCase, GameRoom, User, FinalStats, Question, RoomInspection, VoteResponse } from '../types';
+import { request, getToken } from './request';
+import { ENV } from '@/config/env';
 
 interface RoomResponse {
   message?: string;
   room: GameRoom;
 }
 
-interface LockVoteResponse {
-  vote: RoomVote;
-}
+type LockVoteResponse = VoteResponse;
 
 interface InitiatePhaseResponse {
   room: GameRoom;
@@ -116,6 +115,7 @@ export const triggerWiretap = async (roomId: number, questionId: number): Promis
   const result = await request<TriggerWiretapResponse>(`/rooms/${roomId}/questions/${questionId}/wiretap/play`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ question_id: questionId })
   });
   return result;
 };
@@ -135,4 +135,29 @@ export const leaveRoom = async (roomId: number): Promise<Result<LeaveRoomRespons
     headers: { 'Content-Type': 'application/json' },
   });
   return result;
+};
+
+/**
+ * Unloading beacon for the same leave endpoint.
+ *
+ * Runs on `pagehide` so a host who closes the tab without the exit modal
+ * still triggers host migration. `keepalive: true` lets the request survive
+ * navigation; `sendBeacon` cannot carry the Bearer token header, so a
+ * fetch-with-keepalive is the only transport that satisfies the auth guard.
+ * Fire-and-forget: failures are intentionally swallowed (the caller is being
+ * torn down, there is nobody to show an error to).
+ */
+export const leaveRoomBeacon = async (roomId: number): Promise<void> => {
+  try {
+    await fetch(`${ENV.API_URL}/rooms/${roomId}/leave`, {
+      method: 'POST',
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': `Bearer ${getToken()}`,
+      },
+      keepalive: true,
+    });
+  } catch {
+    // Intentionally silent — cannot surface feedback during unload.
+  }
 };

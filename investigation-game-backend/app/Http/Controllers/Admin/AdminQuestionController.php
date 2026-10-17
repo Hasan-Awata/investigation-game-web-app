@@ -21,14 +21,16 @@ class AdminQuestionController extends Controller
         $validated = $request->validated();
         $storeLocally = $request->boolean('store_locally');
         $caseTitle = $this->caseTitleFor($validated['level_id']);
+        $caseId = $this->caseIdFor($validated['level_id']);
         $subfolder = $this->subfolderFor($validated['level_id']);
 
-        $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, $subfolder, $storeLocally);
-        $audioUrl = $this->mediaService->store($request->file('audio'), $caseTitle, $subfolder, $storeLocally);
+        $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, $subfolder, $storeLocally, $caseId);
+        $audioUrl = $this->mediaService->store($request->file('audio'), $caseTitle, $subfolder, $storeLocally, $caseId);
 
         $question = DB::transaction(function () use ($validated, $imageUrl, $audioUrl, $request) {
             $question = Question::create([
                 'level_id' => $validated['level_id'],
+                'order_index' => (int) ($validated['order_index'] ?? 0),
                 'text' => $validated['text'],
                 'img_url' => $imageUrl,
                 'audio_url' => $audioUrl,
@@ -50,22 +52,27 @@ class AdminQuestionController extends Controller
         $validated = $request->validated();
         $storeLocally = $request->boolean('store_locally');
         $caseTitle = $this->caseTitleFor($validated['level_id']);
+        $caseId = $this->caseIdFor($validated['level_id']);
         $subfolder = $this->subfolderFor($validated['level_id']);
 
         $oldImage = $question->getRawOriginal('img_url');
         $oldAudio = $question->getRawOriginal('audio_url');
 
         $newImage = $request->hasFile('image')
-            ? $this->mediaService->store($request->file('image'), $caseTitle, $subfolder, $storeLocally)
+            ? $this->mediaService->store($request->file('image'), $caseTitle, $subfolder, $storeLocally, $caseId)
             : null;
         $newAudio = $request->hasFile('audio')
-            ? $this->mediaService->store($request->file('audio'), $caseTitle, $subfolder, $storeLocally)
+            ? $this->mediaService->store($request->file('audio'), $caseTitle, $subfolder, $storeLocally, $caseId)
             : null;
 
         $updateData = [
             'level_id' => $validated['level_id'],
             'text' => $validated['text'],
         ];
+
+        if (array_key_exists('order_index', $validated)) {
+            $updateData['order_index'] = (int) ($validated['order_index'] ?? 0);
+        }
 
         if ($newImage !== null) {
             $updateData['img_url'] = $newImage;
@@ -141,6 +148,11 @@ class AdminQuestionController extends Controller
     private function caseTitleFor(int $levelId): string
     {
         return Level::with('zone.gameCase')->find($levelId)?->zone?->gameCase?->title ?? 'General';
+    }
+
+    private function caseIdFor(int $levelId): ?int
+    {
+        return Level::with('zone.gameCase')->find($levelId)?->zone?->gameCase?->id;
     }
 
     private function subfolderFor(int $levelId): string

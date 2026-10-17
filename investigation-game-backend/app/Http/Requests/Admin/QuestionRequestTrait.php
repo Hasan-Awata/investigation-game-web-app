@@ -8,6 +8,7 @@ trait QuestionRequestTrait
     {
         return [
             'level_id' => ['required', 'exists:levels,id'],
+            'order_index' => ['nullable', 'integer', 'min:0'],
             'text' => ['required', 'string'],
             'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
             'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg', 'max:10240'],

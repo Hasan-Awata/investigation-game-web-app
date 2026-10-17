@@ -29,7 +29,7 @@ class CaseController extends Controller
                                 ->orWhereHas('users', function ($q2) use ($userId) {
                                     $q2->where('user_id', $userId);
                                 });
-                          })->orderBy('created_at', 'desc');
+                          })->latest('updated_at')->limit(20);
                 }
             ])
             ->orderBy('created_at', 'desc')

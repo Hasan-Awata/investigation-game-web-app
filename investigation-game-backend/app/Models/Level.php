@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasMediaUrls;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +11,7 @@ use App\Enums\LevelPresentationType;
 
 class Level extends Model
 {
+    use HasMediaUrls;
     protected $fillable = [
         'zone_id',
         'title',
@@ -29,20 +31,7 @@ class Level extends Model
         ];
     }
     
-    protected function imgUrl(): Attribute
-    {
-        return Attribute::make(
-            get: function ($value) {
-                if (!$value) return null;
-                // If it's already a full URL (Cloudinary, S3, etc.), return it as-is
-                if (filter_var($value, FILTER_VALIDATE_URL)) {
-                    return $value;
-                }
-                // Otherwise, prepend the backend host for local storage paths
-                return config('app.url') . $value;
-            }
-        );
-    }
+
 
     public function zone(): BelongsTo
     {
@@ -51,7 +40,9 @@ class Level extends Model
 
     public function questions(): HasMany
     {
-        return $this->hasMany(Question::class, 'level_id');
+        return $this->hasMany(Question::class, 'level_id')
+            ->orderBy('order_index')
+            ->orderBy('id');
     }
 
     public function requiredRequest(): BelongsTo

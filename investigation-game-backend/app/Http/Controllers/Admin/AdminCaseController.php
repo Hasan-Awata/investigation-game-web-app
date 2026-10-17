@@ -28,8 +28,6 @@ class AdminCaseController extends Controller
         $validated = $request->validated();
         $storeLocally = $request->boolean('store_locally');
 
-        $imageUrl = $this->mediaService->store($request->file('image'), $validated['title'], 'Cover', $storeLocally);
-
         $case = DB::transaction(fn () => GameCase::create([
             'title' => $validated['title'],
             'story' => $validated['story'],
@@ -43,9 +41,14 @@ class AdminCaseController extends Controller
             'difficulty' => $validated['difficulty'],
             'tags' => $this->parseTags($validated['tags'] ?? null),
             'author_name' => $validated['author_name'],
-            'img_url' => $imageUrl,
+            'img_url' => null,
             'is_published' => $request->boolean('is_published'),
         ]));
+
+        $imageUrl = $this->mediaService->store($request->file('image'), $case->title, 'Cover', $storeLocally, $case->id);
+        if ($imageUrl !== null) {
+            DB::transaction(fn () => $case->update(['img_url' => $imageUrl]));
+        }
 
         return response()->json(['message' => 'Case created successfully.', 'case' => $case], 201);
     }
@@ -72,7 +75,7 @@ class AdminCaseController extends Controller
 
         $oldImage = $case->getRawOriginal('img_url');
         $newImage = $request->hasFile('image')
-            ? $this->mediaService->store($request->file('image'), $validated['title'], 'Cover', $storeLocally)
+            ? $this->mediaService->store($request->file('image'), $validated['title'], 'Cover', $storeLocally, $case->id)
             : null;
 
         $updateData = [
@@ -110,6 +113,7 @@ class AdminCaseController extends Controller
 
         $cover = $case->getRawOriginal('img_url');
         $evidenceMedia = [];
+        $evidenceMetadata = [];
         $levelMedia = [];
         $questionMedia = [];
         $characterMedia = [];
@@ -117,6 +121,7 @@ class AdminCaseController extends Controller
         foreach ($case->evidences as $evidence) {
             $evidenceMedia[] = $evidence->getRawOriginal('img_url');
             $evidenceMedia[] = $evidence->getRawOriginal('audio_url');
+            $evidenceMetadata[] = $evidence->metadata;
         }
 
         foreach ($case->levels as $level) {
@@ -137,6 +142,10 @@ class AdminCaseController extends Controller
 
         foreach (array_merge([$cover], $evidenceMedia, $levelMedia, $questionMedia, $characterMedia) as $url) {
             $this->mediaService->delete($url);
+        }
+
+        foreach ($evidenceMetadata as $metadata) {
+            $this->mediaService->cleanupOrphanedBlockImages($metadata, null);
         }
 
         return response()->json(['message' => 'Case and all associated media completely wiped.'], 200);

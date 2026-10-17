@@ -5,7 +5,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRoomData } from '@/context/RoomContext.shared';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import { getLocalUser } from '@/utils/userState';
-import { getSafeStorage, setSafeStorage } from '@/utils/storage';
+import { getSafeStorage, setSafeStorage, getLocationStateKey, pruneStaleLocationState } from '@/utils/storage';
 import type { Level, Choice, RoomInspection, RoomVote, GameRoom } from '@/types';
 import * as api from '@/services/api'; 
 import { checkIsLockedByNarrative } from '@/utils/narrativeLocks';
@@ -20,7 +20,7 @@ interface LocationPhaseProps {
 export default function LocationPhase({ level }: LocationPhaseProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const { room, accumulatedEvidences } = useRoomData();
+  const { room, accumulatedEvidences, refreshRoomData } = useRoomData();
   const { localVotes, handleSelectChoice, addToast } = useInvestigationPhase();
 
   const currentUserId = getLocalUser()?.id;
@@ -35,31 +35,35 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
   
   const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const storageKeyBase = `inv_loc_state_${room.id}_${level.id}`;
+  // Bounded cleanup: sweep keys written under older location-state schemas
+  // once per mount so per-level keys never accumulate across sessions.
+  useEffect(() => {
+    pruneStaleLocationState();
+  }, []);
 
   const [localFound, setLocalFound] = useState<Set<number>>(() => {
-    return new Set(getSafeStorage<number[]>('local', `${storageKeyBase}_found`, []));
+    return new Set(getSafeStorage<number[]>('local', getLocationStateKey(room.id, level.id, 'found'), []));
   });
 
   const [localDeadEnds, setLocalDeadEnds] = useState<Set<number>>(() => {
-    return new Set(getSafeStorage<number[]>('local', `${storageKeyBase}_deadEnds`, []));
+    return new Set(getSafeStorage<number[]>('local', getLocationStateKey(room.id, level.id, 'deadEnds'), []));
   });
 
   const [activeBubbles, setActiveBubbles] = useState<Set<number>>(() => {
-    return new Set(getSafeStorage<number[]>('local', `${storageKeyBase}_bubbles`, []));
+    return new Set(getSafeStorage<number[]>('local', getLocationStateKey(room.id, level.id, 'bubbles'), []));
   });
 
   useEffect(() => {
-    setSafeStorage('local', `${storageKeyBase}_found`, Array.from(localFound));
-  }, [localFound, storageKeyBase]);
+    setSafeStorage('local', getLocationStateKey(room.id, level.id, 'found'), Array.from(localFound));
+  }, [localFound, room.id, level.id]);
 
   useEffect(() => {
-    setSafeStorage('local', `${storageKeyBase}_deadEnds`, Array.from(localDeadEnds));
-  }, [localDeadEnds, storageKeyBase]);
+    setSafeStorage('local', getLocationStateKey(room.id, level.id, 'deadEnds'), Array.from(localDeadEnds));
+  }, [localDeadEnds, room.id, level.id]);
 
   useEffect(() => {
-    setSafeStorage('local', `${storageKeyBase}_bubbles`, Array.from(activeBubbles));
-  }, [activeBubbles, storageKeyBase]);
+    setSafeStorage('local', getLocationStateKey(room.id, level.id, 'bubbles'), Array.from(activeBubbles));
+  }, [activeBubbles, room.id, level.id]);
 
   const foundPoints = new Set([
     ...(room.inspections?.filter((i: RoomInspection) => !i.is_dead_end).map((i: RoomInspection) => i.choice_id) || []),
@@ -101,6 +105,21 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
     },
     onError: (_error, _variables, context) => {
       queryClient.setQueryData(['gameRoom', room.invite_code], context?.previousRoom);
+    },
+    // Replace the optimistic guess (and any broadcast copy) with the
+    // authoritative server record, keyed by choice_id so it never duplicates.
+    onSuccess: (data, choiceId) => {
+      // Guaranteed fallback: if the response body is missing `inspection`,
+      // refetch the room instead of silently losing the inspection state.
+      if (!data?.inspection) {
+        refreshRoomData();
+        return;
+      }
+      queryClient.setQueryData(['gameRoom', room.invite_code], (old: GameRoom | undefined) => {
+        if (!old) return old;
+        const others = (old.inspections || []).filter((i: RoomInspection) => i.choice_id !== choiceId);
+        return { ...old, inspections: [...others, data.inspection] };
+      });
     }
   });
 
@@ -111,8 +130,9 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
   const lockedBehindChoiceIds = new Set<number>();
   level.questions.forEach(q => {
     q.choices?.forEach(c => {
-      if (c.outcomes?.next_question_id) {
-        lockedBehindChoiceIds.add(Number(c.outcomes.next_question_id));
+      const nextId = c.next_question_id ?? c.outcomes?.next_question_id;
+      if (nextId) {
+        lockedBehindChoiceIds.add(Number(nextId));
       }
     });
   });
@@ -129,8 +149,9 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
       const isSelectedGlobally = room.votes?.some(v => v.choice_id === c.id);
 
       if (isSelectedLocally || isSelectedGlobally) {
-        if (c.outcomes?.next_question_id) {
-          visibleQuestionIds.add(Number(c.outcomes.next_question_id));
+        const nextId = c.next_question_id ?? c.outcomes?.next_question_id;
+        if (nextId) {
+          visibleQuestionIds.add(Number(nextId));
         }
       }
     });
@@ -172,7 +193,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
     inspectMutation.mutate(choice.id);
 
     if (result) {
-      if (choice.outcomes?.next_question_id) {
+      if ((choice.next_question_id ?? choice.outcomes?.next_question_id) != null) {
         addToast({
           type: 'level',
           title: t('pages.gameRoom.campaign.levels.location.newSceneUnlocked'),
@@ -333,7 +354,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
 {isBubbleActive && (
                   <div 
                     className={`${locationPhase['loc-info-bubble']} ${correctFind ? locationPhase['success'] : locationPhase['error']}`}>
-                    {choice.outcomes?.feedback || (correctFind ? t('pages.gameRoom.campaign.levels.location.foundUseful') : t('pages.gameRoom.campaign.levels.location.nothingFound'))}
+                    {correctFind ? t('pages.gameRoom.campaign.levels.location.foundUseful') : t('pages.gameRoom.campaign.levels.location.nothingFound')}
                   </div>
                 )}
               </div>

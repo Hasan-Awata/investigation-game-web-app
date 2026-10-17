@@ -52,6 +52,7 @@ export default function ProceduralRequestTray({
     <div className={styles.sidebarTrayContainer}>
       <div
         ref={setNodeRef}
+        title={t('pages.gameRoom.evidence.board.exactCombinationHint')}
         className={`${styles.trayDropzone} ${isOver ? styles.isDragOver : ''}`}
       >
         {!hasTrayItems ? (

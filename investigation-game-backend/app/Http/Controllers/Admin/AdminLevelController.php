@@ -19,9 +19,10 @@ class AdminLevelController extends Controller
     {
         $validated = $request->validated();
         $storeLocally = $request->boolean('store_locally');
-        $caseTitle = Zone::with('gameCase')->find($validated['zone_id'])?->gameCase?->title ?? 'General';
+        $gameCase = Zone::with('gameCase')->find($validated['zone_id'])?->gameCase;
+        $caseTitle = $gameCase?->title ?? 'General';
 
-        $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'Levels', $storeLocally);
+        $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'Levels', $storeLocally, $gameCase?->id);
 
         $level = DB::transaction(fn () => Level::create([
             'zone_id' => $validated['zone_id'],
@@ -41,11 +42,12 @@ class AdminLevelController extends Controller
     {
         $validated = $request->validated();
         $storeLocally = $request->boolean('store_locally');
-        $caseTitle = Zone::with('gameCase')->find($validated['zone_id'])?->gameCase?->title ?? 'General';
+        $gameCase = Zone::with('gameCase')->find($validated['zone_id'])?->gameCase;
+        $caseTitle = $gameCase?->title ?? 'General';
 
         $oldImage = $level->getRawOriginal('img_url');
         $newImage = $request->hasFile('image')
-            ? $this->mediaService->store($request->file('image'), $caseTitle, 'Levels', $storeLocally)
+            ? $this->mediaService->store($request->file('image'), $caseTitle, 'Levels', $storeLocally, $gameCase?->id)
             : null;
 
         $updateData = [

@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { submitInvestigationRequest } from '@/services/api';
 import { useGameMutation } from './useGameMutation';
+import { useSafeTimeout } from './useSafeTimeout';
 import type { GameRoom } from '@/types';
 import type { FiledRequest } from '@/types';
 import { useRoomUI } from '@/context/RoomContext.shared';
@@ -15,6 +16,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { addGlobalToast } = useRoomUI();
+  const safeTimeout = useSafeTimeout();
   
   const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
   const [trayCharacters, setTrayCharacters] = useState<number[]>([]);
@@ -68,7 +70,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
       refreshRoomData();
 
       // Trigger respective toast notifications based on what the DA unlocked
-      setTimeout(() => {
+      safeTimeout(() => {
         if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
           addGlobalToast({
             type: 'evidence',

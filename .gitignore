@@ -42,6 +42,8 @@ auth.json
 .opencode/
 ai_project_context.xmpl
 ai_backend_project_context.xmpl
+AGENTS.md
+Plans.md
 
 # Game files
 story-building-guides/

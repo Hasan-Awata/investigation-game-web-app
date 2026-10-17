@@ -22,7 +22,7 @@ interface LevelTransitionedPayload {
   };
 }
 
-interface WiretapTriggeredPayload {
+interface WiretapAudioPlayedPayload {
   question_id: number;
   audio_url: string | null;
   message?: string;
@@ -33,11 +33,10 @@ interface VoteLockedInPayload {
   vote: RoomVote;
 }
 
-interface CharacterUpdatePayload {
-  id: number;
-  is_unlocked?: boolean;
-  status?: string;
+interface CharacterUpdatePayload extends Partial<Character> {
   character_id?: number;
+  status?: string;
+  is_unlocked?: boolean;
 }
 
 interface ItemsUnlockedPayload {
@@ -84,6 +83,7 @@ export default function GameRoom() {
   const [globalFeedback, setGlobalFeedback] = useState<GlobalFeedback | null>(null);
 
   const playedAudioTracker = useRef<Set<number>>(new Set());
+  const timeoutsRef = useRef<number[]>([]);
 
   const setGameOverData = useCallback((message: string, stats?: FinalStats) => {
     setResolutionMessage(message);
@@ -93,12 +93,43 @@ export default function GameRoom() {
   const addGlobalToast = useCallback((toastData: Omit<ToastNotification, 'id'>) => {
     const newToast: ToastNotification = { ...toastData, id: crypto.randomUUID() };
     setToasts((prev) => [...prev, newToast]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== newToast.id)), 5000);
+    const timeoutId = window.setTimeout(
+      () => setToasts((prev) => prev.filter((t) => t.id !== newToast.id)),
+      5000
+    );
+    timeoutsRef.current.push(timeoutId);
+  }, []);
+
+  // Latest-value refs: lets the Echo subscription effect below depend only on
+  // stable identities (room id + memoised cache writers) instead of re-running
+  // (and tearing down / re-subscribing the WebSocket channel) on every render.
+  const tRef = useRef(t);
+  const setGameOverDataRef = useRef(setGameOverData);
+  const addGlobalToastRef = useRef(addGlobalToast);
+  useEffect(() => {
+    tRef.current = t;
+    setGameOverDataRef.current = setGameOverData;
+    addGlobalToastRef.current = addGlobalToast;
+  });
+
+  // Clear every tracked timer on unmount so no state update fires after teardown.
+  useEffect(() => {
+    return () => {
+      timeoutsRef.current.forEach((id) => window.clearTimeout(id));
+      timeoutsRef.current = [];
+    };
   }, []);
 
   useEffect(() => {
-    if (!room || !window.Echo) return;
-    const channel = window.Echo.private(`room.${room.id}`);
+    const roomId = room?.id;
+    if (!roomId || !window.Echo) return;
+
+    const scheduleTimeout = (callback: () => void, delay: number) => {
+      const id = window.setTimeout(callback, delay);
+      timeoutsRef.current.push(id);
+    };
+
+    const channel = window.Echo.private(`room.${roomId}`);
 
     // 1. Level Transitions & Game State
     channel.listen('LevelTransitioned', (e: LevelTransitionedPayload) => {
@@ -106,12 +137,12 @@ export default function GameRoom() {
         if (e.status === 'active') {
           setGlobalFeedback({
             type: 'success',
-            title: t('pages.gameRoom.departmentUpdate'),
+            title: tRef.current('pages.gameRoom.departmentUpdate'),
             message: e.message
           });
-          setTimeout(() => setGlobalFeedback(null), 4000);
+          scheduleTimeout(() => setGlobalFeedback(null), 4000);
         } else {
-          setGameOverData(e.message, e.stats);
+          setGameOverDataRef.current(e.message, e.stats);
         }
       }
 
@@ -147,17 +178,17 @@ export default function GameRoom() {
     });
 
     // 3. Audio / Wiretap Playback
-    channel.listen('WiretapTriggered', (e: WiretapTriggeredPayload) => {
+    channel.listen('WiretapAudioPlayed', (e: WiretapAudioPlayedPayload) => {
       if (e.audio_url && !playedAudioTracker.current.has(e.question_id)) {
         playedAudioTracker.current.add(e.question_id);
         const audio = new Audio(e.audio_url);
         audio.play().catch(err => console.error('Browser blocked autoplay:', err));
       }
 
-      addGlobalToast({
+      addGlobalToastRef.current({
         type: 'evidence',
-        title: t('pages.gameRoom.wiretapIntercepted'),
-        message: e.message || t('pages.gameRoom.audioFeedActive'),
+        title: tRef.current('pages.gameRoom.wiretapIntercepted'),
+        message: e.message || tRef.current('pages.gameRoom.audioFeedActive'),
         icon: 'https://api.iconify.design/ph:waveform-duotone.svg?color=%23c48b36'
       });
 
@@ -175,29 +206,75 @@ export default function GameRoom() {
 
     // 4. Discovery Engine (ItemsUnlocked)
     channel.listen('ItemsUnlocked', (e: ItemsUnlockedPayload) => {
+      let requiresRefresh = false;
+
       patchRoomData((oldRoom: GameRoom) => {
-        
+
         // Process character updates dynamically
         const updatedCharacters = [...(oldRoom.accumulated_characters || [])];
-        
+
         if (e.character_updates && e.character_updates.length > 0) {
           e.character_updates.forEach(update => {
-            const index = updatedCharacters.findIndex(c => c.id === update.character_id || c.id === update.id);
+            const targetId = Number(update.id ?? update.character_id);
+
+            // A partial update we cannot place (no id, or an unknown character
+            // shipped without a name) must not fabricate a phantom card.
+            if (!targetId) {
+              requiresRefresh = true;
+              return;
+            }
+
+            const index = updatedCharacters.findIndex(c => c.id === targetId);
+
             if (index !== -1) {
-              // Patch the existing character's status or visibility
+              // Overlay the sanitized update (no answer key) onto the known character.
               updatedCharacters[index] = {
                 ...updatedCharacters[index],
+                ...update,
+                id: targetId,
                 current_status: update.status ?? updatedCharacters[index].current_status,
               };
-              // If it's newly unlocked, we ensure it's processed correctly by the UI
-              if (update.is_unlocked) {
-                 // In a full implementation, you might ensure they are marked visible in a local state or rely on the backend pre-compilation
-                 updatedCharacters[index].is_initial = true; // Force visibility patch
-              }
-            } else if (update.is_unlocked) {
-              // Edge case: If the backend sends a completely new character object
-              updatedCharacters.push(update as Character);
+            } else if (update.name) {
+              // Newly discovered person of interest shipped as a full object.
+              updatedCharacters.push({ ...update, id: targetId } as Character);
+            } else {
+              requiresRefresh = true;
             }
+
+            if (update.is_unlocked) {
+              addGlobalToastRef.current({
+                type: 'character',
+                title: tRef.current('pages.gameRoom.hooks.phase.personOfInterest'),
+                message: tRef.current('pages.gameRoom.hooks.phase.personOfInterestMsg'),
+                icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232'
+              });
+            }
+            if (update.status === 'deceased') {
+              addGlobalToastRef.current({
+                type: 'system',
+                title: tRef.current('pages.gameRoom.hooks.phase.casualtyIdentified', 'Critical Update'),
+                message: tRef.current('pages.gameRoom.hooks.phase.casualtyIdentifiedMsg', 'A person of interest has been confirmed deceased.'),
+                icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91'
+              });
+            }
+          });
+        }
+
+        if (e.unlocked_evidences && e.unlocked_evidences.length > 0) {
+          addGlobalToastRef.current({
+            type: 'evidence',
+            title: tRef.current('pages.gameRoom.hooks.phase.evidenceRecovered'),
+            message: tRef.current('pages.gameRoom.hooks.phase.evidenceRecoveredMsg', { count: e.unlocked_evidences.length }),
+            icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36'
+          });
+        }
+
+        if (e.unlocked_levels && e.unlocked_levels.length > 0) {
+          addGlobalToastRef.current({
+            type: 'level',
+            title: tRef.current('pages.gameRoom.hooks.phase.phaseUnlocked'),
+            message: tRef.current('pages.gameRoom.hooks.phase.phaseUnlockedMsg'),
+            icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e'
           });
         }
 
@@ -213,26 +290,41 @@ export default function GameRoom() {
           strikes: e.strikes !== undefined ? e.strikes : oldRoom.strikes
         };
       });
+
+      if (requiresRefresh) {
+        refreshRoomData();
+      }
     });
 
     channel.listen('LocationInspected', (e: LocationInspectedPayload) => {
-      patchRoomData((oldRoom: GameRoom) => ({
-        ...oldRoom,
-        inspections: [...(oldRoom.inspections || []), e.inspection]
-      }));
+      patchRoomData((oldRoom: GameRoom) => {
+        // Idempotent: the inspecting client already has an optimistic copy, so
+        // dedupe by choice_id rather than blindly appending.
+        const others = (oldRoom.inspections || []).filter(
+          (i: RoomInspection) => i.choice_id !== e.inspection.choice_id
+        );
+        return { ...oldRoom, inspections: [...others, e.inspection] };
+      });
     });
 
     channel.listen('RequestFiled', (e: RequestFiledPayload) => {
-      patchRoomData((oldRoom: GameRoom) => ({
-        ...oldRoom,
-        filed_requests: [e.filed_request, ...(oldRoom.filed_requests || [])]
-      }));
+      patchRoomData((oldRoom: GameRoom) => {
+        // Drop the caller's optimistic `temp-*` placeholder (and any stale copy)
+        // before prepending the authoritative server record.
+        const existing = (oldRoom.filed_requests || []).filter(
+          (req) =>
+            !String(req.id).startsWith('temp-') &&
+            Number(req.id) !== Number(e.filed_request.id)
+        );
+
+        return { ...oldRoom, filed_requests: [e.filed_request, ...existing] };
+      });
     });
 
     channel.listen('HostMigrated', (e: HostMigratedPayload) => {
       setGlobalFeedback({
         type: 'success',
-        title: t('pages.gameRoom.departmentUpdate', 'Department Update'),
+        title: tRef.current('pages.gameRoom.departmentUpdate', 'Department Update'),
         message: e.message
       });
 
@@ -255,19 +347,21 @@ export default function GameRoom() {
         };
       });
 
-      setTimeout(() => setGlobalFeedback(null), 5000);
+      scheduleTimeout(() => setGlobalFeedback(null), 5000);
     });
 
     return () => {
       channel.stopListening('LevelTransitioned');
       channel.stopListening('VoteLockedIn');
-      channel.stopListening('WiretapTriggered');
+      channel.stopListening('WiretapAudioPlayed');
       channel.stopListening('ItemsUnlocked');
+      channel.stopListening('LocationInspected');
+      channel.stopListening('RequestFiled');
       channel.stopListening('HostMigrated');
 
-      window.Echo.leave(`room.${room.id}`);
+      window.Echo.leave(`room.${roomId}`);
     };
-  }, [room, room?.id, patchRoomData, setGameOverData, addGlobalToast, t]);
+  }, [room?.id, patchRoomData, refreshRoomData]);
 
   if (isLoading) return <div className="terminal-text">{t('pages.gameRoom.synchronizing')}</div>;
   if (error || !room) return <div className="terminal-text error">{error || t('pages.gameRoom.sessionNotFound')}</div>;

@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useRoomData } from '@/context/RoomContext.shared';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
-import type { Level, Question } from '@/types';
+import type { Level, Question, QuestionConsensus } from '@/types';
 import { checkIsLockedByNarrative } from '@/utils/narrativeLocks';
 import wiretapPhase from './WiretapPhase.module.css';
 
@@ -9,7 +9,7 @@ interface WiretapPhaseProps {
   level: Level;
   status: string;
   totalPlayers: number;
-  getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
+  getQuestionConsensus: (question: Question) => QuestionConsensus;
   isHost: boolean;
   isSubmitting: boolean;
   handleSubmitTheory: (e: React.MouseEvent) => void;
@@ -26,27 +26,34 @@ export default function WiretapPhase({
 
   if (!level.questions || level.questions.length === 0) return null;
 
+  const orderedQuestions = [...level.questions].sort(
+    (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0) || a.id - b.id
+  );
   const visibleQuestions: Question[] = [];
-  let currentId: number | null = level.questions[0].id;
+  let currentId: number | null = orderedQuestions[0].id;
 
   while (currentId) {
-    const q = level.questions.find(x => x.id === currentId);
+    const q = orderedQuestions.find(x => x.id === currentId);
     if (!q) break;
     visibleQuestions.push(q);
 
     const consensus = getQuestionConsensus(q);
-    if (consensus.isResolved && consensus.winningChoiceId) {
-      const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
+      if (consensus.isResolved && consensus.winningChoiceId) {
+        const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
 
-      if (winningChoice?.outcomes?.next_question_id) {
-        currentId = Number(winningChoice.outcomes.next_question_id);
+        const nextId = winningChoice
+          ? (winningChoice.next_question_id ?? winningChoice.outcomes?.next_question_id)
+          : null;
+
+        if (nextId) {
+          currentId = Number(nextId);
+        } else {
+          const currentIndex = orderedQuestions.findIndex(x => x.id === q.id);
+          currentId = orderedQuestions[currentIndex + 1]?.id || null;
+        }
       } else {
-        const currentIndex = level.questions.findIndex(x => x.id === q.id);
-        currentId = level.questions[currentIndex + 1]?.id || null;
+        currentId = null;
       }
-    } else {
-      currentId = null;
-    }
   }
 
   const requiredAudios = level.questions?.filter(q => q.audio_url) || [];
@@ -127,7 +134,6 @@ export default function WiretapPhase({
                 <div className="choices-preview" style={{ marginTop: '1rem' }}>
                   {q.choices?.map(c => {
                     const isSelected = localVotes[q.id] === c.id;
-                    const isHistoricalCorrect = status === 'completed' && !c.outcomes?.gives_strike;
                     const isNarrativeLocked = checkIsLockedByNarrative(c, accumulatedEvidences, room.votes || []);
 
                     let pillClass = 'choice-pill';
@@ -135,7 +141,6 @@ export default function WiretapPhase({
                       pillClass = `choice-pill ${wiretapPhase['locked-choice']}`;
                     } else {
                       if (isSelected) pillClass += ' selected';
-                      if (isHistoricalCorrect) pillClass += ' historical-correct';
                       if (status === 'active' && !isLocked && (!isAudioIntercept || hasBeenPlayed)) pillClass += ' interactable';
                     }
 

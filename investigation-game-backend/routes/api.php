@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\AdminCharacterController;
 use App\Http\Controllers\Admin\AdminInvestigationRequestController;
 use App\Http\Controllers\Admin\AdminMediaController;
 use App\Http\Middleware\IsAdmin;
+use App\Http\Middleware\EnsureRoomParticipant;
 
 Route::get('/login', function () {
     return response()->json(['error' => 'Unauthenticated', 'message' => 'Session expired. Please log in again.'], 401);
@@ -43,17 +44,21 @@ Route::middleware('auth:sanctum')->group(function () {
     // Room Management
     Route::post('/rooms', [GameRoomController::class, 'store']);
     Route::post('/rooms/join', [GameRoomController::class, 'join']);
-    Route::post('/rooms/{room}/leave', [GameRoomController::class, 'leave']);
-    Route::get('/rooms/{room}', [GameRoomController::class, 'show']);
 
-    // Core Gameplay Loop
-    Route::post('/rooms/{room}/questions/{question}/vote', [VoteController::class, 'store']);
-    Route::post('/rooms/{room}/submit', [AssessmentController::class, 'store']);
-    Route::post('/rooms/{room}/levels/{level}/start', [GameRoomController::class, 'startLevel']);
-    Route::post('/rooms/{room}/inspect', [GameRoomController::class, 'inspect']);
-    Route::post('/rooms/{room}/suspects/submit', [SuspectVerdictController::class, 'store']);
-    Route::post('/rooms/{room}/investigate', [InvestigationRequestController::class, 'store']);
-    Route::post('/rooms/{room}/questions/{question}/wiretap/play', [WiretapController::class, 'play']);
+    // Room-scoped gameplay routes: participant-only (IDOR guard)
+    Route::middleware([EnsureRoomParticipant::class])->group(function () {
+        Route::post('/rooms/{room}/leave', [GameRoomController::class, 'leave']);
+        Route::get('/rooms/{room}', [GameRoomController::class, 'show']);
+
+        // Core Gameplay Loop
+        Route::post('/rooms/{room}/questions/{question}/vote', [VoteController::class, 'store']);
+        Route::post('/rooms/{room}/submit', [AssessmentController::class, 'store']);
+        Route::post('/rooms/{room}/levels/{level}/start', [GameRoomController::class, 'startLevel']);
+        Route::post('/rooms/{room}/inspect', [GameRoomController::class, 'inspect']);
+        Route::post('/rooms/{room}/suspects/submit', [SuspectVerdictController::class, 'store']);
+        Route::post('/rooms/{room}/investigate', [InvestigationRequestController::class, 'store']);
+        Route::post('/rooms/{room}/questions/{question}/wiretap/play', [WiretapController::class, 'play']);
+    });
 
     // Admin Dashboard Routes (Protected by auth:sanctum from outer group + IsAdmin middleware)
     Route::middleware([IsAdmin::class])->prefix('admin')->group(function () {

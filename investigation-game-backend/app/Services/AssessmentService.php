@@ -6,6 +6,7 @@ use App\Models\GameRoom;
 use App\Models\Character;
 use Illuminate\Support\Facades\DB;
 use App\Support\Result;
+use App\Support\Concerns\BroadcastsAfterCommit;
 use App\Events\LevelTransitioned;
 use App\Events\ItemsUnlocked;
 use App\Enums\RoomStatus;
@@ -13,56 +14,97 @@ use App\Enums\CaseUserStatus;
 
 class AssessmentService
 {
+    use BroadcastsAfterCommit;
+
+    public function __construct(
+        private readonly VotingService $votingService
+    ) {}
 
     public function evaluateSubmission(GameRoom $room): Result
     {
         return DB::transaction(function () use ($room) {
+            $room = GameRoom::where('id', $room->id)->lockForUpdate()->firstOrFail();
+
+            if ($room->status !== RoomStatus::Active) {
+                return Result::failure("This investigation has already concluded.");
+            }
+
             $level = $room->currentLevel;
 
             if (!$level) {
                 return Result::failure("No active zones to evaluate. This zones may have already been submitted.");
             }
 
-            $votes = \App\Models\RoomVote::with('choice')->where('room_id', $room->id)
-                ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
-                ->get();
+            $startingQuestion = $level->questions->first();
 
-            foreach ($votes as $vote) {
-                $choice = $vote->choice;
-                $givesStrike = filter_var($choice->outcomes['gives_strike'] ?? false, FILTER_VALIDATE_BOOLEAN);
+            if (!$startingQuestion) {
+                return Result::failure("This encounter has no active questioning chain to evaluate.");
+            }
 
+            $strikeChoice = null;
+            $visited = [];
+            $currentQuestion = $startingQuestion;
+
+            while ($currentQuestion && !isset($visited[$currentQuestion->id])) {
+                $visited[$currentQuestion->id] = true;
+
+                $winningChoiceId = $this->votingService->getQuestionConsensusChoiceId($room, $currentQuestion->id);
+
+                if ($winningChoiceId === null) {
+                    return Result::failure('All active questions must have a clear team consensus (no ties) before submitting.');
+                }
+
+                $winningChoice = \App\Models\Choice::find($winningChoiceId);
+
+                if (!$winningChoice) {
+                    break;
+                }
+
+                $givesStrike = filter_var($winningChoice->outcomes['gives_strike'] ?? false, FILTER_VALIDATE_BOOLEAN);
                 if ($givesStrike) {
-                    $room->increment('strikes');
-                    $room->refresh();
+                    $strikeChoice = $winningChoice;
+                    break;
+                }
 
-                    ItemsUnlocked::dispatch($room, null, null, null, $room->strikes);
+                $nextQuestionId = $winningChoice->outcomes['next_question_id'] ?? null;
+                if (!$nextQuestionId) {
+                    break;
+                }
 
-                    if ($room->strikes >= $room->gameCase->max_strikes) {
-                        $totalGuilty = Character::where('case_id', $room->case_id)->where('is_guilty', true)->count();
-                        $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
+                $currentQuestion = \App\Models\Question::find($nextQuestionId);
+            }
 
-                        $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
-                        $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
-                        LevelTransitioned::dispatch($room, 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.', $stats);
+            if ($strikeChoice) {
+                $room->increment('strikes');
+                $room->refresh();
 
-                        return Result::success([
-                            'status' => 'failed_final',
-                            'message' => 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.',
-                            'stats' => $stats
-                        ]);
-                    }
+                $this->broadcastAfterCommit(new ItemsUnlocked($room, null, null, null, $room->strikes));
 
-                    $hint = $choice->outcomes['feedback'] ?? "Re-evaluate the evidence thoroughly.";
+                if ($room->strikes >= $room->gameCase->max_strikes) {
+                    $totalGuilty = Character::where('case_id', $room->case_id)->where('is_guilty', true)->count();
+                    $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
 
-                    \App\Models\RoomVote::where('room_id', $room->id)
-                        ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
-                        ->delete();
+                    $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
+                    $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
+                    $this->broadcastAfterCommit(new LevelTransitioned($room, 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.', $stats));
 
                     return Result::success([
-                        'status' => 'success',
-                        'message' => $hint,
+                        'status' => 'failed_final',
+                        'message' => 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.',
+                        'stats' => $stats
                     ]);
                 }
+
+                $hint = $strikeChoice->outcomes['feedback'] ?? "Re-evaluate the evidence thoroughly.";
+
+                \App\Models\RoomVote::where('room_id', $room->id)
+                    ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
+                    ->delete();
+
+                return Result::success([
+                    'status' => 'success',
+                    'message' => $hint,
+                ]);
             }
 
             $room->completedLevels()->syncWithoutDetaching([$level->id]);
@@ -78,7 +120,7 @@ class AssessmentService
                 $responseMessage = 'Verdict accepted. Return to the roadmap to select the next zone.';
             }
 
-            LevelTransitioned::dispatch($room, $responseMessage);
+            $this->broadcastAfterCommit(new LevelTransitioned($room, $responseMessage));
 
             return Result::success([
                 'status' => 'success',
@@ -87,9 +129,19 @@ class AssessmentService
         });
     }
 
-    public function evaluateFinalVerdict(GameRoom $room, array $submittedCharacterIds): Result
+    /**
+     * Possession of all vital evidence satisfies the conviction requirement.
+     * If a client explicitly submits evidence presentation, that set must also
+     * contain every vital item and each presented item must be possessed.
+     */
+    public function evaluateFinalVerdict(
+        GameRoom $room,
+        array $submittedCharacterIds,
+        ?array $presentedEvidenceIds = null
+    ): Result
     {
-        return DB::transaction(function () use ($room, $submittedCharacterIds) {
+        return DB::transaction(function () use ($room, $submittedCharacterIds, $presentedEvidenceIds) {
+            $room = GameRoom::where('id', $room->id)->lockForUpdate()->firstOrFail();
             $case = $room->gameCase;
 
             if ($room->status !== RoomStatus::Active) {
@@ -99,11 +151,9 @@ class AssessmentService
             $vitalEvidenceIds = \App\Models\Evidence::where('case_id', $case->id)
                 ->where('is_vital_for_conviction', true)->pluck('id')->toArray();
 
-            $unlockedEvidenceIds = $room->unlockedEvidences()->pluck('evidences.id')->toArray();
-            $initialEvidenceIds = \App\Models\Evidence::where('case_id', $case->id)->where('is_initial', true)->pluck('id')->toArray();
-            $allPossessedEvidence = array_unique(array_merge($unlockedEvidenceIds, $initialEvidenceIds));
+            $allPossessedEvidenceIds = $room->getPossessedEvidenceIds();
 
-            $missingVital = array_diff($vitalEvidenceIds, $allPossessedEvidence);
+            $missingVital = array_diff($vitalEvidenceIds, $allPossessedEvidenceIds);
             $totalGuiltyCount = Character::where('case_id', $case->id)->where('is_guilty', true)->count();
 
             if (!empty($missingVital)) {
@@ -112,7 +162,7 @@ class AssessmentService
                 $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedNoProof->value, 0);
 
                 $message = 'INSTANT FAILURE: The DA threw out the case due to lack of definitive proof. You failed to uncover vital evidence.';
-                LevelTransitioned::dispatch($room, $message, $stats);
+                $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
 
                 return Result::success([
                     'status' => 'failed_final',
@@ -121,7 +171,28 @@ class AssessmentService
                 ]);
             }
 
+            if ($presentedEvidenceIds !== null) {
+                $presentedEvidenceIds = collect($presentedEvidenceIds)
+                    ->map(fn ($id) => (int) $id)
+                    ->unique()
+                    ->values()
+                    ->all();
+
+                if (array_diff($presentedEvidenceIds, $allPossessedEvidenceIds)) {
+                    return Result::failure('You cannot present evidence your team has not discovered.');
+                }
+
+                if (array_diff($vitalEvidenceIds, $presentedEvidenceIds)) {
+                    return Result::failure('The final case must present every piece of vital evidence.');
+                }
+            }
+
             $trueGuiltyIds = Character::where('case_id', $case->id)->where('is_guilty', true)->pluck('id')->toArray();
+
+            $unlockedCharIds = $room->getUnlockedCharacterIds();
+            if (!empty(array_diff($submittedCharacterIds, $unlockedCharIds))) {
+                return Result::failure('You cannot indict suspects who have not yet been discovered in your investigation.');
+            }
 
             $innocentsSubmitted = array_diff($submittedCharacterIds, $trueGuiltyIds);
             $missedGuilty = array_diff($trueGuiltyIds, $submittedCharacterIds);
@@ -141,7 +212,7 @@ class AssessmentService
                     $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
 
                     $message = 'PERFECT WIN: You successfully proved that no foul play was involved. Case closed.';
-                    LevelTransitioned::dispatch($room, $message, $stats);
+                    $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
 
                     return Result::success([
                         'status' => 'success',
@@ -152,7 +223,7 @@ class AssessmentService
                 } else {
                     $room->increment('strikes');
                     $room->refresh();
-                    ItemsUnlocked::dispatch($room, null, null, null, $room->strikes);
+                    $this->broadcastAfterCommit(new ItemsUnlocked($room, null, null, null, $room->strikes));
 
                     $maxStrikes = $case->max_strikes;
 
@@ -162,7 +233,7 @@ class AssessmentService
                         $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
 
                         $message = 'DEPARTMENT THRESHOLD EXCEEDED. You accused innocent people of a fabricated crime. The DA has pulled your mandate.' . $innocentMessage;
-                        LevelTransitioned::dispatch($room, $message, $stats);
+                $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
 
                         return Result::success([
                             'status' => 'failed_final',
@@ -172,7 +243,7 @@ class AssessmentService
                     }
 
                     $message = "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: You are chasing a ghost. Are you certain a murder was even committed?" . $innocentMessage;
-                    LevelTransitioned::dispatch($room, $message, null);
+                    $this->broadcastAfterCommit(new LevelTransitioned($room, $message, null));
 
                     return Result::success([
                         'status' => 'failed',
@@ -187,7 +258,7 @@ class AssessmentService
                 $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
 
                 $message = 'PERFECT WIN: You successfully identified all perpetrators with irrefutable proof. Case closed.';
-                LevelTransitioned::dispatch($room, $message, $stats);
+                $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
 
                 return Result::success([
                     'status' => 'success',
@@ -211,7 +282,7 @@ class AssessmentService
                 $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPartial->value, $xpPayload);
 
                 $message = 'PARTIAL WIN: You successfully caught all perpetrators, but collateral damage was done.' . $innocentMessage;
-                LevelTransitioned::dispatch($room, $message, $stats);
+                $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
 
                 return Result::success([
                     'status' => 'success',
@@ -221,9 +292,7 @@ class AssessmentService
                 ]);
             }
 
-            $initialCharacterIds = Character::where('case_id', $case->id)->where('is_initial', true)->pluck('id')->toArray();
-            $unlockedCharacterIds = $room->characters()->wherePivot('is_unlocked', true)->pluck('characters.id')->toArray();
-            $possessedCharacterIds = array_unique(array_merge($initialCharacterIds, $unlockedCharacterIds));
+            $possessedCharacterIds = $room->getUnlockedCharacterIds();
             $unpossessedMissedGuilty = array_diff($missedGuilty, $possessedCharacterIds);
 
             if (count($unpossessedMissedGuilty) > 0) {
@@ -232,7 +301,7 @@ class AssessmentService
                 $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedIncomplete->value, 0);
 
                 $message = 'INSTANT FAILURE: The true masterminds were never even on your radar. The remaining guilty people have escaped.' . $innocentMessage;
-                LevelTransitioned::dispatch($room, $message, $stats);
+                $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
 
                 return Result::success([
                     'status' => 'failed_final',
@@ -242,7 +311,7 @@ class AssessmentService
             } else {
                 $room->increment('strikes');
                 $room->refresh();
-                ItemsUnlocked::dispatch($room, null, null, null, $room->strikes);
+                $this->broadcastAfterCommit(new ItemsUnlocked($room, null, null, null, $room->strikes));
 
                 $maxStrikes = $case->max_strikes;
 
@@ -252,7 +321,7 @@ class AssessmentService
                     $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
 
                     $message = 'DEPARTMENT THRESHOLD EXCEEDED. You failed to indict the correct suspects. The DA has pulled your mandate.' . $innocentMessage;
-                    LevelTransitioned::dispatch($room, $message, $stats);
+                    $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
 
                     return Result::success([
                         'status' => 'failed_final',
@@ -262,7 +331,7 @@ class AssessmentService
                 }
 
                 $message = "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: There are still guilty people on your board that you haven't accused." . $innocentMessage;
-                LevelTransitioned::dispatch($room, $message, null);
+                $this->broadcastAfterCommit(new LevelTransitioned($room, $message, null));
 
                 return Result::success([
                     'status' => 'failed',
@@ -281,6 +350,7 @@ class AssessmentService
             $existingRecord = \Illuminate\Support\Facades\DB::table('case_user')
                 ->where('user_id', $userId)
                 ->where('case_id', $case->id)
+                ->lockForUpdate()
                 ->first();
 
             $previousStatus = $existingRecord->status ?? null;

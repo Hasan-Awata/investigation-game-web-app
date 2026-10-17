@@ -12,10 +12,10 @@
  * legitimately point at a CDN.
  */
 
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/+$/, '');
+import { ENV } from '@/config/env';
 
-/** `http://localhost:8000/api` -> `http://localhost:8000`. */
-const assetOrigin = (): string => (API_URL ?? '').replace(/\/api$/, '');
+/** Resolved backend origin, e.g. `http://localhost:8000`. */
+const assetOrigin = (): string => ENV.API_BASE_URL;
 
 const FALLBACK_ORIGIN = 'http://localhost:8000';
 

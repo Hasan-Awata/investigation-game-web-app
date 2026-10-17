@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoomData } from '@/context/RoomContext.shared';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import { getLocalUser } from '@/utils/userState';
 import { getSafeStorage, setSafeStorage, removeSafeStorage } from '@/utils/storage';
-import type { Question, Zone, Level, RoomVote, RoomUser } from '@/types';
+import type { Question, Zone, Level, RoomVote, QuestionConsensus } from '@/types';
+import { UNRESOLVED_CONSENSUS } from '@/types';
 import CampaignMap from './CampaignMap';
 import LevelCard from './LevelCard';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
@@ -94,34 +95,78 @@ const CampaignTab = () => {
 
   const totalPlayers = room.users?.length || 1;
 
-  const getQuestionConsensus = (question: Question) => {
-    const tally: Record<number, number> = {};
-    let votesCast = 0;
-    const participants = room.users || [];
+  /**
+   * Consensus is weighted (host = 2) and derived once per vote snapshot in
+   * O(V + Q) instead of O(N^2 x V x U) inside nested render loops. It produces:
+   *   - `consensusByQuestionId`: the resolved consensus per question, and
+   *   - `voterChoiceByQuestion`: question -> (voter -> choice) for O(1)
+   *     assigned-vote lookups.
+   * `getQuestionConsensus` below is a stable O(1) reader over these maps, so
+   * InterrogationPhase / WiretapPhase never recompute vote weights or defeat
+   * React.memo through inline-function identity churn.
+   */
+  const { consensusByQuestionId, voterChoiceByQuestion } = useMemo(() => {
+    const tallyByQuestion = new Map<number, Record<number, number>>();
+    const votesCastByQuestion = new Map<number, number>();
+    const voterChoice = new Map<number, Map<number, number>>();
 
     room.votes?.forEach((v: RoomVote) => {
-      if (v.question_id === question.id) {
-        const role = participants.find((p: RoomUser) => p.user_id === v.user_id)?.role || 'participant';
-        const weight = role === 'host' ? 2 : 1;
-        tally[v.choice_id] = (tally[v.choice_id] || 0) + weight;
-        votesCast++;
+      const tally = tallyByQuestion.get(v.question_id) ?? {};
+      tally[v.choice_id] = (tally[v.choice_id] || 0) + (v.user_id === room.host_user_id ? 2 : 1);
+      tallyByQuestion.set(v.question_id, tally);
+
+      votesCastByQuestion.set(v.question_id, (votesCastByQuestion.get(v.question_id) ?? 0) + 1);
+
+      let choicesByUser = voterChoice.get(v.question_id);
+      if (!choicesByUser) {
+        choicesByUser = new Map<number, number>();
+        voterChoice.set(v.question_id, choicesByUser);
       }
+      choicesByUser.set(v.user_id, v.choice_id);
     });
 
+    const consensus = new Map<number, QuestionConsensus>();
+    for (const [questionId, tally] of tallyByQuestion) {
+      let maxWeight = -1;
+      let isTie = false;
+      let winningChoiceId: number | null = null;
+
+      for (const [choiceId, weight] of Object.entries(tally)) {
+        if (weight > maxWeight) {
+          maxWeight = weight;
+          winningChoiceId = Number(choiceId);
+          isTie = false;
+        } else if (weight === maxWeight) {
+          isTie = true;
+        }
+      }
+
+      const votesCast = votesCastByQuestion.get(questionId) ?? 0;
+      consensus.set(questionId, {
+        votesCast,
+        isResolved: votesCast >= totalPlayers && !isTie,
+        isTie,
+        winningChoiceId: isTie ? null : winningChoiceId,
+      });
+    }
+
+    return { consensusByQuestionId: consensus, voterChoiceByQuestion: voterChoice };
+    // Keyed strictly on the vote snapshot and host id — nothing in the
+    // derivation reads other render-ticking values.
+  }, [room.votes, room.host_user_id, totalPlayers]);
+
+  const getQuestionConsensus = useCallback((question: Question): QuestionConsensus => {
     if (question.assigned_user_id !== undefined && question.assigned_user_id !== null) {
-      const assignedVote = room.votes?.find((v: RoomVote) => v.question_id === question.id && v.user_id === question.assigned_user_id);
-      return { votesCast, isResolved: !!assignedVote, isTie: false, winningChoiceId: assignedVote ? assignedVote.choice_id : null };
+      const assignedChoiceId = voterChoiceByQuestion.get(question.id)?.get(question.assigned_user_id) ?? null;
+      return {
+        votesCast: consensusByQuestionId.get(question.id)?.votesCast ?? 0,
+        isResolved: assignedChoiceId !== null,
+        isTie: false,
+        winningChoiceId: assignedChoiceId,
+      };
     }
-
-    if (votesCast < totalPlayers) return { votesCast, isResolved: false, isTie: false, winningChoiceId: null };
-
-    let maxWeight = -1, isTie = false, winningChoiceId: number | null = null;
-    for (const [cId, weight] of Object.entries(tally)) {
-      if (weight > maxWeight) { maxWeight = weight; winningChoiceId = Number(cId); isTie = false; }
-      else if (weight === maxWeight) { isTie = true; }
-    }
-    return { votesCast, isResolved: !isTie, isTie, winningChoiceId: isTie ? null : winningChoiceId };
-  };
+    return consensusByQuestionId.get(question.id) ?? UNRESOLVED_CONSENSUS;
+  }, [consensusByQuestionId, voterChoiceByQuestion]);
 
   const activeZoneData = sortedZones.find((z: Zone) => z.id === activeZoneId);
   const sortedLevels = activeZoneData?.levels ? [...activeZoneData.levels].sort((a: Level, b: Level) => a.order_index - b.order_index) : [];

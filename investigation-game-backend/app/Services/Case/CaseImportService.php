@@ -133,7 +133,11 @@ class CaseImportService
             'tags' => $caseData['tags'] ?? [],
             'author_name' => $caseData['author_name'] ?? 'System Admin',
             'is_published' => (bool) ($caseData['is_published'] ?? false),
-            'img_url' => $this->resolve($extractDir, $caseData['cover'] ?? null, $caseData['title'], 'Cover', $storeLocally),
+            'img_url' => null,
+        ]);
+
+        $case->update([
+            'img_url' => $this->resolve($extractDir, $caseData['cover'] ?? null, $caseData['title'], 'Cover', $storeLocally, $case->id),
         ]);
 
         $maps = [
@@ -154,8 +158,8 @@ class CaseImportService
                 'metadata' => $evidenceData['metadata'] ?? null,
                 'is_initial' => (bool) ($evidenceData['is_initial'] ?? false),
                 'is_vital_for_conviction' => (bool) ($evidenceData['is_vital_for_conviction'] ?? false),
-                'img_url' => $this->resolve($extractDir, $evidenceData['img'] ?? null, $caseData['title'], 'Evidences', $storeLocally),
-                'audio_url' => $this->resolve($extractDir, $evidenceData['audio'] ?? null, $caseData['title'], 'Evidences', $storeLocally),
+                'img_url' => $this->resolve($extractDir, $evidenceData['img'] ?? null, $caseData['title'], 'Evidences', $storeLocally, $case->id),
+                'audio_url' => $this->resolve($extractDir, $evidenceData['audio'] ?? null, $caseData['title'], 'Evidences', $storeLocally, $case->id),
             ]);
 
             $this->mapRef($maps, 'evidence', $evidenceData['ref_id'] ?? null, $evidence->id);
@@ -170,7 +174,7 @@ class CaseImportService
                 'is_guilty' => (bool) ($characterData['is_guilty'] ?? false),
                 'charge' => $characterData['charge'] ?? null,
                 'default_status' => $characterData['default_status'] ?? 'available',
-                'img_url' => $this->resolve($extractDir, $characterData['img'] ?? null, $caseData['title'], 'Characters', $storeLocally),
+                'img_url' => $this->resolve($extractDir, $characterData['img'] ?? null, $caseData['title'], 'Characters', $storeLocally, $case->id),
             ]);
 
             $this->mapRef($maps, 'character', $characterData['ref_id'] ?? null, $character->id);
@@ -199,7 +203,7 @@ class CaseImportService
                     'is_initial' => (bool) ($levelData['is_initial'] ?? false),
                     'presentation_type' => $levelData['presentation_type'],
                     'required_request_id' => null,
-                    'img_url' => $this->resolve($extractDir, $levelData['img'] ?? null, $caseData['title'], 'Levels', $storeLocally),
+                    'img_url' => $this->resolve($extractDir, $levelData['img'] ?? null, $caseData['title'], 'Levels', $storeLocally, $case->id),
                 ]);
 
                 $this->mapRef($maps, 'level', $levelData['ref_id'] ?? null, $level->id);
@@ -242,9 +246,10 @@ class CaseImportService
             foreach ($nodes as $index => $nodeData) {
                 $question = Question::create([
                     'level_id' => $levelId,
+                    'order_index' => (int) ($nodeData['order_index'] ?? $index),
                     'text' => $nodeData['text'],
-                    'img_url' => $this->resolve($extractDir, $nodeData['img'] ?? null, $caseData['title'], 'Levels/Questions', $storeLocally),
-                    'audio_url' => $this->resolve($extractDir, $nodeData['audio'] ?? null, $caseData['title'], 'Levels/Questions', $storeLocally),
+                    'img_url' => $this->resolve($extractDir, $nodeData['img'] ?? null, $caseData['title'], 'Levels/Questions', $storeLocally, $case->id),
+                    'audio_url' => $this->resolve($extractDir, $nodeData['audio'] ?? null, $caseData['title'], 'Levels/Questions', $storeLocally, $case->id),
                 ]);
 
                 $nodeIndexToQuestion[$index] = $question->id;
@@ -348,38 +353,65 @@ class CaseImportService
         ?string $relPath,
         string $caseTitle,
         string $subfolder,
-        bool $storeLocally
+        bool $storeLocally,
+        ?int $caseId = null
     ): ?string {
-        return $this->mediaResolver->resolve($extractDir, $relPath, $caseTitle, $subfolder, $storeLocally);
+        return $this->mediaResolver->resolve($extractDir, $relPath, $caseTitle, $subfolder, $storeLocally, $caseId);
     }
 
+    /**
+     * Register a manifest ref_id against its freshly-created database id.
+     * `$maps` is typed per entity, so a collision means the manifest declared a
+     * duplicate ref_id inside one registry — {@see CaseManifestValidator} must
+     * have caught that pre-flight; this throw is the fail-safe so a duplicate
+     * can never silently overwrite an earlier mapping (E-04).
+     */
     private function mapRef(array &$maps, string $type, ?string $ref, int $id): void
     {
-        if ($ref !== null && $ref !== '') {
-            $maps[$type][$ref] = $id;
+        if ($ref === null || $ref === '') {
+            return;
         }
+
+        if (isset($maps[$type][$ref])) {
+            throw new \RuntimeException("Duplicate {$type} ref_id '{$ref}' detected during import.");
+        }
+
+        $maps[$type][$ref] = $id;
     }
 
+    /**
+     * Resolve a manifest ref to a database id. An empty ref is "no reference",
+     * but a non-empty ref that is missing from the map is a broken graph — it
+     * would otherwise be persisted as a dead link (E-03), so fail hard.
+     * {@see CaseManifestValidator} must catch these pre-flight with a clean 422;
+     * this throw is the defensive invariant.
+     */
     private function lookup(array $map, ?string $ref): ?int
     {
         if ($ref === null || $ref === '') {
             return null;
         }
 
-        return $map[$ref] ?? null;
+        if (! isset($map[$ref])) {
+            throw new \RuntimeException("Unresolved reference '{$ref}' encountered during import.");
+        }
+
+        return $map[$ref];
     }
 
-    /** @return array<int, int> */
+    /**
+     * @return array<int, int>
+     */
     private function lookupMany(array $map, array $refs): array
     {
         $ids = [];
 
         foreach ($refs as $ref) {
-            $id = $this->lookup($map, is_string($ref) ? $ref : null);
-
-            if ($id !== null) {
-                $ids[] = $id;
+            if (! is_string($ref)) {
+                throw new \RuntimeException('Non-string reference entry encountered during import.');
             }
+
+            $ids[] = $this->lookup($map, $ref);
         }
 
         return $ids;

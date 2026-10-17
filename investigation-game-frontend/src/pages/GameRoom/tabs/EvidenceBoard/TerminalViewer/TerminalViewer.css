@@ -1,3 +1,11 @@
 @import './terminal.css';
 @import './themes.css';
 @import './blocks.css';
+.tb-unsupported {
+  border: 1px dashed var(--term-err, #dc6b6b);
+  color: var(--term-err, #dc6b6b);
+  background: rgba(220, 107, 107, 0.08);
+  padding: 0.65rem 0.8rem;
+  font: 0.8rem/1.4 var(--font-mono, monospace);
+  overflow-wrap: anywhere;
+}

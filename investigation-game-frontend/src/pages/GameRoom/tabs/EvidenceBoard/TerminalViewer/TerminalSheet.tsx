@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import type { TerminalBlock, TerminalDocument } from '@/types/evidence/terminal';
 import { ensureTerminalBlockIds } from '@/types/evidence/terminal';
@@ -24,6 +25,7 @@ export default function TerminalSheet({
   cellWrapper,
   interactiveOverlay = false,
 }: TerminalSheetProps) {
+  const { t } = useTranslation();
   const { overlayBlocks, flowBlocks } = useMemo(() => {
     const all = ensureTerminalBlockIds(doc.blocks ?? []);
     return {
@@ -50,8 +52,10 @@ export default function TerminalSheet({
         {overlayBlocks.length > 0 && (
           <div className="terminal-sheet-overlay" aria-hidden={interactiveOverlay ? undefined : true}>
             {overlayBlocks.map((b) => {
-              const Comp = getBlockComponent(b.type);
-              const content = <Comp key={b.id} block={b} ctx={{ evidenceId }} />;
+              const Comp = b.type === 'unsupported' ? undefined : getBlockComponent(b.type);
+              const content = Comp
+                ? <Comp key={b.id} block={b} ctx={{ evidenceId }} />
+                : <div key={b.id} className="tb-unsupported">[Unsupported block type: {b.type === 'unsupported' ? b.props.originalType : b.type}]</div>;
               return cellWrapper && interactiveOverlay ? cellWrapper(content, b) : content;
             })}
           </div>
@@ -61,7 +65,7 @@ export default function TerminalSheet({
           {flowBlocks.length > 0 ? (
             <TerminalBlockRenderer blocks={flowBlocks} ctx={{ evidenceId }} cellWrapper={cellWrapper} />
           ) : (
-            <p className="terminal-sheet-empty">Terminal session empty or corrupted.</p>
+            <p className="terminal-sheet-empty">{t('pages.gameRoom.evidence.viewers.terminal.emptySession')}</p>
           )}
         </div>
       </div>

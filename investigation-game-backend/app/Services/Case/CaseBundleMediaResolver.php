@@ -71,7 +71,8 @@ class CaseBundleMediaResolver
         ?string $relPath,
         string $caseTitle,
         string $subfolder,
-        bool $storeLocally
+        bool $storeLocally,
+        ?int $caseId = null
     ): ?string {
         if ($relPath === null || $relPath === '') {
             return null;
@@ -90,7 +91,8 @@ class CaseBundleMediaResolver
             basename($absolutePath),
             $caseTitle,
             $subfolder,
-            $storeLocally
+            $storeLocally,
+            $caseId
         );
     }
 

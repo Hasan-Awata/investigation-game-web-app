@@ -16,8 +16,7 @@ class EvidenceMetadataMatchesType implements ValidationRule
             'image', 'annotation', 'redaction', 'diagram',
         ],
         'terminal' => [
-            'prompt_line', 'output_stream', 'status_banner', 'encryption_flow',
-            'hash_matrix', 'file_tree', 'ascii_panel', 'packet_trace', 'spacer',
+            'prompt_line', 'output_stream', 'status_banner', 'file_tree', 'spacer',
         ],
     ];
 
@@ -49,19 +48,25 @@ class EvidenceMetadataMatchesType implements ValidationRule
         }
 
         $surface = $evidenceType->surface();
-        $metadata = is_string($value) ? json_decode($value, true) : $value;
+        if (is_string($value)) {
+            $decodedObject = json_decode($value);
+            if (json_last_error() !== JSON_ERROR_NONE || !is_object($decodedObject)) {
+                $fail('The metadata field must be a valid JSON object.');
+                return;
+            }
+
+            $metadata = json_decode($value, true);
+        } else {
+            $metadata = $value;
+        }
 
         // Handle both array and object (stdClass) structures
         if (is_object($metadata)) {
             $metadata = (array) $metadata;
         }
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            $fail('Metadata is not valid JSON.');
-            return;
-        }
-
         if (!is_array($metadata)) {
+            $fail('The metadata field must be a valid JSON object.');
             return;
         }
 
@@ -90,10 +95,12 @@ class EvidenceMetadataMatchesType implements ValidationRule
 
             if (!is_array($doc) || $doc === []) {
                 $fail("A {$evidenceType->value} evidence requires a {$key} envelope.");
+                return;
             }
 
             if (empty($doc['blocks'])) {
                 $fail("A {$evidenceType->value} evidence needs at least one block.");
+                return;
             }
 
             $allowedBlocks = self::SURFACE_BLOCKS[$surface->value] ?? [];
@@ -103,7 +110,13 @@ class EvidenceMetadataMatchesType implements ValidationRule
                 if (is_object($b)) {
                     $b = (array) $b;
                 }
-                $blockType = $b['type'] ?? null;
+
+                if (!is_array($b) || !is_string($b['type'] ?? null)) {
+                    $fail("Block #{$i} must be an object with a valid type.");
+                    continue;
+                }
+
+                $blockType = $b['type'];
 
                 if (!in_array($blockType, $allowedBlocks, true)) {
                     $fail("Block #{$i} type '{$blockType}' is not valid for a {$evidenceType->value} evidence.");

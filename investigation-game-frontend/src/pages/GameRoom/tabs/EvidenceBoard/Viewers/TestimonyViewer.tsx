@@ -14,15 +14,23 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
   const { t } = useTranslation();
   
   const {
-    agency = t('pages.gameRoom.evidence.viewers.testimony.policeDept'),
-    title = t('pages.gameRoom.evidence.viewers.testimony.officialTranscript'),
-    date = new Date().toLocaleDateString(),
-    case_number = `EX-${evidence.id.toString().padStart(3, '0')}`,
-    subject_name = 'REDACTED',
-    interviewer = 'REDACTED',
+    agency,
+    title,
+    date,
+    case_number,
+    subject_name,
+    subject,
+    interviewer,
     context,
     transcript = []
   } = evidence.metadata || {};
+
+  const displayAgency = agency || t('pages.gameRoom.evidence.viewers.testimony.policeDept');
+  const displayTitle = title || t('pages.gameRoom.evidence.viewers.testimony.officialTranscript');
+  const displayDate = date || new Date().toLocaleDateString();
+  const displayCaseNumber = case_number || `EX-${evidence.id.toString().padStart(3, '0')}`;
+  const displaySubject = subject || subject_name || t('pages.gameRoom.evidence.viewers.testimony.subjectFallback');
+  const displayInterviewer = interviewer || t('pages.gameRoom.evidence.viewers.testimony.interviewerFallback');
 
   return (
     <ViewersContainer>
@@ -30,17 +38,17 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
         <div className={testimonyViewer['testimony-paper']}>
           
           <div className={testimonyViewer['testimony-header']}>
-            <div className={testimonyViewer['testimony-agency']}>{agency}</div>
-            <h2 className={testimonyViewer['testimony-title']}>{title}</h2>
+            <div className={testimonyViewer['testimony-agency']}>{displayAgency}</div>
+            <h2 className={testimonyViewer['testimony-title']}>{displayTitle}</h2>
             
             <div className={testimonyViewer['testimony-meta-grid']}>
               <div className={testimonyViewer['meta-box']}>
                 <span className={testimonyViewer['meta-label']}>{t('pages.gameRoom.evidence.viewers.testimony.date')}</span>
-                <span className={testimonyViewer['meta-value']}>{date}</span>
+                <span className={testimonyViewer['meta-value']}>{displayDate}</span>
               </div>
               <div className={testimonyViewer['meta-box']}>
                 <span className={testimonyViewer['meta-label']}>{t('pages.gameRoom.evidence.viewers.testimony.caseNo')}</span>
-                <span className={testimonyViewer['meta-value']}>{case_number}</span>
+                <span className={testimonyViewer['meta-value']}>{displayCaseNumber}</span>
               </div>
             </div>
           </div>
@@ -48,11 +56,11 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
           <div className={testimonyViewer['testimony-subject-block']}>
             <div>
               <span className={testimonyViewer['subject-label']}>{t('pages.gameRoom.evidence.viewers.testimony.subject')}</span> 
-              {subject_name}
+              {displaySubject}
             </div>
             <div style={{ marginTop: '0.5rem' }}>
               <span className={testimonyViewer['subject-label']}>{t('pages.gameRoom.evidence.viewers.testimony.interviewer')}</span> 
-              {interviewer}
+              {displayInterviewer}
             </div>
           </div>
 

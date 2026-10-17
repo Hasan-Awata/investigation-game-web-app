@@ -298,7 +298,10 @@ export const normalizeDoc = (metadata: unknown): DocDocument => {
   };
 
   const blocks = Array.isArray(raw.blocks)
-    ? raw.blocks.filter((b: unknown): b is DocBlock => !!b && typeof b === 'object' && 'type' in b)
+    ? raw.blocks.filter((b: unknown): b is DocBlock =>
+        !!b && typeof b === 'object' && !Array.isArray(b) && 'type' in b &&
+        'props' in b && !!b.props && typeof b.props === 'object' && !Array.isArray(b.props)
+      )
     : [];
 
   return { v: 1, theme, page, blocks };
@@ -316,8 +319,8 @@ export const ensureBlockIds = (blocks: DocBlock[]): DocBlock[] =>
         ...withId,
         props: {
           ...withId.props,
-          left: ensureBlockIds(withId.props.left ?? []),
-          right: ensureBlockIds(withId.props.right ?? []),
+          left: ensureBlockIds(Array.isArray(withId.props?.left) ? withId.props.left : []),
+          right: ensureBlockIds(Array.isArray(withId.props?.right) ? withId.props.right : []),
         },
       } as DocBlock;
     }

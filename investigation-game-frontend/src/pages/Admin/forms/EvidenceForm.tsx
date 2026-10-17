@@ -26,6 +26,10 @@ const initialFormState = {
   is_initial: true,
   is_vital_for_conviction: false,
   store_locally: false,
+  img_url: '',
+  audio_url: '',
+  clear_img: false,
+  clear_audio: false,
 };
 
 const emptyDoc = () => ({ ...DEFAULT_DOC, page: { ...DEFAULT_PAGE }, blocks: [] });
@@ -82,6 +86,13 @@ export default function EvidenceForm() {
 
   const onEdit = (ev: Evidence) => {
     const surface = surfaceOf(ev.evidence_type);
+    const source = ev as Evidence & { doc?: unknown; terminal?: unknown };
+    const rawMetadata = source.metadata && typeof source.metadata === 'object' && !Array.isArray(source.metadata)
+      ? source.metadata as Record<string, unknown>
+      : {};
+    const directDoc = rawMetadata.doc ?? source.doc ?? (Array.isArray(rawMetadata.blocks) ? rawMetadata : undefined);
+    const directTerminal = rawMetadata.terminal ?? source.terminal;
+    const existingUrl = ev.img_url || ev.audio_url || '';
     handleEditInit(ev, (ed): typeof initialFormState => ({
       title: ed.title,
       description: ed.description || '',
@@ -89,12 +100,18 @@ export default function EvidenceForm() {
       // A stored doc row keeps its block tree verbatim; a pre-cutover row with
       // only a flat sub_type metadata object normalizes to an empty sheet the
       // author must fill in. Both land on the same shape.
-      metadata: (surface === 'paper' ? { ...(ed.metadata || {}), doc: normalizeDoc(ed.metadata) }
-        : surface === 'terminal' ? { ...(ed.metadata || {}), terminal: normalizeTerminal(ed.metadata) }
-        : (ed.metadata || {})) as Record<string, unknown>,
+      metadata: (surface === 'paper'
+        ? { ...rawMetadata, doc: normalizeDoc(directDoc ? { doc: directDoc } : rawMetadata) }
+        : surface === 'terminal'
+        ? { ...rawMetadata, terminal: normalizeTerminal(directTerminal ? { terminal: directTerminal } : rawMetadata) }
+        : rawMetadata) as Record<string, unknown>,
       is_initial: !!ed.is_initial,
       is_vital_for_conviction: !!ed.is_vital_for_conviction,
-      store_locally: false,
+      store_locally: existingUrl ? !existingUrl.includes('res.cloudinary.com') : true,
+      img_url: ed.img_url || '',
+      audio_url: ed.audio_url || '',
+      clear_img: false,
+      clear_audio: false,
     }));
     setImage(null);
     setAudio(null);
@@ -131,7 +148,7 @@ export default function EvidenceForm() {
           {isDocEvidence(ev) && ev.metadata.doc.theme && DOC_THEMES.includes(ev.metadata.doc.theme) && (
             <span className={adminForms['admin-list-badge']}>{ev.metadata.doc.theme.replace('_', ' ')}</span>
           )}
-          {isDigitalEvidence(ev) && ev.metadata.terminal.theme && <span className={adminForms['admin-list-badge']}>{ev.metadata.terminal.theme}</span>}
+          {isDigitalEvidence(ev) && ev.metadata.terminal?.theme && <span className={adminForms['admin-list-badge']}>{ev.metadata.terminal.theme}</span>}
         </>
       )}
       contextMissing={contextMissing}
@@ -183,7 +200,11 @@ export default function EvidenceForm() {
         )}
 
 {requiresImage && <MediaUploader label={t.evidenceImageLabel} hint={t.imageHint} accept="image/*" previewUrl={imagePreviewUrl} onChange={setImage} />}
+        {requiresImage && <AdminInput label="Image URL" value={String(formData.img_url || '')} onChange={(e) => { updateField('img_url', e.target.value); updateField('clear_img', false); setImage(null); }} />}
+        {requiresImage && editingId && <AdminCheckbox checked={!!formData.clear_img} onChange={(e) => updateField('clear_img', e.target.checked)} labelTitle="Clear image" />}
         {formData.evidence_type === 'audio' && <MediaUploader label={t.audioLabel} hint={t.audioHint} accept="audio/*" previewUrl={audioPreviewUrl} onChange={setAudio} />}
+        {formData.evidence_type === 'audio' && <AdminInput label="Audio URL" value={String(formData.audio_url || '')} onChange={(e) => { updateField('audio_url', e.target.value); updateField('clear_audio', false); setAudio(null); }} />}
+        {formData.evidence_type === 'audio' && editingId && <AdminCheckbox checked={!!formData.clear_audio} onChange={(e) => updateField('clear_audio', e.target.checked)} labelTitle="Clear audio" />}
       </form>
     </EntityDashboard>
   );

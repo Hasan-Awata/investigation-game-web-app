@@ -15,7 +15,7 @@ import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 
 import { useRoomData, useRoomUI } from '@/context/RoomContext.shared';
 import type { ToastNotification } from '@/context/RoomContext';
-import { leaveRoom } from '@/services/api';
+import { leaveRoom, leaveRoomBeacon } from '@/services/api';
 import { clearRoomSessionData } from '@/utils/storage';
 import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
 import { useSuspectVerdict } from '@/hooks/useSuspectVerdict';
@@ -80,6 +80,27 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, []);
+
+  // Host migration on tab close: `pagehide` fires on real unload/navigation
+  // (including when beforeunload's dialog is confirmed), so the backend is
+  // notified to migrate an absent host even without the explicit exit modal.
+  // `visibilitychange`/`hidden` is deliberately NOT used — it also fires when
+  // the player merely switches tabs or backgrounds the app, which would
+  // wrongfully leave the room. Duplicate runs are harmless: the backend
+  // ignores the beacon's failure ("You are not a participant") when the modal
+  // path already removed the row.
+  useEffect(() => {
+    if (!room) return;
+    const roomId = room.id;
+
+    const handlePageHide = (event: PageTransitionEvent) => {
+      if (event.persisted) return; // page entered the bfcache, not closing
+      void leaveRoomBeacon(roomId);
+    };
+
+    window.addEventListener('pagehide', handlePageHide);
+    return () => window.removeEventListener('pagehide', handlePageHide);
+  }, [room, room?.id]);
 
   const handleCopyCode = async () => {
     if (!room?.invite_code) return;

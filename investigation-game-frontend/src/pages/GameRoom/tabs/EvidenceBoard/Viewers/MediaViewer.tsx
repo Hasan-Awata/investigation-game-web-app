@@ -2,6 +2,7 @@ import React, { useState, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next'; 
 import type { Evidence } from '@/types/evidence';
 import ViewersContainer from './ViewersContainer';
+import { assetUrl } from '@/utils/assetUrl';
 import mediaViewer from './MediaViewer.module.css';
 
 type MediaEvidence = Extract<Evidence, { evidence_type: 'image' | 'audio' }>;
@@ -15,7 +16,8 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [isImageLoaded, setIsImageLoaded] = useState<boolean>(false);
   
-  const mediaUrl = evidence.img_url || ((evidence.metadata as Record<string, unknown> | null)?.url as string | undefined);
+  const rawMediaUrl = evidence.img_url || ((evidence.metadata as Record<string, unknown> | null)?.url as string | undefined);
+  const mediaUrl = rawMediaUrl ? assetUrl(rawMediaUrl) : '';
 
   const prevMediaUrlRef = useRef<string | null>(null);
 

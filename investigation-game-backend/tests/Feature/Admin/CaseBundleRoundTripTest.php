@@ -96,13 +96,16 @@ class CaseBundleRoundTripTest extends TestCase
         $requestRef = fn ($id) => $id ? $case->investigationRequests->firstWhere('id', $id)?->request_type?->value : null;
         $choices = $levels->flatMap->questions->flatMap->choices;
         $choiceRef = fn ($id) => $id ? $choices->firstWhere('id', $id)?->text : null;
+        $normalizeMediaPath = fn (?string $path) => $path === null
+            ? null
+            : preg_replace('#/assets/cases/[^/]+/#', '/assets/cases/{case}/', $path);
 
         return [
             'case' => [
                 'title' => $case->title,
                 'story' => $case->story,
                 'map_url' => $case->map_url,
-                'cover' => $case->getRawOriginal('img_url'),
+                'cover' => $normalizeMediaPath($case->getRawOriginal('img_url')),
                 'min_player_XP' => (int) $case->min_player_XP,
                 'XP_on_solve' => (int) $case->XP_on_solve,
                 'max_strikes' => (int) $case->max_strikes,
@@ -117,15 +120,15 @@ class CaseBundleRoundTripTest extends TestCase
             'evidences' => $case->evidences->sortBy('title')->map(fn ($e) => [
                 'title' => $e->title,
                 'type' => $e->evidence_type->value,
-                'img' => $e->getRawOriginal('img_url'),
-                'audio' => $e->getRawOriginal('audio_url'),
+                'img' => $normalizeMediaPath($e->getRawOriginal('img_url')),
+                'audio' => $normalizeMediaPath($e->getRawOriginal('audio_url')),
                 'is_initial' => (bool) $e->is_initial,
                 'vital' => (bool) $e->is_vital_for_conviction,
                 'metadata' => $e->metadata,
             ])->values()->all(),
             'characters' => $case->characters->sortBy('name')->map(fn ($c) => [
                 'name' => $c->name,
-                'img' => $c->getRawOriginal('img_url'),
+                'img' => $normalizeMediaPath($c->getRawOriginal('img_url')),
                 'is_initial' => (bool) $c->is_initial,
                 'is_guilty' => (bool) $c->is_guilty,
                 'charge' => $c->charge?->value,
@@ -138,13 +141,13 @@ class CaseBundleRoundTripTest extends TestCase
                 'required_evidences' => $r->requiredEvidences->map(fn ($e) => $e->title)->sort()->values()->all(),
                 'required_characters' => $r->requiredCharacters->map(fn ($c) => $c->name)->sort()->values()->all(),
             ])->sortBy('type')->values()->all(),
-            'zones' => $case->zones->sortBy('order_index')->map(function ($zone) use ($evidenceRef, $characterRef, $levelRef, $requestRef, $choiceRef) {
+            'zones' => $case->zones->sortBy('order_index')->map(function ($zone) use ($evidenceRef, $characterRef, $levelRef, $requestRef, $choiceRef, $normalizeMediaPath) {
                 return [
                     'title' => $zone->title,
                     'order' => (int) $zone->order_index,
                     'coord_x' => $zone->coord_x !== null ? (float) $zone->coord_x : null,
                     'coord_y' => $zone->coord_y !== null ? (float) $zone->coord_y : null,
-                    'levels' => $zone->levels->sortBy('order_index')->map(function ($level) use ($evidenceRef, $characterRef, $levelRef, $requestRef, $choiceRef) {
+                    'levels' => $zone->levels->sortBy('order_index')->map(function ($level) use ($evidenceRef, $characterRef, $levelRef, $requestRef, $choiceRef, $normalizeMediaPath) {
                         $questions = $level->questions->values();
                         $indexByQuestionId = array_flip($questions->pluck('id')->all());
 
@@ -155,12 +158,13 @@ class CaseBundleRoundTripTest extends TestCase
                             'is_initial' => (bool) $level->is_initial,
                             'presentation_type' => $level->presentation_type->value,
                             'required_request' => $requestRef($level->required_request_id),
-                            'img' => $level->getRawOriginal('img_url'),
-                            'nodes' => $questions->map(function ($question) use ($indexByQuestionId, $evidenceRef, $characterRef, $levelRef, $choiceRef) {
+                            'img' => $normalizeMediaPath($level->getRawOriginal('img_url')),
+                            'nodes' => $questions->map(function ($question) use ($indexByQuestionId, $evidenceRef, $characterRef, $levelRef, $choiceRef, $normalizeMediaPath) {
                                 return [
+                                    'order_index' => (int) $question->order_index,
                                     'text' => $question->text,
-                                    'img' => $question->getRawOriginal('img_url'),
-                                    'audio' => $question->getRawOriginal('audio_url'),
+                                    'img' => $normalizeMediaPath($question->getRawOriginal('img_url')),
+                                    'audio' => $normalizeMediaPath($question->getRawOriginal('audio_url')),
                                     'choices' => $question->choices->map(function ($choice) use ($indexByQuestionId, $evidenceRef, $characterRef, $levelRef, $choiceRef) {
                                         $outcomes = $choice->outcomes ?? [];
                                         $requirements = $choice->requirements ?? [];

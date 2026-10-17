@@ -1,7 +1,8 @@
 // Single source of truth for fetch + auth + error handling
 import { type Result, success, failure } from '@/utils/Result';
+import { ENV } from '@/config/env';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api';
+const API_BASE_URL = ENV.API_URL;
 
 export const getToken = () => localStorage.getItem('auth_token');
 
@@ -25,7 +26,9 @@ export async function request<T>(endpoint: string, options: RequestInit = {}): P
       const data = await response.json().catch(() => ({}));
       return failure(data.message || `Operation failed (${response.status}).`);
     }
-    return success(await response.json());
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
+    return success(data as T);
   } catch (error) {
     return failure(error instanceof Error ? error.message : 'Network error');
   }

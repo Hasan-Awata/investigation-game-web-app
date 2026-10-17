@@ -94,6 +94,25 @@ export interface RoomVote {
   choice_id: number;
 }
 
+/**
+ * Weighted-consensus outcome for one question (host weight = 2), shared by
+ * CampaignTab and the phase components it feeds. Always produced by the
+ * memoized O(1) lookup in CampaignTab — never recomputed inside render loops.
+ */
+export interface QuestionConsensus {
+  votesCast: number;
+  isResolved: boolean;
+  isTie: boolean;
+  winningChoiceId: number | null;
+}
+
+export const UNRESOLVED_CONSENSUS: QuestionConsensus = {
+  votesCast: 0,
+  isResolved: false,
+  isTie: false,
+  winningChoiceId: null,
+};
+
 export interface RoomInspection {
   id?: number;
   room_id: number;
@@ -162,13 +181,34 @@ export interface Choice {
   id: number;
   question_id: number;
   text: string;
+  /**
+   * Narrative link to the next question in the dialogue tree. Hydrated at the
+   * top level by the backend for player payloads because `outcomes` itself is
+   * hidden from clients (answer key).
+   */
+  next_question_id?: number | null;
+  /** Present only on admin payloads; stripped from player payloads. */
   outcomes?: ChoiceOutcomes | null;
   requirements?: ChoiceRequirements | null;
+}
+
+/**
+ * Success payload returned by `POST /rooms/{room}/questions/{question}/vote`.
+ * `character_updates` carries full sanitized Character objects (no
+ * `is_guilty` / `charge`).
+ */
+export interface VoteResponse {
+  message: string;
+  vote: RoomVote;
+  unlocked_evidence: Evidence[];
+  unlocked_levels: Level[];
+  character_updates: Character[];
 }
 
 export interface Question {
   id: number;
   level_id: number;
+  order_index?: number;
   text: string;
   img_url?: string;
   audio_url?: string; 
@@ -177,7 +217,6 @@ export interface Question {
 }
 
 export const LevelPresentationType = {
-  Standard: 'standard',
   Interrogation: 'interrogation',
   Location: 'location',
   Wiretap: 'wiretap', 

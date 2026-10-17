@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import type { DocBlock, DocRenderContext } from '@/types/evidence/doc';
 import { clampSpan } from '@/types/evidence/shared';
@@ -33,6 +34,7 @@ interface BlockRendererProps {
  * before handing blocks down. See PlansEvidence.md section 5.1.
  */
 export default function BlockRenderer({ blocks, ctx, isRoot = true, cellWrapper }: BlockRendererProps) {
+  const { t } = useTranslation();
   const prepared = useMemo(() => ensureBlockIds(blocks ?? []), [blocks]);
 
   if (prepared.length === 0) return null;
@@ -43,10 +45,12 @@ export default function BlockRenderer({ blocks, ctx, isRoot = true, cellWrapper 
         const Component = getBlockComponent(block.type);
 
         if (!Component) {
-          // Unreachable for well-formed data; kept so one bad stored block
-          // cannot blank an entire case file.
           console.warn(`Unknown doc block type: ${(block as DocBlock).type}`);
-          return null;
+          return (
+            <div className="db-cell" key={block.id} style={{ gridColumn: `span ${clampSpan(block.span)}` }}>
+              <div className="db-unsupported">{t('pages.gameRoom.evidence.viewers.doc.unsupportedBlock', { type: (block as DocBlock).type })}</div>
+            </div>
+          );
         }
 
         const content = <Component block={block} ctx={ctx} />;

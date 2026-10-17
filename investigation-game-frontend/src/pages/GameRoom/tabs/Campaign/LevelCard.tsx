@@ -74,7 +74,7 @@ export default function LevelCard({
         </div>
         <div className={levelCard['list-item-title-area']}>
           <span className={levelCard['node-phase']}>
-            {t(`pages.gameRoom.campaign.types.${level.presentation_type || 'standard'}`)}
+            {t(`pages.gameRoom.campaign.types.${level.presentation_type || 'interrogation'}`)}
           </span>
           <h4 className={levelCard['list-item-title']}>{displayTitle}</h4>
         </div>

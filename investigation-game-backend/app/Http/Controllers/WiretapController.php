@@ -2,35 +2,61 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\RoomStatus;
+use App\Events\WiretapAudioPlayed;
 use App\Models\GameRoom;
 use App\Models\Question;
-use App\Events\WiretapTriggered;
-use Illuminate\Http\Request;
+use App\Support\Concerns\BroadcastsAfterCommit;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class WiretapController extends Controller
 {
-    public function play(Request $request, GameRoom $room, Question $question): JsonResponse
+    use BroadcastsAfterCommit;
+
+    public function play(Request $request, GameRoom $room): JsonResponse
     {
         if ($request->user()->id !== $room->host_user_id) {
             return response()->json(['error' => 'Unauthorized', 'message' => 'Only the Host can initiate the wiretap.'], 403);
         }
 
-        if (!$question->audio_url) {
-            return response()->json(['error' => 'Invalid Request', 'message' => 'This intercept does not contain wiretap audio.'], 422);
-        }
+        $validated = $request->validate([
+            'question_id' => ['required', 'integer', 'exists:questions,id'],
+        ]);
 
-        if ($room->playedWiretaps()->where('question_id', $question->id)->exists()) {
-            return response()->json(['error' => 'Conflict', 'message' => 'This wiretap has already been burned. Signal lost.'], 409);
-        }
+        $questionId = (int) $validated['question_id'];
 
-        $room->playedWiretaps()->attach($question->id);
+        return DB::transaction(function () use ($request, $room, $questionId): JsonResponse {
+            $room = GameRoom::where('id', $room->id)->lockForUpdate()->firstOrFail();
 
-        WiretapTriggered::dispatch($room, $question);
+            if ($room->status !== RoomStatus::Active) {
+                return response()->json(['error' => 'Invalid Action', 'message' => 'This investigation has already concluded.'], 400);
+            }
 
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Wiretap broadcasted to room.'
-        ], 200);
+            $question = Question::whereKey($questionId)
+                ->whereHas('level.zone', fn ($zone) => $zone->where('case_id', $room->case_id))
+                ->first();
+
+            if (!$question) {
+                return response()->json(['error' => 'Forbidden', 'message' => 'Question does not belong to this case.'], 403);
+            }
+
+            if (!$question->audio_url) {
+                return response()->json(['error' => 'Invalid Request', 'message' => 'This intercept does not contain wiretap audio.'], 422);
+            }
+
+            if ($room->playedWiretaps()->wherePivot('question_id', $questionId)->exists()) {
+                return response()->json(['status' => 'success', 'message' => 'This wiretap has already been burned. Signal lost.']);
+            }
+
+            $room->playedWiretaps()->syncWithoutDetaching([
+                $questionId => ['played_by' => $request->user()->id],
+            ]);
+
+            $this->broadcastAfterCommit(new WiretapAudioPlayed($room->id, $questionId, $request->user()->id));
+
+            return response()->json(['status' => 'success', 'message' => 'Wiretap broadcasted to room.']);
+        });
     }
 }

@@ -4,6 +4,7 @@ import { useRoomUI } from '@/context/RoomContext.shared';
 import type { ToastNotification } from '@/context/RoomContext';
 import type { Result } from '@/utils/Result';
 import { getSafeString } from '@/utils/parsers';
+import { useSafeTimeout } from '@/hooks/useSafeTimeout';
 
 /**
  * Unified mutation wrapper for every game action.
@@ -106,6 +107,7 @@ export function useGameMutation<TData, TVars = void, TContext = unknown>(
 ): UseMutationResult<TData, Error, TVars, TContext> {
   const { t } = useTranslation();
   const { setGlobalFeedback, addGlobalToast } = useRoomUI();
+  const safeTimeout = useSafeTimeout();
 
   const {
     mutationFn,
@@ -162,7 +164,7 @@ export function useGameMutation<TData, TVars = void, TContext = unknown>(
           });
         } else {
           setGlobalFeedback({ type: 'success', title: resolvedTitle, message: resolvedMessage });
-          setTimeout(() => setGlobalFeedback(null), feedbackTtl);
+          safeTimeout(() => setGlobalFeedback(null), feedbackTtl);
         }
       }
 

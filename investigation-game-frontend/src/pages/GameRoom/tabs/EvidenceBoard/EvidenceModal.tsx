@@ -38,11 +38,16 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
 
     const Viewer = ViewerComponents[evidence.evidence_type as keyof typeof ViewerComponents];
 
-    if (!Viewer) {
-      throw new Error(`Unrecognized evidence classification type: ${evidence.evidence_type}`);
+    if (Viewer) {
+      return <Viewer evidence={evidence as { id: number; metadata?: unknown }} />;
     }
 
-    return <Viewer evidence={evidence as { id: number; metadata?: unknown }} />;
+    return (
+      <section role="status" style={{ padding: '2rem', color: 'var(--text-primary, #f5f5f5)' }}>
+        <h2>{evidence.title || 'Evidence'}</h2>
+        {evidence.description && <p>{evidence.description}</p>}
+      </section>
+    );
   };
 
   return (

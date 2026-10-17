@@ -4,6 +4,9 @@ namespace App\Services;
 
 use App\Models\GameCase;
 use App\Models\GameRoom;
+use App\Models\Character;
+use App\Models\Evidence;
+use App\Models\Level;
 use App\Models\RoomUser;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -11,10 +14,12 @@ use Illuminate\Support\Str;
 use App\Enums\RoomStatus;
 use App\Enums\LevelPresentationType;
 use App\Support\Result;
+use App\Support\Concerns\BroadcastsAfterCommit;
 use App\Events\HostMigrated;
 
 class GameRoomService
 {
+    use BroadcastsAfterCommit;
     /**
      * Initialize a new game room and assign the creator as the Host.
      */
@@ -35,6 +40,26 @@ class GameRoomService
                 'role' => 'host',
                 'joined_at' => now(),
             ]);
+
+            // Seed-on-create: snapshot every blueprint is_initial flag into runtime pivot state.
+            $room->characters()->sync(
+                $gameCase->characters()->get()->mapWithKeys(fn (Character $character) => [
+                    $character->id => [
+                        'status' => $character->default_status->value,
+                        'is_unlocked' => (bool) $character->is_initial,
+                    ],
+                ])->all()
+            );
+
+            $initialEvidenceIds = Evidence::where('case_id', $gameCase->id)
+                ->where('is_initial', true)
+                ->pluck('id');
+            $room->unlockedEvidences()->sync($initialEvidenceIds);
+
+            $initialLevelIds = Level::whereHas('zone', fn ($q) => $q->where('case_id', $gameCase->id))
+                ->where('is_initial', true)
+                ->pluck('id');
+            $room->unlockedLevels()->sync($initialLevelIds);
 
             return Result::success($room);
         });
@@ -105,7 +130,7 @@ class GameRoomService
                     $room->update(['host_user_id' => $nextPlayer->user_id]);
                     $nextPlayer->update(['role' => 'host']);
 
-                    HostMigrated::dispatch($room, $nextPlayer->user);
+                    $this->broadcastAfterCommit(new HostMigrated($room, $nextPlayer->user));
                 } else {
                     // Mark the session as abandoned if completely empty
                     $room->update(['status' => RoomStatus::Failed]);
@@ -129,31 +154,40 @@ class GameRoomService
     }
 
     /**
-     * Dynamically assigns location points (questions) to players evenly.
+     * Pure, deterministic assignment of location questions to participants.
+     *
+     * Returns an O(1) question_id => user_id map and mutates no model state:
+     * the caller decides how (or whether) to merge the result into the
+     * serialized payload, so the read path can never hide a write side effect.
      */
-    public function distributeLocationQuestions(GameRoom $room): void
+    public function distributeLocationQuestions(GameRoom $room): array
     {
-        // Only run this logic if the current level is a Location type
-        if ($room->currentLevel?->presentation_type !== LevelPresentationType::Location) {
-            return;
-        }
-
-        // Get all active users in the room, sorted reliably by their ID
         $participants = $room->users()->orderBy('id')->get();
         $playerCount = $participants->count();
 
-        if ($playerCount === 0) return;
-
-        // Sort questions reliably
-        $questions = $room->currentLevel->questions->sortBy('id')->values();
-
-        foreach ($questions as $index => $question) {
-            // Modulo arithmetic ensures an even, deterministic split
-            $assignedParticipant = $participants[$index % $playerCount];
-
-            // Dynamically append the assigned user ID to the model
-            // This won't save to the DB, it just attaches to the JSON payload
-            $question->setAttribute('assigned_user_id', $assignedParticipant->user_id);
+        if ($playerCount === 0 || !$room->gameCase) {
+            return [];
         }
+
+        $locationLevels = $room->gameCase->zones
+            ->sortBy('id')
+            ->flatMap->levels
+            ->filter(fn (Level $level) => $level->presentation_type === LevelPresentationType::Location)
+            ->sortBy('id')
+            ->values();
+
+        $assignmentByQuestionId = [];
+        $questionIndex = 0;
+
+        foreach ($locationLevels as $level) {
+            $questions = $level->questions->sortBy('id')->values();
+
+            foreach ($questions as $question) {
+                $assignmentByQuestionId[$question->id] = $participants[$questionIndex % $playerCount]->user_id;
+                $questionIndex++;
+            }
+        }
+
+        return $assignmentByQuestionId;
     }
 }

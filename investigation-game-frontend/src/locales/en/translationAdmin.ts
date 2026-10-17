@@ -315,6 +315,11 @@ export const translations = {
       docMemo: "Corporate Memo / Note",
       docBackground: "Background Check / Dossier",
       officialTranscriptLabel: "Official Transcript",
+      agencyLabel: "Agency / Department",
+      titleLabel: "Transcript Title",
+      subjectLabel: "Subject",
+      interviewerLabel: "Interviewer",
+      dateLabel: "Interview Date",
       docPhoneRecords: "Telecom / Phone Records",
       autopsy: {
         victimNameLabel: "Victim Name",

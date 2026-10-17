@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types';
+import { assetUrl } from '@/utils/assetUrl';
 import imageEvidence from './ImageEvidence.module.css';
 
 export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
@@ -10,6 +11,9 @@ export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
   const [shouldLoad, setShouldLoad] = useState<boolean>(false);
   
   const containerRef = useRef<HTMLDivElement>(null);
+  const metadataUrl = (evidence.metadata as Record<string, unknown> | null | undefined)?.url;
+  const rawImgUrl = evidence.img_url || (typeof metadataUrl === 'string' ? metadataUrl : '');
+  const imageUrl = rawImgUrl ? assetUrl(rawImgUrl) : '';
 
   // 1. Intersection Observer: Detects when the card approaches the viewport
   useEffect(() => {
@@ -39,11 +43,11 @@ export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
 
   // 2. Preload image metadata only AFTER the component is near the viewport
   useEffect(() => {
-    if (!shouldLoad || !evidence.img_url) return;
+    if (!shouldLoad || !imageUrl) return;
 
     let isMounted = true;
     const img = new Image();
-    img.src = evidence.img_url;
+    img.src = imageUrl;
 
     img.onload = () => {
       if (isMounted) {
@@ -60,7 +64,7 @@ export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
     return () => {
       isMounted = false;
     };
-  }, [shouldLoad, evidence.img_url]);
+  }, [shouldLoad, imageUrl]);
 
   // Dynamically compute aspect ratio once known, otherwise use a stable placeholder min-height
   const containerStyle = dimensions 
@@ -74,7 +78,7 @@ export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
 
       {/* The photo frame */}
       <div className={imageEvidence['photo-frame']} style={containerStyle}>
-        {evidence.img_url ? (
+        {imageUrl ? (
           <>
             {/* Skeleton Loader: Active only after the component enters viewport threshold */}
             {shouldLoad && !isLoaded && <div className={imageEvidence['image-skeleton-loader']} />}
@@ -82,7 +86,7 @@ export default function ImageEvidence({ evidence }: { evidence: Evidence }) {
             {/* Only mount the actual image source once allowed by the observer */}
             {shouldLoad && (
               <img 
-                src={evidence.img_url} 
+                src={imageUrl}
                 alt={evidence.title} 
                 className={imageEvidence['actual-photo']} 
                 onLoad={() => setIsLoaded(true)}

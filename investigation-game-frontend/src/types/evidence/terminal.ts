@@ -58,9 +58,14 @@ export type TerminalOnlyBlock =
   | (BlockBase & { type: 'status_banner'; props: StatusBannerProps })
   | (BlockBase & { type: 'file_tree'; props: FileTreeProps });
 
-export type TerminalBlock = TerminalOnlyBlock | SpacerBlock;
+export interface UnsupportedTerminalBlock extends BlockBase {
+  type: 'unsupported';
+  props: { originalType: string };
+}
 
-export type TerminalBlockType = TerminalBlock['type'];
+export type TerminalBlock = TerminalOnlyBlock | SpacerBlock | UnsupportedTerminalBlock;
+
+export type TerminalBlockType = Exclude<TerminalBlock['type'], 'unsupported'>;
 
 export const TERMINAL_BLOCK_TYPES: readonly TerminalBlockType[] = [
   'prompt_line',
@@ -107,13 +112,23 @@ export const normalizeTerminal = (metadata: unknown): TerminalDocument => {
   const theme: TerminalTheme = TERMINAL_THEMES.includes(raw.theme) ? raw.theme : 'terminal';
 
   const blocks = Array.isArray(raw.blocks)
-    ? raw.blocks
-        .filter((b: unknown): b is TerminalBlock => {
-          if (!b || typeof b !== 'object' || !('type' in b)) return false;
-          const block = b as Record<string, unknown>;
-          if (!('props' in block) || block.props === null || typeof block.props !== 'object') return false;
-          return TERMINAL_BLOCK_TYPES.includes(block.type as TerminalBlockType);
-        })
+    ? raw.blocks.flatMap((value: unknown): TerminalBlock[] => {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) return [];
+        const block = value as Record<string, unknown>;
+        if (typeof block.type !== 'string') return [];
+        if (
+          TERMINAL_BLOCK_TYPES.includes(block.type as TerminalBlockType) &&
+          !!block.props && typeof block.props === 'object' && !Array.isArray(block.props)
+        ) {
+          return [block as unknown as TerminalBlock];
+        }
+
+        return [{
+          ...block,
+          type: 'unsupported',
+          props: { originalType: block.type },
+        } as unknown as UnsupportedTerminalBlock];
+      })
     : [];
 
   return { v: 1, theme, blocks };

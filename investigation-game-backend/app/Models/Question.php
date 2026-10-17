@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasMediaUrls;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -9,39 +10,21 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Question extends Model
 {
+    use HasMediaUrls;
     protected $fillable = [
         'level_id',
+        'order_index',
         'text',
         'img_url',
         'audio_url',
-        'msg_when_wrong',
     ];
 
-    protected function audioUrl(): Attribute
+    protected function casts(): array
     {
-        return Attribute::make(
-            get: function ($value) {
-                if (!$value) return null;
-                if (filter_var($value, FILTER_VALIDATE_URL)) return $value;
-                return config('app.url') . $value;
-            }
-        );
+        return ['order_index' => 'integer'];
     }
 
-    protected function imgUrl(): Attribute
-    {
-        return Attribute::make(
-            get: function ($value) {
-                if (!$value) return null;
-                // If it's already a full URL (Cloudinary, S3, etc.), return it as-is
-                if (filter_var($value, FILTER_VALIDATE_URL)) {
-                    return $value;
-                }
-                // Otherwise, prepend the backend host for local storage paths
-                return config('app.url') . $value;
-            }
-        );
-    }
+
 
     public function level(): BelongsTo
     {

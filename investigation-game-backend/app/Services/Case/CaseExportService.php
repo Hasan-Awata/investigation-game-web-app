@@ -187,6 +187,7 @@ class CaseExportService
 
         foreach ($questions as $index => $question) {
             $nodes[] = [
+                'order_index' => (int) $question->order_index,
                 'text' => $question->text,
                 'img' => $this->addMedia($archive, $question->getRawOriginal('img_url'), "media/nodes/{$levelRef}_{$index}.img"),
                 'audio' => $this->addMedia($archive, $question->getRawOriginal('audio_url'), "media/nodes/{$levelRef}_{$index}.audio"),

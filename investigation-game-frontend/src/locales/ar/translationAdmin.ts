@@ -315,6 +315,11 @@ export const translations = {
       docMemo: "مذكرة شركة / ملاحظة",
       docBackground: "تحقيق خلفية / ملف",
       officialTranscriptLabel: "النص الرسمي",
+      agencyLabel: "الجهة / القسم",
+      titleLabel: "عنوان المحضر",
+      subjectLabel: "الموضوع",
+      interviewerLabel: "المحقق",
+      dateLabel: "تاريخ المقابلة",
       docPhoneRecords: "سجلات الهاتف",
       autopsy: {
         victimNameLabel: "اسم الضحية",

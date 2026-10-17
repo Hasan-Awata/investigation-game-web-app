@@ -133,7 +133,7 @@ export default function CampaignMap({ zones, unlockedLevelIds, onEnterZone, mapI
                       {zoneType === 'interrogation' && <InterrogationPin />}
                       {zoneType === 'location' && <LocationPin />}
                       {zoneType === 'wiretap' && <WiretapPin />}
-                      {(zoneType === 'mixed' || zoneType === 'standard' || !zoneType) && <MixedPin />}
+                      {(zoneType === 'mixed' || !zoneType) && <MixedPin />}
                     </div>
                     <div className={campaignMap['pin-tooltip']}>
                       {zone.title}

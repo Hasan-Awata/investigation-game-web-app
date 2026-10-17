@@ -8,7 +8,6 @@ use App\Enums\EvidenceType;
 use App\Enums\InvestigationRequestType;
 use App\Rules\EvidenceMetadataMatchesType;
 use App\Services\Case\CaseBundleMediaResolver;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
@@ -18,35 +17,35 @@ use Illuminate\Validation\ValidationException;
  * Validates the `case.json` manifest of a case bundle before any database writes
  * happen, so malformed imports always yield a clean 422 instead of a 500.
  *
- * Structural rules run through Laravel's validator; media-path existence, the
- * banned zone `map_url`, and a few cross-entity rules are checked manually so
- * we can emit precise field paths.
+ * Validation is exhaustive: structural rules, metadata envelopes, media paths,
+ * duplicate `ref_id`s, and all cross-`*_ref` resolution are accumulated across
+ * every entity in a single pass, and any failure throws one `ValidationException`
+ * carrying errors keyed by their exact manifest dot-path. Nothing is a warning;
+ * an import that reaches the database has already passed every check.
  */
 class CaseManifestValidator
 {
     public function __construct(private readonly CaseBundleMediaResolver $resolver) {}
 
     /**
-     * @return array<int, string> Non-fatal warnings (e.g. unresolved refs).
-     *
-     * @throws ValidationException
+     * @throws ValidationException With every error across the whole manifest keyed by its exact dot-path.
      */
-    public function validate(array $manifest, string $extractDir): array
+    public function validate(array $manifest, string $extractDir): void
     {
         $validator = Validator::make($manifest, $this->rules());
 
         $errors = $validator->errors()->toArray();
-
         $errors = array_merge_recursive($errors, $this->validateZoneMapUrls($manifest));
         $errors = array_merge_recursive($errors, $this->validateEvidenceMetadata($manifest));
         $errors = array_merge_recursive($errors, $this->validateMediaPaths($manifest, $extractDir));
         $errors = array_merge_recursive($errors, $this->validateChoiceTextUniqueness($manifest));
 
+        $refs = $this->buildRefRegistries($manifest, $errors);
+        $errors = array_merge_recursive($errors, $this->validateCrossReferences($manifest, $refs));
+
         if (! empty($errors)) {
             throw ValidationException::withMessages($errors);
         }
-
-        return $this->collectRefWarnings($manifest);
     }
 
     private function rules(): array
@@ -112,6 +111,7 @@ class CaseManifestValidator
             'zones.*.levels.*.img' => ['nullable', 'string'],
             'zones.*.levels.*.nodes' => ['nullable', 'array'],
             'zones.*.levels.*.nodes.*' => ['array'],
+            'zones.*.levels.*.nodes.*.order_index' => ['nullable', 'integer', 'min:0'],
             'zones.*.levels.*.nodes.*.text' => ['required', 'string'],
             'zones.*.levels.*.nodes.*.img' => ['nullable', 'string'],
             'zones.*.levels.*.nodes.*.audio' => ['nullable', 'string'],
@@ -253,10 +253,16 @@ class CaseManifestValidator
     }
 
     /**
-     * Unknown/mistyped refs are dropped at import time (matching existing
-     * behaviour); here we surface them as warnings so authors can fix them.
+     * Walk every entity that declares a `ref_id`, building the per-type
+     * registries used for cross-reference resolution. A `ref_id` that appears
+     * twice inside the same registry is recorded as an error at the second
+     * declaration path (E-04), so duplicate ids can never overwrite each other
+     * during import.
+     *
+     * @param  array<int, array<int, string>>  $errors  Error bag, mutated in place.
+     * @return array<string, array<string, string>> Map of entity type => ref_id => first declaration path.
      */
-    private function collectRefWarnings(array $manifest): array
+    private function buildRefRegistries(array $manifest, array &$errors): array
     {
         $refs = [
             'evidence' => [],
@@ -266,87 +272,158 @@ class CaseManifestValidator
             'choice' => [],
         ];
 
-        foreach ($manifest['evidences'] ?? [] as $evidence) {
-            if (is_array($evidence) && ! empty($evidence['ref_id'])) {
-                $refs['evidence'][$evidence['ref_id']] = true;
+        $register = function ($entity, string $path, string $type) use (&$refs, &$errors) {
+            $refId = is_array($entity) ? ($entity['ref_id'] ?? null) : null;
+
+            if (! is_string($refId) || $refId === '') {
+                return;
             }
-        }
-        foreach ($manifest['characters'] ?? [] as $character) {
-            if (is_array($character) && ! empty($character['ref_id'])) {
-                $refs['character'][$character['ref_id']] = true;
+
+            if (isset($refs[$type][$refId])) {
+                $errors["{$path}.ref_id"][] = "Duplicate ref_id '{$refId}' already declared at {$refs[$type][$refId]}.";
+
+                return;
             }
+
+            $refs[$type][$refId] = "{$path}.ref_id";
+        };
+
+        foreach ($manifest['evidences'] ?? [] as $i => $evidence) {
+            $register($evidence, "evidences.{$i}", 'evidence');
         }
-        foreach ($manifest['investigation_requests'] ?? [] as $request) {
-            if (is_array($request) && ! empty($request['ref_id'])) {
-                $refs['request'][$request['ref_id']] = true;
+
+        foreach ($manifest['characters'] ?? [] as $i => $character) {
+            $register($character, "characters.{$i}", 'character');
+        }
+
+        foreach ($manifest['investigation_requests'] ?? [] as $i => $request) {
+            $register($request, "investigation_requests.{$i}", 'request');
+        }
+
+        foreach ($manifest['zones'] ?? [] as $z => $zone) {
+            if (! is_array($zone)) {
+                continue;
             }
-        }
-        foreach ($manifest['zones'] ?? [] as $zone) {
-            foreach ($zone['levels'] ?? [] as $level) {
-                if (! empty($level['ref_id'])) {
-                    $refs['level'][$level['ref_id']] = true;
+
+            foreach ($zone['levels'] ?? [] as $l => $level) {
+                if (! is_array($level)) {
+                    continue;
                 }
-                foreach ($level['nodes'] ?? [] as $node) {
-                    foreach ($node['choices'] ?? [] as $choice) {
-                        if (! empty($choice['ref_id'])) {
-                            $refs['choice'][$choice['ref_id']] = true;
-                        }
+
+                $register($level, "zones.{$z}.levels.{$l}", 'level');
+
+                foreach ($level['nodes'] ?? [] as $n => $node) {
+                    if (! is_array($node)) {
+                        continue;
+                    }
+
+                    foreach ($node['choices'] ?? [] as $c => $choice) {
+                        $register($choice, "zones.{$z}.levels.{$l}.nodes.{$n}.choices.{$c}", 'choice');
                     }
                 }
             }
         }
 
-        $warnings = [];
-        $warn = function (string $type, $ref) use (&$warnings, $refs) {
-            if (is_string($ref) && $ref !== '' && ! isset($refs[$type][$ref])) {
-                $warnings[] = "Unresolved {$type} reference '{$ref}' was dropped.";
+        return $refs;
+    }
+
+    /**
+     * Verify every cross-`*_ref` in the manifest resolves to the entity it
+     * names. Unresolved references are hard validation errors keyed by their
+     * exact JSON path (E-03) — never warnings — because a dropped link would
+     * otherwise persist as a broken choice, request, or level gate.
+     *
+     * @param  array<string, array<string, string>>  $refs
+     * @return array<int, array<int, string>>
+     */
+    private function validateCrossReferences(array $manifest, array $refs): array
+    {
+        $errors = [];
+
+        $check = function ($ref, string $type, string $path) use (&$errors, $refs) {
+            if ($ref === null) {
+                return;
+            }
+
+            if (! is_string($ref) || $ref === '') {
+                $errors[$path][] = "The {$type} reference at '{$path}' must be a non-empty string.";
+
+                return;
+            }
+
+            if (! isset($refs[$type][$ref])) {
+                $errors[$path][] = "Unresolved {$type} reference '{$ref}'.";
             }
         };
 
-        foreach ($manifest['investigation_requests'] ?? [] as $request) {
-            $warn('evidence', $request['unlocks_evidence_ref'] ?? null);
-            $warn('level', $request['unlocks_level_ref'] ?? null);
-            foreach ($request['required_evidence_refs'] ?? [] as $ref) {
-                $warn('evidence', $ref);
+        foreach ($manifest['investigation_requests'] ?? [] as $i => $request) {
+            if (! is_array($request)) {
+                continue;
             }
-            foreach ($request['required_character_refs'] ?? [] as $ref) {
-                $warn('character', $ref);
+
+            $base = "investigation_requests.{$i}";
+
+            $check($request['unlocks_evidence_ref'] ?? null, 'evidence', "{$base}.unlocks_evidence_ref");
+            $check($request['unlocks_level_ref'] ?? null, 'level', "{$base}.unlocks_level_ref");
+
+            foreach ($request['required_evidence_refs'] ?? [] as $j => $ref) {
+                $check($ref, 'evidence', "{$base}.required_evidence_refs.{$j}");
+            }
+            foreach ($request['required_character_refs'] ?? [] as $j => $ref) {
+                $check($ref, 'character', "{$base}.required_character_refs.{$j}");
             }
         }
 
-        foreach ($manifest['zones'] ?? [] as $zone) {
-            foreach ($zone['levels'] ?? [] as $level) {
-                $warn('request', $level['required_request_ref'] ?? null);
+        foreach ($manifest['zones'] ?? [] as $z => $zone) {
+            if (! is_array($zone)) {
+                continue;
+            }
 
-                foreach ($level['nodes'] ?? [] as $node) {
-                    foreach ($node['choices'] ?? [] as $choice) {
-                        $outcomes = $choice['outcomes'] ?? [];
-                        foreach ($outcomes['unlock_evidence_refs'] ?? [] as $ref) {
-                            $warn('evidence', $ref);
-                        }
-                        foreach ($outcomes['unlock_levels_refs'] ?? [] as $ref) {
-                            $warn('level', $ref);
-                        }
-                        foreach ($outcomes['character_updates'] ?? [] as $update) {
-                            $warn('character', is_array($update) ? ($update['ref_id'] ?? null) : null);
+            foreach ($zone['levels'] ?? [] as $l => $level) {
+                if (! is_array($level)) {
+                    continue;
+                }
+
+                $levelBase = "zones.{$z}.levels.{$l}";
+
+                $check($level['required_request_ref'] ?? null, 'request', "{$levelBase}.required_request_ref");
+
+                foreach ($level['nodes'] ?? [] as $n => $node) {
+                    if (! is_array($node)) {
+                        continue;
+                    }
+
+                    foreach ($node['choices'] ?? [] as $c => $choice) {
+                        if (! is_array($choice)) {
+                            continue;
                         }
 
-                        $requirements = $choice['requirements'] ?? [];
-                        foreach ($requirements['required_evidence_refs'] ?? [] as $ref) {
-                            $warn('evidence', $ref);
+                        $choiceBase = "{$levelBase}.nodes.{$n}.choices.{$c}";
+                        $outcomes = is_array($choice['outcomes'] ?? null) ? $choice['outcomes'] : [];
+                        $requirements = is_array($choice['requirements'] ?? null) ? $choice['requirements'] : [];
+
+                        foreach ($outcomes['unlock_evidence_refs'] ?? [] as $j => $ref) {
+                            $check($ref, 'evidence', "{$choiceBase}.outcomes.unlock_evidence_refs.{$j}");
                         }
-                        foreach ($requirements['required_choice_refs'] ?? [] as $ref) {
-                            $warn('choice', $ref);
+                        foreach ($outcomes['unlock_levels_refs'] ?? [] as $j => $ref) {
+                            $check($ref, 'level', "{$choiceBase}.outcomes.unlock_levels_refs.{$j}");
+                        }
+                        foreach ($outcomes['character_updates'] ?? [] as $k => $update) {
+                            if (is_array($update) && array_key_exists('ref_id', $update)) {
+                                $check($update['ref_id'], 'character', "{$choiceBase}.outcomes.character_updates.{$k}.ref_id");
+                            }
+                        }
+                        foreach ($requirements['required_evidence_refs'] ?? [] as $j => $ref) {
+                            $check($ref, 'evidence', "{$choiceBase}.requirements.required_evidence_refs.{$j}");
+                        }
+                        foreach ($requirements['required_choice_refs'] ?? [] as $j => $ref) {
+                            $check($ref, 'choice', "{$choiceBase}.requirements.required_choice_refs.{$j}");
                         }
                     }
                 }
             }
         }
 
-        foreach (array_unique($warnings) as $warning) {
-            Log::warning("[CaseBundle] {$warning}");
-        }
-
-        return array_values(array_unique($warnings));
+        return $errors;
     }
 }

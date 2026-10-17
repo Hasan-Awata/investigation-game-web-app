@@ -9,6 +9,20 @@ use App\Enums\InvestigationRequestType;
 
 class InvestigationRequest extends Model
 {
+    public const MIN_REQUIRED_ITEMS = 2;
+    public const MIN_ITEMS_MESSAGE = 'A procedural request requires at least two items.';
+
+    /**
+     * Single source of truth for the ">= 2 items" gameplay predicate.
+     *
+     * Every gate (player endpoint, domain service, admin form) delegates here
+     * so the rule can never drift between the three enforcement sites.
+     */
+    public static function hasMinimumItems(int $evidenceCount, int $characterCount): bool
+    {
+        return $evidenceCount + $characterCount >= self::MIN_REQUIRED_ITEMS;
+    }
+
     protected $fillable = [
         'case_id',
         'request_type',

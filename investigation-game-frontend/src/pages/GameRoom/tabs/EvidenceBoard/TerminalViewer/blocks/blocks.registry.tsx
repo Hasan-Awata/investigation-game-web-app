@@ -17,13 +17,8 @@ export const TERMINAL_BLOCK_REGISTRY: Record<TerminalBlockType, TerminalBlockCom
   spacer: SpacerBlock,
 } as const;
 
-export const getBlockComponent = (type: TerminalBlockType): TerminalBlockComponent => {
-  const Comp = TERMINAL_BLOCK_REGISTRY[type];
-  if (!Comp) {
-    throw new Error(`Terminal block type "${type}" is not registered.`);
-  }
-  return Comp;
-};
+export const getBlockComponent = (type: TerminalBlockType): TerminalBlockComponent | undefined =>
+  TERMINAL_BLOCK_REGISTRY[type];
 
 export const TERMINAL_BLOCK_TYPES: readonly TerminalBlockType[] = [
   'prompt_line',

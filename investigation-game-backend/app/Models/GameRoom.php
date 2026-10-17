@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\MassPrunable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -10,6 +11,8 @@ use App\Enums\RoomStatus;
 
 class GameRoom extends Model
 {
+    use MassPrunable;
+
     protected $fillable = [
         'case_id',
         'host_user_id',
@@ -51,5 +54,48 @@ class GameRoom extends Model
         return $this->belongsToMany(Character::class, 'room_characters', 'room_id', 'character_id')
             ->withPivot('status', 'is_unlocked')
             ->withTimestamps();
+    }
+
+    public function unlockedCharacters(): BelongsToMany
+    {
+        return $this->characters()->wherePivot('is_unlocked', true);
+    }
+
+    public function getPossessedEvidenceIds(): array
+    {
+        return $this->unlockedEvidences()
+            ->pluck('evidences.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    public function getUnlockedCharacterIds(): array
+    {
+        return $this->unlockedCharacters()
+            ->pluck('characters.id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+    }
+
+    public function isLevelUnlocked(int $levelId): bool
+    {
+        return $this->unlockedLevels()->where('levels.id', $levelId)->exists();
+    }
+
+    public function isParticipant(int $userId): bool
+    {
+        if ((int) $this->host_user_id === $userId) {
+            return true;
+        }
+
+        return $this->users()->where('user_id', $userId)->exists();
+    }
+
+    public function prunable()
+    {
+        return static::where(function ($query) {
+            $query->where('status', '!=', RoomStatus::Active->value)
+                ->where('updated_at', '<', now()->subDays(7));
+        })->orWhere('updated_at', '<', now()->subDays(14));
     }
 }

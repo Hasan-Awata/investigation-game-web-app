@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasMediaUrls;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -10,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
 class GameCase extends Model
 {
+    use HasMediaUrls;
     protected $table = 'cases';
 
     protected $fillable = [
@@ -74,16 +76,4 @@ class GameCase extends Model
         return $this->hasMany(Character::class, 'case_id');
     }
 
-    protected function imgUrl(): Attribute
-    {
-        return Attribute::make(
-            get: function ($value) {
-                if (!$value) return null;
-                if (filter_var($value, FILTER_VALIDATE_URL)) {
-                    return $value;
-                }
-                return config('app.url') . $value;
-            }
-        );
-    }
 }

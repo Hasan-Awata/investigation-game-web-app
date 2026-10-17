@@ -19,9 +19,10 @@ class AdminCharacterController extends Controller
     {
         $validated = $request->validated();
         $storeLocally = $request->boolean('store_locally');
-        $caseTitle = GameCase::whereKey($validated['case_id'])->value('title') ?? 'General';
+        $gameCase = GameCase::find($validated['case_id']);
+        $caseTitle = $gameCase?->title ?? 'General';
 
-        $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'Characters', $storeLocally);
+        $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, 'Characters', $storeLocally, $gameCase?->id);
 
         $character = DB::transaction(fn () => Character::create([
             'case_id' => $validated['case_id'],
@@ -41,11 +42,12 @@ class AdminCharacterController extends Controller
     {
         $validated = $request->validated();
         $storeLocally = $request->boolean('store_locally');
-        $caseTitle = GameCase::whereKey($validated['case_id'])->value('title') ?? 'General';
+        $gameCase = GameCase::find($validated['case_id']);
+        $caseTitle = $gameCase?->title ?? 'General';
 
         $oldImage = $character->getRawOriginal('img_url');
         $newImage = $request->hasFile('image')
-            ? $this->mediaService->store($request->file('image'), $caseTitle, 'Characters', $storeLocally)
+            ? $this->mediaService->store($request->file('image'), $caseTitle, 'Characters', $storeLocally, $gameCase?->id)
             : null;
 
         $updateData = [

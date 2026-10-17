@@ -10,6 +10,15 @@
 
 @import '@/components/blocks/blocks-shared.css';
 
+.doc-sheet .db-unsupported {
+  border: 1px dashed #a33;
+  color: #8b2525;
+  background: rgba(163, 50, 50, 0.08);
+  padding: 0.65rem 0.8rem;
+  font: 0.8rem/1.4 var(--font-mono, monospace);
+  overflow-wrap: anywhere;
+}
+
 .doc-sheet .db-grid,
 .doc-sheet .db-grid *,
 .doc-sheet .db-grid *::before,

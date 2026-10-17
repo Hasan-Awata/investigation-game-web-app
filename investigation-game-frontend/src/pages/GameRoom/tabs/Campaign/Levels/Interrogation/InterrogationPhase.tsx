@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useRoomData } from '@/context/RoomContext.shared';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import { getSafeStorage, setSafeStorage } from '@/utils/storage';
-import type { Level, Question } from '@/types';
+import type { Level, Question, QuestionConsensus } from '@/types';
 import { checkIsLockedByNarrative } from '@/utils/narrativeLocks';
 import interrogationPhase from './InterrogationPhase.module.css';
 
@@ -53,7 +53,7 @@ interface InterrogationPhaseProps {
   level: Level;
   status: string;
   totalPlayers: number;
-  getQuestionConsensus: (question: Question) => { votesCast: number, isResolved: boolean, isTie: boolean, winningChoiceId: number | null };
+  getQuestionConsensus: (question: Question) => QuestionConsensus;
   isHost: boolean;
   isSubmitting: boolean;
   handleSubmitTheory: (e?: React.MouseEvent) => void; 
@@ -90,10 +90,13 @@ export default function InterrogationPhase({
       return { visibleQuestions: questions, consensusMap: map };
     }
 
-    let currentId: number | null = level.questions[0].id;
+    const orderedQuestions = [...level.questions].sort(
+      (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0) || a.id - b.id
+    );
+    let currentId: number | null = orderedQuestions[0].id;
 
     while (currentId) {
-      const q = level.questions.find(x => x.id === currentId);
+      const q = orderedQuestions.find(x => x.id === currentId);
       if (!q) break;
       questions.push(q);
 
@@ -103,8 +106,12 @@ export default function InterrogationPhase({
       if (consensus.isResolved && consensus.winningChoiceId) {
         const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
 
-        if (winningChoice?.outcomes?.next_question_id) {
-          currentId = Number(winningChoice.outcomes.next_question_id);
+        const nextId = winningChoice
+          ? (winningChoice.next_question_id ?? winningChoice.outcomes?.next_question_id)
+          : null;
+
+        if (nextId) {
+          currentId = Number(nextId);
         } else {
           currentId = null;
         }
@@ -113,13 +120,9 @@ export default function InterrogationPhase({
       }
     }
     return { visibleQuestions: questions, consensusMap: map };
-    // `react-hooks/exhaustive-deps` flags `room.votes` as unnecessary here.
-    // That warning was traced and is a false positive: getQuestionConsensus is
-    // an inline function in CampaignTab.tsx that reads room.votes, so it gets a
-    // new identity every render and the memo recomputes regardless. Dropping
-    // `room.votes` from this list would not avoid the recomputation -- it would
-    // only hide the real dependency behind a changing function reference.
-    // Leave the array as-is.
+    // `getQuestionConsensus` is a stable O(1) reader over CampaignTab's
+    // memoized consensus map, so this useMemo recomputes only when the vote
+    // snapshot (via its identity) or the level actually changes.
   }, [level.questions, getQuestionConsensus]);
 
   const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
@@ -132,7 +135,10 @@ export default function InterrogationPhase({
   const finalWinningChoice = lastConsensus?.winningChoiceId
     ? lastQuestion.choices?.find(c => c.id === lastConsensus.winningChoiceId)
     : null;
-  const isPlayerTerminal = lastConsensus?.isResolved && finalWinningChoice && !finalWinningChoice?.outcomes?.next_question_id;
+  const hasTerminalLink = finalWinningChoice
+    ? ((finalWinningChoice.next_question_id ?? finalWinningChoice.outcomes?.next_question_id) != null)
+    : false;
+  const isPlayerTerminal = lastConsensus?.isResolved && finalWinningChoice && !hasTerminalLink;
 
   const isTerminalNode = hasNoChoices || isPlayerTerminal;
 

@@ -42,6 +42,7 @@ export interface TestimonyMetadata {
   date?: string;
   case_number?: string;
   subject_name?: string;
+  subject?: string;
   interviewer?: string;
   context?: string;
   transcript?: TranscriptLine[] | string;
@@ -63,11 +64,18 @@ export type Evidence = DocEvidence | DigitalEvidence | TestimonyEvidence | Media
 
 /** True for digital evidence (terminal surface). */
 export const isDigitalEvidence = (e: Evidence): e is DigitalEvidence =>
-  e.evidence_type === 'digital';
+  e.evidence_type === 'digital' && hasMetadataEnvelope(e, 'terminal');
 
 /** True for document / forensic evidence (paper surface). */
 export const isDocEvidence = (e: Evidence): e is DocEvidence =>
-  e.evidence_type === 'document' || e.evidence_type === 'forensic';
+  (e.evidence_type === 'document' || e.evidence_type === 'forensic') && hasMetadataEnvelope(e, 'doc');
+
+const hasMetadataEnvelope = (evidence: Evidence, key: 'doc' | 'terminal'): boolean => {
+  const metadata = (evidence as BaseEvidence & { metadata?: unknown }).metadata;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false;
+  const envelope = (metadata as Record<string, unknown>)[key];
+  return !!envelope && typeof envelope === 'object' && !Array.isArray(envelope);
+};
 
 /**
  * Single authority for surface routing. Replaces the ad-hoc `isDocType()`/`isDocEvidenceType()`.

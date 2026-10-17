@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { login, register, getToken } from '@/services/auth';
+import { ENV } from '@/config/env';
 import type { User } from '@/types';
 
 // Authoritative Session Verification Hook
@@ -11,7 +12,7 @@ export function useAuthSession() {
       const token = getToken();
       if (!token) throw new Error('No authentication token found.');
 
-      const backendUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const backendUrl = ENV.API_BASE_URL;
       const response = await fetch(`${backendUrl}/api/user`, {
         method: 'GET',
         headers: {

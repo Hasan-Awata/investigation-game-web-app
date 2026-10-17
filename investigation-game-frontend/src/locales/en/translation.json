@@ -16,6 +16,7 @@
     "gameRoom": {
       "evidence": {
         "board": {
+          "exactCombinationHint": "Warrants require the exact combination of directly relevant evidence and characters. Leave unrelated items out.",
           "requestTypes": {
             "search_warrant": "Search Warrant",
             "wiretap_warrant": "Wiretap Warrant",
@@ -41,6 +42,33 @@
             "classified": "CLASSIFIED",
             "report": "REPORT",
             "chain": "CHAIN OF CUSTODY"
+          }
+        },
+        "viewers": {
+          "testimony": {
+            "policeDept": "City Police Department",
+            "officialTranscript": "Official Interview Transcript",
+            "date": "Date",
+            "caseNo": "Case Number",
+            "subject": "Subject:",
+            "interviewer": "Interviewer:",
+            "subjectFallback": "REDACTED",
+            "interviewerFallback": "REDACTED",
+            "watermark": "OFFICIAL RECORD",
+            "certStatement": "I certify that this document is a true and accurate copy of the recorded interview referenced herein.",
+            "stenoSignature": "Court Reporter / Recording Officer"
+          },
+          "media": {
+            "audioNotSupported": "Your browser does not support audio playback.",
+            "imageAltFallback": "Evidence photograph",
+            "noMediaFound": "No media is attached to this evidence file."
+          },
+          "doc": {
+            "unsupportedBlock": "[Unsupported document block type: {{type}}]"
+          },
+          "terminal": {
+            "emptySession": "Terminal session is empty or corrupted.",
+            "unsupportedBlock": "[Unsupported terminal block type: {{type}}]"
           }
         }
       }

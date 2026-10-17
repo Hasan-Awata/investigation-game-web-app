@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasMediaUrls;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Casts\Attribute;
@@ -10,6 +11,7 @@ use App\Enums\CharacterCharge;
 
 class Character extends Model
 {
+    use HasMediaUrls;
     protected $fillable = [
         'case_id',
         'name',
@@ -31,16 +33,7 @@ class Character extends Model
         ];
     }
 
-    protected function imgUrl(): Attribute
-    {
-        return Attribute::make(
-            get: function ($value) {
-                if (!$value) return null;
-                if (filter_var($value, FILTER_VALIDATE_URL)) return $value;
-                return config('app.url') . $value;
-            }
-        );
-    }
+
 
     public function gameCase(): BelongsTo
     {

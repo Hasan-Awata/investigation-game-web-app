@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasMediaUrls;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Enums\EvidenceType;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Evidence extends Model
 {
+    use HasMediaUrls;
     protected $table = 'evidences';
 
     protected $fillable = [
@@ -33,31 +35,7 @@ class Evidence extends Model
         ];
     }
 
-    protected function imgUrl(): Attribute
-    {
-        return Attribute::make(
-            get: function ($value) {
-                if (!$value) return null;
-                if (filter_var($value, FILTER_VALIDATE_URL)) {
-                    return $value;
-                }
-                return config('app.url') . $value;
-            }
-        );
-    }
 
-    protected function audioUrl(): Attribute
-    {
-        return Attribute::make(
-            get: function ($value) {
-                if (!$value) return null;
-                if (filter_var($value, FILTER_VALIDATE_URL)) {
-                    return $value;
-                }
-                return config('app.url') . $value;
-            }
-        );
-    }
 
     public function gameCase(): BelongsTo
     {

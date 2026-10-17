@@ -1,13 +1,15 @@
 import type { Choice } from '@/types';
 
+/**
+ * Player-side heuristic for whether a choice leads somewhere.
+ *
+ * `outcomes` is stripped from player payloads (it is the answer key), so the
+ * only narrative signal a client can see is the top-level `next_question_id`
+ * hydrated by the backend. Whether a point is a true "find" is decided
+ * server-side on the inspection record.
+ */
 export function hasUnlocks(choice: Choice): boolean {
-  return !!choice.outcomes && (
-    (choice.outcomes.unlock_evidence?.length ?? 0) > 0 ||
-    (choice.outcomes.unlock_levels?.length ?? 0) > 0 ||
-    (choice.outcomes.unlock_suspects?.length ?? 0) > 0 ||
-    (choice.outcomes.unlock_victims?.length ?? 0) > 0 ||
-    !!choice.outcomes.next_question_id
-  );
+  return choice.next_question_id != null;
 }
 
 export const isCorrectFind = (choice: Choice) => hasUnlocks(choice);

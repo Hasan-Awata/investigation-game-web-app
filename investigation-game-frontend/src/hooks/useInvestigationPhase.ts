@@ -2,6 +2,7 @@ import { useMemo, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoomData, useRoomUI } from '@/context/RoomContext.shared';
 import { useGameMutation } from './useGameMutation';
+import { useSafeTimeout } from './useSafeTimeout';
 import { getLocalUser } from '@/utils/userState';
 import { getSafeString } from '@/utils/parsers';
 import type { Choice, RoomVote } from '@/types';
@@ -9,15 +10,11 @@ import { lockVote, submitAssessment, initiatePhase, triggerWiretap } from '@/ser
 
 export type { ToastNotification, GlobalFeedback } from '@/context/RoomContext';
 
-interface CharacterUpdate {
-  is_unlocked?: boolean;
-  status?: string;
-}
-
 export function useInvestigationPhase() {
   const { t } = useTranslation();
   const { room, refreshRoomData } = useRoomData();
   const { addGlobalToast, setGlobalFeedback } = useRoomUI();
+  const safeTimeout = useSafeTimeout();
 
   const roomId = room.id;
 
@@ -62,7 +59,7 @@ export function useInvestigationPhase() {
         refreshRoomData();
 
         // 2. ONLY DELAY THE MODAL DISMISSAL
-        setTimeout(() => {
+        safeTimeout(() => {
           setGlobalFeedback(null);
         }, 4000);
       } else {
@@ -95,43 +92,9 @@ export function useInvestigationPhase() {
     if (e && typeof e.stopPropagation === 'function') e.stopPropagation();
     if (status !== 'active') return;
 
-    if (choice.outcomes?.unlock_evidence && choice.outcomes.unlock_evidence.length > 0) {
-      addGlobalToast({
-        type: 'evidence', 
-        title: t('pages.gameRoom.hooks.phase.evidenceRecovered'), 
-        message: t('pages.gameRoom.hooks.phase.evidenceRecoveredMsg', { count: choice.outcomes.unlock_evidence.length }),
-        icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36'
-      });
-    }
-    if (choice.outcomes?.unlock_levels && choice.outcomes.unlock_levels.length > 0) {
-      addGlobalToast({
-        type: 'level', 
-        title: t('pages.gameRoom.hooks.phase.phaseUnlocked'), 
-        message: t('pages.gameRoom.hooks.phase.phaseUnlockedMsg'),
-        icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e'
-      });
-    }
-    if (choice.outcomes?.character_updates && choice.outcomes.character_updates.length > 0) {
-      (choice.outcomes.character_updates as CharacterUpdate[]).forEach((update) => {
-        if (update.is_unlocked) {
-          addGlobalToast({
-            type: 'character',
-            title: t('pages.gameRoom.hooks.phase.personOfInterest'),
-            message: t('pages.gameRoom.hooks.phase.personOfInterestMsg'),
-            icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232'
-          });
-        }
-        if (update.status === 'deceased') {
-          addGlobalToast({
-            type: 'system',
-            title: t('pages.gameRoom.hooks.phase.casualtyIdentified', 'Critical Update'),
-            message: t('pages.gameRoom.hooks.phase.casualtyIdentifiedMsg', 'A person of interest has been confirmed deceased.'),
-            icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91'
-          });
-        }
-      });
-    }
-
+    // Unlock notifications are driven by the realtime ItemsUnlocked event so
+    // every participant sees them. `choice.outcomes` is no longer sent to
+    // clients (it is the answer key), so nothing is derived from it here.
     voteMutation.mutate({ questionId, choiceId: choice.id });
   };
 

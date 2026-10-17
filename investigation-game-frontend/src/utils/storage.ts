@@ -55,18 +55,45 @@ export const getSafeStorage = <T>(type: StorageType, key: string, fallback: T): 
 
   if (raw === null) return fallback;
 
-  try {
-    return JSON.parse(raw) as T;
-  } catch (error) {
-    // Self-healing: a single bad write must not brick the feature forever.
-    console.warn(`Corrupted JSON at ${type}Storage key "${key}". Purging.`, error);
+  const purge = () => {
     try {
       store.removeItem(key);
     } catch (purgeError) {
       console.warn(`Failed to purge corrupted ${type}Storage key "${key}".`, purgeError);
     }
+  };
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    // Self-healing: a single bad write must not brick the feature forever.
+    console.warn(`Corrupted JSON at ${type}Storage key "${key}". Purging.`, error);
+    purge();
     return fallback;
   }
+
+  // Runtime shape validation: a structurally incompatible payload (e.g. an
+  // object where an array is expected) is evicted rather than handed to a
+  // caller whose code assumes the declared default shape.
+  if (Array.isArray(fallback) && !Array.isArray(parsed)) {
+    console.warn(`Shape mismatch at ${type}Storage key "${key}" (expected array). Purging.`);
+    purge();
+    return fallback;
+  }
+
+  if (
+    fallback !== null &&
+    typeof fallback === 'object' &&
+    !Array.isArray(fallback) &&
+    (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed))
+  ) {
+    console.warn(`Shape mismatch at ${type}Storage key "${key}" (expected object). Purging.`);
+    purge();
+    return fallback;
+  }
+
+  return parsed as T;
 };
 
 /**
@@ -141,36 +168,122 @@ export const removeSafeStorage = (type: StorageType, key: string): void => {
 };
 
 /**
- * Purges every session key scoped to a room.
+ * Schema version for `inv_loc_state_*` location-sandbox keys.
  *
- * Room-scoped keys are written under both the invite code and the numeric id
- * (`room_<invite_code>_guilty_characters`, `room_<id>_viewed_evidence`, ...),
- * so both prefixes are swept. Used when leaving a room and when a verdict
- * finalises the case.
+ * The version lives inside the key so a shape change can be detected at a
+ * glance in DevTools and old payloads can be swept wholesale. Single source
+ * of truth for every prefix used by the two helpers below.
  */
-export const clearRoomSessionData = (roomId: string | number, inviteCode?: string): void => {
-  const store = resolveStore('session');
+export const LOCATION_STATE_SCHEMA = 'v2';
+
+const LOCATION_STATE_LEGACY_PREFIX = 'inv_loc_state_';
+const LOCATION_STATE_SCHEMA_PREFIX = `inv_loc_state_${LOCATION_STATE_SCHEMA}_`;
+
+/**
+ * Key factory — the only way location-sandbox keys are minted, so the prefix
+ * contract can never drift between write and read sites.
+ */
+export const getLocationStateKey = (
+  roomId: string | number,
+  levelId: string | number,
+  suffix: string,
+): string => `${LOCATION_STATE_SCHEMA_PREFIX}${roomId}_${levelId}_${suffix}`;
+
+/**
+ * Bounded cleanup for location-state keys.
+ *
+ * Keys written under an older schema (or an unversioned legacy payload) are
+ * purged in one O(N) pass. Per-level keys used to accumulate forever across
+ * sessions when a player closed the tab without an explicit leave — running
+ * this on location-sandbox mount bounds them to the current schema.
+ */
+export const pruneStaleLocationState = (): void => {
+  const store = resolveStore('local');
   if (!store) return;
 
-  const prefixes = new Set<string>();
-  if (inviteCode !== undefined && inviteCode !== null && `${inviteCode}` !== '') {
-    prefixes.add(`room_${inviteCode}`);
-  }
-  if (roomId !== undefined && roomId !== null && `${roomId}` !== '') {
-    prefixes.add(`room_${roomId}`);
-  }
-  if (prefixes.size === 0) return;
-
   try {
-    Object.keys(store).forEach((key) => {
-      for (const prefix of prefixes) {
-        if (key.includes(prefix)) {
-          store.removeItem(key);
-          return;
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < store.length; i++) {
+      const key = store.key(i);
+      if (key === null) continue;
+
+      if (key.startsWith(LOCATION_STATE_LEGACY_PREFIX) && !key.startsWith(LOCATION_STATE_SCHEMA_PREFIX)) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => store.removeItem(key));
+  } catch (error) {
+    console.warn('Failed to prune stale location state from localStorage.', error);
+  }
+};
+
+/**
+ * Purges every storage key scoped to a room.
+ *
+ * Room-scoped keys are written under both the invite code and the numeric id
+ * (`room_<invite_code>_guilty_characters`, `room_<id>_viewed_evidence`, ...)
+ * and across both Web Storage areas (`inv_loc_state_<id>_*` is local,
+ * `active_room_id_for_<invite_code>` is session), so both stores and both
+ * scopes are swept. Used when leaving a room and when a verdict finalises the
+ * case.
+ *
+ * Matching is boundary-anchored: the numeric id only matches `room_<id>` and
+ * `room_<id>_*`, so `clearRoomSessionData(1)` can never wipe `room_10_*`.
+ */
+export const clearRoomSessionData = (roomId: string | number, inviteCode?: string): void => {
+  const exactKeys = new Set<string>();
+  const boundaryPrefixes = new Set<string>();
+
+  const addScope = (scope: string | number | undefined) => {
+    if (scope === undefined || scope === null || `${scope}` === '') return;
+    exactKeys.add(`room_${scope}`);
+    // Strict boundary matching: `room_1_` must NOT match `room_10_...`, which
+    // the previous `key.includes('room_1')` check silently did.
+    boundaryPrefixes.add(`room_${scope}_`);
+    // Schema-aware + legacy location-state sweeps.
+    boundaryPrefixes.add(`inv_loc_state_${LOCATION_STATE_SCHEMA}_${scope}_`);
+    boundaryPrefixes.add(`inv_loc_state_${scope}_`);
+  };
+
+  addScope(roomId);
+  addScope(inviteCode);
+
+  if (inviteCode !== undefined && inviteCode !== null && `${inviteCode}` !== '') {
+    exactKeys.add(`active_room_id_for_${inviteCode}`);
+  }
+
+  if (exactKeys.size === 0) return;
+
+  const purgeStore = (type: StorageType) => {
+    const store = resolveStore(type);
+    if (!store) return;
+
+    try {
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < store.length; i++) {
+        const key = store.key(i);
+        if (key === null) continue;
+
+        if (exactKeys.has(key)) {
+          keysToRemove.push(key);
+          continue;
+        }
+
+        for (const prefix of boundaryPrefixes) {
+          if (key.startsWith(prefix)) {
+            keysToRemove.push(key);
+            break;
+          }
         }
       }
-    });
-  } catch (error) {
-    console.warn('Failed to purge room session data.', error);
-  }
+
+      keysToRemove.forEach((key) => store.removeItem(key));
+    } catch (error) {
+      console.warn(`Failed to purge room data from ${type}Storage.`, error);
+    }
+  };
+
+  purgeStore('local');
+  purgeStore('session');
 };

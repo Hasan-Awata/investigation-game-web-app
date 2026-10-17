@@ -6,34 +6,42 @@ use App\Models\GameRoom;
 use App\Models\InvestigationRequest;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
+use App\Enums\RoomStatus;
 use App\Support\Result;
+use App\Support\Concerns\BroadcastsAfterCommit;
 use App\Events\ItemsUnlocked;
 use App\Events\RequestFiled;
 
 class InvestigationRequestService
 {
+    use BroadcastsAfterCommit;
     public function processRequest(GameRoom $room, array $submittedEvidenceIds = [], array $submittedCharacterIds = []): Result
     {
-        $submittedEvidenceIds = $this->normalizeIds($submittedEvidenceIds);
-        $submittedCharacterIds = $this->normalizeIds($submittedCharacterIds);
+        return DB::transaction(function () use ($room, $submittedEvidenceIds, $submittedCharacterIds) {
+            $room = GameRoom::where('id', $room->id)->lockForUpdate()->firstOrFail();
 
-        if (count($submittedEvidenceIds) + count($submittedCharacterIds) < 2) {
-            return Result::failure("A procedural request requires at least two items.");
+            if ($room->status !== RoomStatus::Active) {
+                return Result::failure('This investigation has already concluded.');
+            }
+
+            $submittedEvidenceIds = $this->normalizeIds($submittedEvidenceIds);
+            $submittedCharacterIds = $this->normalizeIds($submittedCharacterIds);
+
+        if (!InvestigationRequest::hasMinimumItems(count($submittedEvidenceIds), count($submittedCharacterIds))) {
+            return Result::failure(InvestigationRequest::MIN_ITEMS_MESSAGE);
         }
 
-        // Evidence possession: initial evidences union unlocked evidences
-        $initialEvidences = $room->gameCase->evidences()->where('is_initial', true)->pluck('id')->toArray();
-        $unlockedEvidencesList = $room->unlockedEvidences()->pluck('evidences.id')->toArray();
-        $possessedEvidences = array_unique(array_merge($initialEvidences, $unlockedEvidencesList));
+        $signature = $this->computeSignature($submittedEvidenceIds, $submittedCharacterIds);
+
+        // Evidence possession: single source of truth is the room's runtime pivot state.
+        $possessedEvidences = $room->getPossessedEvidenceIds();
 
         if (array_diff($submittedEvidenceIds, $possessedEvidences)) {
             return Result::failure("Unauthorized: You cannot file a request using evidence you have not yet discovered.");
         }
 
-        // Character possession: initial characters union unlocked room characters
-        $initialCharacters = $room->gameCase->characters()->where('is_initial', true)->pluck('id')->toArray();
-        $unlockedCharactersList = $room->characters()->wherePivot('is_unlocked', true)->pluck('characters.id')->toArray();
-        $possessedCharacters = array_unique(array_merge($initialCharacters, $unlockedCharactersList));
+        // Character possession: single source of truth is the room's runtime pivot state.
+        $possessedCharacters = $room->getUnlockedCharacterIds();
 
         if (array_diff($submittedCharacterIds, $possessedCharacters)) {
             return Result::failure("Unauthorized: You cannot file a request using a character you have not yet discovered.");
@@ -57,6 +65,23 @@ class InvestigationRequestService
         );
 
         if ($actionableRequests->isEmpty()) {
+            $hasUnrelatedExtras = $availableRequests->contains(function (InvestigationRequest $request) use ($submittedEvidenceIds, $submittedCharacterIds) {
+                if (! $request->unlocks_evidence_id && ! $request->unlocks_level_id) {
+                    return false;
+                }
+
+                $requiredEvidenceIds = $this->normalizeIds($request->requiredEvidences->pluck('id')->all());
+                $requiredCharacterIds = $this->normalizeIds($request->requiredCharacters->pluck('id')->all());
+
+                return count($requiredEvidenceIds) + count($requiredCharacterIds) < count($submittedEvidenceIds) + count($submittedCharacterIds)
+                    && empty(array_diff($requiredEvidenceIds, $submittedEvidenceIds))
+                    && empty(array_diff($requiredCharacterIds, $submittedCharacterIds));
+            });
+
+            if ($hasUnrelatedExtras) {
+                return Result::failure('Your request contains unnecessary items that muddy the warrant. Narrow your selection to only the directly connected evidence and characters.');
+            }
+
             if ($matchingRequests->isNotEmpty()) {
                 return Result::failure("The DA rejected your request. This combination does not lead to any new lead.");
             }
@@ -66,8 +91,15 @@ class InvestigationRequestService
 
         $request = $actionableRequests->first();
 
+        // A submitted combination that simply re-files a request the room has
+        // already executed reports the execution guard first — the canonical
+        // failure for "executing the same warrant twice".
         if ($room->completedRequests()->where('request_id', $request->id)->exists()) {
             return Result::failure("This {$request->request_type->label()} has already been executed.");
+        }
+
+        if ($room->filedRequests()->where('signature', $signature)->exists()) {
+            return Result::failure('This exact combination has already been filed by your team.');
         }
 
         $room->completedRequests()->syncWithoutDetaching([$request->id]);
@@ -76,35 +108,44 @@ class InvestigationRequestService
         $unlockedEvidences = new EloquentCollection();
         $unlockedLevels = new EloquentCollection();
 
+        // Unlocks are resolved strictly inside the room's case (E-38): a
+        // mis-wired or cross-case target must fail silently instead of
+        // leaking another case's evidence or level.
         if ($request->unlocks_evidence_id) {
-            DB::table('room_evidences')->updateOrInsert([
-                'room_id' => $room->id,
-                'evidence_id' => $request->unlocks_evidence_id
-            ]);
-            $evidence = \App\Models\Evidence::find($request->unlocks_evidence_id);
-            if ($evidence) $unlockedEvidences->push($evidence);
+            $evidence = \App\Models\Evidence::where('case_id', $room->case_id)
+                ->where('id', $request->unlocks_evidence_id)
+                ->first();
+
+            if ($evidence) {
+                $room->unlockedEvidences()->syncWithoutDetaching([$evidence->id]);
+                $evidence->makeHidden(['is_vital_for_conviction']);
+                $unlockedEvidences->push($evidence);
+            }
         }
 
         if ($request->unlocks_level_id) {
-            DB::table('room_unlocked_levels')->updateOrInsert([
-                'room_id' => $room->id,
-                'level_id' => $request->unlocks_level_id
-            ]);
-            $level = \App\Models\Level::find($request->unlocks_level_id);
-            if ($level) $unlockedLevels->push($level);
+            $level = \App\Models\Level::whereHas('zone', fn ($zone) => $zone->where('case_id', $room->case_id))
+                ->where('id', $request->unlocks_level_id)
+                ->first();
+
+            if ($level) {
+                $room->unlockedLevels()->syncWithoutDetaching([$level->id]);
+                $unlockedLevels->push($level);
+            }
         }
 
         if ($unlockedEvidences->isNotEmpty() || $unlockedLevels->isNotEmpty()) {
-            ItemsUnlocked::dispatch($room, $unlockedEvidences->isNotEmpty() ? $unlockedEvidences : null, $unlockedLevels->isNotEmpty() ? $unlockedLevels : null, null, null, null);
+            $this->broadcastAfterCommit(new ItemsUnlocked($room, $unlockedEvidences->isNotEmpty() ? $unlockedEvidences : null, $unlockedLevels->isNotEmpty() ? $unlockedLevels : null, null, null));
         }
 
         // LOG THE PERMANENT HISTORY & BROADCAST
         $filedRecord = $room->filedRequests()->create([
             'request_type' => $request->request_type->value,
+            'signature' => $signature,
             'evidence_ids' => $submittedEvidenceIds,
             'character_ids' => $submittedCharacterIds,
         ]);
-        RequestFiled::dispatch($room, $filedRecord);
+        $this->broadcastAfterCommit(new RequestFiled($room, $filedRecord));
 
         return Result::success([
             'message' => "{$request->request_type->label()} approved by the DA.",
@@ -112,6 +153,14 @@ class InvestigationRequestService
             'unlocked_levels' => $unlockedLevels->toArray(),
             'request_type' => $request->request_type->value
         ]);
+        });
+    }
+
+    private function computeSignature(array $submittedEvidenceIds, array $submittedCharacterIds): string
+    {
+        $signaturePayload = 'E:' . implode(',', $submittedEvidenceIds) . '|C:' . implode(',', $submittedCharacterIds);
+
+        return hash('sha256', $signaturePayload);
     }
 
     private function normalizeIds(array $ids): array

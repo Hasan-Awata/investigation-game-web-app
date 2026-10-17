@@ -32,18 +32,25 @@ class AdminMediaController extends Controller
     {
         $validated = $request->validated();
         $storeLocally = $request->boolean('store_locally');
-        $caseTitle = GameCase::whereKey($validated['case_id'])->value('title') ?? 'General';
+        $case = GameCase::find($validated['case_id']);
+        $caseTitle = $case?->title ?? 'General';
 
         $url = $this->mediaService->store(
             $request->file('image'),
             $caseTitle,
             'Evidences/Blocks',
-            $storeLocally
+            $storeLocally,
+            $case?->id
         );
+
+        $normalizedUrl = $url && str_starts_with($url, '/')
+            ? rtrim((string) config('app.url'), '/') . '/' . ltrim($url, '/')
+            : $url;
 
         return response()->json([
             'message' => 'Block image uploaded successfully.',
-            'url' => $url,
+            'url' => $normalizedUrl,
+            'relative_path' => $url && str_starts_with($url, '/') ? $url : null,
         ], 201);
     }
 }

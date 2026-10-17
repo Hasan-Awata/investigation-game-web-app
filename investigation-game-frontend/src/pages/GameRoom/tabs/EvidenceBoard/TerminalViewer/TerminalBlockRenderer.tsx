@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { TerminalBlock } from '@/types/evidence/terminal';
 import { clampTerminalSpan } from '@/types/evidence/terminal';
 import { getBlockComponent } from './blocks/blocks.registry';
@@ -11,10 +12,11 @@ interface TerminalBlockRendererProps {
 }
 
 export default function TerminalBlockRenderer({ blocks, ctx, cellWrapper }: TerminalBlockRendererProps) {
+  const { t } = useTranslation();
   return (
     <div className="tb-grid" role="list" aria-label="Terminal session">
       {blocks.map((block) => {
-        const Comp = getBlockComponent(block.type);
+        const Comp = block.type === 'unsupported' ? undefined : getBlockComponent(block.type);
         const span = clampTerminalSpan(block.span);
         const align = block.style?.align ?? 'start';
         const pad = block.style?.pad ?? 0;
@@ -25,9 +27,9 @@ export default function TerminalBlockRenderer({ blocks, ctx, cellWrapper }: Term
           paddingInline: pad,
         };
 
-        const cellContent = (
-          <Comp key={block.id} block={block} ctx={ctx} />
-        );
+        const cellContent = Comp
+          ? <Comp key={block.id} block={block} ctx={ctx} />
+          : <div className="tb-unsupported">{t('pages.gameRoom.evidence.viewers.terminal.unsupportedBlock', { type: block.type === 'unsupported' ? block.props.originalType : block.type })}</div>;
 
         const wrapped = cellWrapper ? cellWrapper(cellContent, block) : cellContent;
 

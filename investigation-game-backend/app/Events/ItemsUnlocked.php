@@ -2,6 +2,7 @@
 
 namespace App\Events;
 
+use App\Models\Evidence;
 use App\Models\GameRoom;
 use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PrivateChannel;
@@ -31,8 +32,15 @@ class ItemsUnlocked implements ShouldBroadcastNow
 
     public function broadcastWith(): array
     {
+        // Evidences are stripped of the conviction flag so the realtime
+        // payload stays identical to the sanitized REST room payload.
         return [
-            'unlocked_evidences' => $this->unlockedEvidences ? $this->unlockedEvidences->toArray() : [],
+            'unlocked_evidences' => $this->unlockedEvidences
+                ? $this->unlockedEvidences
+                    ->map(fn (Evidence $evidence) => $evidence->makeHidden(['is_vital_for_conviction']))
+                    ->values()
+                    ->toArray()
+                : [],
             'unlocked_levels' => $this->unlockedLevels ? $this->unlockedLevels->toArray() : [],
             'character_updates' => $this->characterUpdates ?? [],
             'strikes' => $this->strikes,
