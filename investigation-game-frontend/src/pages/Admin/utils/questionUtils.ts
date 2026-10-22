@@ -92,7 +92,6 @@ interface NodePayload {
   store_locally: boolean;
   choices: DraftChoice[];
   image?: File | null;
-  audio?: File | null;
 }
 
 export const buildNodeFormData = (payload: NodePayload): FormData =>
@@ -101,7 +100,6 @@ export const buildNodeFormData = (payload: NodePayload): FormData =>
     text: payload.text,
     store_locally: payload.store_locally,
     image: payload.image ?? null,
-    audio: payload.audio ?? null,
     choices: normalizeChoices(payload.choices),
   });
 
@@ -110,5 +108,5 @@ export interface BaseNodeFormProps {
   setters: { setText: (t: string) => void; setStoreLocally: (v: boolean) => void; setChoices: (c: DraftChoice[]) => void };
   actions: { registerFileRef: (key: string) => (el: HTMLInputElement | null) => void; handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void; handleCancel: () => void };
   status: { isProcessing: boolean }; 
-  previews: { image?: string | null; audio?: string | null };
+  previews: { image?: string | null };
 }

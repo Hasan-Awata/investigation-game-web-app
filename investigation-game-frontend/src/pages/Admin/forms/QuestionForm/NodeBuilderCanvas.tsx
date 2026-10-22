@@ -14,7 +14,7 @@ interface CanvasContext {
 }
 
 interface NodeBuilderCanvasProps {
-  requiredType: 'interrogation' | 'location' | 'wiretap';
+  requiredType: 'interrogation' | 'location';
   title: string;
   children: (context: CanvasContext) => ReactNode;
 }

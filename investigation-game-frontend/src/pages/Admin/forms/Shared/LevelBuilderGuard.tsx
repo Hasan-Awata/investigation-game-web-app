@@ -4,7 +4,7 @@ import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import adminDashboard from '../../AdminDashboard.module.css';
 
 interface LevelBuilderGuardProps {
-  requiredType: 'location' | 'wiretap' | 'interrogation';
+  requiredType: 'location' | 'interrogation';
   children: ReactNode;
 }
 

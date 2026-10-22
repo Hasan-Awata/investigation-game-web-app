@@ -38,7 +38,7 @@ class LevelTransitioned implements ShouldBroadcastNow
             'stats' => $this->stats,
             // The precise state patch to synchronize TanStack's cache
             'room_patch' => [
-                'current_level_id' => $this->room->current_level_id,
+                'active_encounter_groups' => $this->room->encounterGroups()->where('status', 'active')->with('members')->get(),
                 'status' => $this->room->status->value,
                 'completed_levels' => $completedLevels->toArray(),
             ]

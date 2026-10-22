@@ -9,6 +9,7 @@ class RoomVote extends Model
 {
     protected $fillable = [
         'room_id',
+        'encounter_group_id',
         'user_id',
         'question_id',
         'choice_id',
@@ -32,5 +33,10 @@ class RoomVote extends Model
     public function choice(): BelongsTo
     {
         return $this->belongsTo(Choice::class);
+    }
+
+    public function group(): BelongsTo
+    {
+        return $this->belongsTo(EncounterGroup::class, 'encounter_group_id');
     }
 }

@@ -89,6 +89,7 @@ export interface GameCase {
 export interface RoomVote {
   id: number;
   room_id: number;
+  encounter_group_id: number;
   user_id: number;
   question_id: number;
   choice_id: number;
@@ -133,19 +134,19 @@ export interface GameRoom {
   invite_code: string;
   case_id: number;
   host_user_id: number;
-  current_level_id?: number | null;
   status: string;
   strikes: number;
   final_stats?: FinalStats | null; 
   game_case?: GameCase;
   users?: RoomUser[];
-  current_level?: Level;
   unlocked_evidences?: Evidence[]; 
   unlocked_levels?: Level[];
   characters?: Character[];
   completed_levels?: Level[];
   votes?: RoomVote[];
-  played_wiretaps?: Question[];
+  encounter_groups?: EncounterGroup[];
+  question_resolutions?: RoomQuestionResolution[];
+  available_location_point_ids?: number[];
   inspections?: RoomInspection[];
   filed_requests?: FiledRequest[];
   accumulated_evidences?: Evidence[];
@@ -167,6 +168,7 @@ export interface ChoiceOutcomes {
   gives_strike?: boolean;
   unlock_evidence?: number[];
   unlock_levels?: number[];
+  unlock_location_points?: number[];
   unlock_suspects?: number[];
   unlock_victims?: number[];
   character_updates?: { id: number; is_unlocked?: boolean; status?: string }[];
@@ -199,10 +201,8 @@ export interface Choice {
  */
 export interface VoteResponse {
   message: string;
-  vote: RoomVote;
-  unlocked_evidence: Evidence[];
-  unlocked_levels: Level[];
-  character_updates: Character[];
+  vote: RoomVote | null;
+  group: EncounterGroup;
 }
 
 export interface Question {
@@ -211,15 +211,37 @@ export interface Question {
   order_index?: number;
   text: string;
   img_url?: string;
-  audio_url?: string; 
   choices?: Choice[];
-  assigned_user_id?: number; 
+}
+
+export interface EncounterGroup {
+  id: number;
+  room_id: number;
+  level_id: number;
+  creator_user_id: number;
+  status: 'active' | 'completed' | 'abandoned' | 'failed' | string;
+  current_question_id: number | null;
+  finalizes_at: string | null;
+  members?: { user_id: number; joined_at: string; left_at?: string | null; user?: User }[];
+  votes?: RoomVote[];
+  required_voter_ids?: number[];
+  tally?: Record<number, number>;
+  resolution?: RoomQuestionResolution | null;
+}
+
+export interface RoomQuestionResolution {
+  id: number;
+  room_id: number;
+  level_id: number;
+  question_id: number;
+  choice_id: number;
+  encounter_group_id: number;
+  resolved_at: string;
 }
 
 export const LevelPresentationType = {
   Interrogation: 'interrogation',
   Location: 'location',
-  Wiretap: 'wiretap', 
 } as const;
 
 export type LevelPresentationType = typeof LevelPresentationType[keyof typeof LevelPresentationType];
@@ -250,7 +272,6 @@ export interface Level {
 
 export const InvestigationRequestType = {
   SearchWarrant: 'search_warrant',
-  WiretapWarrant: 'wiretap_warrant',
   FinancialRecords: 'financial_records',
   DnaTest: 'dna_test',
   PhoneRecords: 'phone_records',
@@ -261,7 +282,6 @@ export type InvestigationRequestType = typeof InvestigationRequestType[keyof typ
 export const getInvestigationRequestLabel = (type: string): string => {
   const labels: Record<string, string> = {
     search_warrant: 'Search Warrant',
-    wiretap_warrant: 'Wiretap Warrant',
     financial_records: 'Retrieve financial records',
     dna_test: 'DNA test',
     phone_records: 'phone records',

@@ -13,6 +13,7 @@
 .admin-header {
   flex: none;
   display: flex;
+  justify-content: space-between;
   align-items: center;
   padding: var(--space-4) var(--space-6);
   background: var(--glass-bg);

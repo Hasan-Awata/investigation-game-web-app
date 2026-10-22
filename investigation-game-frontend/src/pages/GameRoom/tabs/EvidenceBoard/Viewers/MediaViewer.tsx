@@ -16,7 +16,11 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
   const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
   const [isImageLoaded, setIsImageLoaded] = useState<boolean>(false);
   
-  const rawMediaUrl = evidence.img_url || ((evidence.metadata as Record<string, unknown> | null)?.url as string | undefined);
+  const isAudio = evidence.evidence_type === 'audio';
+  const metadataUrl = (evidence.metadata as Record<string, unknown> | null)?.url;
+  const rawMediaUrl = isAudio
+    ? evidence.audio_url || evidence.img_url || (typeof metadataUrl === 'string' ? metadataUrl : undefined)
+    : evidence.img_url || (typeof metadataUrl === 'string' ? metadataUrl : undefined);
   const mediaUrl = rawMediaUrl ? assetUrl(rawMediaUrl) : '';
 
   const prevMediaUrlRef = useRef<string | null>(null);
@@ -69,7 +73,7 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
   return (
     <ViewersContainer>
       <div className={mediaViewer['media-viewer-wrapper']}>
-        {evidence.evidence_type === 'image' ? (
+        {!isAudio ? (
           <div className={mediaViewer['media-image-container']} style={containerStyle}>
             {!isImageLoaded && <div className={mediaViewer['media-skeleton-loader']} />}
 
@@ -88,7 +92,7 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
           <div className={mediaViewer['media-audio-container']}>
             <div className={mediaViewer['audio-visualizer-mock']}></div>
             <audio controls className={mediaViewer['media-audio-player']}>
-              <source src={mediaUrl} type="audio/mpeg" />
+              <source src={mediaUrl} type={getAudioMimeType(mediaUrl)} />
               {t('pages.gameRoom.evidence.viewers.media.audioNotSupported')}
             </audio>
           </div>
@@ -106,3 +110,17 @@ const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
 };
 
 export default MediaViewer;
+
+function getAudioMimeType(url: string): string | undefined {
+  let pathname: string;
+  try {
+    pathname = new URL(url, window.location.href).pathname.toLowerCase();
+  } catch {
+    pathname = url.split(/[?#]/, 1)[0].toLowerCase();
+  }
+
+  if (pathname.endsWith('.mp3')) return 'audio/mpeg';
+  if (pathname.endsWith('.wav')) return 'audio/wav';
+  if (pathname.endsWith('.ogg')) return 'audio/ogg';
+  return undefined;
+}

@@ -3,6 +3,7 @@ import { useAuthSession } from '@/hooks/useAuth';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import '@/i18n';
 import styles from './AdminGuard.module.css';
+import LanguageToggle from '@/components/LanguageToggle';
 
 export default function AdminGuard() {
   const { adminT } = useAdminTranslation();
@@ -33,6 +34,7 @@ export default function AdminGuard() {
     <div className={styles['admin-layout']}>
       <header className={styles['admin-header']}>
         <h2 className={styles['admin-header-title']}>{t.dashboardTitle}</h2>
+        <LanguageToggle />
       </header>
       <main className={styles['admin-content']}>
         <Outlet />

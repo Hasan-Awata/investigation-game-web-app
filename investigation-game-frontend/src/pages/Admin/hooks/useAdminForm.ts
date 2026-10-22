@@ -104,7 +104,7 @@ type NodeFormState = {
 };
 
 /**
- * Question-node state on top of {@link useAdminForm}: the location, wiretap and
+ * Question-node state on top of {@link useAdminForm}: the location and
  * interrogation builders all edit a node (text + choices) inside the currently
  * selected level, and share the same dirty-tracking / file-refs / edit+submit+
  * delete plumbing as every other admin form.
@@ -126,7 +126,6 @@ export function useNodeForm(defaultChoices: DraftChoice[] = []) {
       store_locally: Boolean(data.store_locally),
       choices: (data.choices as DraftChoice[] | undefined) ?? [],
       image: files.image ?? null,
-      audio: files.audio ?? null,
     }),
     validator: (data) => {
       if (!data.text.trim()) return 'Node text cannot be empty.';

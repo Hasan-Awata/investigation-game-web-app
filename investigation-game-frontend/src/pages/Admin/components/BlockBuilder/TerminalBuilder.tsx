@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { DndContext } from '@dnd-kit/core';
 import { type DragStartEvent, type DragOverEvent } from '@dnd-kit/core';
-import { TERMINAL_THEMES, type TerminalTheme, type TerminalDocument, type TerminalBlock, TERMINAL_BLOCK_TYPES } from '@/types/evidence/terminal';
+import { TERMINAL_THEMES, type TerminalTheme, type TerminalDocument, type TerminalBlock, type TerminalBlockType, TERMINAL_BLOCK_TYPES } from '@/types/evidence/terminal';
 import type { DocBlock } from '@/types/evidence/doc';
 import { useBlockBuilder } from './useBlockBuilder';
 import { BuilderShell } from './BuilderShell';
@@ -32,7 +32,7 @@ export function TerminalBuilder({ doc, onChange, evidenceId }: TerminalBuilderPr
   >({
     doc,
     onChange,
-    createBlock: (type: string) => createTerminalBlock(type as TerminalBlock['type']),
+    createBlock: (type: string) => createTerminalBlock(type as TerminalBlockType),
     cloneBlock: cloneTerminalBlock,
     resolveTemplate: resolveTerminalTemplate,
     emptyDoc: emptyTerminalDoc,

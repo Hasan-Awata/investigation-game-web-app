@@ -13,6 +13,7 @@ export interface DraftChoice {
   outcomes?: {
     unlock_evidence?: number[];
     unlock_levels?: number[];
+    unlock_location_points?: number[];
     character_updates?: { id: number; is_unlocked?: boolean; status?: string }[];
     next_question_id?: number | null;
     gives_strike?: boolean;
@@ -53,6 +54,11 @@ export default function ChoiceEditorCard({
 
   const availableEvidence = selectedCase.evidences || [];
   const availableLevels = selectedCase.zones?.flatMap(z => z.levels || []) || [];
+  const availableLocationPoints = availableLevels
+    .filter(level => level.presentation_type === 'location')
+    .flatMap(level => level.questions ?? [])
+    .flatMap(question => question.choices ?? [])
+    .filter(point => !!getChoiceCoordinate(point));
   const availableCharacters = selectedCase.characters || [];
   
   const updateOutcomes = <K extends keyof NonNullable<DraftChoice['outcomes']>>(
@@ -71,6 +77,7 @@ export default function ChoiceEditorCard({
 
   const unlockedEv = choice.outcomes?.unlock_evidence?.map(String) || [];
   const unlockedLv = choice.outcomes?.unlock_levels?.map(String) || [];
+  const unlockedPoints = choice.outcomes?.unlock_location_points?.map(String) || [];
   const reqEv = choice.requirements?.required_evidence?.map(String) || [];
 
   const unlockedCh = choice.outcomes?.character_updates?.filter(u => u.is_unlocked).map(u => String(u.id)) || [];
@@ -187,6 +194,15 @@ export default function ChoiceEditorCard({
                   ))}
                 </select>
               </div>
+            </div>
+
+            <div className={adminDashboard['form-group']}>
+              <label>{t.unlockLocationPointsLabel}</label>
+              <select multiple className={adminDashboard['admin-input']} value={unlockedPoints} onChange={(e) => updateOutcomes('unlock_location_points', Array.from(e.target.selectedOptions, opt => Number(opt.value)))}>
+                {availableLocationPoints.filter(point => typeof point.id === 'number').map(point => (
+                  <option key={point.id} value={String(point.id)}>{getChoiceCoordinate(point)?.label || point.text}</option>
+                ))}
+              </select>
             </div>
 
             <div className={adminDashboard['admin-form-row']}>

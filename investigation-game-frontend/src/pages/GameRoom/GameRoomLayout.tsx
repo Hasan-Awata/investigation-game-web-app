@@ -31,6 +31,7 @@ import { EvidenceCardOverlay } from './tabs/EvidenceBoard/EvidenceCard';
 import { CharacterCardOverlay } from './tabs/Characters/CharacterCard';
 import GameEndOverlay from './components/GameEffects/GameEndOverlay';
 import styles from './GameRoomLayout.module.css';
+import LanguageToggle from '@/components/LanguageToggle';
 
 type Tab = 'details' | 'evidences' | 'campaign' | 'characters';
 type SidebarTab = 'ledger' | 'agents' | 'procedural';
@@ -336,6 +337,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
                   {t('pages.gameRoom.layout.tabs.campaign')}
                 </button>
               </div>
+              <LanguageToggle />
               <button className={styles.actionBlockBtn} onClick={() => setShowExitWarning(true)}>{t('pages.gameRoom.layout.tabs.returnToMenu', 'Exit')}</button>
             </nav>
           </header>

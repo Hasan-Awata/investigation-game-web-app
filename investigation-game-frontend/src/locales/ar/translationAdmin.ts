@@ -17,7 +17,6 @@ export const translations = {
     levelsTab: "📌 المستويات (الخيوط/المواجهات)",
     interrogationTab: "💬 شجرة الاستجواب",
     locationTab: "🎯 مسح الموقع",
-    wiretapTab: "🎙️ تنصت على الاتصالات",
     evidencesTab: "🔍 خزانة الأدلة",
     charactersTab: "👤 قائمة الأشخاص / السجل",
     requestsTab: "⚖️ التجميعات الإجرائية"
@@ -140,7 +139,6 @@ export const translations = {
       missingContextDesc: "يرجى تحديد قضية ومنطقة من الشريط الجانبي لإدارة المستويات.",
       interrogationOption: "استجواب المشتبه به",
       locationOption: "مسح الموقع",
-      wiretapOption: "تنصت على الاتصالات",
       noRequirementOption: "-- بدون متطلبات --",
       orderIndexLabel: "ترتيب فهرس المنطقة",
       presentationFormatLabel: "تنسيق العرض",
@@ -217,6 +215,7 @@ export const translations = {
       feedbackPlaceholder: "مثال: لقد أضعت وقتك في تتبع طريق مسدود.",
       unlockEvidenceLabel: "فتح أدلة",
       unlockLevelsLabel: "فتح مستوى / خيط جديد",
+      unlockLocationPointsLabel: "فتح نقاط المواقع",
       unlockCharactersLabel: "فتح شخصيات",
       markDeceasedLabel: "الإبلاغ كمتوفى",
       gatekeeperRequirementsTitle: "[ متطلبات البواب ]",
@@ -522,24 +521,6 @@ export const translations = {
     mapCoordinateBtn: "+ تعيين نقطة إحداثيات جديدة",
     processingBtn: "جاري المعالجة...",
     commitSceneBtn: "اعتماد تخطيط المشهد"
-  },
-  wiretapBuilder: {
-    canvasTitle: "منشئ اعتراض التنصت",
-    minChoicesError: "تتطلب عقدة الاعتراض خيارين على الأقل.",
-    listTitle: "اعتراضات التنصت النشطة",
-    emptyListMsg: "لم يتم بناء اعتراضات تنصت.",
-    audioFeedStatus: (isConnected: boolean) => `[بث الصوت: ${isConnected ? 'متصل' : 'مفقود'}]`
-  },
-  wiretapForm: {
-    transcriptLabel: "نص النص المحاور / نص الموجه",
-    audioFeedLabel: (isEditing: boolean) => `بث صوت التنصت (MP3/WAV) ${isEditing ? '(اتركه فارغاً للاحتفاظ بالحالي)' : ''}`,
-    imageDossierLabel: "صورة / ملف مرتبط (اختياري)",
-    storeLocallyLabel: "التخزين محلياً على الخادم",
-    choicesHeader: "خيارات تحليل الاعتراض",
-    addOptionBtn: "+ إضافة خيار",
-    transmittingBtn: "جاري الإرسال...",
-    updateInterceptBtn: "تحديث الاعتراض",
-    commitInterceptBtn: "اعتماد الاعتراض"
   },
   nodeBuilderCanvas: {
     targetingHeader: (caseTitle: string = '', zoneTitle: string = '', levelTitle: string = '') => `الاستهداف: ${caseTitle} > ${zoneTitle} > ${levelTitle}`

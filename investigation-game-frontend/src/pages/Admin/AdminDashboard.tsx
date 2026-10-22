@@ -11,12 +11,11 @@ import EvidenceForm from './forms/EvidenceForm';
 import CharacterForm from './forms/CharacterForm'; 
 import AdminInterrogationBuilder from './forms/QuestionForm/AdminInterrogationBuilder';
 import AdminLocationBuilder from './forms/QuestionForm/AdminLocationBuilder';
-import AdminWiretapBuilder from './forms/QuestionForm/AdminWiretapBuilder'; 
 import InvestigationRequestForm from './forms/InvestigationRequestForm';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import adminDashboardStyles from './AdminDashboard.module.css';
 
-type AdminTab = 'cases' | 'zones' | 'levels' | 'interrogation' | 'location' | 'wiretap' | 'evidences' | 'characters' | 'requests';
+type AdminTab = 'cases' | 'zones' | 'levels' | 'interrogation' | 'location' | 'evidences' | 'characters' | 'requests';
 
 function AdminDashboardContent() {
   const [activeTab, setActiveTab] = useState<AdminTab>('cases');
@@ -102,7 +101,6 @@ function AdminDashboardContent() {
           <nav className={adminDashboardStyles['admin-nav-menu']}>
             <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'interrogation' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('interrogation')}>{t.interrogationTab}</button>
             <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'location' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('location')}>{t.locationTab}</button>
-            <button className={`${adminDashboardStyles['admin-tab-btn']} ${activeTab === 'wiretap' ? adminDashboardStyles['active'] : ''}`} onClick={() => handleTabChange('wiretap')}>{t.wiretapTab}</button>
           </nav>
         </div>
 
@@ -123,7 +121,6 @@ function AdminDashboardContent() {
         {activeTab === 'levels' && <LevelForm />}
         {activeTab === 'interrogation' && <AdminInterrogationBuilder />}
         {activeTab === 'location' && <AdminLocationBuilder />}
-        {activeTab === 'wiretap' && <AdminWiretapBuilder />}
         {activeTab === 'evidences' && <EvidenceForm />}
         {activeTab === 'characters' && <CharacterForm />}
         {activeTab === 'requests' && <InvestigationRequestForm />}

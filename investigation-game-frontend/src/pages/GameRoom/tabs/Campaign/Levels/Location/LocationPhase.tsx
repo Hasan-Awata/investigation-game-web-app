@@ -1,29 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
+import { getLocalUser } from '@/utils/userState';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRoomData } from '@/context/RoomContext.shared';
-import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
-import { getLocalUser } from '@/utils/userState';
 import { getSafeStorage, setSafeStorage, getLocationStateKey, pruneStaleLocationState } from '@/utils/storage';
-import type { Level, Choice, RoomInspection, RoomVote, GameRoom } from '@/types';
+import type { Level, Choice, RoomInspection, GameRoom } from '@/types';
 import * as api from '@/services/api'; 
 import { checkIsLockedByNarrative } from '@/utils/narrativeLocks';
-import { hasUnlocks, isCorrectFind } from '@/utils/unlockPredicates';
 import locationPhase from './LocationPhase.module.css';
 
-interface LocationPhaseProps {
-  level: Level;
-  isHost: boolean;
-}
+interface LocationPhaseProps { level: Level; }
 
 export default function LocationPhase({ level }: LocationPhaseProps) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { room, accumulatedEvidences, refreshRoomData } = useRoomData();
-  const { localVotes, handleSelectChoice, addToast } = useInvestigationPhase();
-
-  const currentUserId = getLocalUser()?.id;
 
   const [inspectingQuestionId, setInspectingQuestionId] = useState<number | null>(null);
 
@@ -41,37 +33,16 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
     pruneStaleLocationState();
   }, []);
 
-  const [localFound, setLocalFound] = useState<Set<number>>(() => {
-    return new Set(getSafeStorage<number[]>('local', getLocationStateKey(room.id, level.id, 'found'), []));
-  });
-
-  const [localDeadEnds, setLocalDeadEnds] = useState<Set<number>>(() => {
-    return new Set(getSafeStorage<number[]>('local', getLocationStateKey(room.id, level.id, 'deadEnds'), []));
-  });
-
   const [activeBubbles, setActiveBubbles] = useState<Set<number>>(() => {
     return new Set(getSafeStorage<number[]>('local', getLocationStateKey(room.id, level.id, 'bubbles'), []));
   });
 
   useEffect(() => {
-    setSafeStorage('local', getLocationStateKey(room.id, level.id, 'found'), Array.from(localFound));
-  }, [localFound, room.id, level.id]);
-
-  useEffect(() => {
-    setSafeStorage('local', getLocationStateKey(room.id, level.id, 'deadEnds'), Array.from(localDeadEnds));
-  }, [localDeadEnds, room.id, level.id]);
-
-  useEffect(() => {
     setSafeStorage('local', getLocationStateKey(room.id, level.id, 'bubbles'), Array.from(activeBubbles));
   }, [activeBubbles, room.id, level.id]);
 
-  const foundPoints = new Set([
-    ...(room.inspections?.filter((i: RoomInspection) => !i.is_dead_end).map((i: RoomInspection) => i.choice_id) || []),
-    ...localFound
-  ]);
   const clickedDeadEnds = new Set([
-    ...(room.inspections?.filter((i: RoomInspection) => i.is_dead_end).map((i: RoomInspection) => i.choice_id) || []),
-    ...localDeadEnds
+    ...(room.inspections?.filter((i: RoomInspection) => i.is_dead_end).map((i: RoomInspection) => i.choice_id) || [])
   ]);
 
   const inspectMutation = useMutation({
@@ -79,32 +50,6 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
       const result = await api.inspectLocation(room.id, choiceId);
       if (!result.isSuccess) throw new Error(result.errorMessage);
       return result.value;
-    },
-    onMutate: async (choiceId) => {
-      await queryClient.cancelQueries({ queryKey: ['gameRoom', room.invite_code] });
-      const previousRoom = queryClient.getQueryData(['gameRoom', room.invite_code]);
-
-      queryClient.setQueryData(['gameRoom', room.invite_code], (old: GameRoom | undefined) => {
-        if (!old) return old;
-        
-        let isCorrectFind = false;
-        level.questions?.forEach(q => {
-          const c = q.choices?.find(x => x.id === choiceId);
-          if (c) {
-            isCorrectFind = hasUnlocks(c);
-          }
-        });
-
-        return {
-          ...old,
-          inspections: [...(old.inspections || []), { choice_id: choiceId, is_dead_end: !isCorrectFind }]
-        };
-      });
-
-      return { previousRoom };
-    },
-    onError: (_error, _variables, context) => {
-      queryClient.setQueryData(['gameRoom', room.invite_code], context?.previousRoom);
     },
     // Replace the optimistic guess (and any broadcast copy) with the
     // authoritative server record, keyed by choice_id so it never duplicates.
@@ -145,10 +90,8 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
 
   level.questions.forEach(q => {
     q.choices?.forEach(c => {
-      const isSelectedLocally = foundPoints.has(c.id) || localVotes[q.id] === c.id;
-      const isSelectedGlobally = room.votes?.some(v => v.choice_id === c.id);
-
-      if (isSelectedLocally || isSelectedGlobally) {
+      const isInspected = room.inspections?.some(inspection => inspection.choice_id === c.id && !inspection.is_dead_end);
+      if (isInspected) {
         const nextId = c.next_question_id ?? c.outcomes?.next_question_id;
         if (nextId) {
           visibleQuestionIds.add(Number(nextId));
@@ -157,19 +100,14 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
     });
   });
 
-  const displayQuestions = level.questions.filter(q =>
-    visibleQuestionIds.has(q.id) &&
-    (q.assigned_user_id === currentUserId ||
-     q.assigned_user_id === undefined ||
-     q.assigned_user_id === null)
-  );
+  const displayQuestions = level.questions.filter(q => visibleQuestionIds.has(q.id));
 
-  const handlePointClick = (e: React.MouseEvent, qId: number, choice: Choice) => {
+  const handlePointClick = (e: React.MouseEvent, choice: Choice) => {
     e.stopPropagation();
 
     if (isDragging) return;
 
-    const isAlreadyDiscovered = foundPoints.has(choice.id) || clickedDeadEnds.has(choice.id) || room.votes?.some((v: RoomVote) => v.choice_id === choice.id);
+    const isAlreadyDiscovered = room.inspections?.some((inspection: RoomInspection) => inspection.choice_id === choice.id);
 
     if (isAlreadyDiscovered) {
       setActiveBubbles(prev => {
@@ -181,28 +119,8 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
       return; 
     }
 
-    const result = isCorrectFind(choice);
-
-    if (result) {
-      setLocalFound(prev => new Set(prev).add(choice.id));
-    } else {
-      setLocalDeadEnds(prev => new Set(prev).add(choice.id));
-    }
-
     setActiveBubbles(prev => new Set(prev).add(choice.id));
     inspectMutation.mutate(choice.id);
-
-    if (result) {
-      if ((choice.next_question_id ?? choice.outcomes?.next_question_id) != null) {
-        addToast({
-          type: 'level',
-          title: t('pages.gameRoom.campaign.levels.location.newSceneUnlocked'),
-          message: t('pages.gameRoom.campaign.levels.location.newVantagePoint'),
-          icon: 'https://api.iconify.design/ph:map-pin-line-duotone.svg?color=%235a8a9e'
-        });
-      }
-      handleSelectChoice(e, qId, choice, 'active');
-    }
   };
 
   const closeViewer = () => {
@@ -304,13 +222,14 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
             const x = coordParts[0].trim();
             const y = coordParts[1].trim();
 
-            const correctFind = isCorrectFind(choice);
-
-            const isSelected = localVotes[activeQuestion.id] === choice.id || foundPoints.has(choice.id) || room.votes?.some((v: RoomVote) => v.choice_id === choice.id);
+            const inspection = room.inspections?.find((item: RoomInspection) => item.choice_id === choice.id);
+            const correctFind = !!inspection && !inspection.is_dead_end;
+            const isSelected = !!inspection;
             const isDeadEndClicked = clickedDeadEnds.has(choice.id);
             
             // STRICT FILTER CHECK
-            const isNarrativeLocked = checkIsLockedByNarrative(choice, accumulatedEvidences, room.votes || []);
+            const ownVotes = room.votes?.filter(vote => vote.user_id === getLocalUser()?.id) ?? [];
+            const isNarrativeLocked = checkIsLockedByNarrative(choice, accumulatedEvidences, ownVotes);
             const isDiscovered = isSelected || isDeadEndClicked;
 
             let zoneClass = locationPhase['loc-hover-zone'];
@@ -324,7 +243,8 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
             
             // If the element does not meet evidence prerequisites, it completely vanishes
             const isInteractable = !isNarrativeLocked || isDiscovered;
-            const shouldRender = !isNarrativeLocked || isDiscovered; 
+            const isAvailable = room.available_location_point_ids?.includes(choice.id) ?? true;
+            const shouldRender = isAvailable && (!isNarrativeLocked || isDiscovered);
 
             return (
               <div
@@ -340,7 +260,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   if (!isInteractable) return;
-                  handlePointClick(e, activeQuestion.id, choice);
+                  handlePointClick(e, choice);
                 }}
               >
                 <div className={locationPhase['loc-crosshair']}></div>

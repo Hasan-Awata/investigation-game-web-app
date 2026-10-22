@@ -4,15 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\GameRoom;
 use App\Models\Question;
-use App\Models\Choice;
-use App\Services\VotingService;
+use App\Services\EncounterGroupService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
 class VoteController extends Controller
 {
     public function __construct(
-        private readonly VotingService $votingService
+        private readonly EncounterGroupService $encounterGroups
     ) {}
 
     public function store(Request $request, GameRoom $room, Question $question): JsonResponse
@@ -21,10 +20,8 @@ class VoteController extends Controller
             'choice_id' => 'required|exists:choices,id',
         ]);
 
-        $choice = Choice::find($validated['choice_id']);
         $user = $request->user();
-
-        $result = $this->votingService->lockInVote($room, $user, $question, $choice);
+        $result = $this->encounterGroups->vote($room, $question, (int) $validated['choice_id'], $user);
 
         if ($result->isFailure()) {
             return response()->json([
@@ -35,10 +32,17 @@ class VoteController extends Controller
 
         return response()->json([
             'message' => 'Vote locked in.',
-            'vote' => $result->value['vote'],
-            'unlocked_evidence' => $result->value['unlocked']['evidence'],
-            'unlocked_levels' => $result->value['unlocked']['levels'],
-            'character_updates' => $result->value['unlocked']['character_updates'],
+            'vote' => $result->value['vote'] ?? null,
+            'group' => $result->value['group'],
         ], 200);
+    }
+
+    public function clear(Request $request, GameRoom $room, Question $question): JsonResponse
+    {
+        $result = $this->encounterGroups->clearVote($room, $question, $request->user());
+        if ($result->isFailure()) {
+            return response()->json(['error' => 'Validation Failed', 'message' => $result->errorMessage], 422);
+        }
+        return response()->json(['message' => 'Vote cleared.', 'group' => $result->value['group']], 200);
     }
 }

@@ -25,15 +25,12 @@ class AdminQuestionController extends Controller
         $subfolder = $this->subfolderFor($validated['level_id']);
 
         $imageUrl = $this->mediaService->store($request->file('image'), $caseTitle, $subfolder, $storeLocally, $caseId);
-        $audioUrl = $this->mediaService->store($request->file('audio'), $caseTitle, $subfolder, $storeLocally, $caseId);
-
-        $question = DB::transaction(function () use ($validated, $imageUrl, $audioUrl, $request) {
+        $question = DB::transaction(function () use ($validated, $imageUrl, $request) {
             $question = Question::create([
                 'level_id' => $validated['level_id'],
                 'order_index' => (int) ($validated['order_index'] ?? 0),
                 'text' => $validated['text'],
                 'img_url' => $imageUrl,
-                'audio_url' => $audioUrl,
             ]);
 
             $this->syncChoices($question, $request->input('choices', []));
@@ -56,13 +53,8 @@ class AdminQuestionController extends Controller
         $subfolder = $this->subfolderFor($validated['level_id']);
 
         $oldImage = $question->getRawOriginal('img_url');
-        $oldAudio = $question->getRawOriginal('audio_url');
-
         $newImage = $request->hasFile('image')
             ? $this->mediaService->store($request->file('image'), $caseTitle, $subfolder, $storeLocally, $caseId)
-            : null;
-        $newAudio = $request->hasFile('audio')
-            ? $this->mediaService->store($request->file('audio'), $caseTitle, $subfolder, $storeLocally, $caseId)
             : null;
 
         $updateData = [
@@ -78,10 +70,6 @@ class AdminQuestionController extends Controller
             $updateData['img_url'] = $newImage;
         }
 
-        if ($newAudio !== null) {
-            $updateData['audio_url'] = $newAudio;
-        }
-
         DB::transaction(function () use ($question, $updateData, $request) {
             $question->update($updateData);
             $this->syncChoices($question, $request->input('choices', []));
@@ -91,22 +79,15 @@ class AdminQuestionController extends Controller
             $this->mediaService->delete($oldImage);
         }
 
-        if ($newAudio !== null && $newAudio !== $oldAudio) {
-            $this->mediaService->delete($oldAudio);
-        }
-
         return response()->json(['message' => 'Question updated.', 'question' => $question->load('choices')], 200);
     }
 
     public function destroy(Question $question): JsonResponse
     {
         $image = $question->getRawOriginal('img_url');
-        $audio = $question->getRawOriginal('audio_url');
-
         DB::transaction(fn () => $question->delete());
 
         $this->mediaService->delete($image);
-        $this->mediaService->delete($audio);
 
         return response()->json(['message' => 'Question deleted.'], 200);
     }

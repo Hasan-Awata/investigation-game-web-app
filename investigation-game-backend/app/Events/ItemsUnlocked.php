@@ -20,7 +20,8 @@ class ItemsUnlocked implements ShouldBroadcastNow
         public readonly ?Collection $unlockedEvidences = null,
         public readonly ?Collection $unlockedLevels = null,
         public readonly ?array $characterUpdates = null,
-        public readonly ?int $strikes = null
+        public readonly ?int $strikes = null,
+        public readonly ?array $unlockedLocationPointIds = null
     ) {}
 
     public function broadcastOn(): array
@@ -44,6 +45,7 @@ class ItemsUnlocked implements ShouldBroadcastNow
             'unlocked_levels' => $this->unlockedLevels ? $this->unlockedLevels->toArray() : [],
             'character_updates' => $this->characterUpdates ?? [],
             'strikes' => $this->strikes,
+            'unlocked_location_point_ids' => $this->unlockedLocationPointIds ?? [],
         ];
     }
 }

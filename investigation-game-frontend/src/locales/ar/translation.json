@@ -85,7 +85,6 @@
       "strikes": "الإنذارات",
       "sessionNotFound": "الجلسة غير موجودة.",
       "departmentUpdate": "تحديث الإدارة",
-      "wiretapIntercepted": "تم اعتراض مكالمة",
       "audioFeedActive": "البث الصوتي نشط. استمع بعناية.",
       "layout": {
         "departmentHeat": "ضغط الإدارة",
@@ -181,7 +180,6 @@
           "approvedStatus": "موافق عليه",
           "requestTypes": {
             "search_warrant": "مذكرة تفتيش",
-            "wiretap_warrant": "تصريح تنصت",
             "financial_records": "استدعاء سجلات مالية",
             "dna_test": "تحليل الحمض النووي",
             "phone_records": "سجلات الهاتف"
@@ -250,13 +248,17 @@
         "lead": "الخيط {{id}}",
         "types": {
           "interrogation": "استجواب",
-          "location": "مسح الموقع",
-          "wiretap": "تنصت"
+          "location": "مسح الموقع"
         },
         "levels": {
           "interrogation": {
             "suspect": "المشتبه به",
             "tieDetected": "⚠️ تم اكتشاف تعادل: قم بتغيير التصويت للحل",
+            "groupRoster": "أعضاء مجموعة الاستجواب",
+            "voteSubmitted": "تم التصويت: {{answer}}",
+            "voteWaiting": "بانتظار التصويت",
+            "voteNextQuestion": "سيبدأ التصويت في السؤال التالي",
+            "clearVote": "إلغاء تصويتي",
             "voteCast": "تم التصويت ({{votes}}/{{total}}) - يمكنك إعادة التعيين",
             "selectResponse": "اختر الرد ({{votes}}/{{total}})",
             "missingIntel": "🔒 [ معلومات مفقودة ]",
@@ -281,23 +283,6 @@
             "processing": "جاري المعالجة...",
             "leaveLocation": "مغادرة الموقع",
             "awaitingHost": "المسح قيد التقدم. في انتظار المضيف لإنهاء البحث..."
-          },
-          "wiretap": {
-            "activeIntercept": "[ اعتراض نشط ]",
-            "interceptPrefix": "اعتراض-",
-            "tieDetected": "> ⚠️ تم اكتشاف تعادل: قم بتغيير التصويت للحل",
-            "voteRecorded": "> الحالة: تم تسجيل التصويت [{{votes}}/{{total}}]",
-            "awaitingConsensus": "> الحالة: في انتظار إجماع العملاء [{{votes}}/{{total}}]",
-            "connectionSevered": "انقطع الاتصال. اعتمد على الملاحظات الميدانية.",
-            "initiateAudio": "▶ بدء البث الصوتي (مرة واحدة)",
-            "awaitingHostAudio": "في انتظار المضيف لبدء البث",
-            "pathLocked": "🔒 [ المسار مغلق: لم يتم استيفاء المتطلبات ]",
-            "classified": "[ سري ]",
-            "submitAnalysis": "تقديم تحليل الاعتراض",
-            "processing": "جاري المعالجة...",
-            "awaitingHostSubmit": "في انتظار المضيف لتقديم تحليل الاعتراض...",
-            "audioFeedLabel": "[ بث صوتي ]",
-            "feedSeveredLabel": "[ انقطع البث ]"
           }
         },
         "map": {

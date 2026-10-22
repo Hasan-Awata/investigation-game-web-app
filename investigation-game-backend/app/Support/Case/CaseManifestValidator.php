@@ -28,6 +28,8 @@ class CaseManifestValidator
     public function __construct(private readonly CaseBundleMediaResolver $resolver) {}
 
     /**
+     * Collect all per-entity manifest errors before persistence; imports remain atomic at the database layer.
+     *
      * @throws ValidationException With every error across the whole manifest keyed by its exact dot-path.
      */
     public function validate(array $manifest, string $extractDir): void
@@ -106,7 +108,7 @@ class CaseManifestValidator
             'zones.*.levels.*.details' => ['required', 'string'],
             'zones.*.levels.*.order_index' => ['required', 'integer', 'min:1'],
             'zones.*.levels.*.is_initial' => ['nullable', 'boolean'],
-            'zones.*.levels.*.presentation_type' => ['required', Rule::in(['interrogation', 'location', 'wiretap'])],
+            'zones.*.levels.*.presentation_type' => ['required', Rule::in(['interrogation', 'location'])],
             'zones.*.levels.*.required_request_ref' => ['nullable', 'string'],
             'zones.*.levels.*.img' => ['nullable', 'string'],
             'zones.*.levels.*.nodes' => ['nullable', 'array'],
@@ -114,7 +116,6 @@ class CaseManifestValidator
             'zones.*.levels.*.nodes.*.order_index' => ['nullable', 'integer', 'min:0'],
             'zones.*.levels.*.nodes.*.text' => ['required', 'string'],
             'zones.*.levels.*.nodes.*.img' => ['nullable', 'string'],
-            'zones.*.levels.*.nodes.*.audio' => ['nullable', 'string'],
             'zones.*.levels.*.nodes.*.choices' => ['nullable', 'array'],
             'zones.*.levels.*.nodes.*.choices.*' => ['array'],
             'zones.*.levels.*.nodes.*.choices.*.text' => ['required', 'string', 'max:255'],
@@ -150,8 +151,7 @@ class CaseManifestValidator
                 continue;
             }
 
-            $rule = new EvidenceMetadataMatchesType;
-            $rule->setData(['evidence_type' => $type]);
+            $rule = new EvidenceMetadataMatchesType($type);
 
             $validator = Validator::make(
                 ['metadata' => $evidence['metadata'] ?? null],
@@ -214,7 +214,6 @@ class CaseManifestValidator
                         continue;
                     }
                     $check("zones.{$z}.levels.{$l}.nodes.{$n}.img", $node['img'] ?? null);
-                    $check("zones.{$z}.levels.{$l}.nodes.{$n}.audio", $node['audio'] ?? null);
                 }
             }
         }
@@ -270,6 +269,7 @@ class CaseManifestValidator
             'level' => [],
             'request' => [],
             'choice' => [],
+            'location_choice' => [],
         ];
 
         $register = function ($entity, string $path, string $type) use (&$refs, &$errors) {
@@ -319,6 +319,11 @@ class CaseManifestValidator
 
                     foreach ($node['choices'] ?? [] as $c => $choice) {
                         $register($choice, "zones.{$z}.levels.{$l}.nodes.{$n}.choices.{$c}", 'choice');
+                        if (($level['presentation_type'] ?? null) === 'location'
+                            && is_array($choice)
+                            && preg_match('/^\s*-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?\s*\|.+$/u', (string) ($choice['text'] ?? '')) === 1) {
+                            $register($choice, "zones.{$z}.levels.{$l}.nodes.{$n}.choices.{$c}", 'location_choice');
+                        }
                     }
                 }
             }
@@ -407,6 +412,9 @@ class CaseManifestValidator
                         }
                         foreach ($outcomes['unlock_levels_refs'] ?? [] as $j => $ref) {
                             $check($ref, 'level', "{$choiceBase}.outcomes.unlock_levels_refs.{$j}");
+                        }
+                        foreach ($outcomes['unlock_location_point_refs'] ?? [] as $j => $ref) {
+                            $check($ref, 'location_choice', "{$choiceBase}.outcomes.unlock_location_point_refs.{$j}");
                         }
                         foreach ($outcomes['character_updates'] ?? [] as $k => $update) {
                             if (is_array($update) && array_key_exists('ref_id', $update)) {

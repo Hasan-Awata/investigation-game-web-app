@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/useAuth';
 import type { User } from '@/types';
 import authStyles from './Auth.module.css';
+import LanguageToggle from '@/components/LanguageToggle';
 
 interface AuthProps {
   // Update this interface to accept the User object
@@ -23,6 +24,7 @@ export default function Auth({ onSuccess }: AuthProps) {
 
   return (
     <div className={authStyles['auth-container']}>
+      <div className={authStyles['languageToggle']}><LanguageToggle /></div>
       <div className={`${authStyles['auth-panel']} glass-panel`}>
         <h1 className={authStyles['auth-title']}>{t('pages.auth.title')}</h1>
         <p className={authStyles['auth-subtitle']}>

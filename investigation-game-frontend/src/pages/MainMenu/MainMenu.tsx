@@ -10,6 +10,7 @@ import { setSafeStorage } from '@/utils/storage';
 import CaseBriefingModal from '@/pages/MainMenu/CaseBriefingModal/CaseBriefingModal';
 import CaseCard from '@/pages/MainMenu/CaseCard/CaseCard';
 import styles from './MainMenu.module.css';
+import LanguageToggle from '@/components/LanguageToggle';
 
 export default function MainMenu() {
   const navigate = useNavigate();
@@ -76,6 +77,7 @@ const [user, setUser] = useState<User | null>(() => getLocalUser());
               {t('pages.mainMenu.logout')}
             </button>
           )}
+          <LanguageToggle />
         </nav>
       </header>
 

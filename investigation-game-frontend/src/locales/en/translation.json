@@ -19,7 +19,6 @@
           "exactCombinationHint": "Warrants require the exact combination of directly relevant evidence and characters. Leave unrelated items out.",
           "requestTypes": {
             "search_warrant": "Search Warrant",
-            "wiretap_warrant": "Wiretap Warrant",
             "financial_records": "Retrieve financial records",
             "dna_test": "DNA test",
             "phone_records": "phone records"
@@ -69,6 +68,28 @@
           "terminal": {
             "emptySession": "Terminal session is empty or corrupted.",
             "unsupportedBlock": "[Unsupported terminal block type: {{type}}]"
+          }
+        }
+      },
+      "campaign": {
+        "levels": {
+          "interrogation": {
+            "tieDetected": "The vote is tied. Change a vote to break the tie.",
+            "groupRoster": "Group roster",
+            "voteSubmitted": "Submitted: {{answer}}",
+            "voteWaiting": "Waiting for vote",
+            "voteNextQuestion": "You will vote starting with the next question.",
+            "clearVote": "Clear my vote",
+            "finalizingIn": "Finalizing in {{seconds}} seconds"
+          },
+          "location": {
+            "foundUseful": "Found something useful here. I’ll record it on the board.",
+            "nothingFound": "Nothing useful found here. Keep searching.",
+            "inspectLocation": "Inspect location",
+            "closeViewer": "Close viewer",
+            "crimeSceneAlt": "Crime scene",
+            "requiresIntel": "Requires additional intel",
+            "enterViewerHint": "Open full screen to inspect the scene."
           }
         }
       }

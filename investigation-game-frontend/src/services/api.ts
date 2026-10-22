@@ -1,5 +1,5 @@
 import { type Result, success } from '../utils/Result';
-import type { GameCase, GameRoom, User, FinalStats, Question, RoomInspection, VoteResponse } from '../types';
+import type { GameCase, GameRoom, User, FinalStats, RoomInspection, VoteResponse, EncounterGroup } from '../types';
 import { request, getToken } from './request';
 import { ENV } from '@/config/env';
 
@@ -10,20 +10,11 @@ interface RoomResponse {
 
 type LockVoteResponse = VoteResponse;
 
-interface InitiatePhaseResponse {
-  room: GameRoom;
-}
-
 interface SubmitSuspectVerdictResponse {
   status: string;
   message: string;
   room?: GameRoom;
   stats?: FinalStats;
-}
-
-interface TriggerWiretapResponse {
-  played_wiretap: Question;
-  message?: string;
 }
 
 interface InspectLocationResponse {
@@ -71,20 +62,22 @@ export const lockVote = async (roomId: number, questionId: number, choiceId: num
   return result;
 };
 
-export const submitAssessment = async (roomId: number): Promise<Result<{ status: string; message: string }>> => {
-  const result = await request<{ status: string; message: string }>(`/rooms/${roomId}/submit`, {
+export const startEncounterGroup = async (roomId: number, levelId: number): Promise<Result<{ group: EncounterGroup }>> => {
+  const result = await request<{ group: EncounterGroup }>(`/rooms/${roomId}/levels/${levelId}/start`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
   return result;
 };
 
-export const initiatePhase = async (roomId: number, levelId: number): Promise<Result<InitiatePhaseResponse>> => {
-  const result = await request<InitiatePhaseResponse>(`/rooms/${roomId}/levels/${levelId}/start`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+export const joinEncounterGroup = async (roomId: number, groupId: number): Promise<Result<{ group: EncounterGroup }>> => {
+  return request<{ group: EncounterGroup }>(`/rooms/${roomId}/encounter-groups/${groupId}/join`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
   });
-  return result;
+};
+
+export const clearVote = async (roomId: number, questionId: number): Promise<Result<{ group: EncounterGroup }>> => {
+  return request<{ group: EncounterGroup }>(`/rooms/${roomId}/questions/${questionId}/vote`, { method: 'DELETE' });
 };
 
 export const submitSuspectVerdict = async (
@@ -107,15 +100,6 @@ export const submitInvestigationRequest = async (
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ evidence_ids: payload.evidenceIds ?? [], character_ids: payload.characterIds ?? [] })
-  });
-  return result;
-};
-
-export const triggerWiretap = async (roomId: number, questionId: number): Promise<Result<TriggerWiretapResponse>> => {
-  const result = await request<TriggerWiretapResponse>(`/rooms/${roomId}/questions/${questionId}/wiretap/play`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question_id: questionId })
   });
   return result;
 };

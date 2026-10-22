@@ -1,16 +1,12 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoomData } from '@/context/RoomContext.shared';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
-import { getLocalUser } from '@/utils/userState';
-import { getSafeStorage, setSafeStorage, removeSafeStorage } from '@/utils/storage';
-import type { Question, Zone, Level, RoomVote, QuestionConsensus } from '@/types';
-import { UNRESOLVED_CONSENSUS } from '@/types';
+import type { Zone, Level } from '@/types';
 import CampaignMap from './CampaignMap';
 import LevelCard from './LevelCard';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
 import LocationPhase from './Levels/Location/LocationPhase';
-import WiretapPhase from './Levels/Wiretap/WiretapPhase';
 import '../SharedOverlay.css';
 import campaignTab from './CampaignTab.module.css';
 import levelCard from './LevelCard.module.css';
@@ -18,366 +14,86 @@ import levelCard from './LevelCard.module.css';
 const CampaignTab = () => {
   const { t } = useTranslation();
   const { room } = useRoomData();
-
-  const zones: Zone[] = room.game_case?.zones || [];
-  const currentLevelId = room.current_level_id;
-  const roomStatus = room.status;
-
-  const currentUser = getLocalUser();
-  const isHost = currentUser?.id === room.host_user_id;
-
-  const {
-    isSubmitting,
-    isInitiating,
-    handleSubmitTheory,
-    initiatePhase,
-  } = useInvestigationPhase();
-
-  const zoneStorageKey = `room_${room.id}_active_zone`;
-  const levelPreviewStorageKey = `room_${room.id}_active_level_preview`;
-
-  const [selectedPreviewId, setSelectedPreviewId] = useState<number | null>(() => {
-    const saved = getSafeStorage<number | null>('local', levelPreviewStorageKey, null);
-    return typeof saved === 'number' ? saved : null;
-  });
-  
-  const viewStateKey = `room_${room.id}_level_view_prefs`;
-  const [levelViewPrefs, setLevelViewPrefs] = useState<Record<number, boolean>>(() => {
-    return getSafeStorage<Record<number, boolean>>('local', viewStateKey, {});
-  });
-
-  const unlockedLevelIds = new Set(room.unlocked_levels?.map((l: Level) => l.id) || []);
-  
-  // DEDUCE COMPLETED REQUESTS: Cross-reference the filed action log against the strict case requirements
-  const completedRequestIds = new Set(
-    room.game_case?.investigation_requests
-      ?.filter(req => {
-        const requiredEvIds = req.required_evidences?.map(e => e.id).sort().join(',') || '';
-        return room.filed_requests?.some(
-          fr => fr.request_type === req.request_type && [...fr.evidence_ids].sort().join(',') === requiredEvIds
-        );
-      })
-      .map(req => req.id) || []
-  );
-
-  const sortedZones = [...zones].sort((a: Zone, b: Zone) => a.order_index - b.order_index);
-  const hasActiveLevel = currentLevelId !== null && currentLevelId !== undefined;
-
-  const activeZoneFromRoom = hasActiveLevel
-    ? sortedZones.find(z => z.levels?.some(l => l.id === currentLevelId))
+  const { activeGroup, isInitiating, isJoining, initiatePhase, joinGroup } = useInvestigationPhase();
+  const zones: Zone[] = room.game_case?.zones ?? [];
+  const sortedZones = useMemo(() => [...zones].sort((a, b) => a.order_index - b.order_index), [zones]);
+  const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
+  const [selectedLevelId, setSelectedLevelId] = useState<number | null>(null);
+  const unlockedIds = new Set(room.unlocked_levels?.map(level => level.id) ?? []);
+  const activeLevel = activeGroup
+    ? sortedZones.flatMap(zone => zone.levels ?? []).find(level => level.id === activeGroup.level_id) ?? null
     : null;
+  const zone = activeGroup
+    ? sortedZones.find(item => item.levels?.some(level => level.id === activeGroup.level_id)) ?? null
+    : sortedZones.find(item => item.id === selectedZoneId) ?? null;
+  const levels = zone?.levels?.slice().sort((a, b) => a.order_index - b.order_index) ?? [];
+  const previewLevel = activeLevel ?? levels.find(level => level.id === selectedLevelId)
+    ?? levels.find(level => level.is_initial || unlockedIds.has(level.id)) ?? levels[0] ?? null;
+  const completedIds = new Set(room.completed_levels?.map(level => level.id) ?? []);
+  const completedRequestIds = new Set((room.game_case?.investigation_requests ?? []).filter(request => {
+    const requiredIds = request.required_evidences?.map(evidence => evidence.id).sort().join(',') ?? '';
+    return room.filed_requests?.some(filed => filed.request_type === request.request_type && [...filed.evidence_ids].sort().join(',') === requiredIds);
+  }).map(request => request.id));
+  const isFree = !activeGroup;
+  const isMapMode = isFree && selectedZoneId === null;
+  const discovered = !!previewLevel && (previewLevel.is_initial || unlockedIds.has(previewLevel.id));
+  const gated = !!previewLevel?.required_request_id && !completedRequestIds.has(previewLevel.required_request_id);
+  const completed = !!previewLevel && completedIds.has(previewLevel.id);
+  const isLocation = previewLevel?.presentation_type === 'location';
+  const available = discovered && !gated && !completed && room.status === 'active';
+  const joinableGroup = previewLevel && room.encounter_groups?.find(group => group.level_id === previewLevel.id && group.status === 'active');
+  const isActiveLevel = !!activeGroup && previewLevel?.id === activeGroup.level_id;
+  const [showInfo, setShowInfo] = useState(false);
 
-  const [userSelectedZoneId, setUserSelectedZoneId] = useState<number | null>(() => {
-    const saved = getSafeStorage<number | null>('local', zoneStorageKey, null);
-    if (typeof saved === 'number' && sortedZones.some(z => z.id === saved)) return saved;
-    return null;
-  });
-
-  const isMapMode = !hasActiveLevel && userSelectedZoneId === null;
-
-  const activeZoneId = hasActiveLevel && activeZoneFromRoom
-    ? activeZoneFromRoom.id
-    : userSelectedZoneId ?? (sortedZones.length > 0 ? sortedZones[0].id : null);
-
-  const handleEnterZone = (zoneId: number) => {
-    setUserSelectedZoneId(zoneId);
-    setSelectedPreviewId(null);
-    setSafeStorage('local', zoneStorageKey, zoneId);
-    removeSafeStorage('local', levelPreviewStorageKey);
+  const returnToMap = () => {
+    if (isFree) { setSelectedZoneId(null); setSelectedLevelId(null); }
   };
 
-  const handleReturnToMap = () => {
-    if (hasActiveLevel) return;
-    setUserSelectedZoneId(null);
-    removeSafeStorage('local', zoneStorageKey);
-    removeSafeStorage('local', levelPreviewStorageKey);
-  };
-
-  const totalPlayers = room.users?.length || 1;
-
-  /**
-   * Consensus is weighted (host = 2) and derived once per vote snapshot in
-   * O(V + Q) instead of O(N^2 x V x U) inside nested render loops. It produces:
-   *   - `consensusByQuestionId`: the resolved consensus per question, and
-   *   - `voterChoiceByQuestion`: question -> (voter -> choice) for O(1)
-   *     assigned-vote lookups.
-   * `getQuestionConsensus` below is a stable O(1) reader over these maps, so
-   * InterrogationPhase / WiretapPhase never recompute vote weights or defeat
-   * React.memo through inline-function identity churn.
-   */
-  const { consensusByQuestionId, voterChoiceByQuestion } = useMemo(() => {
-    const tallyByQuestion = new Map<number, Record<number, number>>();
-    const votesCastByQuestion = new Map<number, number>();
-    const voterChoice = new Map<number, Map<number, number>>();
-
-    room.votes?.forEach((v: RoomVote) => {
-      const tally = tallyByQuestion.get(v.question_id) ?? {};
-      tally[v.choice_id] = (tally[v.choice_id] || 0) + (v.user_id === room.host_user_id ? 2 : 1);
-      tallyByQuestion.set(v.question_id, tally);
-
-      votesCastByQuestion.set(v.question_id, (votesCastByQuestion.get(v.question_id) ?? 0) + 1);
-
-      let choicesByUser = voterChoice.get(v.question_id);
-      if (!choicesByUser) {
-        choicesByUser = new Map<number, number>();
-        voterChoice.set(v.question_id, choicesByUser);
-      }
-      choicesByUser.set(v.user_id, v.choice_id);
-    });
-
-    const consensus = new Map<number, QuestionConsensus>();
-    for (const [questionId, tally] of tallyByQuestion) {
-      let maxWeight = -1;
-      let isTie = false;
-      let winningChoiceId: number | null = null;
-
-      for (const [choiceId, weight] of Object.entries(tally)) {
-        if (weight > maxWeight) {
-          maxWeight = weight;
-          winningChoiceId = Number(choiceId);
-          isTie = false;
-        } else if (weight === maxWeight) {
-          isTie = true;
-        }
-      }
-
-      const votesCast = votesCastByQuestion.get(questionId) ?? 0;
-      consensus.set(questionId, {
-        votesCast,
-        isResolved: votesCast >= totalPlayers && !isTie,
-        isTie,
-        winningChoiceId: isTie ? null : winningChoiceId,
-      });
-    }
-
-    return { consensusByQuestionId: consensus, voterChoiceByQuestion: voterChoice };
-    // Keyed strictly on the vote snapshot and host id — nothing in the
-    // derivation reads other render-ticking values.
-  }, [room.votes, room.host_user_id, totalPlayers]);
-
-  const getQuestionConsensus = useCallback((question: Question): QuestionConsensus => {
-    if (question.assigned_user_id !== undefined && question.assigned_user_id !== null) {
-      const assignedChoiceId = voterChoiceByQuestion.get(question.id)?.get(question.assigned_user_id) ?? null;
-      return {
-        votesCast: consensusByQuestionId.get(question.id)?.votesCast ?? 0,
-        isResolved: assignedChoiceId !== null,
-        isTie: false,
-        winningChoiceId: assignedChoiceId,
-      };
-    }
-    return consensusByQuestionId.get(question.id) ?? UNRESOLVED_CONSENSUS;
-  }, [consensusByQuestionId, voterChoiceByQuestion]);
-
-  const activeZoneData = sortedZones.find((z: Zone) => z.id === activeZoneId);
-  const sortedLevels = activeZoneData?.levels ? [...activeZoneData.levels].sort((a: Level, b: Level) => a.order_index - b.order_index) : [];
-
-  const initialPreviewLevel = sortedLevels.find(l => l.is_initial || unlockedLevelIds.has(l.id)) || sortedLevels[0];
-  const activePreviewLevel = sortedLevels.find(l => l.id === selectedPreviewId) || initialPreviewLevel;
-  const currentlyPlayingLevel = sortedLevels.find(l => l.id === currentLevelId);
-
-  const displayLevel = hasActiveLevel ? currentlyPlayingLevel : activePreviewLevel;
-
-  const isCurrentlyPlaying = hasActiveLevel && displayLevel?.id === currentLevelId;
-  const isDisplayLevelCompleted = displayLevel && (room.completed_levels?.some((cl: Level) => cl.id === displayLevel.id) || roomStatus === 'solved');
-  const displayLevelIsDiscovered = displayLevel && (displayLevel.is_initial || unlockedLevelIds.has(displayLevel.id));
-  const isLocationSandbox = displayLevel?.presentation_type === 'location';
-  const displayLevelIsGated = displayLevelIsDiscovered && !isDisplayLevelCompleted && displayLevel?.required_request_id && !completedRequestIds.has(displayLevel.required_request_id);
-
-  let previewStatus = 'undiscovered';
-  if (isDisplayLevelCompleted || roomStatus === 'solved') previewStatus = 'completed';
-  else if (displayLevelIsGated) previewStatus = 'gated';
-  else if (displayLevelIsDiscovered) previewStatus = 'actionable';
-
-  const isInfoView = displayLevel ? !!levelViewPrefs[displayLevel.id] : false;
-  const canSwap = (isDisplayLevelCompleted && !isCurrentlyPlaying) || isLocationSandbox;
-  const showGameplay = isLocationSandbox 
-    ? !isInfoView 
-    : isCurrentlyPlaying || (isDisplayLevelCompleted && !isInfoView);
-
-  const handleSelectLevel = (levelId: number) => {
-    setSelectedPreviewId(levelId);
-    setSafeStorage('local', levelPreviewStorageKey, levelId);
-  };
-
-  const toggleViewState = () => {
-    if (displayLevel) {
-      setLevelViewPrefs(prev => {
-        const newState = { ...prev, [displayLevel.id]: !prev[displayLevel.id] };
-        setSafeStorage('local', viewStateKey, newState);
-        return newState;
-      });
-    }
-  };
-
-  const zoneDescription = activeZoneData?.description;
-
-  return (
-    <div className={campaignTab['campaign-tab-wrapper']}>
-      {isMapMode ? (
-        <CampaignMap
-          onEnterZone={handleEnterZone}
-          zones={sortedZones}
-          unlockedLevelIds={unlockedLevelIds}
-          mapImageUrl={room.game_case?.map_url} 
-        />
-      ) : (
-        <div className={campaignTab['campaign-roadmap-container']}>
-          <div className={campaignTab['split-screen-layout']}>
-            <div className={campaignTab['level-list-column']}>
-              
-              <div className={campaignTab['phase-info-sidebar']}>
-                <h2 className={`${campaignTab['phase-sidebar-title']} tactical-glitch`} data-text={activeZoneData?.title || t('pages.gameRoom.campaign.unknownZone', 'UNKNOWN DISTRICT')}>
-                  {activeZoneData?.title || t('pages.gameRoom.campaign.unknownZone', 'UNKNOWN DISTRICT')}
-                </h2>
-                {zoneDescription && (
-                  <p className={campaignTab['phase-sidebar-desc']}>{zoneDescription}</p>
-                )}
-              </div>
-
-              {sortedLevels.length === 0 && (
-                <div className="terminal-text empty-leads">{t('pages.gameRoom.campaign.noLeads')}</div>
-              )}
-              {sortedLevels.map((level: Level) => {
-                const isDiscovered = level.is_initial || unlockedLevelIds.has(level.id);
-                const isCompleted = room.completed_levels?.some((cl: Level) => cl.id === level.id);
-                const isGated = isDiscovered && !isCompleted && level.required_request_id && !completedRequestIds.has(level.required_request_id);
-                
-                let status: 'undiscovered' | 'gated' | 'actionable' | 'completed' = 'undiscovered';
-                if (isCompleted || roomStatus === 'solved') status = 'completed';
-                else if (isGated) status = 'gated';
-                else if (isDiscovered) status = 'actionable';
-
-                if (hasActiveLevel && level.id !== currentLevelId) {
-                  status = status === 'gated' ? 'gated' : 'undiscovered'; // Lock visual out
-                }
-
-                const displayTitle = isDiscovered ? level.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD');
-
-                return (
-                  <LevelCard
-                    key={level.id}
-                    level={level}
-                    status={status}
-                    isSelected={displayLevel?.id === level.id}
-                    displayTitle={displayTitle}
-                    onSelect={() => {
-                        if (status !== 'undiscovered') handleSelectLevel(level.id);
-                    }}
-                  />
-                );
-              })}
-
-              <div 
-                className={`${campaignTab['return-map-card']} ${hasActiveLevel ? campaignTab['locked'] : ''}`}
-                onClick={() => {
-                  if (!hasActiveLevel) handleReturnToMap();
-                }}
-              >
-                <div className={levelCard['list-item-content']}>
-                  <div className={`${levelCard['list-item-title-area']} ${campaignTab['map-return-area']}`}>
-                    <span className={campaignTab['return-icon']}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/>
-                      </svg>
-                    </span>
-                    <h4 className={campaignTab['list-item-title']}>{t('pages.gameRoom.campaign.map.backToMap')}</h4>
-                  </div>
-                </div>
-              </div>
+  return <div className={campaignTab['campaign-tab-wrapper']}>
+    {isMapMode ? <CampaignMap zones={sortedZones} unlockedLevelIds={unlockedIds} onEnterZone={setSelectedZoneId} mapImageUrl={room.game_case?.map_url} /> : (
+      <div className={campaignTab['campaign-roadmap-container']}>
+        <div className={campaignTab['split-screen-layout']}>
+          <div className={campaignTab['level-list-column']}>
+            <div className={campaignTab['phase-info-sidebar']}>
+              <h2 className={`${campaignTab['phase-sidebar-title']} tactical-glitch`} data-text={zone?.title ?? t('pages.gameRoom.campaign.unknownZone', 'UNKNOWN DISTRICT')}>{zone?.title ?? t('pages.gameRoom.campaign.unknownZone', 'UNKNOWN DISTRICT')}</h2>
+              {zone?.description && <p className={campaignTab['phase-sidebar-desc']}>{zone.description}</p>}
             </div>
-
-            {displayLevel && (
-              <div className={campaignTab['preview-column']}>
-                
-                <div 
-                  className={`${campaignTab['preview-bg-layer']} ${showGameplay || previewStatus === 'gated' ? campaignTab['blurred'] : ''}`} 
-                  style={{ 
-                    backgroundImage: `url(${displayLevelIsDiscovered ? (displayLevel.img_url || '/placeholder-crime-scene.jpg') : ''})`,
-                    filter: previewStatus === 'gated' ? 'grayscale(100%) blur(12px) brightness(0.2)' : undefined
-                  }}
-                />
-                
-                <div className={`${campaignTab['preview-overlay']} ${(showGameplay || previewStatus === 'gated') ? campaignTab['hidden'] : ''}`}></div>
-
-                <div className={campaignTab['top-right-actions']}>
-                  {canSwap && previewStatus !== 'gated' && (
-                    <button
-                      className={campaignTab['swap-view-btn']}
-                      onClick={toggleViewState}
-                      title={isInfoView ? t('pages.gameRoom.campaign.showGameplay', 'Show Gameplay') : t('pages.gameRoom.campaign.showLevelInfo', 'Show Level Info')}
-                    >
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/>
-                      </svg>
-                    </button>
-                  )}
-
-                  {previewStatus === 'gated' && (
-                    <p className={campaignTab['host-warning-text']} style={{ color: 'var(--accent-crimson)', borderColor: 'rgba(163, 50, 50, 0.4)' }}>
-                      {t('pages.gameRoom.campaign.warrantRequired', 'WARRANT REQUIRED')}
-                    </p>
-                  )}
-
-                  {previewStatus === 'actionable' && !showGameplay && !isLocationSandbox && (
-                    <>
-                      <p className={campaignTab['host-warning-text']}>
-                        {isHost ? t('pages.gameRoom.campaign.hostInitiateWarning') : t('pages.gameRoom.campaign.awaitingHost')}
-                      </p>
-                      {isHost && (
-                        <button 
-                          className={`btn-primary tactical-btn ${campaignTab['start-btn-top']}`} 
-                          onClick={() => initiatePhase(displayLevel.id)} 
-                          disabled={isInitiating}
-                        >
-                          {isInitiating ? t('pages.gameRoom.campaign.lockingCoordinator') : t('pages.gameRoom.campaign.commenceInvestigation')}
-                        </button>
-                      )}
-                    </>
-                  )}
-                </div>
-
-                <div className={campaignTab['preview-content-layer']}>
-                  {previewStatus === 'gated' ? (
-                    <div className={campaignTab['info-view']}>
-                      <div className={campaignTab['preview-content-box']}>
-                        <h3 className={campaignTab['preview-title']} style={{ color: 'var(--text-secondary)' }}>
-                          {displayLevel.title}
-                        </h3>
-                        <p className={campaignTab['preview-desc']} style={{ color: 'var(--text-secondary)' }}>
-                          {t('pages.gameRoom.campaign.gatedDesc', 'This location or subject is currently restricted. You must file the correct procedural request with the DA to proceed.')}
-                        </p>
-                      </div>
-                    </div>
-                  ) : !showGameplay ? (
-                    <div className={campaignTab['info-view']}>
-                      <div className={campaignTab['preview-content-box']}>
-                        <h3 className={campaignTab['preview-title']}>
-                          {displayLevelIsDiscovered ? displayLevel.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')}
-                        </h3>
-                        <p className={campaignTab['preview-desc']}>
-                          {displayLevelIsDiscovered ? displayLevel.details : t('pages.gameRoom.campaign.hiddenPathDesc')}
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className={campaignTab['gameplay-view']}>
-                      {displayLevel.presentation_type === 'interrogation' ? (
-                        <InterrogationPhase getQuestionConsensus={getQuestionConsensus} handleSubmitTheory={handleSubmitTheory} isHost={isHost} isSubmitting={isSubmitting} level={displayLevel} status={isCurrentlyPlaying ? 'active' : 'completed'} totalPlayers={totalPlayers} />
-                      ) : displayLevel.presentation_type === 'location' ? (
-                        <LocationPhase level={displayLevel} isHost={isHost} />
-                      ) : displayLevel.presentation_type === 'wiretap' ? (
-                        <WiretapPhase getQuestionConsensus={getQuestionConsensus} handleSubmitTheory={handleSubmitTheory} isHost={isHost} isSubmitting={isSubmitting} level={displayLevel} status={isCurrentlyPlaying ? 'active' : 'completed'} totalPlayers={totalPlayers} />
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+            {levels.map((level: Level) => {
+              const isDiscovered = level.is_initial || unlockedIds.has(level.id);
+              const isCompleted = completedIds.has(level.id);
+              const isGated = isDiscovered && !!level.required_request_id && !completedRequestIds.has(level.required_request_id);
+              const status: 'undiscovered' | 'gated' | 'actionable' | 'completed' = !isDiscovered ? 'undiscovered' : isGated ? 'gated' : isCompleted ? 'completed' : 'actionable';
+              return <LevelCard key={level.id} level={level} status={status} isSelected={previewLevel?.id === level.id} displayTitle={isDiscovered ? level.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')} onSelect={() => { if (isFree && isDiscovered) { setSelectedLevelId(level.id); setShowInfo(false); } }} />;
+            })}
+            <button type="button" className={`${campaignTab['return-map-card']} ${!isFree ? campaignTab['locked'] : ''}`} disabled={!isFree} onClick={returnToMap}>
+              <div className={levelCard['list-item-content']}><div className={`${levelCard['list-item-title-area']} ${campaignTab['map-return-area']}`}><span className={campaignTab['return-icon']}>⌖</span><h4 className={levelCard['list-item-title']}>{t('pages.gameRoom.campaign.map.backToMap')}</h4></div></div>
+            </button>
           </div>
+          {previewLevel && <div className={campaignTab['preview-column']}>
+            <div className={`${campaignTab['preview-bg-layer']} ${gated || showInfo ? campaignTab['blurred'] : ''}`} style={{ backgroundImage: `url(${discovered ? previewLevel.img_url || '/placeholder-crime-scene.jpg' : ''})` }} />
+            <div className={campaignTab['top-right-actions']}>
+              {isLocation && isFree && <button type="button" className={campaignTab['swap-view-btn']} onClick={() => setShowInfo(value => !value)}>{showInfo ? t('pages.gameRoom.campaign.showGameplay', 'Show workspace') : t('pages.gameRoom.campaign.showLevelInfo', 'Show details')}</button>}
+              {gated && <p className={campaignTab['host-warning-text']}>{t('pages.gameRoom.campaign.warrantRequired', 'PREREQUISITE REQUIRED')}</p>}
+              {available && !isLocation && isFree && (joinableGroup
+                ? <button type="button" className="btn-primary tactical-btn" disabled={isJoining} onClick={() => joinGroup(joinableGroup.id)}>{isJoining ? t('pages.gameRoom.campaign.joiningEncounter', 'Joining…') : t('pages.gameRoom.campaign.joinEncounter', 'Join encounter')}</button>
+                : <button type="button" className="btn-primary tactical-btn" disabled={isInitiating} onClick={() => initiatePhase(previewLevel.id)}>{isInitiating ? t('pages.gameRoom.campaign.lockingCoordinator', 'Starting…') : t('pages.gameRoom.campaign.commenceInvestigation', 'Start interrogation')}</button>)}
+            </div>
+            <div className={campaignTab['preview-content-layer']}>
+              {gated || showInfo || (!isActiveLevel && !isLocation) ? <div className={campaignTab['info-view']}><div className={campaignTab['preview-content-box']}><h3 className={campaignTab['preview-title']}>{discovered ? previewLevel.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')}</h3><p className={campaignTab['preview-desc']}>{gated ? t('pages.gameRoom.campaign.gatedDesc', 'A required request has not been completed.') : previewLevel.details}</p></div></div> : (
+                <div className={campaignTab['gameplay-view']}>
+                  {previewLevel.presentation_type === 'interrogation' && isActiveLevel && <InterrogationPhase level={previewLevel} />}
+                  {previewLevel.presentation_type === 'location' && isFree && !gated && <LocationPhase level={previewLevel} />}
+                  {previewLevel.presentation_type === 'location' && !isFree && <p>{t('pages.gameRoom.campaign.activeEncounterLocked', 'Finish your active interrogation before entering a location.')}</p>}
+                  {available && !isLocation && !isFree && <p>{t('pages.gameRoom.campaign.activeEncounterLocked', 'Finish your active interrogation before entering another level.')}</p>}
+                  {completed && <p>{t('pages.gameRoom.campaign.levelCompleted', 'This interrogation is complete.')}</p>}
+                </div>
+              )}
+            </div>
+          </div>}
         </div>
-      )}
-    </div>
-  );
-}
+      </div>
+    )}
+  </div>;
+};
 
 export default React.memo(CampaignTab);

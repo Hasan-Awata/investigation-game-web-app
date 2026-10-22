@@ -1,266 +1,83 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoomData } from '@/context/RoomContext.shared';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
-import { getSafeStorage, setSafeStorage } from '@/utils/storage';
-import type { Level, Question, QuestionConsensus } from '@/types';
-import { checkIsLockedByNarrative } from '@/utils/narrativeLocks';
+import { getLocalUser } from '@/utils/userState';
+import type { Level, Question } from '@/types';
 import interrogationPhase from './InterrogationPhase.module.css';
 
-// --- MESSAGE REVEAL COMPONENT ---
-const MessageReveal = ({ text, onComplete, skip = false, cacheKey = '' }: { text: string, delay?: number, onComplete?: () => void, skip?: boolean, cacheKey?: string }) => {
-  const [isTyping, setIsTyping] = useState(!skip && !(cacheKey && getSafeStorage<boolean>('session', cacheKey, false)));
-  const savedOnComplete = useRef(onComplete);
+interface InterrogationPhaseProps { level: Level; }
 
+export default function InterrogationPhase({ level }: InterrogationPhaseProps) {
+  const { t } = useTranslation();
+  const { room } = useRoomData();
+  const { activeGroup, localVotes, isSubmitting, handleSelectChoice, clearVote } = useInvestigationPhase();
+  const currentUser = getLocalUser();
+  const question = level.questions?.find((item: Question) => item.id === activeGroup?.current_question_id);
+  const requiredVoterIds = activeGroup?.required_voter_ids ?? [];
+  const isRequiredVoter = requiredVoterIds.includes(currentUser?.id ?? -1);
+  const ownVote = question ? localVotes[question.id] : undefined;
+  const voteCount = activeGroup?.votes?.filter(vote => vote.question_id === question?.id && requiredVoterIds.includes(vote.user_id)).length ?? 0;
+  const weightedTally = activeGroup?.tally ?? {};
+  const maxVotes = Math.max(0, ...Object.values(weightedTally));
+  const isTie = Object.values(weightedTally).filter(value => value === maxVotes).length > 1;
+  const [now, setNow] = useState(Date.now());
   useEffect(() => {
-    savedOnComplete.current = onComplete;
-  }, [onComplete]);
+    const interval = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(interval);
+  }, []);
+  const secondsRemaining = activeGroup?.finalizes_at
+    ? Math.max(0, Math.ceil((new Date(activeGroup.finalizes_at).getTime() - now) / 1000))
+    : null;
 
-  useEffect(() => {
-    if (!text) {
-      if (savedOnComplete.current) savedOnComplete.current();
-      return;
-    }
-
-    if (!isTyping) {
-      if (savedOnComplete.current) savedOnComplete.current();
-      return;
-    }
-
-    // Dynamic delay based on text length (min 800ms, max 2500ms) for realism
-    const calculatedDelay = Math.min(Math.max(text.length * 15, 800), 2500);
-
-    const timer = setTimeout(() => {
-      setIsTyping(false);
-      if (cacheKey) setSafeStorage('session', cacheKey, true);
-    }, calculatedDelay);
-
-    return () => clearTimeout(timer);
-  }, [isTyping, text, cacheKey]);
-
-  if (isTyping) {
-    return (
-      <span className={interrogationPhase['typing-indicator']}>
-        <span></span><span></span><span></span>
-      </span>
-    );
+  if (!activeGroup || activeGroup.level_id !== level.id || !question) {
+    return <div className="terminal-text">{t('pages.gameRoom.campaign.levels.interrogation.waitingForGroup', 'Start or join this interrogation to play.')}</div>;
   }
 
-  return <span className={interrogationPhase['fade-in-text']}>{text}</span>;
-};
-
-interface InterrogationPhaseProps {
-  level: Level;
-  status: string;
-  totalPlayers: number;
-  getQuestionConsensus: (question: Question) => QuestionConsensus;
-  isHost: boolean;
-  isSubmitting: boolean;
-  handleSubmitTheory: (e?: React.MouseEvent) => void; 
-}
-
-export default function InterrogationPhase({
-  level, status, totalPlayers, getQuestionConsensus, isHost, isSubmitting, handleSubmitTheory
-}: InterrogationPhaseProps) {
-  const { t } = useTranslation();
-  const { room, accumulatedEvidences } = useRoomData();
-  const { localVotes, handleSelectChoice } = useInvestigationPhase();
-
-  const [suspectTypingComplete, setSuspectTypingComplete] = useState<Record<number, boolean>>(() => {
-    const initial: Record<number, boolean> = {};
-    level.questions?.forEach(q => {
-      if (getSafeStorage<boolean>('session', `room_${room.id}_suspect_${q.id}`, false)) initial[q.id] = true;
-    });
-    return initial;
-  });
-
-  const [investigatorTypingComplete, setInvestigatorTypingComplete] = useState<Record<number, boolean>>(() => {
-    const initial: Record<number, boolean> = {};
-    level.questions?.forEach(q => {
-      if (getSafeStorage<boolean>('session', `room_${room.id}_investigator_${q.id}`, false)) initial[q.id] = true;
-    });
-    return initial;
-  });
-
-  const { visibleQuestions, consensusMap } = useMemo(() => {
-    const questions: Question[] = [];
-    const map: Record<number, ReturnType<typeof getQuestionConsensus>> = {};
-
-    if (!level.questions || level.questions.length === 0) {
-      return { visibleQuestions: questions, consensusMap: map };
-    }
-
-    const orderedQuestions = [...level.questions].sort(
-      (a, b) => (a.order_index ?? 0) - (b.order_index ?? 0) || a.id - b.id
-    );
-    let currentId: number | null = orderedQuestions[0].id;
-
-    while (currentId) {
-      const q = orderedQuestions.find(x => x.id === currentId);
-      if (!q) break;
-      questions.push(q);
-
-      const consensus = getQuestionConsensus(q);
-      map[q.id] = consensus;
-
-      if (consensus.isResolved && consensus.winningChoiceId) {
-        const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
-
-        const nextId = winningChoice
-          ? (winningChoice.next_question_id ?? winningChoice.outcomes?.next_question_id)
-          : null;
-
-        if (nextId) {
-          currentId = Number(nextId);
-        } else {
-          currentId = null;
-        }
-      } else {
-        currentId = null;
-      }
-    }
-    return { visibleQuestions: questions, consensusMap: map };
-    // `getQuestionConsensus` is a stable O(1) reader over CampaignTab's
-    // memoized consensus map, so this useMemo recomputes only when the vote
-    // snapshot (via its identity) or the level actually changes.
-  }, [level.questions, getQuestionConsensus]);
-
-  const handleSuspectDone = (qId: number) => setSuspectTypingComplete(prev => ({ ...prev, [qId]: true }));
-  const handleInvestigatorDone = (qId: number) => setInvestigatorTypingComplete(prev => ({ ...prev, [qId]: true }));
-
-  const lastQuestion = visibleQuestions[visibleQuestions.length - 1];
-  const hasNoChoices = !lastQuestion?.choices || lastQuestion.choices.length === 0;
-
-  const lastConsensus = lastQuestion ? consensusMap[lastQuestion.id] : null;
-  const finalWinningChoice = lastConsensus?.winningChoiceId
-    ? lastQuestion.choices?.find(c => c.id === lastConsensus.winningChoiceId)
-    : null;
-  const hasTerminalLink = finalWinningChoice
-    ? ((finalWinningChoice.next_question_id ?? finalWinningChoice.outcomes?.next_question_id) != null)
-    : false;
-  const isPlayerTerminal = lastConsensus?.isResolved && finalWinningChoice && !hasTerminalLink;
-
-  const isTerminalNode = hasNoChoices || isPlayerTerminal;
-
-  const isReadyToSubmit = lastQuestion && (
-    hasNoChoices
-      ? (suspectTypingComplete[lastQuestion.id] || status === 'completed')
-      : (investigatorTypingComplete[lastQuestion.id] || status === 'completed')
-  );
-
-  // 1. ADD THIS: A strict local lock to prevent double-firing
-  const hasAutoSubmitted = useRef(false);
-
-  // 2. ADD THIS: Reset the lock if the level status safely changes
-  useEffect(() => {
-    if (status !== 'active') {
-      hasAutoSubmitted.current = false;
-    }
-  }, [status]);
-
-  // 3. UPDATE THIS: Add the ref check to your existing trigger
-  useEffect(() => {
-    if (status === 'active' && isTerminalNode && isReadyToSubmit && isHost && !isSubmitting && !hasAutoSubmitted.current) {
-      hasAutoSubmitted.current = true; // Lock it immediately
-      handleSubmitTheory();
-    }
-  }, [status, isTerminalNode, isReadyToSubmit, isHost, isSubmitting, handleSubmitTheory]);
-
-  if (visibleQuestions.length === 0) return null;
-
   return (
-    <div className={interrogationPhase['interrogation-log']}>
-      {visibleQuestions.map((q, qIdx) => {
-        const consensus = consensusMap[q.id];
-        const prevQ = qIdx > 0 ? visibleQuestions[qIdx - 1] : null;
-        const isVisible = status === 'completed' || qIdx === 0 || (prevQ && investigatorTypingComplete[prevQ.id]);
-
-        if (!isVisible) return null;
-
-        const isGloballyLocked = consensus.isResolved;
-        const skipTyping = status === 'completed';
-        const isSuspectDone = suspectTypingComplete[q.id] || skipTyping;
-        const hasLocalVote = !!localVotes[q.id];
-
-        const winningChoice = q.choices?.find(c => c.id === consensus.winningChoiceId);
-
-        return (
-          <div key={q.id} className={interrogationPhase['chat-exchange']}>
-
-            <div className={`chat-bubble ${interrogationPhase['chat-bubble']} ${interrogationPhase['suspect-bubble']}`}>
-              <span className={`${interrogationPhase['speaker-label']} ${interrogationPhase['suspect']}`}>
-                {t('pages.gameRoom.campaign.levels.interrogation.suspect')}
-              </span>
-              <p>
-                <MessageReveal
-                  text={q.text}
-                  skip={skipTyping}
-                  cacheKey={`room_${room.id}_suspect_${q.id}`}
-                  onComplete={() => handleSuspectDone(q.id)}
-                />
-              </p>
-            </div>
-
-            {isSuspectDone && q.choices && q.choices.length > 0 && (
-              <>
-                {status === 'active' && !isGloballyLocked && (
-                  <div className={interrogationPhase['investigator-interaction-area']}>
-                    <div className={`${interrogationPhase['vote-status-box']} ${hasLocalVote ? interrogationPhase['has-vote'] : interrogationPhase['no-vote']}`}>
-                      <span className={interrogationPhase['speaker-label']} style={{ color: consensus.isTie ? 'var(--accent-crimson)' : (hasLocalVote ? 'var(--accent-amber)' : 'var(--text-secondary)') }}>
-                        {consensus.isTie
-                          ? t('pages.gameRoom.campaign.levels.interrogation.tieDetected')
-                          : hasLocalVote
-                            ? t('pages.gameRoom.campaign.levels.interrogation.voteCast', { votes: consensus.votesCast, total: totalPlayers })
-                            : t('pages.gameRoom.campaign.levels.interrogation.selectResponse', { votes: consensus.votesCast, total: totalPlayers })
-                        }
-                      </span>
-                      <div className={interrogationPhase['vote-choices-grid']}>
-                        {q.choices?.map(c => {
-                          const isSelected = localVotes[q.id] === c.id;
-                          const isNarrativeLocked = checkIsLockedByNarrative(c, accumulatedEvidences, room.votes || []);
-                          const pillClass = isNarrativeLocked
-                            ? `choice-pill ${interrogationPhase['locked-choice']}`
-                            : `choice-pill interactable ${isSelected ? 'selected' : ''}`;
-
-                          return (
-                            <span
-                              key={c.id}
-                              className={pillClass}
-                              onClick={(e) => {
-                                if (isNarrativeLocked || status !== 'active') return;
-                                handleSelectChoice(e, q.id, c, status);
-                              }}
-                              style={{ padding: '0.75rem 1rem', fontSize: '0.9rem' }}
-                            >
-                              {isNarrativeLocked ? t('pages.gameRoom.campaign.levels.interrogation.missingIntel') : c.text}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {isGloballyLocked && winningChoice && (
-                  <div className={interrogationPhase['investigator-interaction-area']}>
-                    <div className={`chat-bubble ${interrogationPhase['chat-bubble']} ${interrogationPhase['agent-bubble']}`}>
-                      <span className={`${interrogationPhase['speaker-label']} ${interrogationPhase['investigator']}`}>{t('pages.gameRoom.campaign.levels.interrogation.investigators')}</span>
-                      <p>
-                        <MessageReveal
-                          text={winningChoice.text}
-                          skip={skipTyping}
-                          cacheKey={`room_${room.id}_investigator_${q.id}`}
-                          onComplete={() => handleInvestigatorDone(q.id)}
-                        />
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        );
-      })}
-    </div>
+    <section aria-live="polite" className={interrogationPhase['interrogation-log']}>
+      <div className={`chat-bubble ${interrogationPhase['suspect-bubble']}`}><p>{question.text}</p></div>
+      <div className={interrogationPhase['investigator-interaction-area']}>
+        <p>
+          {isTie
+            ? t('pages.gameRoom.campaign.levels.interrogation.tieDetected', 'The vote is tied. Change a vote to break the tie.')
+            : secondsRemaining !== null
+              ? t('pages.gameRoom.campaign.levels.interrogation.finalizingIn', { seconds: secondsRemaining, defaultValue: 'Finalizing in {{seconds}} seconds' })
+              : t('pages.gameRoom.campaign.levels.interrogation.votesSubmitted', { votes: voteCount, total: requiredVoterIds.length, defaultValue: '{{votes}} of {{total}} required votes submitted' })}
+        </p>
+        <div className={interrogationPhase['vote-choices-grid']}>
+          {question.choices?.map(choice => {
+            const selected = ownVote === choice.id;
+            const locked = !!choice.requirements?.required_evidence?.some(id => !room.accumulated_evidences?.some(evidence => evidence.id === id));
+            return (
+              <button key={choice.id} type="button" disabled={!isRequiredVoter || locked || isSubmitting || room.status !== 'active'} aria-pressed={selected}
+                className={`choice-pill interactable ${selected ? 'selected' : ''}`}
+                onClick={event => handleSelectChoice(event, question.id, choice, 'active')}>
+                {choice.text} <small>({weightedTally[choice.id] ?? 0})</small>
+              </button>
+            );
+          })}
+        </div>
+        {ownVote !== undefined && isRequiredVoter && (
+          <button type="button" disabled={isSubmitting || room.status !== 'active'} onClick={() => clearVote(question.id)}>
+            {t('pages.gameRoom.campaign.levels.interrogation.clearVote', 'Clear my vote')}
+          </button>
+        )}
+        {!isRequiredVoter && <p>{t('pages.gameRoom.campaign.levels.interrogation.voteNextQuestion', 'You will vote starting with the next question.')}</p>}
+        <ul aria-label={t('pages.gameRoom.campaign.levels.interrogation.groupRoster', 'Group roster')}>
+          {activeGroup.members?.map(member => {
+            const vote = activeGroup.votes?.find(item => item.question_id === question.id && item.user_id === member.user_id);
+            const answer = question.choices?.find(choice => choice.id === vote?.choice_id)?.text;
+            const required = requiredVoterIds.includes(member.user_id);
+            const status = !required
+              ? t('pages.gameRoom.campaign.levels.interrogation.voteNextQuestion', 'Voting starts next question')
+              : vote
+                ? t('pages.gameRoom.campaign.levels.interrogation.voteSubmitted', { answer, defaultValue: 'Submitted: {{answer}}' })
+                : t('pages.gameRoom.campaign.levels.interrogation.voteWaiting', 'Waiting for vote');
+            return <li key={member.user_id}>{member.user?.name ?? `Player ${member.user_id}`}: {status}</li>;
+          })}
+        </ul>
+      </div>
+    </section>
   );
 }

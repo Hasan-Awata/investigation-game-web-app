@@ -7,7 +7,7 @@ import { patchArray } from '@/utils/parsers';
 import { RoomDataProvider, RoomUIProvider } from '@/context/RoomContext';
 import type { ToastNotification, GlobalFeedback } from '@/context/RoomContext.shared';
 import GameRoomLayout from './GameRoomLayout';
-import type { GameRoom, Evidence, Character, Level, Question, RoomVote, RoomInspection, FinalStats, FiledRequest } from '@/types';
+import type { GameRoom, Evidence, Character, Level, RoomVote, RoomInspection, FinalStats, FiledRequest, EncounterGroup } from '@/types';
 import './GameRoom.module.css';
 
 // --- ENRICHED PAYLOAD TYPINGS ---
@@ -16,21 +16,28 @@ interface LevelTransitionedPayload {
   status: string;
   stats?: FinalStats;
   room_patch?: {
-    current_level_id?: number | null;
     status?: string;
     completed_levels?: Level[];
   };
 }
 
-interface WiretapAudioPlayedPayload {
-  question_id: number;
-  audio_url: string | null;
-  message?: string;
-  played_wiretap?: Question | null;
-}
-
 interface VoteLockedInPayload {
   vote: RoomVote;
+}
+
+interface EncounterGroupUpdatedPayload {
+  group_id: number;
+  room_id: number;
+  level_id: number;
+  creator_user_id: number;
+  status: EncounterGroup['status'];
+  current_question_id: number | null;
+  finalizes_at: string | null;
+  members: NonNullable<EncounterGroup['members']>;
+  votes: RoomVote[];
+  required_voter_ids: number[];
+  tally: Record<number, number>;
+  resolution: import('@/types').RoomQuestionResolution | null;
 }
 
 interface CharacterUpdatePayload extends Partial<Character> {
@@ -44,6 +51,7 @@ interface ItemsUnlockedPayload {
   unlocked_levels?: Level[];
   character_updates?: CharacterUpdatePayload[];
   strikes?: number;
+  unlocked_location_point_ids?: number[];
 }
 
 interface HostMigratedPayload {
@@ -82,7 +90,6 @@ export default function GameRoom() {
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const [globalFeedback, setGlobalFeedback] = useState<GlobalFeedback | null>(null);
 
-  const playedAudioTracker = useRef<Set<number>>(new Set());
   const timeoutsRef = useRef<number[]>([]);
 
   const setGameOverData = useCallback((message: string, stats?: FinalStats) => {
@@ -130,6 +137,10 @@ export default function GameRoom() {
     };
 
     const channel = window.Echo.private(`room.${roomId}`);
+    const refreshWhenPageReturns = () => {
+      if (document.visibilityState === 'visible') refreshRoomData();
+    };
+    document.addEventListener('visibilitychange', refreshWhenPageReturns);
 
     // 1. Level Transitions & Game State
     channel.listen('LevelTransitioned', (e: LevelTransitionedPayload) => {
@@ -154,7 +165,6 @@ export default function GameRoom() {
         return {
           ...oldRoom,
           status: e.room_patch?.status ?? oldRoom.status,
-          current_level_id: e.room_patch?.current_level_id ?? oldRoom.current_level_id,
           completed_levels: updatedCompletedLevels
         };
       });
@@ -177,31 +187,27 @@ export default function GameRoom() {
       });
     });
 
-    // 3. Audio / Wiretap Playback
-    channel.listen('WiretapAudioPlayed', (e: WiretapAudioPlayedPayload) => {
-      if (e.audio_url && !playedAudioTracker.current.has(e.question_id)) {
-        playedAudioTracker.current.add(e.question_id);
-        const audio = new Audio(e.audio_url);
-        audio.play().catch(err => console.error('Browser blocked autoplay:', err));
+    channel.listen('EncounterGroupUpdated', (event: EncounterGroupUpdatedPayload) => {
+      if (event.room_id !== roomId || !event.status || !Array.isArray(event.members) || !Array.isArray(event.required_voter_ids)) {
+        refreshRoomData();
+        return;
       }
-
-      addGlobalToastRef.current({
-        type: 'evidence',
-        title: tRef.current('pages.gameRoom.wiretapIntercepted'),
-        message: e.message || tRef.current('pages.gameRoom.audioFeedActive'),
-        icon: 'https://api.iconify.design/ph:waveform-duotone.svg?color=%23c48b36'
+      const resolution = event.resolution;
+      patchRoomData((oldRoom: GameRoom) => {
+        const groups = [...(oldRoom.encounter_groups ?? [])];
+        const index = groups.findIndex(group => group.id === event.group_id);
+        const previous = index >= 0 ? groups[index] : undefined;
+        const updated: EncounterGroup = { ...previous, ...event, id: event.group_id } as EncounterGroup;
+        if (index >= 0) groups[index] = updated;
+        else groups.push(updated);
+        const resolutions = [...(oldRoom.question_resolutions ?? [])];
+        if (resolution) {
+          const resolutionIndex = resolutions.findIndex(item => item.id === resolution.id);
+          if (resolutionIndex >= 0) resolutions[resolutionIndex] = resolution;
+          else resolutions.push(resolution);
+        }
+        return { ...oldRoom, encounter_groups: groups, question_resolutions: resolutions };
       });
-
-      if (e.played_wiretap) {
-        const playedWiretap = e.played_wiretap;
-        patchRoomData((oldRoom: GameRoom) => {
-          const playedWiretaps = [...(oldRoom.played_wiretaps || [])];
-          if (!playedWiretaps.some(w => w.id === playedWiretap.id)) {
-            playedWiretaps.push(playedWiretap);
-          }
-          return { ...oldRoom, played_wiretaps: playedWiretaps };
-        });
-      }
     });
 
     // 4. Discovery Engine (ItemsUnlocked)
@@ -280,6 +286,7 @@ export default function GameRoom() {
 
         return {
           ...oldRoom,
+          available_location_point_ids: Array.from(new Set([...(oldRoom.available_location_point_ids ?? []), ...(e.unlocked_location_point_ids ?? [])])),
           unlocked_evidences: patchArray(oldRoom.unlocked_evidences, e.unlocked_evidences),
           accumulated_evidences: patchArray(oldRoom.accumulated_evidences, e.unlocked_evidences),
 
@@ -353,13 +360,14 @@ export default function GameRoom() {
     return () => {
       channel.stopListening('LevelTransitioned');
       channel.stopListening('VoteLockedIn');
-      channel.stopListening('WiretapAudioPlayed');
+      channel.stopListening('EncounterGroupUpdated');
       channel.stopListening('ItemsUnlocked');
       channel.stopListening('LocationInspected');
       channel.stopListening('RequestFiled');
       channel.stopListening('HostMigrated');
 
       window.Echo.leave(`room.${roomId}`);
+      document.removeEventListener('visibilitychange', refreshWhenPageReturns);
     };
   }, [room?.id, patchRoomData, refreshRoomData]);
 

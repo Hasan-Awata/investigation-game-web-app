@@ -7,7 +7,7 @@ import StatusBannerEditor from './StatusBannerEditor';
 import FileTreeEditor from './FileTreeEditor';
 import SpacerEditor from './SpacerEditor';
 
-export const TERMINAL_EDITORS: Record<TerminalBlock['type'], FC<{ block: TerminalBlock; onUpdate: (updates: Partial<TerminalBlock>) => void; evidenceId: number }>> = {
+export const TERMINAL_EDITORS: Record<Exclude<TerminalBlock['type'], 'unsupported'>, FC<{ block: TerminalBlock; onUpdate: (updates: Partial<TerminalBlock>) => void; evidenceId: number }>> = {
   prompt_line: PromptLineEditor,
   output_stream: OutputStreamEditor,
   status_banner: StatusBannerEditor,

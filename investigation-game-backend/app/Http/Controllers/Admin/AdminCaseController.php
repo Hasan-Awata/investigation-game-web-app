@@ -129,7 +129,6 @@ class AdminCaseController extends Controller
 
             foreach ($level->questions as $question) {
                 $questionMedia[] = $question->getRawOriginal('img_url');
-                $questionMedia[] = $question->getRawOriginal('audio_url');
             }
         }
 

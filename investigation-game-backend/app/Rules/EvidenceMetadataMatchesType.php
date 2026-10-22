@@ -5,26 +5,31 @@ namespace App\Rules;
 use App\Enums\EvidenceSurface;
 use App\Enums\EvidenceType;
 use Closure;
+use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
 
-class EvidenceMetadataMatchesType implements ValidationRule
+class EvidenceMetadataMatchesType implements ValidationRule, DataAwareRule
 {
-    private const SURFACE_BLOCKS = [
-        'paper' => [
-            'letterhead', 'meta_grid', 'prose', 'two_column', 'table', 'list',
-            'signature_row', 'stamp', 'barcode', 'watermark', 'rule', 'spacer',
-            'image', 'annotation', 'redaction', 'diagram',
-        ],
-        'terminal' => [
-            'prompt_line', 'output_stream', 'status_banner', 'file_tree', 'spacer',
-        ],
+    private const DOC_BLOCK_TYPES = [
+        'letterhead', 'meta_grid', 'prose', 'two_column', 'table', 'list',
+        'signature_row', 'stamp', 'barcode', 'watermark', 'rule', 'spacer',
+        'image', 'annotation', 'redaction', 'diagram',
     ];
 
-    private array $customData = [];
+    private const TERMINAL_BLOCK_TYPES = [
+        'prompt_line', 'output_stream', 'status_banner', 'file_tree', 'spacer',
+    ];
 
-    public function setData(array $data): void
+    /** @var array<string, mixed> */
+    protected array $data = [];
+
+    public function __construct(protected ?string $explicitType = null) {}
+
+    public function setData(array $data): static
     {
-        $this->customData = $data;
+        $this->data = $data;
+
+        return $this;
     }
 
     /**
@@ -34,16 +39,17 @@ class EvidenceMetadataMatchesType implements ValidationRule
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        $inputData = $this->customData ?: ($this->data ?? []);
-        $evidenceTypeStr = $inputData['evidence_type'] ?? null;
+        $evidenceTypeStr = $this->explicitType ?? ($this->data['evidence_type'] ?? null);
 
         if (!$evidenceTypeStr) {
+            $fail('The evidence_type is required to validate metadata.');
             return;
         }
 
         try {
             $evidenceType = EvidenceType::from($evidenceTypeStr);
         } catch (\ValueError) {
+            $fail('The evidence_type is required to validate metadata.');
             return;
         }
 
@@ -51,7 +57,7 @@ class EvidenceMetadataMatchesType implements ValidationRule
         if (is_string($value)) {
             $decodedObject = json_decode($value);
             if (json_last_error() !== JSON_ERROR_NONE || !is_object($decodedObject)) {
-                $fail('The metadata field must be a valid JSON object.');
+                $fail('The metadata must be a valid JSON object.');
                 return;
             }
 
@@ -98,12 +104,16 @@ class EvidenceMetadataMatchesType implements ValidationRule
                 return;
             }
 
-            if (empty($doc['blocks'])) {
+            $allowedBlocks = match ($surface) {
+                EvidenceSurface::Paper => self::DOC_BLOCK_TYPES,
+                EvidenceSurface::Terminal => self::TERMINAL_BLOCK_TYPES,
+                default => [],
+            };
+
+            if (!is_array($doc['blocks'] ?? null) || empty($doc['blocks'])) {
                 $fail("A {$evidenceType->value} evidence needs at least one block.");
                 return;
             }
-
-            $allowedBlocks = self::SURFACE_BLOCKS[$surface->value] ?? [];
 
             foreach ($doc['blocks'] as $i => $b) {
                 // Handle both array and object (stdClass) structures

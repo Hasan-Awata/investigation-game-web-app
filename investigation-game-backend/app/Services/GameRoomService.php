@@ -9,6 +9,8 @@ use App\Models\Evidence;
 use App\Models\Level;
 use App\Models\RoomUser;
 use App\Models\User;
+use App\Models\EncounterGroupMember;
+use App\Models\EncounterGroup;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Enums\RoomStatus;
@@ -30,7 +32,6 @@ class GameRoomService
                 'case_id' => $gameCase->id,
                 'host_user_id' => $host->id,
                 'invite_code' => $this->generateUniqueInviteCode(),
-                'current_level_id' => null,
                 'status' => RoomStatus::Active,
             ]);
 
@@ -104,6 +105,8 @@ class GameRoomService
     public function leaveRoom(GameRoom $room, User $player): Result
     {
         return DB::transaction(function () use ($room, $player) {
+            User::query()->whereKey($player->id)->lockForUpdate()->firstOrFail();
+            GameRoom::query()->whereKey($room->id)->lockForUpdate()->firstOrFail();
             $roomUser = RoomUser::where('room_id', $room->id)
                 ->where('user_id', $player->id)
                 ->lockForUpdate()
@@ -117,6 +120,34 @@ class GameRoomService
 
             // 1. Remove the departing player
             $roomUser->delete();
+
+            $membership = EncounterGroupMember::query()
+                ->where('user_id', $player->id)
+                ->whereNull('left_at')
+                ->lockForUpdate()
+                ->first();
+            if ($membership) {
+                $membership->update(['left_at' => now(), 'active_user_id' => null]);
+                $group = EncounterGroup::query()->whereKey($membership->encounter_group_id)->lockForUpdate()->first();
+                if ($group) {
+                    DB::table('encounter_question_voters')
+                        ->where('encounter_group_id', $group->id)
+                        ->where('question_id', $group->current_question_id)
+                        ->where('user_id', $player->id)
+                        ->whereNull('left_at')
+                        ->update(['left_at' => now(), 'updated_at' => now()]);
+                    \App\Models\RoomVote::query()
+                        ->where('encounter_group_id', $group->id)
+                        ->where('question_id', $group->current_question_id)
+                        ->where('user_id', $player->id)
+                        ->delete();
+                    $group->update(['finalizes_at' => null]);
+                    if (!$group->members()->whereNull('left_at')->exists()) {
+                        $group->update(['status' => 'abandoned', 'active_room_id' => null, 'active_level_id' => null, 'abandoned_at' => now()]);
+                    }
+                    app(EncounterGroupService::class)->membershipDeparted($group);
+                }
+            }
 
             // 2. Handle Host Migration
             if ($wasHost) {
@@ -153,41 +184,4 @@ class GameRoomService
         return $code;
     }
 
-    /**
-     * Pure, deterministic assignment of location questions to participants.
-     *
-     * Returns an O(1) question_id => user_id map and mutates no model state:
-     * the caller decides how (or whether) to merge the result into the
-     * serialized payload, so the read path can never hide a write side effect.
-     */
-    public function distributeLocationQuestions(GameRoom $room): array
-    {
-        $participants = $room->users()->orderBy('id')->get();
-        $playerCount = $participants->count();
-
-        if ($playerCount === 0 || !$room->gameCase) {
-            return [];
-        }
-
-        $locationLevels = $room->gameCase->zones
-            ->sortBy('id')
-            ->flatMap->levels
-            ->filter(fn (Level $level) => $level->presentation_type === LevelPresentationType::Location)
-            ->sortBy('id')
-            ->values();
-
-        $assignmentByQuestionId = [];
-        $questionIndex = 0;
-
-        foreach ($locationLevels as $level) {
-            $questions = $level->questions->sortBy('id')->values();
-
-            foreach ($questions as $question) {
-                $assignmentByQuestionId[$question->id] = $participants[$questionIndex % $playerCount]->user_id;
-                $questionIndex++;
-            }
-        }
-
-        return $assignmentByQuestionId;
-    }
 }

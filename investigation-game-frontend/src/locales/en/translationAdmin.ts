@@ -17,7 +17,6 @@ export const translations = {
     levelsTab: "📌 Levels (Encounters)",
     interrogationTab: "💬 Interrogation Tree",
     locationTab: "🎯 Location Sweeps",
-    wiretapTab: "🎙️ Wiretap Intercepts",
     evidencesTab: "🔍 Evidence Locker",
     charactersTab: "👤 Roster / Characters",
     requestsTab: "⚖️ Procedural Combos"
@@ -140,7 +139,6 @@ export const translations = {
       missingContextDesc: "Please select a Case and a Zone from the sidebar to manage Levels.",
       interrogationOption: "Suspect Interrogation",
       locationOption: "Location Sweep",
-      wiretapOption: "Communications Wiretap",
       noRequirementOption: "-- No Requirement --",
       orderIndexLabel: "Zone Order Index",
       presentationFormatLabel: "Presentation Format",
@@ -217,6 +215,7 @@ export const translations = {
       feedbackPlaceholder: "e.g., You wasted time tracking a dead end.",
       unlockEvidenceLabel: "Unlocks Evidence",
       unlockLevelsLabel: "Unlocks Phase/Level",
+      unlockLocationPointsLabel: "Unlocks Location Points",
       unlockCharactersLabel: "Unlock Characters",
       markDeceasedLabel: "Report as Deceased",
       gatekeeperRequirementsTitle: "[ GATEKEEPER REQUIREMENTS ]",
@@ -521,24 +520,6 @@ export const translations = {
     mapCoordinateBtn: "+ Map New Coordinate Point",
     processingBtn: "Processing...",
     commitSceneBtn: "Commit Scene Layout"
-  },
-  wiretapBuilder: {
-    canvasTitle: "Wiretap Intercept Builder",
-    minChoicesError: "An intercept node requires at least two choices.",
-    listTitle: "Active Wiretap Intercepts",
-    emptyListMsg: "No wiretap intercepts built.",
-    audioFeedStatus: (isConnected: boolean) => `[AUDIO FEED: ${isConnected ? 'CONNECTED' : 'MISSING'}]`
-  },
-  wiretapForm: {
-    transcriptLabel: "Intercept Transcript / Prompt Text",
-    audioFeedLabel: (isEditing: boolean) => `Wiretap Audio Feed (MP3/WAV) ${isEditing ? '(Leave blank to keep existing)' : ''}`,
-    imageDossierLabel: "Associated Image / Dossier (Optional)",
-    storeLocallyLabel: "Store Locally on Server",
-    choicesHeader: "Intercept Analysis Choices",
-    addOptionBtn: "+ Add Option",
-    transmittingBtn: "Transmitting...",
-    updateInterceptBtn: "Update Intercept",
-    commitInterceptBtn: "Commit Intercept"
   },
   nodeBuilderCanvas: {
     targetingHeader: (caseTitle: string = '', zoneTitle: string = '', levelTitle: string = '') => `Targeting: ${caseTitle} > ${zoneTitle} > ${levelTitle}`

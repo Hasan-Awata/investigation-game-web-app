@@ -86,6 +86,26 @@ class AdminEvidenceValidationTest extends TestCase
         );
     }
 
+    public function test_update_without_evidence_type_validates_metadata_against_existing_type(): void
+    {
+        $digitalEvidence = Evidence::create([
+            'case_id' => $this->case->id,
+            'title' => 'Terminal capture',
+            'evidence_type' => 'digital',
+            'metadata' => ['terminal' => ['blocks' => [['type' => 'prompt_line']]]],
+            'is_initial' => true,
+            'is_vital_for_conviction' => false,
+        ]);
+
+        $payload = $this->updatePayload();
+        unset($payload['evidence_type']);
+
+        $this->putJson("/api/admin/evidences/{$digitalEvidence->id}", [
+            ...$payload,
+            'metadata' => ['terminal' => ['blocks' => []]],
+        ])->assertUnprocessable()->assertJsonValidationErrors('metadata');
+    }
+
     /** @return array<string, mixed> */
     private function updatePayload(): array
     {

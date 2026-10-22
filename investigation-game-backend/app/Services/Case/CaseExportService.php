@@ -190,7 +190,6 @@ class CaseExportService
                 'order_index' => (int) $question->order_index,
                 'text' => $question->text,
                 'img' => $this->addMedia($archive, $question->getRawOriginal('img_url'), "media/nodes/{$levelRef}_{$index}.img"),
-                'audio' => $this->addMedia($archive, $question->getRawOriginal('audio_url'), "media/nodes/{$levelRef}_{$index}.audio"),
                 'choices' => $question->choices->map(fn (Choice $choice) => $this->buildChoice($choice, $questionIndex))->values()->all(),
             ];
         }
@@ -229,6 +228,9 @@ class CaseExportService
         }
         if (! empty($outcomes['unlock_levels'])) {
             $mappedOutcomes['unlock_levels_refs'] = array_map(fn ($id) => $this->levelRef((int) $id), $outcomes['unlock_levels']);
+        }
+        if (! empty($outcomes['unlock_location_points'])) {
+            $mappedOutcomes['unlock_location_point_refs'] = array_map(fn ($id) => $this->choiceRef((int) $id), $outcomes['unlock_location_points']);
         }
         if (! empty($outcomes['character_updates'])) {
             $mappedOutcomes['character_updates'] = array_map(fn ($update) => [

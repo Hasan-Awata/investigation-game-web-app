@@ -16,117 +16,15 @@ class AssessmentService
 {
     use BroadcastsAfterCommit;
 
-    public function __construct(
-        private readonly VotingService $votingService
-    ) {}
-
-    public function evaluateSubmission(GameRoom $room): Result
+    public function failFromEncounterStrikes(GameRoom $room): void
     {
-        return DB::transaction(function () use ($room) {
-            $room = GameRoom::where('id', $room->id)->lockForUpdate()->firstOrFail();
-
-            if ($room->status !== RoomStatus::Active) {
-                return Result::failure("This investigation has already concluded.");
-            }
-
-            $level = $room->currentLevel;
-
-            if (!$level) {
-                return Result::failure("No active zones to evaluate. This zones may have already been submitted.");
-            }
-
-            $startingQuestion = $level->questions->first();
-
-            if (!$startingQuestion) {
-                return Result::failure("This encounter has no active questioning chain to evaluate.");
-            }
-
-            $strikeChoice = null;
-            $visited = [];
-            $currentQuestion = $startingQuestion;
-
-            while ($currentQuestion && !isset($visited[$currentQuestion->id])) {
-                $visited[$currentQuestion->id] = true;
-
-                $winningChoiceId = $this->votingService->getQuestionConsensusChoiceId($room, $currentQuestion->id);
-
-                if ($winningChoiceId === null) {
-                    return Result::failure('All active questions must have a clear team consensus (no ties) before submitting.');
-                }
-
-                $winningChoice = \App\Models\Choice::find($winningChoiceId);
-
-                if (!$winningChoice) {
-                    break;
-                }
-
-                $givesStrike = filter_var($winningChoice->outcomes['gives_strike'] ?? false, FILTER_VALIDATE_BOOLEAN);
-                if ($givesStrike) {
-                    $strikeChoice = $winningChoice;
-                    break;
-                }
-
-                $nextQuestionId = $winningChoice->outcomes['next_question_id'] ?? null;
-                if (!$nextQuestionId) {
-                    break;
-                }
-
-                $currentQuestion = \App\Models\Question::find($nextQuestionId);
-            }
-
-            if ($strikeChoice) {
-                $room->increment('strikes');
-                $room->refresh();
-
-                $this->broadcastAfterCommit(new ItemsUnlocked($room, null, null, null, $room->strikes));
-
-                if ($room->strikes >= $room->gameCase->max_strikes) {
-                    $totalGuilty = Character::where('case_id', $room->case_id)->where('is_guilty', true)->count();
-                    $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
-
-                    $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
-                    $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
-                    $this->broadcastAfterCommit(new LevelTransitioned($room, 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.', $stats));
-
-                    return Result::success([
-                        'status' => 'failed_final',
-                        'message' => 'DEPARTMENT THRESHOLD EXCEEDED. The Chief has pulled your team off the case. The guilty walk free.',
-                        'stats' => $stats
-                    ]);
-                }
-
-                $hint = $strikeChoice->outcomes['feedback'] ?? "Re-evaluate the evidence thoroughly.";
-
-                \App\Models\RoomVote::where('room_id', $room->id)
-                    ->whereHas('question', fn($q) => $q->where('level_id', $level->id))
-                    ->delete();
-
-                return Result::success([
-                    'status' => 'success',
-                    'message' => $hint,
-                ]);
-            }
-
-            $room->completedLevels()->syncWithoutDetaching([$level->id]);
-
-            $completedCount = $room->completedLevels()->count();
-            $totalLevels = $room->gameCase->levels()->count();
-
-            $room->update(['current_level_id' => null]);
-
-            if ($completedCount >= $totalLevels) {
-                $responseMessage = 'Final verdict accepted. Stand by for further instructions.';
-            } else {
-                $responseMessage = 'Verdict accepted. Return to the roadmap to select the next zone.';
-            }
-
-            $this->broadcastAfterCommit(new LevelTransitioned($room, $responseMessage));
-
-            return Result::success([
-                'status' => 'success',
-                'message' => $responseMessage
-            ]);
-        });
+        $room->refresh();
+        $case = $room->gameCase;
+        $totalGuilty = Character::query()->where('case_id', $case->id)->where('is_guilty', true)->count();
+        $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
+        $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
+        $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
+        $this->broadcastAfterCommit(new LevelTransitioned($room, 'The maximum strike count was reached. The case has failed.', $stats));
     }
 
     /**

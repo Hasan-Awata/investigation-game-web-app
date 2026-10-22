@@ -108,7 +108,7 @@ class MediaService
         $pathWithoutLeadingSlash = ltrim($normalizedPath, '/');
         $urlForms = [$normalizedPath, $pathWithoutLeadingSlash];
 
-        foreach ([['cases', 'img_url'], ['levels', 'img_url'], ['questions', 'img_url'], ['questions', 'audio_url'], ['characters', 'img_url'], ['evidences', 'img_url'], ['evidences', 'audio_url']] as [$table, $column]) {
+        foreach ([['cases', 'img_url'], ['levels', 'img_url'], ['questions', 'img_url'], ['characters', 'img_url'], ['evidences', 'img_url'], ['evidences', 'audio_url']] as [$table, $column]) {
             if (DB::table($table)->whereIn($column, $urlForms)->exists()) {
                 return true;
             }

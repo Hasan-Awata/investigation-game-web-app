@@ -88,7 +88,7 @@ export default function LevelForm() {
         </AdminRow>
 
         <AdminRow>
-          <AdminSelect label={t.presentationFormatLabel} value={formData.presentation_type} onChange={(e) => updateField('presentation_type', e.target.value)} options={[{ value: 'interrogation', label: t.interrogationOption }, { value: 'location', label: t.locationOption }, { value: 'wiretap', label: t.wiretapOption }]} />
+          <AdminSelect label={t.presentationFormatLabel} value={formData.presentation_type} onChange={(e) => updateField('presentation_type', e.target.value)} options={[{ value: 'interrogation', label: t.interrogationOption }, { value: 'location', label: t.locationOption }]} />
           <AdminSelect label={t.gatekeeperLabel} value={formData.required_request_id} onChange={(e) => updateField('required_request_id', e.target.value)} options={requestOptions} />
         </AdminRow>
         

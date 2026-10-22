@@ -50,6 +50,11 @@ trait EvidenceRequestTrait
 
     protected function evidenceRules(): array
     {
+        $fallbackType = $this->input('evidence_type') ?? $this->route('evidence')?->evidence_type;
+        if ($fallbackType instanceof EvidenceType) {
+            $fallbackType = $fallbackType->value;
+        }
+
         return [
             'case_id' => ['required', 'exists:cases,id'],
             'title' => ['required', 'string', 'max:255'],
@@ -72,7 +77,7 @@ trait EvidenceRequestTrait
                         $fail('The metadata field must be a valid JSON object.');
                     }
                 },
-                new EvidenceMetadataMatchesType,
+                new EvidenceMetadataMatchesType($fallbackType),
             ],
             'is_initial' => ['required', 'boolean'],
             'is_vital_for_conviction' => ['required', 'boolean'],

@@ -11,6 +11,27 @@
   will-change: transform; /* Hardware acceleration for smoother scaling */
 }
 
+.unclassifiedEvidence {
+  min-height: 150px;
+  padding: 1.25rem;
+  border: 1px dashed rgba(var(--accent-amber-rgb, 255, 184, 0), 0.55);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(36, 31, 20, 0.96), rgba(16, 16, 18, 0.98));
+}
+
+.unclassifiedBadge {
+  display: inline-block;
+  margin-bottom: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid rgba(var(--accent-amber-rgb, 255, 184, 0), 0.45);
+  border-radius: 999px;
+  color: var(--accent-amber, #ffb800);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .evidenceCardWrapper:hover { 
   transform: scale(1.05) rotate(0deg) !important; 
   z-index: 10; 

@@ -33,6 +33,12 @@ class CaseImportService
         private readonly CaseBundleMediaResolver $mediaResolver,
     ) {}
 
+    /**
+     * Import a case atomically after validating all manifest entities before persistence.
+     *
+     * Validation collects per-entity errors before the database transaction; persistence
+     * uses one transaction so a failed case graph is never partially committed.
+     */
     public function import(UploadedFile $zip, bool $storeLocally): GameCase
     {
         $this->ensureZipExtension();
@@ -239,6 +245,7 @@ class CaseImportService
         // PASS 5: questions + choices for every level. Requirements are deferred
         // until every choice ref exists, so cross-node/cross-level requirements work.
         $pendingRequirements = [];
+        $pendingPointUnlocks = [];
 
         foreach ($levelNodes as $levelId => $nodes) {
             $nodeIndexToQuestion = [];
@@ -249,7 +256,6 @@ class CaseImportService
                     'order_index' => (int) ($nodeData['order_index'] ?? $index),
                     'text' => $nodeData['text'],
                     'img_url' => $this->resolve($extractDir, $nodeData['img'] ?? null, $caseData['title'], 'Levels/Questions', $storeLocally, $case->id),
-                    'audio_url' => $this->resolve($extractDir, $nodeData['audio'] ?? null, $caseData['title'], 'Levels/Questions', $storeLocally, $case->id),
                 ]);
 
                 $nodeIndexToQuestion[$index] = $question->id;
@@ -267,6 +273,10 @@ class CaseImportService
                     ]);
 
                     $this->mapRef($maps, 'choice', $choiceData['ref_id'] ?? null, $choice->id);
+
+                    if (! empty($choiceData['outcomes']['unlock_location_point_refs'])) {
+                        $pendingPointUnlocks[] = [$choice, $choiceData['outcomes']['unlock_location_point_refs']];
+                    }
 
                     if (! empty($choiceData['requirements'])) {
                         $pendingRequirements[] = [$choice, $choiceData['requirements']];
@@ -289,6 +299,12 @@ class CaseImportService
             if (! empty($mapped)) {
                 $choice->update(['requirements' => $mapped]);
             }
+        }
+
+        foreach ($pendingPointUnlocks as [$choice, $targetRefs]) {
+            $outcomes = $choice->outcomes ?? [];
+            $outcomes['unlock_location_points'] = $this->lookupMany($maps['choice'], $targetRefs);
+            $choice->update(['outcomes' => $outcomes]);
         }
 
         return $case;

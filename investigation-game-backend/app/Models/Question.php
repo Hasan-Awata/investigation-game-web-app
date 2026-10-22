@@ -16,7 +16,6 @@ class Question extends Model
         'order_index',
         'text',
         'img_url',
-        'audio_url',
     ];
 
     protected function casts(): array
