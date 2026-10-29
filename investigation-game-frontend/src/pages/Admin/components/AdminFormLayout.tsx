@@ -64,7 +64,7 @@ export default function AdminFormLayout({
           )}
         </div>
         {children}
-        <button type="submit" className={`btn-primary ${editingId ? 'editing' : 'creating'}`} style={{ marginTop: '1.5rem', width: '100%' }}>
+        <button type="submit" form="admin-entity-form" className={`btn-primary ${editingId ? 'editing' : 'creating'}`} style={{ marginTop: '1.5rem', width: '100%' }}>
           {submitText}
         </button>
       </div>

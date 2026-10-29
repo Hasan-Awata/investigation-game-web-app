@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\EvidenceType;
 use App\Rules\EvidenceMetadataMatchesType;
+use App\Support\MediaValidationRules;
 use Illuminate\Validation\Validator;
 use Illuminate\Validation\Rules\Enum;
 use Closure;
@@ -81,8 +82,8 @@ trait EvidenceRequestTrait
             ],
             'is_initial' => ['required', 'boolean'],
             'is_vital_for_conviction' => ['required', 'boolean'],
-            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:4096'],
-            'audio' => ['nullable', 'file', 'mimes:mp3,wav,ogg', 'max:10240'],
+            'image' => ['nullable', ...MediaValidationRules::IMAGE],
+            'audio' => ['nullable', ...MediaValidationRules::AUDIO],
             'img_url' => ['nullable', 'string', 'max:2048'],
             'audio_url' => ['nullable', 'string', 'max:2048'],
             'clear_img' => ['nullable', 'boolean'],

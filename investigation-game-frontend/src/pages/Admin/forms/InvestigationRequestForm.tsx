@@ -72,7 +72,7 @@ export default function InvestigationRequestForm() {
       contextMissing={contextMissing}
       submitLabel={submitLabel}
     >
-      <form onSubmit={handleSubmit} className={adminDashboard['admin-form']}>
+      <form id="admin-entity-form" onSubmit={handleSubmit} className={adminDashboard['admin-form']}>
         <AdminSelect label={t.requestCategoryLabel} required value={formData.request_type} onChange={(e) => updateField('request_type', e.target.value)} options={
           Object.values(InvestigationRequestType).map(type => ({
             value: type,

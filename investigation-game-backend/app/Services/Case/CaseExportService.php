@@ -91,7 +91,7 @@ class CaseExportService
             'case' => [
                 'title' => $case->title,
                 'story' => $case->story,
-                'map_url' => $case->map_url ?? '',
+                'map' => $this->addMedia($archive, $case->getRawOriginal('map_url'), 'media/map'),
                 'cover' => $this->addMedia($archive, $case->getRawOriginal('img_url'), 'media/cover'),
                 'min_player_XP' => (int) $case->min_player_XP,
                 'XP_on_solve' => (int) $case->XP_on_solve,
@@ -272,9 +272,9 @@ class CaseExportService
         $entry = $extension !== '' ? "{$baseEntry}.{$extension}" : $baseEntry;
         $entry = $this->uniqueEntry($entry);
 
-        if (str_starts_with($rawUrl, '/assets/')) {
-            $absolutePath = $this->mediaResolver->archiveLocal($rawUrl);
-        } else {
+        $absolutePath = $this->mediaResolver->archiveLocal($rawUrl);
+        if ($absolutePath === null && filter_var($rawUrl, FILTER_VALIDATE_URL)
+            && strtolower((string) parse_url($rawUrl, PHP_URL_HOST)) !== strtolower((string) parse_url((string) config('app.url'), PHP_URL_HOST))) {
             $absolutePath = $this->mediaResolver->fetchRemote($rawUrl);
 
             if ($absolutePath !== null) {

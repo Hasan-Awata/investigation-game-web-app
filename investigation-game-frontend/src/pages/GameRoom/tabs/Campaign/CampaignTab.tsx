@@ -66,13 +66,38 @@ const CampaignTab = () => {
               return <LevelCard key={level.id} level={level} status={status} isSelected={previewLevel?.id === level.id} displayTitle={isDiscovered ? level.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')} onSelect={() => { if (isFree && isDiscovered) { setSelectedLevelId(level.id); setShowInfo(false); } }} />;
             })}
             <button type="button" className={`${campaignTab['return-map-card']} ${!isFree ? campaignTab['locked'] : ''}`} disabled={!isFree} onClick={returnToMap}>
-              <div className={levelCard['list-item-content']}><div className={`${levelCard['list-item-title-area']} ${campaignTab['map-return-area']}`}><span className={campaignTab['return-icon']}>⌖</span><h4 className={levelCard['list-item-title']}>{t('pages.gameRoom.campaign.map.backToMap')}</h4></div></div>
+              <div className={levelCard['list-item-content']}>
+                <div className={`${levelCard['list-item-title-area']} ${campaignTab['map-return-area']}`}>
+                  <span className={campaignTab['return-icon']}>
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="19" y1="12" x2="5" y2="12"></line>
+                      <polyline points="12 19 5 12 12 5"></polyline>
+                    </svg>
+                  </span>
+                  <h4 className={levelCard['list-item-title']}>{t('pages.gameRoom.campaign.map.backToMap')}</h4>
+                </div>
+              </div>
             </button>
           </div>
           {previewLevel && <div className={campaignTab['preview-column']}>
             <div className={`${campaignTab['preview-bg-layer']} ${gated || showInfo ? campaignTab['blurred'] : ''}`} style={{ backgroundImage: `url(${discovered ? previewLevel.img_url || '/placeholder-crime-scene.jpg' : ''})` }} />
             <div className={campaignTab['top-right-actions']}>
-              {isLocation && isFree && <button type="button" className={campaignTab['swap-view-btn']} onClick={() => setShowInfo(value => !value)}>{showInfo ? t('pages.gameRoom.campaign.showGameplay', 'Show workspace') : t('pages.gameRoom.campaign.showLevelInfo', 'Show details')}</button>}
+              {isLocation && isFree && (
+                <button 
+                  type="button" 
+                  className={campaignTab['swap-view-btn']} 
+                  onClick={() => setShowInfo(value => !value)}
+                  title={showInfo ? t('pages.gameRoom.campaign.showGameplay', 'Show workspace') : t('pages.gameRoom.campaign.showLevelInfo', 'Show details')}
+                  aria-label={showInfo ? t('pages.gameRoom.campaign.showGameplay', 'Show workspace') : t('pages.gameRoom.campaign.showLevelInfo', 'Show details')}
+                >
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="17 11 21 7 17 3"></polyline>
+                    <line x1="21" y1="7" x2="9" y2="7"></line>
+                    <polyline points="7 21 3 17 7 13"></polyline>
+                    <line x1="3" y1="17" x2="15" y2="17"></line>
+                  </svg>
+                </button>
+              )}
               {gated && <p className={campaignTab['host-warning-text']}>{t('pages.gameRoom.campaign.warrantRequired', 'PREREQUISITE REQUIRED')}</p>}
               {available && !isLocation && isFree && (joinableGroup
                 ? <button type="button" className="btn-primary tactical-btn" disabled={isJoining} onClick={() => joinGroup(joinableGroup.id)}>{isJoining ? t('pages.gameRoom.campaign.joiningEncounter', 'Joining…') : t('pages.gameRoom.campaign.joinEncounter', 'Join encounter')}</button>

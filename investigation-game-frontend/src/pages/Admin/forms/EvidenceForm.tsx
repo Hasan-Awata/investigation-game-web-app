@@ -154,7 +154,7 @@ export default function EvidenceForm() {
       contextMissing={contextMissing}
       submitLabel={submitLabel}
     >
-      <form onSubmit={onSubmit} className={adminDashboard['admin-form']}>
+      <form id="admin-entity-form" onSubmit={onSubmit} className={adminDashboard['admin-form']}>
         <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialEvidenceLabel} description={t.initialEvidenceDesc} className={adminForms['status-live']} />
         <AdminCheckbox checked={formData.is_vital_for_conviction} onChange={(e) => updateField('is_vital_for_conviction', e.target.checked)} labelTitle={t.vitalEvidenceLabel} description={t.vitalEvidenceDesc} className={adminForms['status-draft']} />
         <div className={adminDashboard['form-group']}>

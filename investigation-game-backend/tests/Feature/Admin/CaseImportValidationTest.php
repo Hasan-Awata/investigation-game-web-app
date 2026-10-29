@@ -109,6 +109,26 @@ class CaseImportValidationTest extends TestCase
             ->assertJsonValidationErrors('case.cover');
     }
 
+    public function test_legacy_case_map_url_is_rejected(): void
+    {
+        $manifest = CaseBundleFactory::minimalManifest();
+        $manifest['case']['map_url'] = '/Maps/old-map.png';
+
+        $this->importBundle(CaseBundleFactory::build($manifest))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('case.map_url');
+    }
+
+    public function test_missing_case_map_media_is_rejected(): void
+    {
+        $manifest = CaseBundleFactory::minimalManifest();
+        $manifest['case']['map'] = 'media/map.png';
+
+        $this->importBundle(CaseBundleFactory::build($manifest))
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('case.map');
+    }
+
     public function test_duplicate_title_returns_422(): void
     {
         $this->importBundle(self::FIXTURES.'/minimal.zip')->assertStatus(201);

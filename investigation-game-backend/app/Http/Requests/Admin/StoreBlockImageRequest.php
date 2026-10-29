@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Support\MediaValidationRules;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreBlockImageRequest extends FormRequest
@@ -15,7 +16,7 @@ class StoreBlockImageRequest extends FormRequest
     {
         return [
             'case_id' => ['required', 'exists:cases,id'],
-            'image' => ['required', 'image', 'mimes:jpeg,png,jpg,webp', 'max:4096'],
+            'image' => ['required', ...MediaValidationRules::IMAGE],
             'store_locally' => ['required', 'boolean'],
         ];
     }

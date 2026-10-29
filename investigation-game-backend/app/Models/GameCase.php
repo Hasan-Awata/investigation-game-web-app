@@ -39,6 +39,13 @@ class GameCase extends Model
         ];
     }
 
+    protected function mapUrl(): Attribute
+    {
+        return Attribute::make(
+            get: fn (?string $value) => $this->formatMediaUrl($value),
+        );
+    }
+
     public function levels(): HasManyThrough
     {
         return $this->hasManyThrough(Level::class, Zone::class, 'case_id', 'zone_id');

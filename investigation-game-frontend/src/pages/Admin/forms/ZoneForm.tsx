@@ -111,7 +111,7 @@ export default function ZoneForm() {
       contextMissing={contextMissing}
       submitLabel={submitLabel}
     >
-      <form onSubmit={handleSubmit} className={adminDashboard['admin-form']}>
+      <form id="admin-entity-form" onSubmit={handleSubmit} className={adminDashboard['admin-form']}>
         <AdminInput label={t.titleLabel} type="text" required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
         <AdminTextarea label={t.descriptionLabel} style={{ minHeight: '100px' }} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
 

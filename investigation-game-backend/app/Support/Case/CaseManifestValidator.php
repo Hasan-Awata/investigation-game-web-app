@@ -8,6 +8,7 @@ use App\Enums\EvidenceType;
 use App\Enums\InvestigationRequestType;
 use App\Rules\EvidenceMetadataMatchesType;
 use App\Services\Case\CaseBundleMediaResolver;
+use App\Services\MediaService;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
@@ -25,7 +26,10 @@ use Illuminate\Validation\ValidationException;
  */
 class CaseManifestValidator
 {
-    public function __construct(private readonly CaseBundleMediaResolver $resolver) {}
+    public function __construct(
+        private readonly CaseBundleMediaResolver $resolver,
+        private readonly MediaService $mediaService,
+    ) {}
 
     /**
      * Collect all per-entity manifest errors before persistence; imports remain atomic at the database layer.
@@ -37,6 +41,7 @@ class CaseManifestValidator
         $validator = Validator::make($manifest, $this->rules());
 
         $errors = $validator->errors()->toArray();
+        $errors = array_merge_recursive($errors, $this->validateLegacyMapUrl($manifest));
         $errors = array_merge_recursive($errors, $this->validateZoneMapUrls($manifest));
         $errors = array_merge_recursive($errors, $this->validateEvidenceMetadata($manifest));
         $errors = array_merge_recursive($errors, $this->validateMediaPaths($manifest, $extractDir));
@@ -58,7 +63,7 @@ class CaseManifestValidator
             'case' => ['required', 'array'],
             'case.title' => ['required', 'string', 'max:255'],
             'case.story' => ['required', 'string'],
-            'case.map_url' => ['nullable', 'string'],
+            'case.map' => ['nullable', 'string'],
             'case.cover' => ['nullable', 'string'],
             'case.min_player_XP' => ['nullable', 'integer', 'min:0'],
             'case.XP_on_solve' => ['required', 'integer', 'min:0'],
@@ -137,6 +142,19 @@ class CaseManifestValidator
         return $errors;
     }
 
+    private function validateLegacyMapUrl(array $manifest): array
+    {
+        $mapUrl = $manifest['case']['map_url'] ?? null;
+
+        if (! is_string($mapUrl) || trim($mapUrl) === '') {
+            return [];
+        }
+
+        return [
+            'case.map_url' => ['Legacy map_url references are no longer supported. Add the map image to the bundle and set case.map to its media path.'],
+        ];
+    }
+
     private function validateEvidenceMetadata(array $manifest): array
     {
         $errors = [];
@@ -170,24 +188,41 @@ class CaseManifestValidator
     {
         $errors = [];
 
-        $check = function (string $field, $value) use (&$errors, $extractDir) {
+        $check = function (string $field, mixed $value, bool $isAudio = false) use (&$errors, $extractDir): void {
             if ($value === null || $value === '') {
                 return;
             }
 
-            if (! is_string($value) || $this->resolver->absolutePath($extractDir, $value) === null) {
+            if (! is_string($value)) {
+                $errors[$field][] = 'The media path must be a string.';
+
+                return;
+            }
+
+            $absolutePath = $this->resolver->absolutePath($extractDir, $value);
+
+            if ($absolutePath === null) {
                 $errors[$field][] = "Media path '{$value}' does not resolve to a file inside the bundle.";
+
+                return;
+            }
+
+            try {
+                $this->mediaService->validateFromPath($absolutePath, basename($absolutePath), $isAudio, $field);
+            } catch (ValidationException $exception) {
+                $errors = array_merge_recursive($errors, $exception->errors());
             }
         };
 
         $check('case.cover', $manifest['case']['cover'] ?? null);
+        $check('case.map', $manifest['case']['map'] ?? null);
 
         foreach ($manifest['evidences'] ?? [] as $i => $evidence) {
             if (! is_array($evidence)) {
                 continue;
             }
             $check("evidences.{$i}.img", $evidence['img'] ?? null);
-            $check("evidences.{$i}.audio", $evidence['audio'] ?? null);
+            $check("evidences.{$i}.audio", $evidence['audio'] ?? null, isAudio: true);
         }
 
         foreach ($manifest['characters'] ?? [] as $i => $character) {

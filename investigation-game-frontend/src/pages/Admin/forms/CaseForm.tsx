@@ -7,7 +7,7 @@ import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
 import MediaUploader from '@/pages/Admin/components/MediaUploader';
 import CaseBundleDropzone from '@/pages/Admin/components/CaseBundleDropzone';
-import { AdminRow, AdminInput, AdminTextarea, AdminCheckbox, AdminSelect } from '@/pages/Admin/components/AdminUI';
+import { AdminRow, AdminInput, AdminTextarea, AdminCheckbox } from '@/pages/Admin/components/AdminUI';
 import { validateCaseForm } from '@/pages/Admin/utils/validators';
 import { exportAdminCase } from '@/services/adminApi';
 import { downloadBlob, slugifyFilename } from '@/pages/Admin/utils/download';
@@ -15,19 +15,8 @@ import type { GameCase } from '@/types';
 import adminForms from './Shared/AdminForms.module.css';
 import adminDashboard from '../AdminDashboard.module.css';
 
-// 1. Dynamically read all local images inside public/Maps/
-const mapFiles = import.meta.glob('/public/Maps/*.{png,jpg,jpeg,webp}', { eager: true });
-const AVAILABLE_MAPS = [
-  { value: '', label: '-- Default Fallback Map --' },
-  ...Object.keys(mapFiles).map(fullPath => {
-    const fileName = fullPath.split('/').pop() || '';
-    const cleanLabel = fileName.replace(/\.[^/.]+$/, "").replace(/[-_]/g, " ").replace(/\b\w/g, char => char.toUpperCase()); 
-    return { value: `/Maps/${fileName}`, label: cleanLabel };
-  })
-];
-
 const initialFormState = {
-  title: '', story: '', map_url: '', min_player_XP: '0', XP_on_solve: '100', max_strikes: '5', rating_stars: '5.0',
+  title: '', story: '', min_player_XP: '0', XP_on_solve: '100', max_strikes: '5', rating_stars: '5.0',
   age_rating: 'Mature 17+', estimated_playtime: '60 Minutes', difficulty: 'Standard', tags: '',
   author_name: 'System', is_published: false, store_locally: false
 };
@@ -57,7 +46,6 @@ export default function CaseForm() {
     handleEditInit(c, (caseObj) => ({
       title: caseObj.title || '',
       story: caseObj.story || '',
-      map_url: caseObj.map_url || '',
       min_player_XP: String(caseObj.min_player_XP),
       XP_on_solve: String(caseObj.XP_on_solve),
       max_strikes: String(caseObj.max_strikes),
@@ -120,18 +108,10 @@ export default function CaseForm() {
     >
       {!editingId && <CaseBundleDropzone />}
 
-      <form onSubmit={onSubmit} className={adminDashboard['admin-form']}>
+      <form id="admin-entity-form" onSubmit={onSubmit} className={adminDashboard['admin-form']}>
         <AdminCheckbox checked={formData.is_published} onChange={(e) => updateField('is_published', e.target.checked)} labelTitle={formData.is_published ? t.livePublished : t.draftClassified} description={formData.is_published ? t.liveDescription : t.draftDescription} className={formData.is_published ? adminForms['status-live'] : adminForms['status-draft']} />
         
-        <AdminRow>
-          <AdminInput label={t.titleLabel} required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
-          <AdminSelect 
-            label="Regional Map Blueprint" 
-            value={formData.map_url || ''} 
-            onChange={(e) => updateField('map_url', e.target.value)} 
-            options={AVAILABLE_MAPS} 
-          />
-        </AdminRow>
+        <AdminInput label={t.titleLabel} required value={formData.title} onChange={(e) => updateField('title', e.target.value)} />
         
         <AdminTextarea label={t.storyLabel} required value={formData.story} onChange={(e) => updateField('story', e.target.value)} />
 

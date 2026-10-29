@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Admin;
 
 use App\Enums\LevelPresentationType;
+use App\Support\MediaValidationRules;
 use Illuminate\Validation\Rules\Enum;
 
 trait LevelRequestTrait
@@ -17,7 +18,7 @@ trait LevelRequestTrait
             'is_initial' => ['required', 'boolean'],
             'presentation_type' => ['required', new Enum(LevelPresentationType::class)],
             'required_request_id' => ['nullable', 'exists:investigation_requests,id'],
-            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
+            'image' => ['nullable', ...MediaValidationRules::IMAGE],
             'store_locally' => ['required', 'boolean'],
         ];
     }

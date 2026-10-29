@@ -36,14 +36,21 @@ auth.json
 /.env.production
 
 # AI
+*.md
 .claude/
 .gemini/
 .impeccable/
 .opencode/
+graphify-out/
 ai_project_context.xmpl
 ai_backend_project_context.xmpl
+ai_project_context.xml
+ai_backend_project_context.xml
 AGENTS.md
 Plans.md
+BUGS.md
+.graphifyignore
 
 # Game files
 story-building-guides/
+cases/

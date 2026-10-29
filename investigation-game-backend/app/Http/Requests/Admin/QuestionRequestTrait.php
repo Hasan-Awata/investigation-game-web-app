@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Support\MediaValidationRules;
+
 trait QuestionRequestTrait
 {
     public function withValidator(\Illuminate\Contracts\Validation\Validator $validator): void
@@ -30,7 +32,7 @@ trait QuestionRequestTrait
             'level_id' => ['required', 'exists:levels,id'],
             'order_index' => ['nullable', 'integer', 'min:0'],
             'text' => ['required', 'string'],
-            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:10240'],
+            'image' => ['nullable', ...MediaValidationRules::IMAGE],
             'choices' => ['nullable', 'array'],
             'choices.*.id' => ['nullable', 'integer', 'exists:choices,id'],
             'choices.*.text' => ['required', 'string', 'max:255'],

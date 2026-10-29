@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\CharacterCharge;
 use App\Enums\CharacterStatus;
+use App\Support\MediaValidationRules;
 use Illuminate\Validation\Rules\Enum;
 
 trait CharacterRequestTrait
@@ -18,7 +19,7 @@ trait CharacterRequestTrait
             'is_guilty' => ['required', 'boolean'],
             'charge' => ['nullable', new Enum(CharacterCharge::class)],
             'default_status' => ['required', new Enum(CharacterStatus::class)],
-            'image' => ['nullable', 'image', 'mimes:jpeg,png,jpg,webp', 'max:4096'],
+            'image' => ['nullable', ...MediaValidationRules::IMAGE],
             'store_locally' => ['required', 'boolean'],
         ];
     }

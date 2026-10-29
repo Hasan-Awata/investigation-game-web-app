@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\Support\MediaValidationRules;
 use Cloudinary\Cloudinary;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class MediaService
 {
@@ -28,26 +31,39 @@ class MediaService
         string $caseTitle,
         string $subfolder,
         bool $storeLocally,
-        ?int $caseId = null
+        ?int $caseId = null,
+        bool $isAudio = false
     ): ?string {
-        if (!is_file($absolutePath) || !is_readable($absolutePath)) {
-            return null;
-        }
-
-        try {
-            $mimeType = File::mimeType($absolutePath) ?: null;
-        } catch (\Throwable $exception) {
-            Log::warning('Unable to determine media MIME type.', [
-                'path' => $absolutePath,
-                'error' => $exception->getMessage(),
-            ]);
-            $mimeType = null;
-        }
-
-        // `test: true` permits files extracted from a case bundle.
-        $file = new UploadedFile($absolutePath, $originalName, $mimeType, null, true);
+        $file = $this->validateFromPath($absolutePath, $originalName, $isAudio);
 
         return $this->storeFile($file, $caseTitle, $subfolder, $storeLocally, $caseId);
+    }
+
+    public function validateFromPath(
+        string $absolutePath,
+        string $originalName,
+        bool $isAudio = false,
+        string $field = 'media'
+    ): UploadedFile {
+        if (!is_file($absolutePath) || !is_readable($absolutePath)) {
+            throw ValidationException::withMessages([
+                $field => ['The media file is missing or unreadable.'],
+            ]);
+        }
+
+        $file = new UploadedFile($absolutePath, $originalName, null, null, true);
+        $validator = Validator::make(
+            ['media' => $file],
+            ['media' => ['required', ...($isAudio ? MediaValidationRules::AUDIO : MediaValidationRules::IMAGE)]],
+            [],
+            ['media' => $field],
+        );
+
+        if ($validator->fails()) {
+            throw ValidationException::withMessages([$field => $validator->errors()->get('media')]);
+        }
+
+        return $file;
     }
 
     public function resolveCaseFolder(string $caseTitle, ?int $caseId = null): string
@@ -67,7 +83,7 @@ class MediaService
         if ($storeLocally) {
             $destinationPath = public_path("assets/cases/{$caseFolder}/{$subfolder}");
             $hash = hash_file('sha256', $file->getRealPath());
-            $extension = $file->getClientOriginalExtension();
+            $extension = $file->extension();
             $filename = "{$hash}.{$extension}";
             $fullFilePath = $destinationPath . '/' . $filename;
 
@@ -102,21 +118,95 @@ class MediaService
         return $upload['secure_url'];
     }
 
-    public function isLocalPathStillReferenced(string $relativePath): bool
+    public function localPath(?string $url, bool $allowShipped = false): ?string
     {
-        $normalizedPath = '/' . ltrim($relativePath, '/');
-        $pathWithoutLeadingSlash = ltrim($normalizedPath, '/');
-        $urlForms = [$normalizedPath, $pathWithoutLeadingSlash];
+        $parts = $url ? parse_url($url) : false;
+        if ($parts === false || isset($parts['user']) || isset($parts['pass'])
+            || isset($parts['scheme']) && (!isset($parts['host']) || !in_array(strtolower($parts['scheme']), ['http', 'https'], true))) {
+            return null;
+        }
 
-        foreach ([['cases', 'img_url'], ['levels', 'img_url'], ['questions', 'img_url'], ['characters', 'img_url'], ['evidences', 'img_url'], ['evidences', 'audio_url']] as [$table, $column]) {
-            if (DB::table($table)->whereIn($column, $urlForms)->exists()) {
-                return true;
+        if (isset($parts['host'])) {
+            $appUrl = parse_url((string) config('app.url'));
+            $port = $parts['port'] ?? (strtolower($parts['scheme'] ?? $appUrl['scheme'] ?? 'http') === 'https' ? 443 : 80);
+            $appPort = $appUrl['port'] ?? (strtolower($appUrl['scheme'] ?? 'http') === 'https' ? 443 : 80);
+            if (strtolower($parts['host']) !== strtolower($appUrl['host'] ?? '') || $port !== $appPort) {
+                return null;
             }
         }
 
-        foreach ($urlForms as $url) {
-            if (DB::table('evidences')->where('metadata', 'like', '%' . addcslashes($url, '%_\\') . '%')->exists()) {
-                return true;
+        $path = '/' . ltrim(rawurldecode($parts['path'] ?? ''), '/');
+        if (str_contains($path, '\\') || str_contains($path, "\0") || preg_match('#(^|/)\.{1,2}(/|$)#', $path)) {
+            return null;
+        }
+
+        $root = 'assets/cases/';
+        if (!str_starts_with($path, '/' . $root)) {
+            if (!$allowShipped || !preg_match('#^/assets/signatures/signature(?:-(?:[1-9]|1[0-8]))?\.svg$#D', $path)) {
+                return null;
+            }
+            $root = 'assets/signatures/';
+        }
+
+        $public = realpath(public_path());
+        $real = $public === false ? false : realpath($public . $path);
+        if ($real === false || !is_file($real)) {
+            return null;
+        }
+
+        $prefix = str_replace('\\', '/', $public) . '/' . $root;
+        $candidate = str_replace('\\', '/', $real);
+        if (PHP_OS_FAMILY === 'Windows') {
+            $prefix = strtolower($prefix);
+            $candidate = strtolower($candidate);
+        }
+
+        return str_starts_with($candidate, $prefix) ? $real : null;
+    }
+
+    private function cloudinaryAsset(string $url): ?array
+    {
+        $cloud = (string) env('CLOUDINARY_CLOUD_NAME');
+        if ($cloud === '' || !preg_match('#^https://res\.cloudinary\.com/' . preg_quote($cloud, '#') . '/(image|video)/upload/(?:v\d+/)?(cases/[a-z0-9-]+/(?:Cover|Map|Characters|Evidences(?:/Blocks)?|Levels(?:/Questions)?)/[a-zA-Z0-9_.-]+)\.[a-zA-Z0-9]+$#D', $url, $matches)) {
+            return null;
+        }
+        if (in_array(basename($matches[2]), ['.', '..'], true)) {
+            return null;
+        }
+
+        return ['resource_type' => $matches[1], 'public_id' => $matches[2]];
+    }
+
+    private function mediaIdentity(string $url): ?string
+    {
+        $local = $this->localPath($url);
+        if ($local !== null) {
+            return PHP_OS_FAMILY === 'Windows' ? strtolower($local) : $local;
+        }
+
+        $asset = $this->cloudinaryAsset($url);
+
+        return $asset ? $asset['resource_type'] . ':' . $asset['public_id'] : null;
+    }
+
+    private function isStillReferenced(string $url): bool
+    {
+        $identity = $this->mediaIdentity($url);
+        if ($identity === null) {
+            return false;
+        }
+
+        foreach (['cases' => ['img_url', 'map_url'], 'levels' => ['img_url'], 'questions' => ['img_url'], 'characters' => ['img_url'], 'evidences' => ['img_url', 'audio_url', 'metadata']] as $table => $columns) {
+            foreach (DB::table($table)->select(['id', ...$columns])->lazyById(100) as $row) {
+                $urls = array_filter([$row->img_url, $row->audio_url ?? null, $row->map_url ?? null]);
+                if (isset($row->metadata)) {
+                    $urls = array_merge($urls, $this->extractMetadataImageUrls(json_decode($row->metadata, true)));
+                }
+                foreach ($urls as $reference) {
+                    if ($this->mediaIdentity($reference) === $identity) {
+                        return true;
+                    }
+                }
             }
         }
 
@@ -166,13 +256,12 @@ class MediaService
     {
         if (!$url) return;
 
-        $localPath = parse_url($url, PHP_URL_PATH) ?: $url;
-        if (str_starts_with($localPath, '/assets/')) {
-            if ($this->isLocalPathStillReferenced($localPath)) {
+        $fullPath = $this->localPath($url);
+        if ($fullPath !== null) {
+            if ($this->isStillReferenced($url)) {
                 return;
             }
 
-            $fullPath = public_path(ltrim($localPath, '/'));
             try {
                 if (File::exists($fullPath) && !File::delete($fullPath)) {
                     Log::warning("Failed to delete local media file: {$fullPath}");
@@ -183,23 +272,22 @@ class MediaService
             return;
         }
 
-        if (!preg_match('/upload\/(?:v\d+\/)?([^\.]+)/', $url, $matches)) {
+        $asset = $this->cloudinaryAsset($url);
+        if ($asset === null || $this->isStillReferenced($url)) {
             return;
         }
 
-        $publicId = $matches[1];
-        $resourceType = str_contains($url, '/video/') ? 'video' : 'image';
-        $cloudinary = new Cloudinary([
+        $cloudinary = app(Cloudinary::class, ['config' => [
             'cloud' => [
                 'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
                 'api_key' => env('CLOUDINARY_API_KEY'),
                 'api_secret' => env('CLOUDINARY_API_SECRET'),
             ],
             'url' => ['secure' => true],
-        ]);
+        ]]);
 
         try {
-            $cloudinary->uploadApi()->destroy($publicId, ['resource_type' => $resourceType]);
+            $cloudinary->uploadApi()->destroy($asset['public_id'], ['resource_type' => $asset['resource_type']]);
         } catch (\Throwable $exception) {
             Log::warning("Cloudinary deletion failed for {$url}: " . $exception->getMessage());
         }

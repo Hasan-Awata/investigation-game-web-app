@@ -64,6 +64,36 @@ class CaseBundleRoundTripTest extends TestCase
         $this->assertNull($case->getRawOriginal('img_url'));
     }
 
+    public function test_case_map_imports_and_round_trips_as_bundle_media(): void
+    {
+        $this->actingAsAdmin();
+        $manifest = CaseBundleFactory::minimalManifest();
+        $manifest['case']['map'] = 'media/map.png';
+        $bundle = CaseBundleFactory::build($manifest, ['media/map.png' => 'map image bytes']);
+
+        $response = $this->importBundle($bundle);
+        $response->assertStatus(201);
+        $case = GameCase::findOrFail($response->json('case_id'));
+        $this->assertStringContainsString('/assets/cases/', $case->map_url);
+        $this->assertStringContainsString('/Map/', $case->getRawOriginal('map_url'));
+
+        $export = $this->get("/api/admin/cases/{$case->id}/export");
+        $export->assertOk();
+        $zipPath = tempnam(sys_get_temp_dir(), 'map_round_trip_').'.zip';
+        copy($export->baseResponse->getFile()->getPathname(), $zipPath);
+        $zip = new \ZipArchive;
+        $this->assertTrue($zip->open($zipPath) === true);
+        $manifest = json_decode((string) $zip->getFromName('case.json'), true);
+        $this->assertSame('media/map.png', $manifest['case']['map']);
+        $this->assertSame('map image bytes', $zip->getFromName($manifest['case']['map']));
+        $zip->close();
+
+        $case->delete();
+        $reimport = $this->importBundle($zipPath);
+        $reimport->assertStatus(201);
+        $this->assertNotNull(GameCase::findOrFail($reimport->json('case_id'))->getRawOriginal('map_url'));
+    }
+
     public function test_factory_built_bundle_imports(): void
     {
         $this->actingAsAdmin();

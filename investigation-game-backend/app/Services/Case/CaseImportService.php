@@ -128,7 +128,7 @@ class CaseImportService
         $case = GameCase::create([
             'title' => $caseData['title'],
             'story' => $caseData['story'],
-            'map_url' => $caseData['map_url'] ?? null,
+            'map_url' => null,
             'min_player_XP' => $caseData['min_player_XP'] ?? 0,
             'XP_on_solve' => $caseData['XP_on_solve'],
             'max_strikes' => $caseData['max_strikes'] ?? 3,
@@ -144,6 +144,7 @@ class CaseImportService
 
         $case->update([
             'img_url' => $this->resolve($extractDir, $caseData['cover'] ?? null, $caseData['title'], 'Cover', $storeLocally, $case->id),
+            'map_url' => $this->resolve($extractDir, $caseData['map'] ?? null, $caseData['title'], 'Map', $storeLocally, $case->id),
         ]);
 
         $maps = [
@@ -165,7 +166,7 @@ class CaseImportService
                 'is_initial' => (bool) ($evidenceData['is_initial'] ?? false),
                 'is_vital_for_conviction' => (bool) ($evidenceData['is_vital_for_conviction'] ?? false),
                 'img_url' => $this->resolve($extractDir, $evidenceData['img'] ?? null, $caseData['title'], 'Evidences', $storeLocally, $case->id),
-                'audio_url' => $this->resolve($extractDir, $evidenceData['audio'] ?? null, $caseData['title'], 'Evidences', $storeLocally, $case->id),
+                'audio_url' => $this->resolve($extractDir, $evidenceData['audio'] ?? null, $caseData['title'], 'Evidences', $storeLocally, $case->id, isAudio: true),
             ]);
 
             $this->mapRef($maps, 'evidence', $evidenceData['ref_id'] ?? null, $evidence->id);
@@ -370,9 +371,10 @@ class CaseImportService
         string $caseTitle,
         string $subfolder,
         bool $storeLocally,
-        ?int $caseId = null
+        ?int $caseId = null,
+        bool $isAudio = false
     ): ?string {
-        return $this->mediaResolver->resolve($extractDir, $relPath, $caseTitle, $subfolder, $storeLocally, $caseId);
+        return $this->mediaResolver->resolve($extractDir, $relPath, $caseTitle, $subfolder, $storeLocally, $caseId, $isAudio);
     }
 
     /**

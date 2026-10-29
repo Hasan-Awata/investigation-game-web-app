@@ -72,7 +72,7 @@ export default function LevelForm() {
         </>
       )}
     >
-      <form onSubmit={(e) => handleSubmit(e, { image })} className={adminDashboard['admin-form']}>
+      <form id="admin-entity-form" onSubmit={(e) => handleSubmit(e, { image })} className={adminDashboard['admin-form']}>
         <AdminRow>
           <AdminSelect 
             label="Target Zone" 

@@ -4,33 +4,27 @@ namespace Tests\Feature\Admin\Concerns;
 
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
 
 trait ImportsCaseBundles
 {
     use ActsAsAdmin;
 
-    /**
-     * Case slugs whose local media the bundle tests write into public/assets.
-     */
-    private const TEST_CASE_SLUGS = [
-        'the-vanishing-at-pier-9',
-        'minimal-case',
-        'factory-case',
-        'ghost-media-case',
-    ];
+    private string $mediaRoot;
 
-    protected function tearDown(): void
+    protected function setUpImportsCaseBundles(): void
     {
-        foreach (self::TEST_CASE_SLUGS as $slug) {
-            $directory = public_path("assets/cases/{$slug}");
+        $this->mediaRoot = sys_get_temp_dir() . '/case-media-' . Str::uuid();
+        File::ensureDirectoryExists($this->mediaRoot);
+        $this->app->usePublicPath($this->mediaRoot);
+    }
 
-            if (is_dir($directory)) {
-                File::deleteDirectory($directory);
-            }
+    protected function tearDownImportsCaseBundles(): void
+    {
+        if (isset($this->mediaRoot)) {
+            File::deleteDirectory($this->mediaRoot);
         }
-
-        parent::tearDown();
     }
 
     protected function importBundle(string $zipPath, bool $storeLocally = true): TestResponse

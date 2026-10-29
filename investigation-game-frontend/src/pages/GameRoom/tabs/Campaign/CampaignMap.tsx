@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 import type { Zone } from '@/types';
 import ZoneCard from './ZoneCard';
+import { assetUrl } from '@/utils/assetUrl';
 import campaignMap from './CampaignMap.module.css';
 
 interface CampaignMapProps {
@@ -90,7 +91,7 @@ export default function CampaignMap({ zones, unlockedLevelIds, onEnterZone, mapI
           >
             <div className={campaignMap['custom-map-canvas']}>
               <img
-                src={mapImageUrl || '/Maps/tactical-damascus-blueprint.png'}
+                src={mapImageUrl ? assetUrl(mapImageUrl) : assetUrl('/Maps/tactical-damascus-blueprint.png')}
                 alt="Tactical Region Map"
                 className={campaignMap['custom-map-image']}
                 onLoad={() => {

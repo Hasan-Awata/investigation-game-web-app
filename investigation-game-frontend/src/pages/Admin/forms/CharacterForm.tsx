@@ -73,7 +73,7 @@ export default function CharacterForm() {
       contextMissing={contextMissing}
       submitLabel={submitLabel}
     >
-      <form onSubmit={(e) => handleSubmit(e, { image })} className={adminDashboard['admin-form']}>
+      <form id="admin-entity-form" onSubmit={(e) => handleSubmit(e, { image })} className={adminDashboard['admin-form']}>
         <AdminCheckbox checked={formData.is_initial} onChange={(e) => updateField('is_initial', e.target.checked)} labelTitle={t.initialCharacterLabel} description={t.initialCharacterDesc} className={adminForms['status-live']} />
         <AdminCheckbox checked={formData.is_guilty} onChange={(e) => updateField('is_guilty', e.target.checked)} labelTitle={t.guiltyVerdictLabel} description={t.guiltyVerdictDesc} className={adminForms['status-draft']} />
         

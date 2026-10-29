@@ -31,7 +31,6 @@ class AdminCaseController extends Controller
         $case = DB::transaction(fn () => GameCase::create([
             'title' => $validated['title'],
             'story' => $validated['story'],
-            'map_url' => $validated['map_url'] ?? null,
             'min_player_XP' => $validated['min_player_XP'],
             'XP_on_solve' => $validated['XP_on_solve'],
             'max_strikes' => $validated['max_strikes'],
@@ -81,7 +80,6 @@ class AdminCaseController extends Controller
         $updateData = [
             'title' => $validated['title'],
             'story' => $validated['story'],
-            'map_url' => $validated['map_url'] ?? null,
             'min_player_XP' => $validated['min_player_XP'],
             'XP_on_solve' => $validated['XP_on_solve'],
             'max_strikes' => $validated['max_strikes'],
@@ -112,6 +110,7 @@ class AdminCaseController extends Controller
         $case->load(['levels.questions', 'evidences', 'characters']);
 
         $cover = $case->getRawOriginal('img_url');
+        $map = $case->getRawOriginal('map_url');
         $evidenceMedia = [];
         $evidenceMetadata = [];
         $levelMedia = [];
@@ -139,7 +138,7 @@ class AdminCaseController extends Controller
         // Database cascadeOnDelete handles the actual row removals.
         DB::transaction(fn () => $case->delete());
 
-        foreach (array_merge([$cover], $evidenceMedia, $levelMedia, $questionMedia, $characterMedia) as $url) {
+        foreach (array_merge([$cover, $map], $evidenceMedia, $levelMedia, $questionMedia, $characterMedia) as $url) {
             $this->mediaService->delete($url);
         }
 

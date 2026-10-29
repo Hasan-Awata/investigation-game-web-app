@@ -72,7 +72,8 @@ class CaseBundleMediaResolver
         string $caseTitle,
         string $subfolder,
         bool $storeLocally,
-        ?int $caseId = null
+        ?int $caseId = null,
+        bool $isAudio = false
     ): ?string {
         if ($relPath === null || $relPath === '') {
             return null;
@@ -92,7 +93,8 @@ class CaseBundleMediaResolver
             $caseTitle,
             $subfolder,
             $storeLocally,
-            $caseId
+            $caseId,
+            $isAudio
         );
     }
 
@@ -102,13 +104,7 @@ class CaseBundleMediaResolver
      */
     public function archiveLocal(?string $url): ?string
     {
-        if (! $url || ! str_starts_with($url, '/assets/')) {
-            return null;
-        }
-
-        $path = public_path(ltrim($url, '/'));
-
-        return is_file($path) ? $path : null;
+        return $this->mediaService->localPath($url, allowShipped: true);
     }
 
     /**
