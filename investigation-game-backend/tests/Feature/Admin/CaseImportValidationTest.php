@@ -27,6 +27,146 @@ class CaseImportValidationTest extends TestCase
         Storage::fake('local');
     }
 
+    #[DataProvider('malformedFields')]
+    public function test_malformed_fields_are_rejected_before_persistence(string $field, mixed $value): void
+    {
+        $manifest = CaseBundleFactory::minimalManifest([
+            'evidences' => [['title' => 'Photo', 'evidence_type' => 'image']],
+            'characters' => [['name' => 'Witness']],
+            'investigation_requests' => [['request_type' => 'dna_test']],
+        ]);
+        data_set($manifest, $field, $value);
+        GameCase::creating(fn () => $this->fail('Malformed manifests must not reach persistence.'));
+        $path = CaseBundleFactory::build($manifest);
+
+        try {
+            $this->importBundle($path)->assertUnprocessable()->assertJsonValidationErrors($field);
+            $this->assertDatabaseCount('cases', 0);
+            $this->assertDirectoryDoesNotExist(public_path('assets/cases'));
+            $this->assertSame([], Storage::disk('local')->allFiles());
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public static function malformedFields(): iterable
+    {
+        $choice = 'zones.0.levels.0.nodes.0.choices.0';
+        foreach (['evidences.0.ref_id', 'characters.0.ref_id', 'investigation_requests.0.ref_id',
+            'zones.0.levels.0.ref_id', "{$choice}.ref_id"] as $field) {
+            foreach ([['bad'], 42, true] as $value) {
+                yield $field.' '.json_encode($value) => [$field, $value];
+            }
+        }
+        foreach (['evidences', 'characters', 'investigation_requests', 'zones', 'zones.0.levels',
+            'zones.0.levels.0.nodes', 'zones.0.levels.0.nodes.0.choices',
+            'investigation_requests.0.required_evidence_refs', 'investigation_requests.0.required_character_refs',
+            "{$choice}.outcomes.unlock_evidence_refs", "{$choice}.outcomes.unlock_levels_refs",
+            "{$choice}.outcomes.unlock_location_point_refs", "{$choice}.outcomes.character_updates",
+            "{$choice}.requirements.required_evidence_refs", "{$choice}.requirements.required_choice_refs"] as $field) {
+            yield $field => [$field, 'invalid collection'];
+        }
+        foreach (['case', 'evidences.0', 'characters.0', 'investigation_requests.0', 'zones.0',
+            'zones.0.levels.0', 'zones.0.levels.0.nodes.0', $choice,
+            "{$choice}.outcomes", "{$choice}.requirements", "{$choice}.outcomes.character_updates.0"] as $field) {
+            yield $field => [$field, 'invalid object'];
+        }
+        foreach (['evidences.0.description', 'characters.0.background', 'zones.0.description',
+            'characters.0.is_initial', 'characters.0.is_guilty', 'evidences.0.evidence_type',
+            "{$choice}.text", "{$choice}.outcomes.feedback", "{$choice}.outcomes.gives_strike",
+            "{$choice}.outcomes.character_updates.0.ref_id", "{$choice}.outcomes.character_updates.0.is_unlocked",
+            "{$choice}.outcomes.character_updates.0.status", 'investigation_requests.0.required_evidence_refs.0',
+            "{$choice}.requirements.required_choice_refs.0"] as $field) {
+            yield $field => [$field, ['invalid value']];
+        }
+        yield 'missing update reference' => ["{$choice}.outcomes.character_updates.0.ref_id", null];
+        yield 'invalid update status' => ["{$choice}.outcomes.character_updates.0.status", 'bogus'];
+        yield 'node keys must be indexes' => ['zones.0.levels.0.nodes', ['node' => ['text' => 'Hello']]];
+        foreach ([-1, 1, 1.5, true, false, 1.0, '0', 'missing', [0]] as $value) {
+            yield 'next index '.json_encode($value, JSON_PRESERVE_ZERO_FRACTION) => ["{$choice}.outcomes.next_question_index", $value];
+        }
+    }
+
+    #[DataProvider('invalidManifestRoots')]
+    public function test_invalid_manifest_roots_return_422(string $json, string $field): void
+    {
+        $path = CaseBundleFactory::build([]);
+        $zip = new ZipArchive;
+        $zip->open($path);
+        $zip->addFromString('case.json', $json);
+        $zip->close();
+        GameCase::creating(fn () => $this->fail('Invalid JSON must not reach persistence.'));
+        try {
+            $this->importBundle($path)->assertUnprocessable()->assertJsonValidationErrors($field);
+            $this->assertDatabaseCount('cases', 0);
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public static function invalidManifestRoots(): array
+    {
+        return [
+            ['{broken', 'file'], ['null', 'file'], ['42', 'file'], ['"text"', 'file'],
+            ['[]', 'case'], ['{"format_version":1}', 'case'],
+        ];
+    }
+
+    public function test_legacy_node_audio_is_explicitly_rejected(): void
+    {
+        GameCase::creating(fn () => $this->fail('Unsupported audio must not reach persistence.'));
+        $response = $this->importBundle(self::FIXTURES.'/legacy-node-audio.zip')->assertUnprocessable()
+            ->assertJsonValidationErrors('zones.0.levels.1.nodes.0.audio');
+        $this->assertStringContainsString('Node audio is not supported', $response->getContent());
+        $this->assertDatabaseCount('cases', 0);
+    }
+
+    public function test_navigation_cannot_target_a_node_in_another_level(): void
+    {
+        $manifest = CaseBundleFactory::minimalManifest();
+        $manifest['zones'][0]['levels'][1] = $manifest['zones'][0]['levels'][0];
+        $manifest['zones'][0]['levels'][1]['ref_id'] = 'second';
+        $manifest['zones'][0]['levels'][1]['nodes'] = [['text' => 'First'], ['text' => 'Second']];
+        $manifest['zones'][0]['levels'][0]['nodes'][0]['choices'][0]['outcomes'] = ['next_question_index' => 1];
+        $path = CaseBundleFactory::build($manifest);
+        try {
+            $this->importBundle($path)->assertUnprocessable()
+                ->assertJsonValidationErrors('zones.0.levels.0.nodes.0.choices.0.outcomes.next_question_index');
+            $this->assertDatabaseCount('cases', 0);
+        } finally {
+            unlink($path);
+        }
+    }
+
+    #[DataProvider('malformedDocumentBlocks')]
+    public function test_malformed_documents_return_422_before_persistence(array $blocks): void
+    {
+        $manifest = CaseBundleFactory::minimalManifest([
+            'evidences' => [['title' => 'Document', 'evidence_type' => 'document', 'metadata' => ['doc' => ['blocks' => $blocks]]]],
+        ]);
+        GameCase::creating(fn () => $this->fail('Malformed metadata must not reach persistence.'));
+        $path = CaseBundleFactory::build($manifest);
+        try {
+            $this->importBundle($path)->assertUnprocessable()->assertJsonValidationErrors('evidences.0.metadata');
+            $this->assertDatabaseCount('cases', 0);
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public static function malformedDocumentBlocks(): array
+    {
+        return [
+            [[['type' => 'prose']]],
+            [[['type' => 'prose', 'props' => ['html' => ['invalid']]]]],
+            [[['type' => 'image', 'props' => []]]],
+            [[['type' => 'image', 'props' => ['url' => '']]]],
+            [[['type' => 'two_column', 'props' => ['left' => 'invalid', 'right' => []]]]],
+            [[['type' => 'two_column', 'props' => ['left' => [['type' => 'image', 'props' => ['url' => null]]], 'right' => []]]]],
+            [[['type' => 'two_column', 'props' => ['left' => [], 'right' => [['type' => 'unknown', 'props' => []]]]]]],
+        ];
+    }
+
     public function test_missing_title_returns_422(): void
     {
         $manifest = CaseBundleFactory::minimalManifest();

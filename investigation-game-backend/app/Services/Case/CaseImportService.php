@@ -518,8 +518,10 @@ class CaseImportService
             $mapped['gives_strike'] = (bool) $outcomes['gives_strike'];
         }
 
-        if (isset($outcomes['next_question_index'])) {
-            $mapped['next_question_id'] = $nodeIndexToQuestion[$outcomes['next_question_index']] ?? null;
+        if (array_key_exists('next_question_index', $outcomes)) {
+            $mapped['next_question_id'] = $outcomes['next_question_index'] === null
+                ? null
+                : $nodeIndexToQuestion[$outcomes['next_question_index']];
         }
 
         if (! empty($outcomes['unlock_evidence_refs'])) {
@@ -542,7 +544,7 @@ class CaseImportService
 
                 $row = ['id' => $characterId];
 
-                if (array_key_exists('is_unlocked', $update)) {
+                if (isset($update['is_unlocked'])) {
                     $row['is_unlocked'] = (bool) $update['is_unlocked'];
                 }
                 if (array_key_exists('status', $update)) {

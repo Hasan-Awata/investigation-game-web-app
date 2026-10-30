@@ -82,8 +82,8 @@ class CaseExportTest extends TestCase
 
         $zip = $this->openExport($case);
 
-        // case.json + 7 media assets (cover, 2 evidences, 1 character, 1 level, 2 nodes).
-        $this->assertSame(8, $zip->numFiles);
+        // case.json + 6 supported assets (cover, evidence image/audio, character, level, node image).
+        $this->assertSame(7, $zip->numFiles);
 
         $manifest = json_decode((string) $zip->getFromName('case.json'), true);
         $this->assertSame(1, $manifest['format_version']);
@@ -104,7 +104,8 @@ class CaseExportTest extends TestCase
         };
         $collect($manifest);
 
-        $this->assertNotEmpty($mediaRefs);
+        $this->assertCount(6, array_unique($mediaRefs));
+        $this->assertSame('<p>Lab report.</p>', $manifest['evidences'][0]['metadata']['doc']['blocks'][0]['props']['html']);
 
         foreach ($mediaRefs as $ref) {
             $this->assertNotFalse($zip->locateName($ref), "Missing archived media entry: {$ref}");

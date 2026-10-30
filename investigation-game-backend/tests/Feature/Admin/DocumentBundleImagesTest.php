@@ -232,7 +232,7 @@ class DocumentBundleImagesTest extends TestCase
         $this->putJson("/api/admin/evidences/{$document->id}", [
             'case_id' => $case->id, 'title' => 'Document', 'evidence_type' => 'document',
             'is_initial' => false, 'is_vital_for_conviction' => false, 'store_locally' => true,
-            'metadata' => ['doc' => ['blocks' => [['type' => 'prose', 'props' => ['text' => 'No images']]]]],
+            'metadata' => ['doc' => ['blocks' => [['type' => 'prose', 'props' => ['html' => 'No images']]]]],
         ])->assertOk();
         $this->assertFileExists(public_path($url));
         $this->assertFileExists(public_path($unused));

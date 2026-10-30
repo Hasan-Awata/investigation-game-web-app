@@ -7,8 +7,10 @@ use App\Enums\EvidenceType;
 use Closure;
 use Illuminate\Contracts\Validation\DataAwareRule;
 use Illuminate\Contracts\Validation\ValidationRule;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Translation\PotentiallyTranslatedString;
 
-class EvidenceMetadataMatchesType implements ValidationRule, DataAwareRule
+class EvidenceMetadataMatchesType implements DataAwareRule, ValidationRule
 {
     private const DOC_BLOCK_TYPES = [
         'letterhead', 'meta_grid', 'prose', 'two_column', 'table', 'list',
@@ -35,14 +37,15 @@ class EvidenceMetadataMatchesType implements ValidationRule, DataAwareRule
     /**
      * Run the validation rule.
      *
-     * @param  \Closure(string, ?string=): \Illuminate\Translation\PotentiallyTranslatedString  $fail
+     * @param  Closure(string, ?string=): PotentiallyTranslatedString  $fail
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
         $evidenceTypeStr = $this->explicitType ?? ($this->data['evidence_type'] ?? null);
 
-        if (!$evidenceTypeStr) {
+        if (! $evidenceTypeStr) {
             $fail('The evidence_type is required to validate metadata.');
+
             return;
         }
 
@@ -50,14 +53,16 @@ class EvidenceMetadataMatchesType implements ValidationRule, DataAwareRule
             $evidenceType = EvidenceType::from($evidenceTypeStr);
         } catch (\ValueError) {
             $fail('The evidence_type is required to validate metadata.');
+
             return;
         }
 
         $surface = $evidenceType->surface();
         if (is_string($value)) {
             $decodedObject = json_decode($value);
-            if (json_last_error() !== JSON_ERROR_NONE || !is_object($decodedObject)) {
+            if (json_last_error() !== JSON_ERROR_NONE || ! is_object($decodedObject)) {
                 $fail('The metadata must be a valid JSON object.');
+
                 return;
             }
 
@@ -71,8 +76,9 @@ class EvidenceMetadataMatchesType implements ValidationRule, DataAwareRule
             $metadata = (array) $metadata;
         }
 
-        if (!is_array($metadata)) {
+        if (! is_array($metadata)) {
             $fail('The metadata field must be a valid JSON object.');
+
             return;
         }
 
@@ -86,6 +92,7 @@ class EvidenceMetadataMatchesType implements ValidationRule, DataAwareRule
 
         if ($foreignKey && isset($metadata[$foreignKey])) {
             $fail("A {$evidenceType->value} evidence cannot carry metadata.{$foreignKey}.");
+
             return;
         }
 
@@ -99,8 +106,9 @@ class EvidenceMetadataMatchesType implements ValidationRule, DataAwareRule
                 $doc = (array) $doc;
             }
 
-            if (!is_array($doc) || $doc === []) {
+            if (! is_array($doc) || $doc === []) {
                 $fail("A {$evidenceType->value} evidence requires a {$key} envelope.");
+
                 return;
             }
 
@@ -110,26 +118,90 @@ class EvidenceMetadataMatchesType implements ValidationRule, DataAwareRule
                 default => [],
             };
 
-            if (!is_array($doc['blocks'] ?? null) || empty($doc['blocks'])) {
+            if (! is_array($doc['blocks'] ?? null) || empty($doc['blocks']) || ! array_is_list($doc['blocks'])) {
                 $fail("A {$evidenceType->value} evidence needs at least one block.");
+
                 return;
             }
 
-            foreach ($doc['blocks'] as $i => $b) {
-                // Handle both array and object (stdClass) structures
-                if (is_object($b)) {
-                    $b = (array) $b;
+            $this->validateBlocks($doc['blocks'], $allowedBlocks, $fail, "{$key}.blocks");
+        }
+    }
+
+    private function validateBlocks(array $blocks, array $allowedBlocks, Closure $fail, string $path, int $depth = 0): void
+    {
+        if ($depth > 32) {
+            $fail("{$path}: Blocks may not be nested more than 32 levels deep.");
+
+            return;
+        }
+
+        foreach ($blocks as $i => $block) {
+            $block = is_object($block) ? (array) $block : $block;
+            $blockPath = "{$path}.{$i}";
+            if (! is_array($block) || ! in_array($block['type'] ?? null, $allowedBlocks, true)) {
+                $fail("{$blockPath}: Block must have a supported type.");
+
+                continue;
+            }
+
+            $rules = match ($block['type']) {
+                'prose' => ['html' => ['present', 'string']],
+                'image' => ['url' => ['required', 'string']],
+                'two_column' => ['left' => ['present', 'array', 'list'], 'right' => ['present', 'array', 'list']],
+                'meta_grid' => [
+                    'rows' => ['present', 'array', 'list'], 'rows.*' => ['array'],
+                    'rows.*.label' => ['present', 'string'], 'rows.*.value' => ['present', 'string'],
+                ],
+                'table' => [
+                    'columns' => ['present', 'array', 'list'], 'columns.*' => ['array'],
+                    'columns.*.key' => ['required', 'string'], 'columns.*.label' => ['present', 'string'],
+                    'rows' => ['present', 'array', 'list'], 'rows.*' => ['array'],
+                ],
+                'list' => ['items' => ['present', 'array', 'list'], 'items.*' => ['string']],
+                'signature_row' => [
+                    'columns' => ['present', 'array', 'list'], 'columns.*' => ['array'],
+                    'columns.*.caption' => ['present', 'string'],
+                ],
+                'stamp', 'watermark', 'annotation' => ['text' => ['present', 'string']],
+                'barcode' => ['value' => ['present', 'string']],
+                'diagram' => ['preset' => ['required', 'in:body_outline,fingerprint,electropherogram,mass_spec']],
+                'spacer' => ['height' => ['required', 'numeric', 'min:0']],
+                'prompt_line' => [
+                    'prompt' => ['present', 'string'], 'command' => ['present', 'string'],
+                    'output' => ['present', 'array', 'list'], 'output.*' => ['string'],
+                ],
+                'output_stream' => ['lines' => ['present', 'array', 'list'], 'lines.*' => ['string']],
+                'status_banner' => ['text' => ['present', 'string'], 'tone' => ['required', 'in:info,ok,warn,critical']],
+                'file_tree' => [
+                    'entries' => ['present', 'array', 'list'], 'entries.*' => ['array'],
+                    'entries.*.path' => ['required', 'string'], 'entries.*.kind' => ['required', 'in:file,dir,symlink,deleted'],
+                    'entries.*.size' => ['sometimes', 'string'], 'entries.*.mtime' => ['sometimes', 'string'],
+                ],
+                'letterhead' => array_fill_keys(['agency', 'title', 'sub', 'aside', 'asideLabel'], ['sometimes', 'string']),
+                'redaction' => ['lines' => ['sometimes', 'integer', 'min:0'], 'label' => ['sometimes', 'string']],
+                'rule' => ['variant' => ['sometimes', 'in:solid,dashed,dotted,double']],
+            };
+
+            $props = $block['props'] ?? null;
+            $props = is_object($props) ? (array) $props : $props;
+            $validator = Validator::make(['props' => $props], ['props' => ['present', 'array']]);
+            if ($validator->fails() || ($props !== [] && array_is_list($props))) {
+                $fail("{$blockPath}.props: Block props must be an object.");
+
+                continue;
+            }
+
+            $validator = Validator::make($props, $rules);
+            foreach ($validator->errors()->toArray() as $field => $messages) {
+                foreach ($messages as $message) {
+                    $fail("{$blockPath}.props.{$field}: {$message}");
                 }
+            }
 
-                if (!is_array($b) || !is_string($b['type'] ?? null)) {
-                    $fail("Block #{$i} must be an object with a valid type.");
-                    continue;
-                }
-
-                $blockType = $b['type'];
-
-                if (!in_array($blockType, $allowedBlocks, true)) {
-                    $fail("Block #{$i} type '{$blockType}' is not valid for a {$evidenceType->value} evidence.");
+            if ($block['type'] === 'two_column' && ! $validator->fails()) {
+                foreach (['left', 'right'] as $column) {
+                    $this->validateBlocks($props[$column], $allowedBlocks, $fail, "{$blockPath}.props.{$column}", $depth + 1);
                 }
             }
         }

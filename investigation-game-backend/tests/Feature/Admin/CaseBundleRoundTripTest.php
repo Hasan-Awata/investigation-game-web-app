@@ -15,6 +15,48 @@ class CaseBundleRoundTripTest extends TestCase
 
     private const FIXTURES = __DIR__.'/../../Fixtures/case-bundles';
 
+    public function test_navigation_preserves_absent_null_zero_forward_and_backward_indexes(): void
+    {
+        $this->actingAsAdmin();
+        $manifest = CaseBundleFactory::minimalManifest([
+            'characters' => [['ref_id' => 'witness', 'name' => 'Witness']],
+        ]);
+        $manifest['zones'][0]['levels'][0]['nodes'] = [
+            ['text' => 'First', 'choices' => [
+                ['text' => 'Absent', 'outcomes' => []],
+                ['text' => 'Terminal', 'outcomes' => ['next_question_index' => null]],
+                ['text' => 'Self', 'outcomes' => ['next_question_index' => 0]],
+                ['text' => 'Forward', 'outcomes' => ['next_question_index' => 1, 'character_updates' => [['ref_id' => 'witness', 'status' => 'fled']]]],
+            ]],
+            ['text' => 'Second', 'choices' => [['text' => 'Back', 'outcomes' => ['next_question_index' => 0]]]],
+        ];
+        $bundle = CaseBundleFactory::build($manifest);
+        try {
+            for ($attempt = 0; $attempt < 2; $attempt++) {
+                $response = $this->importBundle($bundle)->assertCreated();
+                $case = GameCase::findOrFail($response->json('case_id'));
+                $questions = $case->levels()->firstOrFail()->questions()->with('choices')->orderBy('order_index')->get();
+                $choices = $questions[0]->choices->keyBy('text');
+                $this->assertArrayNotHasKey('next_question_id', $choices['Absent']->outcomes ?? []);
+                $this->assertArrayHasKey('next_question_id', $choices['Terminal']->outcomes);
+                $this->assertNull($choices['Terminal']->outcomes['next_question_id']);
+                $this->assertSame($questions[0]->id, $choices['Self']->outcomes['next_question_id']);
+                $this->assertSame($questions[1]->id, $choices['Forward']->outcomes['next_question_id']);
+                $this->assertSame($questions[0]->id, $questions[1]->choices[0]->outcomes['next_question_id']);
+                $this->assertArrayNotHasKey('is_unlocked', $choices['Forward']->outcomes['character_updates'][0]);
+                $this->assertSame('fled', $choices['Forward']->outcomes['character_updates'][0]['status']);
+                if ($attempt === 0) {
+                    $export = $this->get("/api/admin/cases/{$case->id}/export")->assertOk();
+                    unlink($bundle);
+                    $bundle = $export->baseResponse->getFile()->getPathname();
+                    $case->delete();
+                }
+            }
+        } finally {
+            unlink($bundle);
+        }
+    }
+
     public function test_full_bundle_import_export_reimport_round_trips(): void
     {
         $this->actingAsAdmin();

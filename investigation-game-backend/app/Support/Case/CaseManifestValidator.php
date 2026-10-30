@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  *
  * Validation is exhaustive: structural rules, metadata envelopes, media paths,
  * duplicate `ref_id`s, and all cross-`*_ref` resolution are accumulated across
- * every entity in a single pass, and any failure throws one `ValidationException`
+ * every entity after structural validation, and any failure throws one `ValidationException`
  * carrying errors keyed by their exact manifest dot-path. Nothing is a warning;
  * an import that reaches the database has already passed every check.
  */
@@ -39,9 +39,11 @@ class CaseManifestValidator
      */
     public function validate(array $manifest, string $extractDir): void
     {
-        $validator = Validator::make($manifest, $this->rules());
+        Validator::make($manifest, $this->rules(), [
+            'zones.*.levels.*.nodes.*.audio.prohibited' => 'Node audio is not supported. Use audio evidence instead.',
+        ])->validate();
 
-        $errors = $validator->errors()->toArray();
+        $errors = [];
         $errors = array_merge_recursive($errors, $this->validateLegacyMapUrl($manifest));
         $errors = array_merge_recursive($errors, $this->validateZoneMapUrls($manifest));
         $errors = array_merge_recursive($errors, $this->validateEvidenceMetadata($manifest));
@@ -73,43 +75,54 @@ class CaseManifestValidator
             'case.age_rating' => ['nullable', 'string', 'max:50'],
             'case.estimated_playtime' => ['nullable', 'string', 'max:100'],
             'case.difficulty' => ['nullable', 'string', 'max:50'],
-            'case.tags' => ['nullable', 'array'],
+            'case.tags' => ['nullable', 'array', 'list'],
             'case.tags.*' => ['string'],
             'case.author_name' => ['nullable', 'string', 'max:100'],
             'case.is_published' => ['nullable', 'boolean'],
 
-            'evidences' => ['nullable', 'array'],
+            'evidences' => ['nullable', 'array', 'list'],
             'evidences.*' => ['array'],
+            'evidences.*.ref_id' => ['nullable', 'string'],
             'evidences.*.title' => ['required', 'string', 'max:255'],
+            'evidences.*.description' => ['nullable', 'string'],
             'evidences.*.evidence_type' => ['required', new Enum(EvidenceType::class)],
             'evidences.*.is_initial' => ['nullable', 'boolean'],
             'evidences.*.is_vital_for_conviction' => ['nullable', 'boolean'],
             'evidences.*.img' => ['nullable', 'string'],
             'evidences.*.audio' => ['nullable', 'string'],
 
-            'characters' => ['nullable', 'array'],
+            'characters' => ['nullable', 'array', 'list'],
             'characters.*' => ['array'],
+            'characters.*.ref_id' => ['nullable', 'string'],
             'characters.*.name' => ['required', 'string', 'max:255'],
+            'characters.*.background' => ['nullable', 'string'],
+            'characters.*.is_initial' => ['nullable', 'boolean'],
+            'characters.*.is_guilty' => ['nullable', 'boolean'],
             'characters.*.default_status' => ['nullable', new Enum(CharacterStatus::class)],
             'characters.*.charge' => ['nullable', new Enum(CharacterCharge::class)],
             'characters.*.img' => ['nullable', 'string'],
 
-            'investigation_requests' => ['nullable', 'array'],
+            'investigation_requests' => ['nullable', 'array', 'list'],
             'investigation_requests.*' => ['array'],
+            'investigation_requests.*.ref_id' => ['nullable', 'string'],
             'investigation_requests.*.request_type' => ['required', new Enum(InvestigationRequestType::class)],
             'investigation_requests.*.unlocks_evidence_ref' => ['nullable', 'string'],
             'investigation_requests.*.unlocks_level_ref' => ['nullable', 'string'],
-            'investigation_requests.*.required_evidence_refs' => ['nullable', 'array'],
-            'investigation_requests.*.required_character_refs' => ['nullable', 'array'],
+            'investigation_requests.*.required_evidence_refs' => ['nullable', 'array', 'list'],
+            'investigation_requests.*.required_evidence_refs.*' => ['required', 'string'],
+            'investigation_requests.*.required_character_refs' => ['nullable', 'array', 'list'],
+            'investigation_requests.*.required_character_refs.*' => ['required', 'string'],
 
-            'zones' => ['nullable', 'array'],
+            'zones' => ['nullable', 'array', 'list'],
             'zones.*' => ['array'],
             'zones.*.title' => ['required', 'string', 'max:255'],
+            'zones.*.description' => ['nullable', 'string'],
             'zones.*.order_index' => ['required', 'integer', 'min:1'],
             'zones.*.coord_x' => ['nullable', 'numeric'],
             'zones.*.coord_y' => ['nullable', 'numeric'],
-            'zones.*.levels' => ['nullable', 'array'],
+            'zones.*.levels' => ['nullable', 'array', 'list'],
             'zones.*.levels.*' => ['array'],
+            'zones.*.levels.*.ref_id' => ['nullable', 'string'],
             'zones.*.levels.*.title' => ['required', 'string', 'max:255'],
             'zones.*.levels.*.details' => ['required', 'string'],
             'zones.*.levels.*.order_index' => ['required', 'integer', 'min:1'],
@@ -117,16 +130,36 @@ class CaseManifestValidator
             'zones.*.levels.*.presentation_type' => ['required', Rule::in(['interrogation', 'location'])],
             'zones.*.levels.*.required_request_ref' => ['nullable', 'string'],
             'zones.*.levels.*.img' => ['nullable', 'string'],
-            'zones.*.levels.*.nodes' => ['nullable', 'array'],
+            'zones.*.levels.*.nodes' => ['nullable', 'array', 'list'],
             'zones.*.levels.*.nodes.*' => ['array'],
             'zones.*.levels.*.nodes.*.order_index' => ['nullable', 'integer', 'min:0'],
             'zones.*.levels.*.nodes.*.text' => ['required', 'string'],
             'zones.*.levels.*.nodes.*.img' => ['nullable', 'string'],
-            'zones.*.levels.*.nodes.*.choices' => ['nullable', 'array'],
+            'zones.*.levels.*.nodes.*.audio' => ['prohibited'],
+            'zones.*.levels.*.nodes.*.choices' => ['nullable', 'array', 'list'],
             'zones.*.levels.*.nodes.*.choices.*' => ['array'],
+            'zones.*.levels.*.nodes.*.choices.*.ref_id' => ['nullable', 'string'],
             'zones.*.levels.*.nodes.*.choices.*.text' => ['required', 'string', 'max:255'],
             'zones.*.levels.*.nodes.*.choices.*.outcomes' => ['nullable', 'array'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.feedback' => ['nullable', 'string'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.gives_strike' => ['sometimes', 'boolean'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.next_question_index' => ['nullable', 'integer:strict', 'min:0'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.unlock_evidence_refs' => ['nullable', 'array', 'list'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.unlock_evidence_refs.*' => ['required', 'string'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.unlock_levels_refs' => ['nullable', 'array', 'list'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.unlock_levels_refs.*' => ['required', 'string'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.unlock_location_point_refs' => ['nullable', 'array', 'list'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.unlock_location_point_refs.*' => ['required', 'string'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.character_updates' => ['nullable', 'array', 'list'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.character_updates.*' => ['array'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.character_updates.*.ref_id' => ['required', 'string'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.character_updates.*.is_unlocked' => ['nullable', 'boolean'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.character_updates.*.status' => ['nullable', new Enum(CharacterStatus::class)],
             'zones.*.levels.*.nodes.*.choices.*.requirements' => ['nullable', 'array'],
+            'zones.*.levels.*.nodes.*.choices.*.requirements.required_evidence_refs' => ['nullable', 'array', 'list'],
+            'zones.*.levels.*.nodes.*.choices.*.requirements.required_evidence_refs.*' => ['required', 'string'],
+            'zones.*.levels.*.nodes.*.choices.*.requirements.required_choice_refs' => ['nullable', 'array', 'list'],
+            'zones.*.levels.*.nodes.*.choices.*.requirements.required_choice_refs.*' => ['required', 'string'],
         ];
     }
 
@@ -457,6 +490,11 @@ class CaseManifestValidator
                         $choiceBase = "{$levelBase}.nodes.{$n}.choices.{$c}";
                         $outcomes = is_array($choice['outcomes'] ?? null) ? $choice['outcomes'] : [];
                         $requirements = is_array($choice['requirements'] ?? null) ? $choice['requirements'] : [];
+
+                        if (isset($outcomes['next_question_index'])
+                            && ! array_key_exists($outcomes['next_question_index'], $level['nodes'] ?? [])) {
+                            $errors["{$choiceBase}.outcomes.next_question_index"][] = 'The next question index must reference a node in the same level.';
+                        }
 
                         foreach ($outcomes['unlock_evidence_refs'] ?? [] as $j => $ref) {
                             $check($ref, 'evidence', "{$choiceBase}.outcomes.unlock_evidence_refs.{$j}");
