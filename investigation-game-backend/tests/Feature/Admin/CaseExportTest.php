@@ -8,7 +8,6 @@ use GuzzleHttp\Psr7\Response;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
-use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Http;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -31,9 +30,7 @@ class CaseExportTest extends TestCase
 
         $this->actingAsAdmin();
 
-        $previousCloud = env('CLOUDINARY_CLOUD_NAME');
-        Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', 'export-cloud');
-        $this->beforeApplicationDestroyed(fn () => Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', $previousCloud));
+        config(['filesystems.disks.cloudinary.cloud' => 'export-cloud']);
         Http::preventStrayRequests();
     }
 
@@ -242,7 +239,7 @@ class CaseExportTest extends TestCase
     #[DataProvider('unapprovedRemoteUrls')]
     public function test_unapproved_remote_media_is_rejected_before_requesting(string $url, string $cloud = 'export-cloud'): void
     {
-        Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', $cloud);
+        config(['filesystems.disks.cloudinary.cloud' => $cloud]);
         Http::fake();
         $case = GameCase::create([
             'title' => 'Unapproved remote media', 'story' => 'Story', 'XP_on_solve' => 10, 'img_url' => $url,

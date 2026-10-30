@@ -104,14 +104,7 @@ class MediaService
             return $url;
         }
 
-        $cloudinary = app(Cloudinary::class, ['config' => [
-            'cloud' => [
-                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                'api_key' => env('CLOUDINARY_API_KEY'),
-                'api_secret' => env('CLOUDINARY_API_SECRET'),
-            ],
-            'url' => ['secure' => true],
-        ]]);
+        $cloudinary = app(Cloudinary::class);
 
         $isAudio = str_contains($file->getMimeType(), 'audio') || in_array($file->getClientOriginalExtension(), ['mp3', 'wav', 'ogg']);
         $resourceType = $isAudio ? 'video' : 'image';
@@ -186,7 +179,7 @@ class MediaService
 
     private function cloudinaryAsset(string $url): ?array
     {
-        $cloud = (string) env('CLOUDINARY_CLOUD_NAME');
+        $cloud = (string) config('filesystems.disks.cloudinary.cloud');
         if ($cloud === '' || !preg_match('#^https://res\.cloudinary\.com/' . preg_quote($cloud, '#') . '/(image|video)/upload/(?:v\d+/)?(cases/[a-z0-9-]+/(?:Cover|Map|Characters|Evidences(?:/Blocks)?|Levels(?:/Questions)?)/[a-zA-Z0-9_.-]+)\.[a-zA-Z0-9]+$#D', $url, $matches)) {
             return null;
         }
@@ -283,14 +276,7 @@ class MediaService
             return;
         }
 
-        $cloudinary = app(Cloudinary::class, ['config' => [
-            'cloud' => [
-                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                'api_key' => env('CLOUDINARY_API_KEY'),
-                'api_secret' => env('CLOUDINARY_API_SECRET'),
-            ],
-            'url' => ['secure' => true],
-        ]]);
+        $cloudinary = app(Cloudinary::class);
 
         try {
             $result = $cloudinary->uploadApi()->destroy($asset['public_id'], ['resource_type' => $asset['resource_type']]);

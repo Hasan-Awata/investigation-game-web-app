@@ -11,7 +11,6 @@ use Cloudinary\Api\Upload\UploadApi;
 use Cloudinary\Cloudinary;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Env;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -155,9 +154,7 @@ class DocumentBundleImagesTest extends TestCase
     {
         $url = 'https://res.cloudinary.com/owned-cloud/image/upload/cases/test/Evidences/Blocks/image.png';
         if (! $local) {
-            $previous = env('CLOUDINARY_CLOUD_NAME');
-            Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', 'owned-cloud');
-            $this->beforeApplicationDestroyed(fn () => Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', $previous));
+            config(['filesystems.disks.cloudinary.cloud' => 'owned-cloud']);
             $api = Mockery::mock(UploadApi::class);
             $api->shouldReceive('upload')->once()->andReturn(new ApiResponse(['secure_url' => $url], []));
             if ($fail) {
@@ -253,9 +250,7 @@ class DocumentBundleImagesTest extends TestCase
     #[DataProvider('remoteImages')]
     public function test_remote_document_images_use_the_existing_export_safeguards(string $cloud, int $limit, bool $succeeds): void
     {
-        $previous = env('CLOUDINARY_CLOUD_NAME');
-        Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', 'owned-cloud');
-        $this->beforeApplicationDestroyed(fn () => Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', $previous));
+        config(['filesystems.disks.cloudinary.cloud' => 'owned-cloud']);
         config(['case_bundles.max_file_bytes' => $limit]);
         $url = "https://res.cloudinary.com/{$cloud}/image/upload/cases/test/Evidences/Blocks/image.png";
         $case = GameCase::create(['title' => 'Remote document', 'story' => 'Story', 'XP_on_solve' => 10]);

@@ -1,5 +1,5 @@
 // Single source of truth for fetch + auth + error handling
-import { type Result, success, failure } from '@/utils/Result';
+import { type Result, type ValidationErrors, success, failure } from '@/utils/Result';
 import { ENV } from '@/config/env';
 
 const API_BASE_URL = ENV.API_URL;
@@ -23,8 +23,8 @@ export async function request<T>(endpoint: string, options: RequestInit = {}): P
     });
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) handleUnauthorized();
-      const data = await response.json().catch(() => ({}));
-      return failure(data.message || `Operation failed (${response.status}).`);
+      const data: { message?: string; errors?: ValidationErrors } = await response.json().catch(() => ({}));
+      return failure(data.message || `Operation failed (${response.status}).`, data.errors);
     }
     const text = await response.text();
     const data = text ? JSON.parse(text) : null;
@@ -45,8 +45,8 @@ export async function requestBlob(endpoint: string, options: RequestInit = {}): 
     });
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) handleUnauthorized();
-      const data = await response.json().catch(() => ({}));
-      return failure(data.message || `Operation failed (${response.status}).`);
+      const data: { message?: string; errors?: ValidationErrors } = await response.json().catch(() => ({}));
+      return failure(data.message || `Operation failed (${response.status}).`, data.errors);
     }
     return success(await response.blob());
   } catch (error) {

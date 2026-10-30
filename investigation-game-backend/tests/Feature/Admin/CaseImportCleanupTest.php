@@ -9,7 +9,6 @@ use Cloudinary\Api\ApiResponse;
 use Cloudinary\Api\Upload\UploadApi;
 use Cloudinary\Cloudinary;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Env;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -173,9 +172,7 @@ class CaseImportCleanupTest extends TestCase
 
     public function test_failed_cloudinary_import_deletes_new_uploads_and_preserves_reused_assets(): void
     {
-        $previous = env('CLOUDINARY_CLOUD_NAME');
-        Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', 'owned-cloud');
-        $this->beforeApplicationDestroyed(fn () => Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', $previous));
+        config(['filesystems.disks.cloudinary.cloud' => 'owned-cloud']);
         $existing = 'https://res.cloudinary.com/owned-cloud/image/upload/cases/existing/Cover/keep.png';
         GameCase::create(['title' => 'Existing', 'story' => 'Story', 'XP_on_solve' => 10, 'img_url' => $existing]);
         $api = Mockery::mock(UploadApi::class);

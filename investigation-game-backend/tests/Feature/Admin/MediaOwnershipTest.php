@@ -12,7 +12,6 @@ use Cloudinary\Cloudinary;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Env;
 use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\Admin\Concerns\ImportsCaseBundles;
@@ -127,9 +126,7 @@ class MediaOwnershipTest extends TestCase
 
     public function test_cloudinary_cleanup_preserves_shared_assets_and_dotted_public_ids(): void
     {
-        $previous = env('CLOUDINARY_CLOUD_NAME');
-        Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', 'owned-cloud');
-        $this->beforeApplicationDestroyed(fn () => Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', $previous));
+        config(['filesystems.disks.cloudinary.cloud' => 'owned-cloud']);
         $url = 'https://res.cloudinary.com/owned-cloud/video/upload/v123/cases/test/Evidences/voice.part.one.mp3';
         $case = GameCase::create(['title' => 'Cloud media', 'story' => 'Story', 'XP_on_solve' => 10]);
         $evidence = Evidence::create([
@@ -150,9 +147,7 @@ class MediaOwnershipTest extends TestCase
     #[DataProvider('unownedCloudinaryUrls')]
     public function test_unrecognized_provider_urls_never_authorize_deletion(string $url): void
     {
-        $previous = env('CLOUDINARY_CLOUD_NAME');
-        Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', 'owned-cloud');
-        $this->beforeApplicationDestroyed(fn () => Env::getRepository()->set('CLOUDINARY_CLOUD_NAME', $previous));
+        config(['filesystems.disks.cloudinary.cloud' => 'owned-cloud']);
         $this->app->bind(Cloudinary::class, function () {
             $this->fail('Unowned URLs must not construct a provider client.');
         });

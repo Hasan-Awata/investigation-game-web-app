@@ -1,7 +1,7 @@
 import toast from 'react-hot-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as adminApi from '@/services/adminApi';
-import type { Result } from '@/utils/Result';
+import type { Result, ValidationErrors } from '@/utils/Result';
 
 export type AdminEntityType =
   | 'case'
@@ -87,11 +87,11 @@ export function useAdminMutations(entityType: AdminEntityType) {
     onError: handleError,
   });
 
-  const importMutation = useMutation({
+  const importMutation = useMutation<unknown, Error & { errors?: ValidationErrors }, ImportBundlePayload>({
     mutationFn: async ({ file, storeLocally }: ImportBundlePayload) => {
       if (!methods.import) throw new Error(`Bundle import is not supported for ${methods.name}.`);
       const result = await methods.import(file, storeLocally);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
+      if (!result.isSuccess) throw Object.assign(new Error(result.errorMessage), { errors: result.errors });
       return result.value;
     },
     onSuccess: () => handleSuccess('imported successfully'),

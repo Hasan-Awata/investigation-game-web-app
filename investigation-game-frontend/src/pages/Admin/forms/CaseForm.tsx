@@ -69,7 +69,16 @@ export default function CaseForm() {
   const handleExport = async (c: GameCase) => {
     const result = await exportAdminCase(c.id);
     if (!result.isSuccess) {
-      toast.error(result.errorMessage);
+      toast.error(result.errors ? (
+        <div>
+          {result.errorMessage}
+          <ul>
+            {Object.entries(result.errors).flatMap(([path, messages]) => messages.map((message, index) => (
+              <li key={`${path}-${index}`}><code>{path}</code>: {message}</li>
+            )))}
+          </ul>
+        </div>
+      ) : result.errorMessage);
       return;
     }
     downloadBlob(result.value, `${slugifyFilename(c.title)}-case-bundle.zip`);

@@ -7,9 +7,25 @@
 <a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
 </p>
 
-## About Laravel
+## Case bundle setup
 
-The web server (Nginx/Apache) must be configured to deny script execution in the `public/assets/cases` directory.
+Enable PHP's ZIP extension for both CLI and web requests before running `composer install`. Run `composer check-platform-reqs --lock` to verify the installed extensions.
+
+Local case media lives in `public/assets/cases`. Preserve this directory across deployments and back it up together with the database; restoring only the database leaves broken media references. The web server (Nginx/Apache) must deny script execution in this directory. PHP needs write access here and in `storage/app/private`, where bundle extraction uses temporary `tmp/case-bundle-*` directories. Allow disk space for the uploaded ZIP, up to 200 MiB of extraction and another copy of the referenced local media during import.
+
+Cloudinary uploads remain optional. Set `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY` and `CLOUDINARY_API_SECRET` before running `php artisan config:cache`. The existing provider client and media ownership checks both use `filesystems.disks.cloudinary`; rebuild the configuration cache after changing credentials. Preserve the provider's case assets when redeploying or restoring the database. The default filesystem and the admin's local-storage choice are unchanged.
+
+### Synchronous request budget
+
+Import and export run in the HTTP request. Default import limits are a 50 MiB ZIP, 1,000 entries, 100 MiB per expanded file, 200 MiB total expansion and a 2 MiB manifest. Referenced images also have a 4 MiB/4096-pixel limit and audio a 10 MiB limit. Configure the web PHP SAPI's `upload_max_filesize=50M` and `post_max_size=52M` (multipart overhead), plus the server's body-size limit, to admit the supported upload size.
+
+For local imports, start with finite host settings of `memory_limit=128M` and `max_execution_time=60`. On PHP-FPM, also set a finite wall-clock budget such as `request_terminate_timeout=90s`; align the proxy/web-server request timeout, for example Nginx `fastcgi_read_timeout 120s` or Apache `Timeout 120`. Apply equivalent finite limits on other hosts. The application does not override PHP limits. Memory, execution time, disk capacity and server timeouts are separate budgets.
+
+Measured on 2026-10-30 with Windows/XAMPP PHP 8.2.12, SQLite in memory and the Laravel HTTP import route: a 51,965,595-byte ZIP (49.56 MiB), exactly 200 MiB expanded, a 2 MiB manifest and 20 distinct valid WAV files imported locally in 1.583 seconds with 62 MiB peak PHP allocation under 128M/60-second limits. Fixture generation was excluded; temporary media and the database were isolated. This measures the local request path, not production upload transfer or Cloudinary latency.
+
+Before increasing bundle limits, repeat a representative largest supported import on the deployment host through its web server, including Cloudinary uploads if used, and record elapsed time and peak memory. Remote export downloads are sequential with a 20-second timeout per asset, so provider-heavy bundles need their own finite host request budget. A 512M memory setting is optional only when measurements and available RAM justify it; it does not solve a timeout or disk exhaustion.
+
+## About Laravel
 
 Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
 

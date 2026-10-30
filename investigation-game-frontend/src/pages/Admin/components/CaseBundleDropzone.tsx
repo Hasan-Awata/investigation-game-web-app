@@ -1,6 +1,7 @@
 import { useRef, useState, type DragEvent } from 'react';
 import { useAdminMutations } from '@/pages/Admin/hooks/useAdminMutations';
 import { AdminCheckbox } from '@/pages/Admin/components/AdminUI';
+import type { ValidationErrors } from '@/utils/Result';
 import styles from './CaseBundleDropzone.module.css';
 
 const MAX_SIZE_MB = 50;
@@ -23,19 +24,19 @@ export default function CaseBundleDropzone() {
 
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<{ message: string; errors?: ValidationErrors } | null>(null);
   const [storeLocally, setStoreLocally] = useState(true);
 
   const validateAndSet = (candidate: File | undefined) => {
-    setError(null);
-    if (!candidate) return;
+    if (isProcessing || !candidate) return;
+    clear();
 
     if (!candidate.name.toLowerCase().endsWith('.zip')) {
-      setError('Only .zip case bundles are supported.');
+      setError({ message: 'Only .zip case bundles are supported.' });
       return;
     }
     if (candidate.size > MAX_SIZE_BYTES) {
-      setError(`Bundle exceeds the ${MAX_SIZE_MB}MB upload limit.`);
+      setError({ message: `Bundle exceeds the ${MAX_SIZE_MB}MB upload limit.` });
       return;
     }
 
@@ -44,7 +45,7 @@ export default function CaseBundleDropzone() {
 
   const onDragOver = (e: DragEvent<HTMLLabelElement>) => {
     e.preventDefault();
-    setIsDragging(true);
+    if (!isProcessing) setIsDragging(true);
   };
 
   const onDragLeave = (e: DragEvent<HTMLLabelElement>) => {
@@ -65,8 +66,12 @@ export default function CaseBundleDropzone() {
   };
 
   const handleImport = () => {
-    if (!file) return;
-    importEntity({ file, storeLocally }, { onSuccess: clear });
+    if (!file || isProcessing) return;
+    setError(null);
+    importEntity({ file, storeLocally }, {
+      onSuccess: () => setFile(current => current === file ? null : current),
+      onError: setError,
+    });
   };
 
   return (
@@ -81,6 +86,7 @@ export default function CaseBundleDropzone() {
           ref={inputRef}
           type="file"
           accept=".zip,application/zip"
+          disabled={isProcessing}
           className={styles.input}
           onChange={(e) => validateAndSet(e.target.files?.[0])}
         />
@@ -90,7 +96,18 @@ export default function CaseBundleDropzone() {
         <span className={styles.meta}>case.json + media/ tree &middot; max {MAX_SIZE_MB}MB</span>
       </label>
 
-      {error && <p className={styles.errorText}>{error}</p>}
+      {error && (
+        <div role="alert">
+          <p className={styles.errorText}>{error.message}</p>
+          {error.errors && (
+            <ul className={styles.errorText}>
+              {Object.entries(error.errors).flatMap(([path, messages]) => messages.map((message, index) => (
+                <li key={`${path}-${index}`}><code>{path}</code>: {message}</li>
+              )))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {file && (
         <div className={styles.fileRow}>
@@ -106,6 +123,7 @@ export default function CaseBundleDropzone() {
 
       <AdminCheckbox
         checked={storeLocally}
+        disabled={isProcessing}
         onChange={(e) => setStoreLocally(e.target.checked)}
         labelTitle="Store media locally"
         description="Keep bundle media on this server instead of Cloudinary"
