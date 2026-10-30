@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Support\MediaValidationRules;
+use App\Support\MetadataImageReferences;
 use Cloudinary\Cloudinary;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -32,11 +33,12 @@ class MediaService
         string $subfolder,
         bool $storeLocally,
         ?int $caseId = null,
-        bool $isAudio = false
+        bool $isAudio = false,
+        array &$createdMedia = []
     ): ?string {
         $file = $this->validateFromPath($absolutePath, $originalName, $isAudio);
 
-        return $this->storeFile($file, $caseTitle, $subfolder, $storeLocally, $caseId);
+        return $this->storeFile($file, $caseTitle, $subfolder, $storeLocally, $caseId, $createdMedia);
     }
 
     public function validateFromPath(
@@ -76,7 +78,7 @@ class MediaService
         return $caseId ? "{$caseId}-{$slug}" : $slug;
     }
 
-    private function storeFile(UploadedFile $file, string $caseTitle, string $subfolder, bool $storeLocally, ?int $caseId): ?string
+    private function storeFile(UploadedFile $file, string $caseTitle, string $subfolder, bool $storeLocally, ?int $caseId, array &$createdMedia = []): ?string
     {
         $caseFolder = $this->resolveCaseFolder($caseTitle, $caseId);
 
@@ -87,25 +89,29 @@ class MediaService
             $filename = "{$hash}.{$extension}";
             $fullFilePath = $destinationPath . '/' . $filename;
 
-            if (!is_dir($destinationPath)) {
-                mkdir($destinationPath, 0755, true);
+            if (!is_dir($destinationPath) && !@mkdir($destinationPath, 0755, true) && !is_dir($destinationPath)) {
+                throw ValidationException::withMessages(['media' => 'The media directory could not be created.']);
             }
 
+            $url = "/assets/cases/{$caseFolder}/{$subfolder}/{$filename}";
             if (!file_exists($fullFilePath)) {
-                $file->move($destinationPath, $filename);
+                $createdMedia[] = $url;
+                if (!@copy($file->getRealPath(), $fullFilePath)) {
+                    throw ValidationException::withMessages(['media' => 'The media file could not be stored.']);
+                }
             }
 
-            return "/assets/cases/{$caseFolder}/{$subfolder}/{$filename}";
+            return $url;
         }
 
-        $cloudinary = new Cloudinary([
+        $cloudinary = app(Cloudinary::class, ['config' => [
             'cloud' => [
                 'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
                 'api_key' => env('CLOUDINARY_API_KEY'),
                 'api_secret' => env('CLOUDINARY_API_SECRET'),
             ],
             'url' => ['secure' => true],
-        ]);
+        ]]);
 
         $isAudio = str_contains($file->getMimeType(), 'audio') || in_array($file->getClientOriginalExtension(), ['mp3', 'wav', 'ogg']);
         $resourceType = $isAudio ? 'video' : 'image';
@@ -113,9 +119,18 @@ class MediaService
         $upload = $cloudinary->uploadApi()->upload($file->getRealPath(), [
             'folder' => $cloudFolder,
             'resource_type' => $resourceType,
+            'overwrite' => false,
         ]);
 
-        return $upload['secure_url'];
+        $url = $upload['secure_url'] ?? null;
+        if (!is_string($url) || $url === '') {
+            throw ValidationException::withMessages(['media' => 'The media file could not be stored.']);
+        }
+        if (!($upload['existing'] ?? false)) {
+            $createdMedia[] = $url;
+        }
+
+        return $url;
     }
 
     public function localPath(?string $url, bool $allowShipped = false): ?string
@@ -222,24 +237,10 @@ class MediaService
     public function extractMetadataImageUrls(?array $metadata): array
     {
         $urls = [];
-        $blocks = $metadata['doc']['blocks'] ?? [];
-
-        if (is_array($blocks)) {
-            foreach ($blocks as $block) {
-                if (($block['type'] ?? '') !== 'image') {
-                    continue;
-                }
-
-                $url = $block['props']['url'] ?? null;
-                if (is_string($url) && trim($url) !== '') {
-                    $urls[] = $url;
-                }
+        foreach (MetadataImageReferences::paths($metadata) as $url) {
+            if (is_string($url) && trim($url) !== '') {
+                $urls[] = $url;
             }
-        }
-
-        $topLevelUrl = $metadata['url'] ?? null;
-        if (is_string($topLevelUrl) && trim($topLevelUrl) !== '') {
-            $urls[] = $topLevelUrl;
         }
 
         return array_values(array_unique($urls));
@@ -292,7 +293,10 @@ class MediaService
         ]]);
 
         try {
-            $cloudinary->uploadApi()->destroy($asset['public_id'], ['resource_type' => $asset['resource_type']]);
+            $result = $cloudinary->uploadApi()->destroy($asset['public_id'], ['resource_type' => $asset['resource_type']]);
+            if (!in_array($result['result'] ?? null, ['ok', 'not found'], true)) {
+                Log::warning('Cloudinary deletion did not confirm removal.');
+            }
         } catch (\Throwable $exception) {
             Log::warning("Cloudinary deletion failed for {$url}: " . $exception->getMessage());
         }

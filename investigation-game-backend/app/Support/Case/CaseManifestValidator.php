@@ -9,6 +9,7 @@ use App\Enums\InvestigationRequestType;
 use App\Rules\EvidenceMetadataMatchesType;
 use App\Services\Case\CaseBundleMediaResolver;
 use App\Services\MediaService;
+use App\Support\MetadataImageReferences;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
@@ -223,6 +224,21 @@ class CaseManifestValidator
             }
             $check("evidences.{$i}.img", $evidence['img'] ?? null);
             $check("evidences.{$i}.audio", $evidence['audio'] ?? null, isAudio: true);
+            $metadata = $evidence['metadata'] ?? null;
+            if (is_string($metadata)) {
+                $metadata = json_decode($metadata, true);
+            }
+            if (is_array($metadata)) {
+                try {
+                    foreach (MetadataImageReferences::paths($metadata) as $path => $url) {
+                        $check("evidences.{$i}.metadata.{$path}", $url);
+                    }
+                } catch (ValidationException $exception) {
+                    foreach ($exception->errors() as $path => $messages) {
+                        $errors["evidences.{$i}.metadata.{$path}"] = $messages;
+                    }
+                }
+            }
         }
 
         foreach ($manifest['characters'] ?? [] as $i => $character) {

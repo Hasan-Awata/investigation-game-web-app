@@ -74,7 +74,8 @@ class CaseBundleMediaResolver
         string $subfolder,
         bool $storeLocally,
         ?int $caseId = null,
-        bool $isAudio = false
+        bool $isAudio = false,
+        array &$createdMedia = []
     ): ?string {
         if ($relPath === null || $relPath === '') {
             return null;
@@ -88,15 +89,22 @@ class CaseBundleMediaResolver
             ]);
         }
 
-        return $this->mediaService->storeFromPath(
+        $url = $this->mediaService->storeFromPath(
             $absolutePath,
             basename($absolutePath),
             $caseTitle,
             $subfolder,
             $storeLocally,
             $caseId,
-            $isAudio
+            $isAudio,
+            $createdMedia
         );
+
+        if ($url === null || $url === '') {
+            throw ValidationException::withMessages(['media' => 'The referenced media file could not be stored.']);
+        }
+
+        return $url;
     }
 
     /**

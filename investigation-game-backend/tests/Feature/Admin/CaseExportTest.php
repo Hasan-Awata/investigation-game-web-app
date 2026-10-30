@@ -10,6 +10,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Env;
 use Illuminate\Support\Facades\Http;
+use Mockery;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\Admin\Concerns\ImportsCaseBundles;
 use Tests\TestCase;
@@ -53,6 +54,23 @@ class CaseExportTest extends TestCase
         $this->assertNull($manifest['case']['cover']);
 
         $zip->close();
+    }
+
+    public function test_successful_download_removes_the_completed_archive_after_sending(): void
+    {
+        $case = GameCase::create(['title' => 'Download cleanup', 'story' => 'Story', 'XP_on_solve' => 10]);
+        $response = $this->get("/api/admin/cases/{$case->id}/export")->assertOk()->assertDownload();
+        $path = $response->baseResponse->getFile()->getPathname();
+        $this->assertFileExists($path);
+
+        ob_start();
+        try {
+            $response->baseResponse->sendContent();
+        } finally {
+            ob_end_clean();
+        }
+
+        $this->assertFileDoesNotExist($path);
     }
 
     public function test_export_includes_all_media_and_resolvable_refs(): void
@@ -100,24 +118,124 @@ class CaseExportTest extends TestCase
         $zip->close();
     }
 
-    public function test_missing_local_media_is_omitted_without_failing_export(): void
+    public function test_missing_local_media_reports_all_affected_fields_and_removes_the_archive(): void
+    {
+        $response = $this->importBundle(self::FIXTURES.'/full.zip')->assertCreated();
+        $case = GameCase::findOrFail($response->json('case_id'));
+        $missing = '/assets/cases/missing/private-file.png';
+        $case->update(['map_url' => $missing, 'img_url' => $missing]);
+        $case->evidences()->update(['img_url' => $missing, 'audio_url' => $missing]);
+        $case->characters()->update(['img_url' => $missing]);
+        $level = $case->zones()->firstOrFail()->levels()->firstOrFail();
+        $level->update(['img_url' => $missing]);
+        $level->questions()->update(['img_url' => $missing]);
+        $archives = glob(sys_get_temp_dir().'/case-bundle-*');
+
+        $response = $this->getJson("/api/admin/cases/{$case->id}/export")->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'case.map', 'case.cover', 'evidences.0.img', 'evidences.0.audio',
+                'evidences.1.img', 'evidences.1.audio', 'characters.0.img',
+                'zones.0.levels.0.img', 'zones.0.levels.0.nodes.0.img',
+            ]);
+        $this->assertStringNotContainsString($missing, $response->getContent());
+        $this->assertSame($archives, glob(sys_get_temp_dir().'/case-bundle-*'));
+        Http::assertNothingSent();
+    }
+
+    public function test_missing_metadata_images_report_their_full_paths(): void
+    {
+        $case = GameCase::create(['title' => 'Missing document images', 'story' => 'Story', 'XP_on_solve' => 10]);
+        $metadata = ['url' => '/assets/cases/missing/image.png', 'doc' => ['blocks' => [
+            ['type' => 'two_column', 'props' => ['left' => [
+                ['type' => 'image', 'props' => ['url' => '/assets/cases/missing/image.png']],
+            ], 'right' => [
+                ['type' => 'two_column', 'props' => ['left' => [], 'right' => [
+                    ['type' => 'image', 'props' => ['url' => '/assets/cases/missing/image.png']],
+                ]]],
+            ]]],
+        ]]];
+        Evidence::create(['case_id' => $case->id, 'title' => 'Document', 'evidence_type' => 'document', 'metadata' => $metadata]);
+        $archives = glob(sys_get_temp_dir().'/case-bundle-*');
+
+        $this->getJson("/api/admin/cases/{$case->id}/export")->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'evidences.0.metadata.url', 'evidences.0.metadata.doc.blocks.0.props.left.0.props.url',
+                'evidences.0.metadata.doc.blocks.0.props.right.0.props.right.0.props.url',
+            ]);
+        $this->assertSame($archives, glob(sys_get_temp_dir().'/case-bundle-*'));
+    }
+
+    public function test_remote_audio_failure_identifies_the_evidence_field_and_cleans_earlier_downloads(): void
     {
         $case = GameCase::create([
-            'title' => 'Ghost Media Case',
-            'story' => 'Story',
-            'XP_on_solve' => 10,
-            'img_url' => '/assets/cases/ghost-media-case/Cover/does-not-exist.png',
+            'title' => 'Remote audio failure', 'story' => 'Story', 'XP_on_solve' => 10, 'img_url' => self::REMOTE_COVER,
         ]);
+        $audio = 'https://res.cloudinary.com/export-cloud/video/upload/cases/test/Evidences/audio.wav';
+        Evidence::create(['case_id' => $case->id, 'title' => 'Recording', 'evidence_type' => 'audio', 'audio_url' => $audio]);
+        Http::fake([self::REMOTE_COVER => Http::response('image'), $audio => Http::response('', 404)]);
 
-        $zip = $this->openExport($case);
+        $this->assertRemoteExportFails($case, 'Remote media could not be downloaded.', 'evidences.0.audio');
+        Http::assertSentCount(2);
+    }
 
-        $manifest = json_decode((string) $zip->getFromName('case.json'), true);
+    #[DataProvider('archiveFailures')]
+    public function test_archive_failures_never_return_a_download_or_leave_temporary_files(string $failure): void
+    {
+        $case = GameCase::create([
+            'title' => 'Archive failure', 'story' => 'Story', 'XP_on_solve' => 10, 'img_url' => self::REMOTE_COVER,
+        ]);
+        Http::fake([self::REMOTE_COVER => Http::response('image')]);
+        $archive = Mockery::mock(ZipArchive::class)->makePartial();
+        $this->app->instance(ZipArchive::class, $archive);
+        if ($failure === 'reopen') {
+            $archive->shouldReceive('open')->once()->ordered()->passthru();
+            $archive->shouldReceive('open')->once()->ordered()->andReturn(ZipArchive::ER_READ);
+        } elseif ($failure === 'close') {
+            $archive->shouldReceive('close')->once()->andReturnUsing(function () use ($archive) {
+                (new \ReflectionMethod(ZipArchive::class, 'close'))->invoke($archive);
 
-        // The unreachable cover is omitted from the archive and the manifest.
-        $this->assertNull($manifest['case']['cover']);
-        $this->assertSame(1, $zip->numFiles);
+                return false;
+            });
+        } elseif (str_starts_with($failure, 'missing ')) {
+            $entry = $failure === 'missing manifest' ? 'case.json' : 'media/cover.png';
+            $archive->shouldReceive('locateName')->with($entry)->once()->andReturn(false);
+        } else {
+            $archive->shouldReceive($failure)->once()->andReturn(false);
+        }
 
-        $zip->close();
+        $archives = glob(sys_get_temp_dir().'/case-bundle-*');
+        $downloads = glob(sys_get_temp_dir().'/case_media_*');
+        $response = $this->getJson("/api/admin/cases/{$case->id}/export");
+        if ($failure === 'addFile') {
+            $response->assertUnprocessable()->assertJsonValidationErrors('case.cover');
+        } else {
+            $response->assertStatus(500)->assertExactJson(['message' => 'The case bundle could not be created. Please try again.']);
+        }
+        $this->assertSame($archives, glob(sys_get_temp_dir().'/case-bundle-*'));
+        $this->assertSame($downloads, glob(sys_get_temp_dir().'/case_media_*'));
+    }
+
+    public static function archiveFailures(): array
+    {
+        return array_map(fn (string $failure) => [$failure], [
+            'open', 'addFile', 'addFromString', 'close', 'reopen', 'missing manifest', 'missing media',
+        ]);
+    }
+
+    public function test_invalid_json_fails_cleanly_and_removes_downloaded_media_and_archive(): void
+    {
+        $case = GameCase::create([
+            'title' => 'Invalid manifest encoding', 'story' => "Invalid UTF-8: \xB1", 'XP_on_solve' => 10, 'img_url' => self::REMOTE_COVER,
+        ]);
+        Http::fake([self::REMOTE_COVER => Http::response('image')]);
+        $archives = glob(sys_get_temp_dir().'/case-bundle-*');
+        $downloads = glob(sys_get_temp_dir().'/case_media_*');
+
+        $this->getJson("/api/admin/cases/{$case->id}/export")->assertStatus(500)
+            ->assertExactJson(['message' => 'The case bundle could not be created. Please try again.']);
+
+        $this->assertSame($archives, glob(sys_get_temp_dir().'/case-bundle-*'));
+        $this->assertSame($downloads, glob(sys_get_temp_dir().'/case_media_*'));
     }
 
     #[DataProvider('unapprovedRemoteUrls')]
@@ -276,15 +394,15 @@ class CaseExportTest extends TestCase
         Http::assertSentCount(4);
     }
 
-    private function assertRemoteExportFails(GameCase $case, string $message): void
+    private function assertRemoteExportFails(GameCase $case, string $message, string $field = 'case.cover'): void
     {
         $archives = glob(sys_get_temp_dir().'/case-bundle-*');
         $downloads = glob(sys_get_temp_dir().'/case_media_*');
 
         $this->getJson("/api/admin/cases/{$case->id}/export")
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('media')
-            ->assertJsonPath('errors.media.0', $message);
+            ->assertJsonValidationErrors($field)
+            ->assertJsonPath('errors', [$field => [$message]]);
 
         $this->assertSame($archives, glob(sys_get_temp_dir().'/case-bundle-*'));
         $this->assertSame($downloads, glob(sys_get_temp_dir().'/case_media_*'));

@@ -10,9 +10,14 @@ use App\Models\InvestigationRequest;
 use App\Models\Level;
 use App\Models\Question;
 use App\Models\Zone;
+use App\Services\MediaService;
 use App\Support\Case\CaseManifestValidator;
+use App\Support\MetadataImageReferences;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -28,9 +33,16 @@ use ZipArchive;
  */
 class CaseImportService
 {
+    private array $createdMedia = [];
+
+    private array $resolvedMedia = [];
+
+    private ?string $mediaDirectory = null;
+
     public function __construct(
         private readonly CaseManifestValidator $validator,
         private readonly CaseBundleMediaResolver $mediaResolver,
+        private readonly MediaService $mediaService,
     ) {}
 
     /**
@@ -68,8 +80,35 @@ class CaseImportService
             }
 
             return DB::transaction(fn () => $this->persist($manifest, $extractDir, $storeLocally));
+        } catch (\Throwable $exception) {
+            foreach ($this->createdMedia as $url) {
+                try {
+                    $this->mediaService->delete($url);
+                } catch (\Throwable) {
+                    Log::warning('Failed to clean up media from a failed case import.');
+                }
+            }
+
+            try {
+                if ($this->mediaDirectory !== null && ! File::deleteDirectory($this->mediaDirectory)) {
+                    Log::warning('Failed to remove the failed case import media directory.');
+                }
+            } catch (\Throwable) {
+                Log::warning('Failed to remove the failed case import media directory.');
+            }
+
+            throw $exception;
         } finally {
-            Storage::disk('local')->deleteDirectory($directory);
+            $this->createdMedia = [];
+            $this->resolvedMedia = [];
+            $this->mediaDirectory = null;
+            try {
+                if (! Storage::disk('local')->deleteDirectory($directory)) {
+                    Log::warning('Failed to remove the case bundle extraction directory.');
+                }
+            } catch (\Throwable) {
+                Log::warning('Failed to remove the case bundle extraction directory.');
+            }
         }
     }
 
@@ -281,6 +320,15 @@ class CaseImportService
             'img_url' => null,
         ]);
 
+        if ($storeLocally) {
+            $caseFolder = $this->mediaService->resolveCaseFolder($case->title, $case->id);
+            $mediaDirectory = public_path("assets/cases/{$caseFolder}");
+            if (! @mkdir($mediaDirectory, 0755, true)) {
+                throw ValidationException::withMessages(['media' => 'A new case media directory could not be created. Import is add-only.']);
+            }
+            $this->mediaDirectory = $mediaDirectory;
+        }
+
         $case->update([
             'img_url' => $this->resolve($extractDir, $caseData['cover'] ?? null, $caseData['title'], 'Cover', $storeLocally, $case->id),
             'map_url' => $this->resolve($extractDir, $caseData['map'] ?? null, $caseData['title'], 'Map', $storeLocally, $case->id),
@@ -296,12 +344,20 @@ class CaseImportService
 
         // PASS 1: evidences + characters (the base entities other passes point at).
         foreach ($manifest['evidences'] ?? [] as $evidenceData) {
+            $metadata = $evidenceData['metadata'] ?? null;
+            if (is_string($metadata)) {
+                $metadata = json_decode($metadata, true);
+            }
+            foreach (MetadataImageReferences::paths($metadata) as $path => $url) {
+                Arr::set($metadata, $path, $this->resolve($extractDir, $url, $caseData['title'], 'Evidences/Blocks', $storeLocally, $case->id));
+            }
+
             $evidence = Evidence::create([
                 'case_id' => $case->id,
                 'title' => $evidenceData['title'],
                 'description' => $evidenceData['description'] ?? null,
                 'evidence_type' => $evidenceData['evidence_type'],
-                'metadata' => $evidenceData['metadata'] ?? null,
+                'metadata' => $metadata,
                 'is_initial' => (bool) ($evidenceData['is_initial'] ?? false),
                 'is_vital_for_conviction' => (bool) ($evidenceData['is_vital_for_conviction'] ?? false),
                 'img_url' => $this->resolve($extractDir, $evidenceData['img'] ?? null, $caseData['title'], 'Evidences', $storeLocally, $case->id),
@@ -513,7 +569,11 @@ class CaseImportService
         ?int $caseId = null,
         bool $isAudio = false
     ): ?string {
-        return $this->mediaResolver->resolve($extractDir, $relPath, $caseTitle, $subfolder, $storeLocally, $caseId, $isAudio);
+        $key = (int) $isAudio.':'.ltrim(str_replace('\\', '/', trim($relPath ?? '')), '/');
+
+        return $this->resolvedMedia[$key] ??= $this->mediaResolver->resolve(
+            $extractDir, $relPath, $caseTitle, $subfolder, $storeLocally, $caseId, $isAudio, $this->createdMedia
+        );
     }
 
     /**

@@ -119,9 +119,10 @@ class MediaOwnershipTest extends TestCase
             'img_url' => 'https://game.test/assets/cases/../../marker.png',
         ]);
 
-        $zipPath = app(CaseExportService::class)->export($case);
+        $this->actingAsAdmin();
+        $this->getJson("/api/admin/cases/{$case->id}/export")->assertUnprocessable()
+            ->assertJsonValidationErrors('case.cover');
         Http::assertNothingSent();
-        unlink($zipPath);
     }
 
     public function test_cloudinary_cleanup_preserves_shared_assets_and_dotted_public_ids(): void

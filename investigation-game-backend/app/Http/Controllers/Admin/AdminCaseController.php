@@ -13,6 +13,7 @@ use App\Services\MediaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class AdminCaseController extends Controller
@@ -172,9 +173,17 @@ class AdminCaseController extends Controller
     /**
      * Export a single case (graph + media) as a downloadable ZIP bundle.
      */
-    public function export(GameCase $case): BinaryFileResponse
+    public function export(GameCase $case): BinaryFileResponse|JsonResponse
     {
-        $path = $this->caseExportService->export($case);
+        try {
+            $path = $this->caseExportService->export($case);
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return response()->json(['message' => 'The case bundle could not be created. Please try again.'], 500);
+        }
 
         $filename = (Str::slug($case->title) ?: 'case').'-case-bundle.zip';
 
