@@ -44,10 +44,15 @@ class CaseImportService
         $this->ensureZipExtension();
 
         $directory = 'tmp/case-bundle-'.Str::uuid();
-        Storage::disk('local')->makeDirectory($directory);
         $extractDir = Storage::disk('local')->path($directory);
 
         try {
+            if (! Storage::disk('local')->makeDirectory($directory)) {
+                throw ValidationException::withMessages([
+                    'file' => ['The bundle extraction directory could not be created.'],
+                ]);
+            }
+
             $this->extract($zip, $extractDir);
 
             $manifest = $this->readManifest($extractDir);
@@ -79,23 +84,148 @@ class CaseImportService
             ]);
         }
 
+        $directoryStream = null;
+
         try {
-            for ($i = 0; $i < $archive->numFiles; $i++) {
-                $name = str_replace('\\', '/', (string) $archive->getNameIndex($i));
+            $maxFileBytes = config('case_bundles.max_file_bytes');
+            $maxTotalBytes = config('case_bundles.max_total_bytes');
+            $maxManifestBytes = config('case_bundles.max_manifest_bytes');
+            $extractionError = ['file' => ['The ZIP archive could not be extracted.']];
+            $sizeError = ['file' => ['The ZIP archive exceeds the expanded file, total, or manifest size limit.']];
+            $entries = [];
+            $names = [];
+            $totalBytes = 0;
 
-                if ($name === '' || str_starts_with($name, '/') || preg_match('#(^|/)\.\.(/|$)#', $name)) {
-                    throw ValidationException::withMessages([
-                        'file' => ["The ZIP archive contains an unsafe path: '{$name}'."],
-                    ]);
-                }
-            }
-
-            if (! $archive->extractTo($extractDir)) {
+            if ($archive->numFiles > config('case_bundles.max_entries')) {
                 throw ValidationException::withMessages([
-                    'file' => ['The ZIP archive could not be extracted.'],
+                    'file' => ['The ZIP archive contains too many entries.'],
                 ]);
             }
+
+            // libzip replaces embedded NUL bytes with spaces, even with FL_ENC_RAW.
+            $tail = @file_get_contents($zip->getRealPath(), false, null, max(0, $zip->getSize() - 65557), 65557);
+            $end = $tail === false ? false : strrpos($tail, "PK\x05\x06");
+
+            if ($end === false || strlen($tail) - $end < 22) {
+                throw ValidationException::withMessages($extractionError);
+            }
+
+            $offset = unpack('Voffset', substr($tail, $end + 16, 4))['offset'];
+            $directoryStream = @fopen($zip->getRealPath(), 'rb');
+
+            if ($directoryStream === false || @fseek($directoryStream, $offset) !== 0) {
+                throw ValidationException::withMessages($extractionError);
+            }
+
+            for ($i = 0; $i < $archive->numFiles; $i++) {
+                $header = @fread($directoryStream, 46);
+
+                if ($header === false || strlen($header) !== 46 || substr($header, 0, 4) !== "PK\x01\x02") {
+                    throw ValidationException::withMessages($extractionError);
+                }
+
+                $lengths = unpack('vname/vextra/vcomment', substr($header, 28, 6));
+                $rawName = $lengths['name'] === 0 ? '' : @fread($directoryStream, $lengths['name']);
+                $stat = $archive->statIndex($i, ZipArchive::FL_ENC_RAW);
+
+                if ($rawName === false || strlen($rawName) !== $lengths['name']
+                    || @fseek($directoryStream, $lengths['extra'] + $lengths['comment'], SEEK_CUR) !== 0
+                    || $stat === false || ! $archive->getExternalAttributesIndex($i, $opsys, $attributes)) {
+                    throw ValidationException::withMessages($extractionError);
+                }
+
+                $name = str_replace('\\', '/', $stat['name']);
+                $key = mb_strtolower(rtrim($name, '/'), 'UTF-8');
+
+                if ($name === '' || str_contains($rawName, "\0") || str_starts_with($name, '/')
+                    || preg_match('#[\x00-\x1f\x7f:<>"|?*]|(^|/)(\.{1,2}|)(/|$)|[. ](/|$)|(^|/)(CON|PRN|AUX|NUL|CONIN\$|CONOUT\$|COM[1-9¹²³]|LPT[1-9¹²³]) *(?:\.[^/]*)?(/|$)#iu', rtrim($name, '/')) !== 0
+                    || isset($names[$key])) {
+                    throw ValidationException::withMessages([
+                        'file' => ['The ZIP archive contains an unsafe or duplicate path.'],
+                    ]);
+                }
+
+                $isDirectory = str_ends_with($name, '/');
+                $type = ($attributes >> 16) & 0170000;
+
+                if (($opsys === ZipArchive::OPSYS_UNIX && $type !== 0 && $type !== ($isDirectory ? 0040000 : 0100000))
+                    || ($attributes & 0x400) !== 0 || ($isDirectory && $stat['size'] !== 0)) {
+                    throw ValidationException::withMessages([
+                        'file' => ['The ZIP archive contains a link or unsupported file entry.'],
+                    ]);
+                }
+
+                $limit = $key === 'case.json' ? min($maxFileBytes, $maxManifestBytes) : $maxFileBytes;
+                $totalBytes += $stat['size'];
+
+                if ($stat['size'] < 0 || $stat['size'] > $limit || $totalBytes > $maxTotalBytes) {
+                    throw ValidationException::withMessages($sizeError);
+                }
+
+                $names[$key] = true;
+                $entries[] = [$name, $stat['size'], $limit, $isDirectory];
+            }
+
+            $totalBytes = 0;
+
+            foreach ($entries as $index => [$name, $declaredBytes, $limit, $isDirectory]) {
+                $path = $extractDir.'/'.$name;
+                $parent = $isDirectory ? $path : dirname($path);
+
+                if (! is_dir($parent) && ! @mkdir($parent, 0755, true) && ! is_dir($parent)) {
+                    throw ValidationException::withMessages($extractionError);
+                }
+
+                if ($isDirectory) {
+                    continue;
+                }
+
+                $input = @$archive->getStreamIndex($index);
+                $output = null;
+
+                try {
+                    if ($input === false || ($output = @fopen($path, 'xb')) === false) {
+                        throw ValidationException::withMessages($extractionError);
+                    }
+
+                    $fileBytes = 0;
+
+                    while (! feof($input)) {
+                        $chunk = @fread($input, 8192);
+
+                        if ($chunk === false || ($chunk === '' && ! feof($input))) {
+                            throw ValidationException::withMessages($extractionError);
+                        }
+
+                        $length = strlen($chunk);
+                        $fileBytes += $length;
+                        $totalBytes += $length;
+
+                        if ($fileBytes > $limit || $totalBytes > $maxTotalBytes) {
+                            throw ValidationException::withMessages($sizeError);
+                        }
+
+                        if (@fwrite($output, $chunk) !== $length) {
+                            throw ValidationException::withMessages($extractionError);
+                        }
+                    }
+
+                    if ($fileBytes !== $declaredBytes || ! @fclose($output)) {
+                        throw ValidationException::withMessages($extractionError);
+                    }
+                } finally {
+                    if (is_resource($input)) {
+                        fclose($input);
+                    }
+                    if (is_resource($output)) {
+                        fclose($output);
+                    }
+                }
+            }
         } finally {
+            if (is_resource($directoryStream)) {
+                fclose($directoryStream);
+            }
             $archive->close();
         }
     }
@@ -110,7 +240,16 @@ class CaseImportService
             ]);
         }
 
-        $decoded = json_decode((string) file_get_contents($manifestPath), true);
+        $limit = config('case_bundles.max_manifest_bytes');
+        $contents = @file_get_contents($manifestPath, false, null, 0, $limit + 1);
+
+        if ($contents === false || strlen($contents) > $limit) {
+            throw ValidationException::withMessages([
+                'file' => ['case.json could not be read within the manifest size limit.'],
+            ]);
+        }
+
+        $decoded = json_decode($contents, true);
 
         if (! is_array($decoded)) {
             throw ValidationException::withMessages([
