@@ -164,6 +164,11 @@ class MediaService
         return str_starts_with($candidate, $prefix) ? $real : null;
     }
 
+    public function ownsCloudinaryAsset(string $url): bool
+    {
+        return $this->cloudinaryAsset($url) !== null;
+    }
+
     private function cloudinaryAsset(string $url): ?array
     {
         $cloud = (string) env('CLOUDINARY_CLOUD_NAME');

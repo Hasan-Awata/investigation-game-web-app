@@ -12,10 +12,9 @@ use ZipArchive;
  * Serializes a case's full graph into a `case-bundle.zip` that mirrors
  * {@see CaseImportService}.
  *
- * Local media is archived from disk; Cloudinary/remote media is downloaded with
- * a per-asset timeout. Assets that cannot be retrieved are recorded in `$omitted`
- * and simply left out of the archive (and out of the manifest) rather than
- * silently producing a broken bundle.
+ * Local media is archived from disk; approved Cloudinary media is downloaded.
+ * Missing local assets are recorded in `$omitted`; remote retrieval failures
+ * abort export.
  */
 class CaseExportService
 {
@@ -61,6 +60,8 @@ class CaseExportService
             throw new \RuntimeException('Could not open the case bundle archive for writing.');
         }
 
+        $completed = false;
+
         try {
             $manifest = $this->buildManifest($case, $archive);
 
@@ -68,6 +69,7 @@ class CaseExportService
                 'case.json',
                 (string) json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
             );
+            $completed = true;
         } finally {
             $archive->close();
 
@@ -75,6 +77,10 @@ class CaseExportService
                 @unlink($tempFile);
             }
             $this->tempFiles = [];
+
+            if (! $completed) {
+                @unlink($zipPath);
+            }
         }
 
         foreach ($this->omitted as $url) {
@@ -260,7 +266,7 @@ class CaseExportService
 
     /**
      * Add a media asset to the archive and return its manifest-relative path,
-     * or null when there is nothing to archive / the asset is unreachable.
+     * or null when there is nothing to archive / the local asset is missing.
      */
     private function addMedia(ZipArchive $archive, ?string $rawUrl, string $baseEntry): ?string
     {

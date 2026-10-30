@@ -5,6 +5,7 @@ namespace App\Services\Case;
 use App\Services\MediaService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\ValidationException;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * Bridges the media references inside a case bundle (`media/...` relative
@@ -108,36 +109,78 @@ class CaseBundleMediaResolver
     }
 
     /**
-     * Download a remote (Cloudinary/S3) asset to a temp file, or null on
-     * failure. Callers are responsible for deleting the temp file.
+     * Download an approved Cloudinary asset. Callers delete the returned file.
      */
     public function fetchRemote(?string $url): ?string
     {
-        if (! $url || ! filter_var($url, FILTER_VALIDATE_URL)) {
+        if (! $url) {
             return null;
         }
 
-        try {
-            $response = Http::timeout(self::REMOTE_TIMEOUT_SECONDS)->get($url);
-        } catch (\Throwable) {
-            return null;
-        }
-
-        if (! $response->successful()) {
-            return null;
+        if (! $this->mediaService->ownsCloudinaryAsset($url)) {
+            throw ValidationException::withMessages(['media' => 'Remote media URL is not an approved Cloudinary asset.']);
         }
 
         $tempPath = tempnam(sys_get_temp_dir(), 'case_media_');
         if ($tempPath === false) {
-            return null;
+            throw ValidationException::withMessages(['media' => 'Could not create a temporary file for remote media.']);
         }
 
-        if (file_put_contents($tempPath, $response->body()) === false) {
-            @unlink($tempPath);
+        $maxBytes = (int) config('case_bundles.max_file_bytes');
+        $sink = null;
+        $response = null;
+        $completed = false;
+        $tooLarge = false;
 
-            return null;
+        try {
+            $sink = fopen($tempPath, 'w+b');
+            if ($sink === false) {
+                throw new \RuntimeException;
+            }
+
+            $response = Http::timeout(self::REMOTE_TIMEOUT_SECONDS)
+                ->withoutRedirecting()
+                ->sink($sink)
+                ->withOptions([
+                    'decode_content' => false,
+                    'on_headers' => function (ResponseInterface $response) use ($maxBytes, &$tooLarge): void {
+                        $tooLarge = (int) $response->getHeaderLine('Content-Length') > $maxBytes;
+                        if ($tooLarge || $response->getStatusCode() < 200 || $response->getStatusCode() >= 300) {
+                            throw new \RuntimeException;
+                        }
+                    },
+                    'progress' => function (float $total, float $received) use ($maxBytes, &$tooLarge): void {
+                        if ($total > $maxBytes || $received > $maxBytes) {
+                            $tooLarge = true;
+                            throw new \RuntimeException;
+                        }
+                    },
+                ])
+                ->get($url);
+
+            $stat = fstat($sink);
+            $tooLarge = $stat !== false && $stat['size'] > $maxBytes;
+            if (! $response->successful() || $stat === false || $tooLarge) {
+                throw new \RuntimeException;
+            }
+
+            $completed = true;
+
+            return $tempPath;
+        } catch (\Throwable) {
+            throw ValidationException::withMessages([
+                'media' => $tooLarge
+                    ? 'Remote media exceeds the maximum allowed file size.'
+                    : 'Remote media could not be downloaded.',
+            ]);
+        } finally {
+            $response?->close();
+            if (is_resource($sink)) {
+                fclose($sink);
+            }
+            if (! $completed) {
+                @unlink($tempPath);
+            }
         }
-
-        return $tempPath;
     }
 }
