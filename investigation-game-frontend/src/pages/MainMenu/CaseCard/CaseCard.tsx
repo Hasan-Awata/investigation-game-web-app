@@ -25,7 +25,6 @@ export default function CaseCard({ gameCase, imageUrl, userXp = 0 }: CaseCardPro
   return (
     <div className={`${caseCardStyles['case-card']} ${isSolved ? caseCardStyles['is-solved'] : ''} ${isFailed ? caseCardStyles['is-failed'] : ''} ${needsMoreXp ? caseCardStyles['is-locked'] : ''}`}>
       
-      {/* Top Image Area */}
       <div className={caseCardStyles['case-card-hero']}>
         <div
           className={caseCardStyles['case-card-background']}
@@ -48,10 +47,10 @@ export default function CaseCard({ gameCase, imageUrl, userXp = 0 }: CaseCardPro
         )}
       </div>
 
-      {/* Bottom Content Area */}
       <div className={caseCardStyles['case-card-content']}>
-        <h3 className={caseCardStyles['case-title']}>{gameCase.title}</h3>
-        {/* Sleek Horizontal Metadata Row */}
+        <h3 className={caseCardStyles['case-title']}>
+          <button type="button" className={caseCardStyles.titleButton}>{gameCase.title}</button>
+        </h3>
         {gameCase.story && (
           <p className={caseCardStyles['case-story']}>{gameCase.story}</p>
         )}
@@ -59,7 +58,7 @@ export default function CaseCard({ gameCase, imageUrl, userXp = 0 }: CaseCardPro
         <div className={caseCardStyles['metadataRow']}>
           {gameCase.difficulty && (
             <div className={caseCardStyles['metadataItem']}>
-              <svg className={caseCardStyles['metadataIcon']} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg aria-hidden="true" className={caseCardStyles['metadataIcon']} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               </svg>
               <span>{gameCase.difficulty}</span>
@@ -67,7 +66,7 @@ export default function CaseCard({ gameCase, imageUrl, userXp = 0 }: CaseCardPro
           )}
           
           <div className={`${caseCardStyles['metadataItem']} ${caseCardStyles['rewardStandard']}`}>
-            <svg className={caseCardStyles['metadataIcon']} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg aria-hidden="true" className={caseCardStyles['metadataIcon']} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M20 12V8H4v4"/><path d="M2 6h20v12H2z"/><path d="M12 12h.01"/><path d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
             </svg>
             <span className={caseCardStyles['metaValueHighlightMono']}>{gameCase.XP_on_solve} {t('components.caseBriefing.xp', 'XP')}</span>

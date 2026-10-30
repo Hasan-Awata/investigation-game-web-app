@@ -37,6 +37,7 @@ auth.json
 
 # AI
 *.md
+.agents/
 .claude/
 .gemini/
 .impeccable/

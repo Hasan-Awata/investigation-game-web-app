@@ -1,106 +1,146 @@
 .case-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  border-radius: 22px; 
+  height: 100%;
+  min-width: 0;
+  border-radius: 22px;
   overflow: hidden;
   background-color: var(--bg-dark);
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
   border: var(--border-thin);
-  /* Prevents sub-pixel rendering glitches during the Y-axis translation */
-  transform: translateZ(0); 
 }
 
-.case-card:hover {
-  transform: translateY(-8px) translateZ(0);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--accent-cyan);
-  border-color: var(--accent-cyan);
+.case-card:has(:focus-visible) {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 3px;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .case-card:hover {
+    box-shadow: 0 12px 24px rgba(var(--bg-dark-rgb), 0.5);
+    border-color: var(--accent-cyan);
+  }
+
+  .case-card:hover .case-card-background {
+    transform: scale(1.05);
+  }
 }
 
 .case-card-hero {
   position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
   width: 100%;
-  height: 250px; /* Increased to give the image more vertical space */
   flex-shrink: 0;
   overflow: hidden;
   background-color: var(--bg-dark);
-  z-index: 1;
+}
+
+.case-card-hero::before {
+  content: '';
+  grid-area: 1 / 1;
+  padding-top: min(62.5%, 15.625rem);
 }
 
 .case-card-background {
-  /* -1px inset prevents white edges from bleeding during scale animation */
   position: absolute;
   inset: -1px;
   background-size: cover;
   background-position: center;
   transition: transform 0.5s ease;
-  will-change: transform;
 }
 
-.case-card:hover .case-card-background {
-  transform: scale(1.05) translateZ(0);
-}
-
-/* Fades smoothly into the solid background of the content area */
 .case-card-overlay {
   position: absolute;
   inset: 0;
+  z-index: 1;
   background: linear-gradient(
     to bottom,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0.5) 60%,
-    var(--bg-dark) 100% 
+    rgba(var(--bg-dark-rgb), 0) 0%,
+    rgba(var(--bg-dark-rgb), 0.5) 60%,
+    var(--bg-dark) 98%
   );
-  /* Prevents the overlay from blocking interactions or glitching on hover */
   pointer-events: none;
-  transform: translateZ(0);
 }
 
 .case-card-content {
+  z-index: 1;
   display: flex;
   flex-direction: column;
-  padding: 1.5rem; 
+  min-width: 0;
+  gap: 0.75rem;
+  padding: 1.5rem;
+  margin-top: -2px;
+  background-color: var(--bg-dark);
   flex-grow: 1;
-  position: relative;
-  z-index: 2;
-  background-color: var(--bg-dark); 
-  margin-top: -2px; 
 }
 
 .case-title {
-  margin: 0 0 0.5rem 0;
+  margin: 0;
   font-size: 1.35rem;
   font-weight: 600;
-  line-height: 1.2;
+  line-height: 1.4;
   text-align: start;
   color: var(--text-primary);
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+  overflow-wrap: anywhere;
 }
 
-/* Metadata Row Styling Matched to CaseBriefingModal */
+.titleButton {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: inherit;
+  overflow-wrap: inherit;
+  cursor: inherit;
+}
+
+.titleButton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.titleButton:focus-visible {
+  outline: none;
+}
+
 .metadataRow {
   display: flex;
   align-items: center;
   column-gap: 1.5rem;
   row-gap: 0.5rem;
   flex-wrap: wrap;
-  margin-bottom: 1.25rem;
+  margin-top: auto;
+  padding-top: 0.5rem;
 }
 
 .metadataItem {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  color: var(--text-secondary, #a1a1aa);
+  min-width: 0;
+  gap: 0.5rem;
+  color: var(--text-secondary);
   font-family: var(--font-primary, sans-serif);
   font-size: 0.9rem;
   font-weight: 400;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 .metadataIcon {
   width: 1.1rem;
   height: 1.1rem;
-  opacity: 0.75;
+  flex-shrink: 0;
 }
 
 .metaValueHighlightMono {
@@ -109,63 +149,72 @@
 }
 
 .rewardStandard {
-  color: var(--accent-amber, #ffb800);
+  color: var(--accent-amber);
 }
 
 .case-story {
-  margin: 0 0 1.5rem 0;
+  margin: 0;
   font-size: 0.9rem;
   line-height: 1.6;
-  color: var(--text-secondary, #cccccc);
+  color: var(--text-secondary);
   display: -webkit-box;
   -webkit-line-clamp: 3;
-  line-clamp: 3; 
+  line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  overflow-wrap: anywhere;
   text-align: start;
 }
-
-/* =========================================
-   STATUS OVERLAYS (Solved / Failed)
-   ========================================= */
 
 .case-card.is-solved .case-card-background,
 .case-card.is-failed .case-card-background {
   filter: grayscale(80%) brightness(0.6);
 }
 
-.case-card.is-locked {
+.case-card.is-locked .case-card-background {
   opacity: 0.85;
 }
 
 .solved-stamp-container {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  z-index: 2;
+  grid-area: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10;
+  padding: 1.5rem;
   pointer-events: none;
-  background: rgba(var(--bg-dark-rgb, 0, 0, 0), 0.4); 
+  background: rgba(var(--bg-dark-rgb), 0.4);
 }
 
 .solved-stamp {
+  max-width: 100%;
   font-family: var(--font-mono, monospace);
   color: var(--accent-cyan);
   border: 3px solid var(--accent-cyan);
-  padding: 0.5rem 1.5rem;
+  padding: 0.5rem 0.75rem;
   font-size: 1.5rem;
   font-weight: 700;
-  transform: rotate(-15deg);
-  letter-spacing: 0.3em;
-  background: rgba(var(--bg-dark-rgb, 0, 0, 0), 0.9);
-  box-shadow: 0 0 20px rgba(var(--accent-cyan-rgb, 0, 255, 255), 0.2);
-  text-shadow: 0 0 10px rgba(var(--accent-cyan-rgb, 0, 255, 255), 0.5);
+  line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
+  transform: rotate(-8deg);
+  letter-spacing: 0.08em;
+  background: var(--bg-dark);
 }
 
 .failed-stamp {
-  border-color: var(--accent-crimson, #ff4444);
-  color: var(--accent-crimson, #ff4444);
-  box-shadow: 0 0 20px rgba(255, 68, 68, 0.2);
-  text-shadow: 0 0 10px rgba(255, 68, 68, 0.5);
+  border-color: var(--accent-crimson);
+  color: var(--text-primary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .case-card,
+  .case-card-background {
+    transition: none;
+  }
+
+  .case-card:hover .case-card-background {
+    transform: none;
+  }
 }
