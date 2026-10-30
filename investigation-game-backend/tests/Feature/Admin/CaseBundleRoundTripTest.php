@@ -69,7 +69,8 @@ class CaseBundleRoundTripTest extends TestCase
         $this->actingAsAdmin();
         $manifest = CaseBundleFactory::minimalManifest();
         $manifest['case']['map'] = 'media/map.png';
-        $bundle = CaseBundleFactory::build($manifest, ['media/map.png' => 'map image bytes']);
+        $image = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=');
+        $bundle = CaseBundleFactory::build($manifest, ['media/map.png' => $image]);
 
         $response = $this->importBundle($bundle);
         $response->assertStatus(201);
@@ -85,7 +86,7 @@ class CaseBundleRoundTripTest extends TestCase
         $this->assertTrue($zip->open($zipPath) === true);
         $manifest = json_decode((string) $zip->getFromName('case.json'), true);
         $this->assertSame('media/map.png', $manifest['case']['map']);
-        $this->assertSame('map image bytes', $zip->getFromName($manifest['case']['map']));
+        $this->assertSame($image, $zip->getFromName($manifest['case']['map']));
         $zip->close();
 
         $case->delete();

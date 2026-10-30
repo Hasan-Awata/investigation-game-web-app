@@ -436,12 +436,12 @@ class CaseImportValidationTest extends TestCase
     }
 
     #[DataProvider('unsupportedEntryTypes')]
-    public function test_links_and_special_entries_are_rejected(int $mode): void
+    public function test_links_and_special_entries_are_rejected(int $mode, int $opsys = ZipArchive::OPSYS_UNIX): void
     {
         $path = CaseBundleFactory::build(CaseBundleFactory::minimalManifest(), ['media/link' => 'target']);
         $zip = new ZipArchive;
         $this->assertTrue($zip->open($path));
-        $this->assertTrue($zip->setExternalAttributesName('media/link', ZipArchive::OPSYS_UNIX, $mode << 16));
+        $this->assertTrue($zip->setExternalAttributesName('media/link', $opsys, $mode << 16));
         $zip->close();
         $this->mock(CaseManifestValidator::class)->shouldNotReceive('validate');
 
@@ -457,7 +457,10 @@ class CaseImportValidationTest extends TestCase
 
     public static function unsupportedEntryTypes(): array
     {
-        return [[0120777], [0010644], [0020644], [0060644], [0140644]];
+        return [
+            [0120777], [0010644], [0020644], [0060644], [0140644],
+            [0120777, ZipArchive::OPSYS_OS_X], [0120777, ZipArchive::OPSYS_DOS],
+        ];
     }
 
     public function test_write_failure_removes_partial_extraction_before_validation(): void
@@ -558,5 +561,81 @@ class CaseImportValidationTest extends TestCase
     public static function rawEntryNames(): array
     {
         return [["media/ot\0er.txt"], ['media/first.txt']];
+    }
+
+    #[DataProvider('supportedMedia')]
+    public function test_supported_media_imports_with_content_derived_extensions(string $filename, string $bytes, bool $audio, string $extension): void
+    {
+        $manifest = CaseBundleFactory::minimalManifest();
+        if ($audio) {
+            $manifest['evidences'] = [['title' => 'Recording', 'evidence_type' => 'audio', 'audio' => 'media/'.$filename]];
+        } else {
+            $manifest['case']['cover'] = 'media/'.$filename;
+        }
+        $path = CaseBundleFactory::build($manifest, ['media/'.$filename => $bytes]);
+
+        try {
+            $response = $this->importBundle($path)->assertCreated();
+            $case = GameCase::findOrFail($response->json('case_id'));
+            $url = $audio ? $case->evidences()->firstOrFail()->getRawOriginal('audio_url') : $case->getRawOriginal('img_url');
+            $this->assertStringEndsWith('.'.$extension, $url);
+            $this->assertSame($bytes, file_get_contents(public_path($url)));
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public static function supportedMedia(): array
+    {
+        $image = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=');
+        $pcm = str_repeat("\0", 800);
+        $audio = 'RIFF'.pack('V', 36 + strlen($pcm)).'WAVEfmt '.pack('VvvVVvv', 16, 1, 1, 8000, 8000, 1, 8).'data'.pack('V', strlen($pcm)).$pcm;
+
+        return [['cover.jpg', $image, false, 'png'], ['recording.wav', $audio, true, 'wav']];
+    }
+
+    #[DataProvider('rejectedMedia')]
+    public function test_unsafe_media_is_rejected_before_storage(string $field, string $filename, string $bytes): void
+    {
+        $manifest = CaseBundleFactory::minimalManifest([
+            'evidences' => [['title' => 'Recording', 'evidence_type' => 'audio']],
+            'characters' => [['name' => 'Witness']],
+        ]);
+        data_set($manifest, $field, 'media/'.$filename);
+        $path = CaseBundleFactory::build($manifest, ['media/'.$filename => $bytes]);
+
+        try {
+            $this->importBundle($path)->assertUnprocessable()->assertJsonValidationErrors($field);
+            $this->assertDatabaseCount('cases', 0);
+            $this->assertDirectoryDoesNotExist(public_path('assets/cases'));
+            $this->assertSame([], Storage::disk('local')->allFiles());
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public static function rejectedMedia(): array
+    {
+        [$image, $audio] = self::supportedMedia();
+        $wideImage = substr_replace($image[1], pack('N', 4097), 16, 4);
+        $wideImage = substr_replace($wideImage, pack('N', crc32(substr($wideImage, 12, 17))), 29, 4);
+
+        return [
+            ['case.cover', 'inert.php', '<?php /* inert */'],
+            ['case.cover', 'fake.png', 'not an image'],
+            ['case.cover', 'page.html', '<html>not an image</html>'],
+            ['case.cover', 'vector.svg', '<svg xmlns="http://www.w3.org/2000/svg"/>'],
+            ['case.cover', 'recording.wav', $audio[1]],
+            ['case.cover', 'large.png', $image[1].str_repeat('x', 4096 * 1024)],
+            ['case.cover', 'wide.png', $wideImage],
+            ['case.map', 'fake.png', 'not an image'],
+            ['characters.0.img', 'fake.png', 'not an image'],
+            ['zones.0.levels.0.img', 'fake.png', 'not an image'],
+            ['zones.0.levels.0.nodes.0.img', 'fake.png', 'not an image'],
+            ['evidences.0.img', 'fake.png', 'not an image'],
+            ['evidences.0.audio', 'fake.wav', 'not audio'],
+            ['evidences.0.audio', 'image.png', $image[1]],
+            ['evidences.0.audio', 'large.wav', $audio[1].str_repeat('x', 10240 * 1024)],
+        ];
     }
 }

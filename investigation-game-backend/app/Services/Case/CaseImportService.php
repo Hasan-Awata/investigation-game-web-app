@@ -148,7 +148,7 @@ class CaseImportService
                 $isDirectory = str_ends_with($name, '/');
                 $type = ($attributes >> 16) & 0170000;
 
-                if (($opsys === ZipArchive::OPSYS_UNIX && $type !== 0 && $type !== ($isDirectory ? 0040000 : 0100000))
+                if (($type !== 0 && $type !== ($isDirectory ? 0040000 : 0100000))
                     || ($attributes & 0x400) !== 0 || ($isDirectory && $stat['size'] !== 0)) {
                     throw ValidationException::withMessages([
                         'file' => ['The ZIP archive contains a link or unsupported file entry.'],
