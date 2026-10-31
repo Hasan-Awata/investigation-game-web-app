@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import '@/i18n';
@@ -17,6 +18,45 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    modalRef.current?.focus();
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      if (previouslyFocused instanceof HTMLElement) previouslyFocused.focus();
+    };
+  }, []);
+
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape' && !isLoading) {
+      event.stopPropagation();
+      onClose();
+      return;
+    }
+
+    if (event.key !== 'Tab') return;
+
+    const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), [tabindex="0"]');
+    if (!focusableElements?.length) return;
+
+    const first = focusableElements[0];
+    const last = focusableElements[focusableElements.length - 1];
+    const activeElement = document.activeElement;
+
+    if (event.shiftKey && (activeElement === first || activeElement === modalRef.current)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (activeElement === last || activeElement === modalRef.current)) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
 
   const handleStartSession = async () => {
     setIsLoading(true);
@@ -67,103 +107,114 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
 
   return (
     <div className={styles.modalBackdrop} onClick={onClose}>
-      <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
-        <button className={styles.closeBtn} onClick={onClose} disabled={isLoading} title="Close">✕</button>
+      <div
+        ref={modalRef}
+        className={styles.modalContent}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onKeyDown={handleKeyDown}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button type="button" className={styles.closeBtn} onClick={onClose} disabled={isLoading} title="Close" aria-label="Close">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+            <path d="m6 6 12 12M6 18 18 6" />
+          </svg>
+        </button>
 
-        {/* Immersive Hero Header */}
-        <div className={styles.heroHeader} style={heroStyle}>
-          <div className={styles.heroGradientOverlay}></div>
-          <div className={styles.heroContent}>
-            <div className={styles.modalAuthor}>
-              {t('components.caseBriefing.authoredBy')} {gameCase.author_name || t('components.caseBriefing.system')}
-            </div>
-            <h2 className={styles.modalTitle}>{gameCase.title}</h2>
-            {gameCase.tags && gameCase.tags.length > 0 && (
-              <div className={styles.dossierTags}>
-                {gameCase.tags.map((tag, idx) => (
-                  <span key={idx} className={styles.dossierTagPill}>{tag}</span>
-                ))}
+        <div className={styles.modalScrollArea} tabIndex={0} role="region" aria-labelledby={titleId}>
+          <div className={styles.heroHeader} style={heroStyle}>
+            <div className={styles.heroGradientOverlay}></div>
+            <div className={styles.heroContent}>
+              <div className={styles.modalAuthor}>
+                {t('components.caseBriefing.authoredBy')} {gameCase.author_name || t('components.caseBriefing.system')}
               </div>
-            )}
+              <h2 id={titleId} className={styles.modalTitle}>{gameCase.title}</h2>
+              {gameCase.tags && gameCase.tags.length > 0 && (
+                <div className={styles.dossierTags}>
+                  {gameCase.tags.map((tag, idx) => (
+                    <span key={idx} className={styles.dossierTagPill}>{tag}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className={styles.modalBody}>
+            <div className={styles.metadataRow}>
+              {/* Playtime */}
+              <div className={styles.metadataItem}>
+                <svg aria-hidden="true" className={styles.metadataIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                </svg>
+                <span>{gameCase.estimated_playtime || t('components.caseBriefing.unknown')}</span>
+              </div>
+
+              {/* Difficulty */}
+              <div className={styles.metadataItem}>
+                <svg aria-hidden="true" className={styles.metadataIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+                <span>{gameCase.difficulty || t('components.caseBriefing.standard')}</span>
+              </div>
+
+              {/* Rating */}
+              <div className={styles.metadataItem}>
+                <svg aria-hidden="true" className={styles.metadataIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+                <span>{gameCase.rating_stars ? `${gameCase.rating_stars} / 5` : t('components.caseBriefing.unrated')}</span>
+              </div>
+
+              {/* Advisory */}
+              <div className={styles.metadataItem}>
+                <svg aria-hidden="true" className={styles.metadataIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
+                </svg>
+                <span>{gameCase.age_rating || t('components.caseBriefing.unrated')}</span>
+              </div>
+
+              {/* Access Requirements */}
+              <div className={styles.metadataItem}>
+                <svg aria-hidden="true" className={styles.metadataIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+                </svg>
+                <span className={styles.metaValueHighlightMono}>{gameCase.min_player_XP} {'XP'}</span>
+              </div>
+
+              {/* Reward */}
+              <div className={`${styles.metadataItem} ${rewardClass}`}>
+                <svg aria-hidden="true" className={styles.metadataIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20 12V8H4v4"/><path d="M2 6h20v12H2z"/><path d="M12 12h.01"/><path d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+                </svg>
+                <span className={styles.metaValueHighlightMono}>{rewardText}</span>
+              </div>
+            </div>
+
+            <div className={styles.modalStoryContainer}>
+              <p>{gameCase.story}</p>
+            </div>
+
           </div>
         </div>
 
-        {/* Modal Body */}
-        <div className={styles.modalBody}>
-          
-          {/* Combined Horizontal Metadata Row without the box container */}
-          <div className={styles.metadataRow}>
-            {/* Playtime */}
-            <div className={styles.metadataItem}>
-              <svg className={styles.metadataIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-              </svg>
-              <span>{gameCase.estimated_playtime || t('components.caseBriefing.unknown')}</span>
-            </div>
+        <div className={styles.modalActions}>
+          {error && <div className={styles.modalErrorMessage} role="alert">{error}</div>}
+          <button type="button" className={styles.btnPrimary} onClick={handleStartSession} disabled={isLoading} aria-busy={isLoading}>
+            {primaryButtonText}
+          </button>
 
-            {/* Difficulty */}
-            <div className={styles.metadataItem}>
-              <svg className={styles.metadataIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-              <span>{gameCase.difficulty || t('components.caseBriefing.standard')}</span>
-            </div>
-
-            {/* Rating */}
-            <div className={styles.metadataItem}>
-              <svg className={styles.metadataIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-              </svg>
-              <span>{gameCase.rating_stars ? `${gameCase.rating_stars} / 5` : t('components.caseBriefing.unrated')}</span>
-            </div>
-
-            {/* Advisory */}
-            <div className={styles.metadataItem}>
-              <svg className={styles.metadataIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>
-              </svg>
-              <span>{gameCase.age_rating || t('components.caseBriefing.unrated')}</span>
-            </div>
-
-            {/* Access Requirements */}
-            <div className={styles.metadataItem}>
-              <svg className={styles.metadataIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
-              </svg>
-              <span className={styles.metaValueHighlightMono}>{gameCase.min_player_XP} {'XP'}</span>
-            </div>
-
-            {/* Reward */}
-            <div className={`${styles.metadataItem} ${rewardClass}`}>
-              <svg className={styles.metadataIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M20 12V8H4v4"/><path d="M2 6h20v12H2z"/><path d="M12 12h.01"/><path d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
-              </svg>
-              <span className={styles.metaValueHighlightMono}>{rewardText}</span>
-            </div>
-          </div>
-
-          <div className={styles.modalStoryContainer}>
-            <p>{gameCase.story}</p>
-          </div>
-
-          {error && <div className={styles.modalErrorMessage}>{error}</div>}
-
-          {/* Action Deck with Pill CTAs */}
-          <div className={styles.modalActions}>
-            <button className={styles.btnPrimary} onClick={handleStartSession} disabled={isLoading}>
-              {primaryButtonText}
+          {showContinue && (
+            <button
+              type="button"
+              className={`${styles.btnSecondary} ${styles.continueBtn}`}
+              onClick={() => navigate(`/room/${activeInviteCode}`)}
+              disabled={isLoading}
+            >
+              {t('components.caseBriefing.continueInvestigation')}
             </button>
-
-            {showContinue && (
-              <button
-                className={`${styles.btnSecondary} ${styles.continueBtn}`}
-                onClick={() => navigate(`/room/${activeInviteCode}`)}
-                disabled={isLoading}
-              >
-                {t('components.caseBriefing.continueInvestigation')}
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
     </div>
