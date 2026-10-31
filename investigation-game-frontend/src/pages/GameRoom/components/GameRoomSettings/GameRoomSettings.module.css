@@ -1,0 +1,31 @@
+.settings {
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+.heading {
+  margin: 0 0 1rem;
+  padding-block-end: 0.5rem;
+  border-block-end: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-secondary, #a1a1aa);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.languageRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.25rem;
+  color: var(--text-primary, #ffffff);
+  font-family: var(--font-primary, sans-serif);
+  font-size: 0.95rem;
+}
+
+.languageRow button:focus-visible {
+  outline: 2px solid var(--accent-cyan, #00e5ff);
+  outline-offset: 2px;
+}

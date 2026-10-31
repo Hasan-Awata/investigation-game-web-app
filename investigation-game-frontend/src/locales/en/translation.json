@@ -10,7 +10,13 @@
   "gameRoom": {
     "sessionCode": "Session Code",
     "activeAgents": "Active Agents",
-    "strikes": "STRIKES"
+    "strikes": "STRIKES",
+    "expandPanel": "Expand side panel",
+    "collapsePanel": "Collapse side panel",
+    "settings": {
+      "title": "Settings",
+      "language": "Language"
+    }
   },
   "pages": {
     "gameRoom": {

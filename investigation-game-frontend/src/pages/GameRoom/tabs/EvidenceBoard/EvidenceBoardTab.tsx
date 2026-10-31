@@ -43,10 +43,6 @@ export default function EvidenceBoardTab() {
 
   return (
     <div className={styles.evidenceBoardContainer}>
-      <header className={styles.boardHeader}>
-        <span className={styles.boardMeta}>{t('pages.gameRoom.evidence.board.subtitle')}</span>
-      </header>
-
       <div className={styles.evidenceWorkspace}>
         {accumulatedEvidences.length === 0 ? (
           <div className="terminal-text" style={{ textAlign: 'center' }}>

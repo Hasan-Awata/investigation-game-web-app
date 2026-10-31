@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -9,9 +9,10 @@ import {
   TouchSensor, 
   useSensor, 
   useSensors, 
+  getClientRect,
   defaultDropAnimationSideEffects 
 } from '@dnd-kit/core';
-import type { DragStartEvent, DragEndEvent } from '@dnd-kit/core';
+import type { ClientRect, DragStartEvent, DragEndEvent } from '@dnd-kit/core';
 
 import { useRoomData, useRoomUI } from '@/context/RoomContext.shared';
 import type { ToastNotification } from '@/context/RoomContext';
@@ -27,14 +28,14 @@ import CampaignTab from './tabs/Campaign/CampaignTab';
 import AgentNotepad from '@/pages/GameRoom/components/AgentNotepad/AgentNotepad';
 import ProceduralRequestTray from './components/ProceduralRequestTray/ProceduralRequestTray';
 import ActiveAgents from './components/ActiveAgents/ActiveAgents';
+import GameRoomSettings from './components/GameRoomSettings/GameRoomSettings';
 import { EvidenceCardOverlay } from './tabs/EvidenceBoard/EvidenceCard';
 import { CharacterCardOverlay } from './tabs/Characters/CharacterCard';
 import GameEndOverlay from './components/GameEffects/GameEndOverlay';
 import styles from './GameRoomLayout.module.css';
-import LanguageToggle from '@/components/LanguageToggle';
 
 type Tab = 'details' | 'evidences' | 'campaign' | 'characters';
-type SidebarTab = 'ledger' | 'agents' | 'procedural';
+type SidebarTab = 'ledger' | 'agents' | 'procedural' | 'settings';
 
 import type { FinalStats } from '@/types';
 
@@ -52,6 +53,9 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
 
   const [activeTab, setActiveTab] = useState<Tab>('details');
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('agents');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const sidebarId = useId();
+  const dragSourceRect = useRef<ClientRect | null>(null);
   const [isCopied, setIsCopied] = useState(false);
   const [showExitWarning, setShowExitWarning] = useState(false);
   const [isLeaving, setIsLeaving] = useState(false);
@@ -127,8 +131,30 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
   );
 
+  const selectSidebarTab = (tab: SidebarTab) => {
+    setSidebarTab(tab);
+    setIsSidebarCollapsed(false);
+  };
+
+  const showProceduralTray = () => {
+    setIsSidebarCollapsed(false);
+    setSidebarTab('procedural');
+  };
+
+  const clearDragState = () => {
+    dragSourceRect.current = null;
+    setActiveDragId(null);
+    setActiveDragType(null);
+    setActiveDragSource(null);
+  };
+
   const handleDragStart = (event: DragStartEvent) => {
     const { type, characterId, sourcePool } = event.active.data.current || {};
+
+    // Expanding the panel moves cards before dnd-kit takes its initial measurement.
+    const source = event.activatorEvent.target;
+    const card = source instanceof Element ? source.closest<HTMLElement>('[aria-roledescription="draggable"]') : null;
+    dragSourceRect.current = isSidebarCollapsed && card ? getClientRect(card, { ignoreTransform: true }) : null;
     
     setActiveDragType(type || 'EVIDENCE');
     setActiveDragId(type === 'CHARACTER' ? characterId : (event.active.id as number));
@@ -136,8 +162,8 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
 
     // Both evidences and characters can be filed on a procedural request;
     // surface the tray so its droppable zone exists while dragging.
-    if ((type === 'EVIDENCE' || type === 'CHARACTER') && sidebarTab !== 'procedural') {
-      setSidebarTab('procedural');
+    if (type === 'EVIDENCE' || type === 'CHARACTER') {
+      showProceduralTray();
     }
   };
 
@@ -157,9 +183,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
       }
     }
 
-    setActiveDragId(null);
-    setActiveDragType(null);
-    setActiveDragSource(null);
+    clearDragState();
   };
 
   const activeEvidence = useMemo(() => 
@@ -179,9 +203,11 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
   const circumference = 2 * Math.PI * radius;
   const segmentLength = Math.max(0, (circumference / maxStrikes) - 3.5);
 
+  const measureDraggable = (node: HTMLElement) => dragSourceRect.current ?? getClientRect(node, { ignoreTransform: true });
+
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-      <div className={styles.layoutContainer}>
+    <DndContext sensors={sensors} measuring={{ draggable: { measure: measureDraggable } }} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={clearDragState}>
+      <div className={`${styles.layoutContainer} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''}`}>
         
         {globalFeedback && (
           <div className="feedback-modal-overlay" style={{ zIndex: 9999 }}>
@@ -242,7 +268,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
         <GameEndOverlay status={room.status} resolutionMessage={resolutionMessage} finalStats={finalStats} />
 
         <aside className={styles.sidebarPanel}>
-          <div className={styles.sidebarSection}>
+          <div id={`${sidebarId}-session`} className={styles.sidebarSection} hidden={isSidebarCollapsed}>
             <div className={styles.sidebarHeadingWrapper}>
               <h3 className={styles.sidebarHeading}>{t('gameRoom.sessionCode')}</h3>
               <button className={`${styles.copyBtn} ${isCopied ? styles.copied : ''}`} onClick={handleCopyCode}>
@@ -256,19 +282,22 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
             <div className={styles.sidebarToggleHeader}>
               <button
                 className={`${styles.toggleIconBtn} ${sidebarTab === 'agents' ? styles.activeToggle : ''}`}
-                onClick={() => setSidebarTab('agents')} title={t('gameRoom.activeAgents')}
+                onClick={() => selectSidebarTab('agents')} title={t('gameRoom.activeAgents')}
+                aria-label={t('gameRoom.activeAgents')} aria-pressed={sidebarTab === 'agents'}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18" /><path d="M6 12l1.5-6h9l1.5 6" /><path d="M12 12v3" /><circle cx="8.5" cy="16.5" r="2.5" /><circle cx="15.5" cy="16.5" r="2.5" /><path d="M11 16.5h2" /></svg>
               </button>
               <button
                 className={`${styles.toggleIconBtn} ${sidebarTab === 'ledger' ? styles.activeToggle : ''}`}
-                onClick={() => setSidebarTab('ledger')} title={t('components.agentNotepad.fieldLedger', 'Field Ledger')}
+                onClick={() => selectSidebarTab('ledger')} title={t('components.agentNotepad.fieldLedger', 'Field Ledger')}
+                aria-label={t('components.agentNotepad.fieldLedger', 'Field Ledger')} aria-pressed={sidebarTab === 'ledger'}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg>
               </button>
               <button
                 className={`${styles.toggleIconBtn} ${sidebarTab === 'procedural' ? styles.activeToggle : ''}`}
-                onClick={() => setSidebarTab('procedural')} title={t('pages.gameRoom.evidence.board.proceduralTrayTitle', 'Procedural Requests')}
+                onClick={() => selectSidebarTab('procedural')} title={t('pages.gameRoom.evidence.board.proceduralTrayTitle', 'Procedural Requests')}
+                aria-label={t('pages.gameRoom.evidence.board.proceduralTrayTitle', 'Procedural Requests')} aria-pressed={sidebarTab === 'procedural'}
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
@@ -278,9 +307,36 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
                   <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>
                 </svg>
               </button>
+              <button
+                type="button"
+                className={`${styles.toggleIconBtn} ${sidebarTab === 'settings' ? styles.activeToggle : ''}`}
+                onClick={() => selectSidebarTab('settings')} title={t('gameRoom.settings.title')}
+                aria-label={t('gameRoom.settings.title')} aria-pressed={sidebarTab === 'settings'}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="m9.5 3-.6 2.4-2 .9L4.6 5.6 2 10l1.8 1.7v.6L2 14l2.6 4.4 2.3-.7 2 .9.6 2.4h5l.6-2.4 2-.9 2.3.7L22 14l-1.8-1.7v-.6L22 10l-2.6-4.4-2.3.7-2-.9-.6-2.4Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className={`${styles.toggleIconBtn} ${styles.collapseBtn}`}
+                onClick={() => setIsSidebarCollapsed(collapsed => !collapsed)}
+                disabled={activeDragId !== null}
+                aria-expanded={!isSidebarCollapsed}
+                aria-controls={`${sidebarId}-session ${sidebarId}-content`}
+                aria-label={t(isSidebarCollapsed ? 'gameRoom.expandPanel' : 'gameRoom.collapsePanel')}
+                title={t(isSidebarCollapsed ? 'gameRoom.expandPanel' : 'gameRoom.collapsePanel')}
+              >
+                <svg className={styles.collapseIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="3" y="4" width="18" height="16" rx="2" />
+                  <path d="M9 4v16" />
+                  <path d={isSidebarCollapsed ? 'm12 9 3 3-3 3' : 'm15 9-3 3 3 3'} />
+                </svg>
+              </button>
             </div>
 
-            <div className={styles.sidebarToggleContent}>
+            <div id={`${sidebarId}-content`} className={styles.sidebarToggleContent} hidden={isSidebarCollapsed}>
               {sidebarTab === 'agents' ? (
                 <ActiveAgents users={room.users} hostUserId={room.host_user_id} />
               ) : sidebarTab === 'procedural' ? (
@@ -296,6 +352,8 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
                   submitRequest={submitRequest}
                   filedRequests={filedRequests}
                 />
+              ) : sidebarTab === 'settings' ? (
+                <GameRoomSettings />
               ) : (
                 <AgentNotepad roomId={room.id} />
               )}
@@ -337,7 +395,6 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
                   {t('pages.gameRoom.layout.tabs.campaign')}
                 </button>
               </div>
-              <LanguageToggle />
               <button className={styles.actionBlockBtn} onClick={() => setShowExitWarning(true)}>{t('pages.gameRoom.layout.tabs.returnToMenu', 'Exit')}</button>
             </nav>
           </header>

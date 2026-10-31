@@ -8,6 +8,12 @@
     "unauthorized": "غير مصرح لك بالدخول"
   },
   "gameRoom": {
+    "expandPanel": "توسيع اللوحة الجانبية",
+    "collapsePanel": "طي اللوحة الجانبية",
+    "settings": {
+      "title": "الإعدادات",
+      "language": "اللغة"
+    },
     "sessionCode": "رمز الجلسة",
     "activeAgents": "العملاء النشطون",
     "strikes": "الإنذارات"
