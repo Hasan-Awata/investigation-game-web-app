@@ -48,8 +48,8 @@ export const joinRoom = async (inviteCode: string): Promise<Result<GameRoom>> =>
   return result.isSuccess ? success(result.value.room) : result;
 };
 
-export const fetchRoomState = async (roomId: number): Promise<Result<GameRoom>> => {
-  const result = await request<RoomResponse>(`/rooms/${roomId}`);
+export const fetchRoomState = async (roomId: number, signal?: AbortSignal): Promise<Result<GameRoom>> => {
+  const result = await request<RoomResponse>(`/rooms/${roomId}`, { signal });
   return result.isSuccess ? success(result.value.room) : result;
 };
 

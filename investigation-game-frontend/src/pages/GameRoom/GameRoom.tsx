@@ -76,6 +76,7 @@ export default function GameRoom() {
     room,
     isLoading,
     error,
+    syncError,
     accumulatedEvidences,
     accumulatedCharacters,
     refreshRoomData,
@@ -136,7 +137,14 @@ export default function GameRoom() {
       timeoutsRef.current.push(id);
     };
 
-    const channel = window.Echo.private(`room.${roomId}`);
+    const echo = window.Echo;
+    let previousStatus = echo.connectionStatus();
+    const unsubscribeConnection = echo.connector.onConnectionChange(status => {
+      const reconnected = status === 'connected' && previousStatus !== 'connected';
+      previousStatus = status;
+      if (reconnected && document.visibilityState === 'visible') void refreshRoomData();
+    });
+    const channel = echo.private(`room.${roomId}`);
 
     // 1. Level Transitions & Game State
     channel.listen('LevelTransitioned', (e: LevelTransitionedPayload) => {
@@ -164,6 +172,7 @@ export default function GameRoom() {
           completed_levels: updatedCompletedLevels
         };
       });
+      if (e.status !== 'active') void refreshRoomData();
     });
 
     // 2. Voting / Dialogue Tree Selection
@@ -204,6 +213,7 @@ export default function GameRoom() {
         }
         return { ...oldRoom, encounter_groups: groups, question_resolutions: resolutions };
       });
+      if (event.status !== 'active') void refreshRoomData();
     });
 
     // 4. Discovery Engine (ItemsUnlocked)
@@ -354,6 +364,7 @@ export default function GameRoom() {
     });
 
     return () => {
+      unsubscribeConnection();
       channel.stopListening('LevelTransitioned');
       channel.stopListening('VoteLockedIn');
       channel.stopListening('EncounterGroupUpdated');
@@ -362,7 +373,7 @@ export default function GameRoom() {
       channel.stopListening('RequestFiled');
       channel.stopListening('HostMigrated');
 
-      window.Echo.leave(`room.${roomId}`);
+      echo.leave(`room.${roomId}`);
     };
   }, [room?.id, patchRoomData, refreshRoomData]);
 
@@ -376,6 +387,7 @@ export default function GameRoom() {
       accumulatedCharacters={accumulatedCharacters}
       refreshRoomData={refreshRoomData}
     >
+      {syncError && <p role="status">{t('pages.gameRoom.syncDelayed', 'Unable to refresh progress. Showing the last saved state; retrying automatically.')}</p>}
       <RoomUIProvider
         viewedEvidences={viewedEvidences} markEvidenceAsViewed={markEvidenceAsViewed}
         viewedCharacters={viewedCharacters} markCharacterAsViewed={markCharacterAsViewed}

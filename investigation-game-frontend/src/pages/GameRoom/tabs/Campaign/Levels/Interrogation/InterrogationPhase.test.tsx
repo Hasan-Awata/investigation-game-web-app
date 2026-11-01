@@ -142,6 +142,17 @@ describe('InterrogationPhase', () => {
     expect(screen.getByRole('button', { name: /At work/ })).toBeDisabled();
   });
 
+  it('explains an overdue confirmation while keeping saved votes changeable', () => {
+    useInvestigationPhaseMock.mockReturnValue({
+      ...useInvestigationPhaseMock(),
+      activeGroup: { ...useInvestigationPhaseMock().activeGroup, finalizes_at: new Date(Date.now() - 16000).toISOString() },
+    });
+    renderPhase();
+    expect(screen.getByRole('status')).toHaveTextContent('Confirmation is taking longer than expected');
+    expect(screen.getByRole('button', { name: /At home/ })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Clear my vote' })).toBeEnabled();
+  });
+
   it('restores resolved exchanges in order before the current question without treating pending votes as history', () => {
     const earlierQuestions = [
       { id: 20, level_id: level.id, text: 'First prompt', choices: [{ id: 90, question_id: 20, text: 'Approved answer' }, { id: 91, question_id: 20, text: 'Rejected alternative' }] },

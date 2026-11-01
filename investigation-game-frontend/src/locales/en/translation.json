@@ -20,6 +20,7 @@
   },
   "pages": {
     "gameRoom": {
+      "syncDelayed": "Unable to refresh progress. Showing the last saved state; retrying automatically.",
       "evidence": {
         "board": {
           "exactCombinationHint": "Warrants require the exact combination of directly relevant evidence and characters. Leave unrelated items out.",
@@ -80,6 +81,8 @@
       "campaign": {
         "levels": {
           "interrogation": {
+            "awaitingConfirmation": "Submitted votes are saved. Waiting for the server to confirm the outcome.",
+            "confirmationDelayed": "Confirmation is taking longer than expected. Submitted votes are saved; we will keep checking automatically.",
             "conversation": "Conversation",
             "interviewee": "Interviewee",
             "investigator": "Investigator",

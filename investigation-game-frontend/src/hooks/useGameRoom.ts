@@ -62,15 +62,23 @@ export function useGameRoom(inviteCode: string | undefined) {
     refetch
   } = useQuery({
     queryKey: ['gameRoom', joinState.inviteCode],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       const roomId = joinState.roomId;
       if (!roomId) throw new Error(t('pages.gameRoom.noInviteCode'));
 
       // Strictly idempotent read: GET /rooms/{roomId} with no side effects.
-      const stateResult = await fetchRoomState(roomId);
-      if (!stateResult.isSuccess) throw new Error(stateResult.errorMessage);
-
-      return stateResult.value;
+      const controller = new AbortController();
+      const cancel = () => controller.abort();
+      signal.addEventListener('abort', cancel, { once: true });
+      const timeout = window.setTimeout(cancel, 15000);
+      try {
+        const stateResult = await fetchRoomState(roomId, controller.signal);
+        if (!stateResult.isSuccess) throw new Error(stateResult.errorMessage);
+        return stateResult.value;
+      } finally {
+        window.clearTimeout(timeout);
+        signal.removeEventListener('abort', cancel);
+      }
     },
     enabled: !!joinState.inviteCode && joinState.roomId !== null,
     retry: false,
@@ -82,7 +90,7 @@ export function useGameRoom(inviteCode: string | undefined) {
 
   useEffect(() => {
     const recover = () => {
-      if (joinState.roomId !== null) void refetch();
+      if (joinState.roomId !== null) void refetch({ cancelRefetch: false });
       else if (joinState.error && !joinMutation.isPending) {
         setJoinState(previous => ({ ...previous, error: null }));
       }
@@ -114,7 +122,7 @@ if (room?.id && inviteCode) {
     }
   }, [queryClient, inviteCode]);
 
-  const refreshRoomData = useCallback(async () => { await refetch(); }, [refetch]);
+  const refreshRoomData = useCallback(async () => { await refetch({ cancelRefetch: false }); }, [refetch]);
 
   const errorObject = joinState.error
     ? new Error(joinState.error)
@@ -122,6 +130,7 @@ if (room?.id && inviteCode) {
 
   return {
     room,
+    syncError: room && error instanceof Error ? error.message : null,
     isLoading: isLoading || (joinState.roomId === null && joinMutation.isPending),
     error: !room && errorObject instanceof Error ? errorObject.message : null,
     accumulatedEvidences: room?.accumulated_evidences || [] as Evidence[],

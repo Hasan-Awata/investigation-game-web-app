@@ -26,6 +26,11 @@ class EncounterQueueDeliveryTest extends TestCase
     public function test_database_worker_delivers_the_delayed_answer_and_advances_the_encounter(array $unlockKeys): void
     {
         Event::fake([ItemsUnlocked::class]);
+        Event::listen(\App\Events\EncounterGroupUpdated::class, function ($event): void {
+            if ($event->group->status === 'completed') {
+                throw new \RuntimeException('Simulated completion event delivery failure');
+            }
+        });
         config(['queue.default' => 'database']);
         $player = User::factory()->create(['username' => 'queue_player']);
         $case = GameCase::create(['title' => 'Queue delivery', 'story' => 'Story', 'XP_on_solve' => 10]);
@@ -56,10 +61,31 @@ class EncounterQueueDeliveryTest extends TestCase
         $this->assertSame(1, DB::table('jobs')->count(), 'A worker must not approve an answer before the deadline.');
         $this->assertSame($first->id, $group->fresh()->current_question_id);
 
+        $this->travel(1)->seconds();
+        $alternative = $first->choices()->create(['text' => 'Changed answer', 'outcomes' => ['next_question_id' => $next->id]]);
+        $service->vote($room, $first, $alternative->id, $player);
+        $service->clearVote($room, $first, $player);
         $this->travel(6)->seconds();
-        $this->assertSame(0, Artisan::call('queue:work', ['connection' => 'database', '--once' => true, '--sleep' => 0, '--tries' => 1]));
+        Artisan::call('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--sleep' => 0]);
+        $this->assertSame(0, $room->questionResolutions()->count(), 'Cleared votes invalidate every obsolete queued deadline.');
+        $this->assertNull($group->fresh()->finalizes_at);
+        $service->vote($room, $first, $answer->id, $player);
+        $this->travel(6)->seconds();
+        app()->instance(EncounterGroupService::class, \Mockery::mock(EncounterGroupService::class, function ($mock): void {
+            $mock->shouldReceive('finalize')->once()->andThrow(new \RuntimeException('Temporary worker dependency failure'));
+        }));
+        Artisan::call('queue:work', ['connection' => 'database', '--once' => true, '--sleep' => 0, '--tries' => 3, '--backoff' => 0]);
+        app()->instance(EncounterGroupService::class, $service);
+        $this->assertSame(1, DB::table('jobs')->count(), 'A transient error must leave the answer retryable.');
+        $this->assertSame(0, DB::table('failed_jobs')->count());
+        $this->assertSame(0, $room->questionResolutions()->count());
+        app(\App\Http\Controllers\GameRoomController::class)->show($room->fresh());
+        app(\App\Http\Controllers\GameRoomController::class)->show($room->fresh());
+        $this->assertSame(0, $room->questionResolutions()->count(), 'Reads cannot replace a stopped worker.');
+        $this->travel(120)->seconds();
+        $this->assertSame(0, Artisan::call('queue:work', ['connection' => 'database', '--once' => true, '--sleep' => 0, '--tries' => 3]));
 
-        $this->assertSame(0, DB::table('jobs')->count());
+        $this->assertSame(0, DB::table('jobs')->count(), json_encode(DB::table('jobs')->get(['attempts', 'reserved_at', 'available_at'])));
         $this->assertSame(0, DB::table('failed_jobs')->count());
         $this->assertSame(1, $room->questionResolutions()->count());
         $this->assertSame($next->id, $group->fresh()->current_question_id);
@@ -67,8 +93,9 @@ class EncounterQueueDeliveryTest extends TestCase
 
         $this->assertFalse($service->vote($room, $next, $nextAnswer->id, $player)->isFailure());
         $deadline = $group->fresh()->finalizes_at->toISOString();
+        FinalizeEncounterQuestion::dispatch($group->id, $next->id, $deadline)->delay($group->fresh()->finalizes_at);
         $this->travel(6)->seconds();
-        Artisan::call('queue:work', ['connection' => 'database', '--once' => true, '--sleep' => 0, '--tries' => 1]);
+        Artisan::call('queue:work', ['connection' => 'database', '--stop-when-empty' => true, '--sleep' => 0, '--tries' => 1]);
 
         $this->assertSame(0, DB::table('failed_jobs')->count());
         $this->assertSame(0, DB::table('jobs')->count());

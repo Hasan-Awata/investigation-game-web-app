@@ -13,6 +13,18 @@
 
 From `investigation-game-backend`, run `composer run dev` to start the API, database queue listener, Reverb, and the sibling frontend together. Stop separately started copies first to avoid port conflicts. Interrogation countdowns require the queue listener: running only `php artisan serve` and Reverb will save votes without processing their delayed answers. Keep the development command running while playing. To add only the missing worker to an already running app, use `php artisan queue:work --sleep=1 --tries=3 --timeout=60` in a separate terminal.
 
+### Delayed interrogation recovery and worker operation
+
+Use an asynchronous queue for interrogations. The inspected local configuration uses MySQL, `QUEUE_CONNECTION=database`, and `BROADCAST_CONNECTION=reverb`; production settings have not been verified. A synchronous or null queue cannot provide the five-second delayed progression contract. HTTP room reads never process answers.
+
+Run `php artisan queue:work database --queue=default --sleep=1 --tries=3 --backoff=5 --timeout=60` under the deployment host's service supervisor with automatic restart and captured logs. Replace the connection/queue names if the effective configuration uses different values. Keep the worker timeout below the reservation retry interval (the database configuration defaults to 90 seconds). Keep Reverb supervised separately when using Reverb. After deploying backend changes, rebuild configuration as appropriate and run `php artisan queue:restart`; verify that the supervisor starts a worker using the new code.
+
+The frontend keeps cached progress on temporary HTTP failures, checks active visible rooms every five seconds, refreshes on socket/network reconnection and visibility return, and requests a snapshot when a displayed deadline expires. Room reads time out after 15 seconds. Expired countdowns explain that submitted votes are saved and confirmation is pending; after 15 further seconds they explain the delay. Recovery does not require resubmitting an accepted vote. Hidden tabs resume synchronization when visible.
+
+If confirmation remains delayed, check the effective queue connection and queue name, worker supervisor status/logs, overdue active encounter deadlines, and `php artisan queue:failed`. Restart a stopped worker to drain pending jobs. Diagnose failed jobs before retrying only their identified IDs with `php artisan queue:retry <id>`; do not edit gameplay rows or retry unrelated player jobs. Monitor failed jobs and overdue progression in the deployment's operational monitoring, including alerts for worker outages. Repeated delivery is protected by the existing deadline, room/group status, and resolution guards.
+
+Deployment checklist (still pending): verify effective cached configuration and frontend realtime endpoints, private-channel authorization, supervised worker/Reverb restart, delayed progression, HTTP-only recovery, and an isolated worker interruption/restart. Local SQLite tests do not establish MySQL locking/concurrency or deployed delivery. Never stop shared services or consume player queues for interruption testing.
+
 ### Repair encounters after upgrading
 
 After deploying the backend and restarting queue workers, run `php artisan encounters:release-concluded` from the backend directory. It closes stale active encounter groups in solved/failed rooms in batches of 100 rooms, preserving votes, membership history, results, and XP. Each room is repaired transactionally; active investigations are untouched. The command reports the number of groups closed, can be safely rerun, and exits unsuccessfully if a repair fails. This is a deployment step for existing stale locks; newly concluded investigations release encounters automatically.

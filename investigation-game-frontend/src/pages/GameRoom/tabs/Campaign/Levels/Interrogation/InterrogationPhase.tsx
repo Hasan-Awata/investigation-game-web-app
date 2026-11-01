@@ -10,7 +10,7 @@ interface InterrogationPhaseProps { level: Level; }
 
 export default function InterrogationPhase({ level }: InterrogationPhaseProps) {
   const { t } = useTranslation();
-  const { room } = useRoomData();
+  const { room, refreshRoomData } = useRoomData();
   const { activeGroup, localVotes, isSubmitting, handleSelectChoice, clearVote } = useInvestigationPhase();
   const currentUser = getLocalUser();
   const question = level.questions?.find((item: Question) => item.id === activeGroup?.current_question_id);
@@ -42,6 +42,17 @@ export default function InterrogationPhase({ level }: InterrogationPhaseProps) {
     ? Math.max(0, Math.ceil((new Date(activeGroup.finalizes_at).getTime() - now) / 1000))
     : null;
 
+  const expired = secondsRemaining === 0;
+  const deadline = activeGroup?.finalizes_at;
+  const groupId = activeGroup?.id;
+  const groupLevelId = activeGroup?.level_id;
+  const questionId = question?.id;
+  useEffect(() => {
+    if (expired && groupLevelId === level.id && room.status === 'active' && document.visibilityState === 'visible') {
+      void refreshRoomData();
+    }
+  }, [expired, deadline, groupId, groupLevelId, questionId, level.id, room.status, refreshRoomData]);
+  const overdue = deadline ? now - new Date(deadline).getTime() >= 15000 : false;
   const hasOpenQuestion = activeGroup?.level_id === level.id && !!question;
   if (!hasOpenQuestion && history.length === 0) {
     return <div className={styles['empty-state']}>{t('pages.gameRoom.campaign.levels.interrogation.waitingForGroup', 'Start or join this interrogation to play.')}</div>;
@@ -105,6 +116,10 @@ export default function InterrogationPhase({ level }: InterrogationPhaseProps) {
               <span className={styles['status-marker']} aria-hidden="true" />
               {isTie
                 ? t('pages.gameRoom.campaign.levels.interrogation.tieDetected', 'The vote is tied. Change a vote to break the tie.')
+                : expired
+                  ? overdue
+                    ? t('pages.gameRoom.campaign.levels.interrogation.confirmationDelayed', 'Confirmation is taking longer than expected. Submitted votes are saved; we will keep checking automatically.')
+                    : t('pages.gameRoom.campaign.levels.interrogation.awaitingConfirmation', 'Submitted votes are saved. Waiting for the server to confirm the outcome.')
                 : secondsRemaining !== null
                   ? t('pages.gameRoom.campaign.levels.interrogation.finalizingIn', { seconds: secondsRemaining, defaultValue: 'Finalizing in {{seconds}} seconds' })
                   : t('pages.gameRoom.campaign.levels.interrogation.votesSubmitted', { votes: voteCount, total: requiredVoterIds.length, defaultValue: '{{votes}} of {{total}} required votes submitted' })}
