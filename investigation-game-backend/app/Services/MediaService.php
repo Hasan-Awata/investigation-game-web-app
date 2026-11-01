@@ -263,10 +263,10 @@ class MediaService
 
             try {
                 if (File::exists($fullPath) && !File::delete($fullPath)) {
-                    Log::warning("Failed to delete local media file: {$fullPath}");
+                    Log::warning('Failed to delete local media file.');
                 }
             } catch (\Throwable $exception) {
-                Log::warning("Failed to delete local media file: {$fullPath}", ['error' => $exception->getMessage()]);
+                Log::warning('Failed to delete local media file.', ['exception_class' => $exception::class]);
             }
             return;
         }
@@ -284,7 +284,7 @@ class MediaService
                 Log::warning('Cloudinary deletion did not confirm removal.');
             }
         } catch (\Throwable $exception) {
-            Log::warning("Cloudinary deletion failed for {$url}: " . $exception->getMessage());
+            Log::warning('Cloudinary deletion failed.', ['exception_class' => $exception::class]);
         }
     }
 }

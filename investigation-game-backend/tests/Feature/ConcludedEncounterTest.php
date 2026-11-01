@@ -29,9 +29,15 @@ class ConcludedEncounterTest extends TestCase
         DB::table('case_user')->insert(['case_id' => $case->id, 'user_id' => $host->id, 'status' => 'failed_strikes', 'created_at' => now(), 'updated_at' => now()]);
         $assessment = app(AssessmentService::class);
         $rooms = app(GameRoomService::class);
-        $assessment->evaluateFinalVerdict($rooms->createRoom($case, $host)->value, []);
+        $firstWin = $rooms->createRoom($case, $host)->value;
+        $response = $assessment->evaluateFinalVerdict($firstWin, []);
         $this->assertSame(50, $host->fresh()->XP);
-        $assessment->evaluateFinalVerdict($rooms->createRoom($case, $host)->value, []);
+        $this->assertSame(50, $response->value['stats']['xp_awards'][$host->id]);
+        $this->assertSame(50, $firstWin->fresh()->final_stats['xp_awards'][$host->id]);
+        $replay = $rooms->createRoom($case, $host)->value;
+        $response = $assessment->evaluateFinalVerdict($replay, []);
+        $this->assertSame(0, $response->value['stats']['xp_awards'][$host->id]);
+        $this->assertSame(0, $replay->fresh()->final_stats['xp_awards'][$host->id]);
         $this->assertSame(50, $host->fresh()->XP);
         $assessment->failFromEncounterStrikes($rooms->createRoom($case, $host)->value);
         $this->assertDatabaseHas('case_user', ['user_id' => $host->id, 'case_id' => $case->id, 'status' => 'solved_perfect']);

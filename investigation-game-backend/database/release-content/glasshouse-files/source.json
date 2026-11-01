@@ -1,0 +1,27 @@
+{
+    "source_case_id": 16,
+    "source_updated_at": "2026-10-30T13:21:24Z",
+    "original_manifest_sha256": "fd93b609689014b981b97d88b07c86191b37b41c6b01719280003c31b0dbe8d7",
+    "original_bundle_sha256": "5dbd9aaa82212803b56fa8b3747df2e5a5ad7f7531d23b4dd5b971428402a00d",
+    "media_sha256": {
+        "media/map.png": "90bb2c06db78774aa7170d66bae4da1f89e76a8422f5059d6ed31eb4cb13e0d6",
+        "media/cover.jpg": "391fb99cdaac07163347deb069aa7b37e76abbbcb9cafb9c9083b0465e6eca88",
+        "media/evidences/ev_126.img.jpg": "3899b2f7e58951ed5e95398d0521385c0b42bbfbd5618ab8c387a9b1f4157548",
+        "media/characters/ch_58.png": "3e0a688348ef46cecd7fd660bb479680a294fd59def20ffeb152891b70e0d40f",
+        "media/characters/ch_59.png": "67afd891157608a76d64bc887ea8d9cb7b16f0cb6060eccb8a79d2fe81600561",
+        "media/characters/ch_60.png": "a8b2de24b4d0c65836b82fcc92eba91f4eb83ad17918c3ec815ba93560b524ff",
+        "media/characters/ch_61.png": "0cdf75f1155123f1a811b2b4fcc686ff1353d76749c86b9222d743146179e04a",
+        "media/characters/ch_63.png": "f01cc3bf9a81d8d065dd8593ca9977adabc4798b5efd7ccac7b4d470f85c821e",
+        "media/characters/ch_66.png": "6facbe8862ec52b668d52b610a3184e469a3f5e833cb1dff79198dff07bbf941",
+        "media/levels/lvl_34.jpg": "910cb0f1411d4a07aeee7d2e2e05a90bba9898b08d6615e6293b50b7b74378e4",
+        "media/nodes/lvl_35_0.img.jpg": "ed2a236bebb1de2f58f0b0c4d366c382c498f7455d98004aeb447174e28b73ac",
+        "media/nodes/lvl_35_1.img.jpg": "fbe6966d75b8327d21ea89172743daaa6f760620dcf12b88721909da2bfb29c1",
+        "media/nodes/lvl_35_2.img.jpg": "afbce8dd2c9b27b64220567054dfbd45011f8ea2c4326dc52a089e8e88490c81"
+    },
+    "authoring_source": {
+        "manifest": "cases/the-glasshouse-files/case.json",
+        "manifest_sha256": "e7f9547c31019e5dc5af58617e219e384befb5c4e572819a28074a9b7524d25f",
+        "bundle": "cases/the-glasshouse-files.zip",
+        "bundle_sha256": "89f5e81b537bac44be32d6972fd1970ed3aa6e2f00e36dccb28288cfeb44b149"
+    }
+}

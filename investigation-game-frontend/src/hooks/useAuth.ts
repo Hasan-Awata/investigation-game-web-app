@@ -7,10 +7,10 @@ import { setSafeStorage } from '@/utils/storage';
 import type { User } from '@/types';
 
 // Authoritative Session Verification Hook
-export function useAuthSession() {
+export function useAuthSession(token: string | null = getToken()) {
   return useQuery<User>({
     queryKey: ['authUser'],
-    enabled: !!getToken(),
+    enabled: !!token,
     queryFn: async ({ signal }) => {
       const token = getToken();
       if (!token) throw new Error('No authentication token found.');

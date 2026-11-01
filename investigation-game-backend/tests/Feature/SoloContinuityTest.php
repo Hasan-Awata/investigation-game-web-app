@@ -133,7 +133,8 @@ class SoloContinuityTest extends TestCase
         $room = $this->room($host);
         GameRoom::query()->whereKey($room->id)->update(['updated_at' => now()->subDays(15)]);
         $this->actingAs($host)->getJson("/api/rooms/{$room->id}")->assertOk();
-        $this->assertTrue(GameRoom::query()->findOrFail($room->id)->prunable()->whereKey($room->id)->exists());
+        $this->assertFalse(GameRoom::query()->findOrFail($room->id)->prunable()->whereKey($room->id)->exists());
+        $this->assertTrue($room->fresh()->updated_at->lt(now()->subDays(14)));
     }
 }
 

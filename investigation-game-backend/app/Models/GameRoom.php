@@ -95,6 +95,6 @@ class GameRoom extends Model
         return static::where(function ($query) {
             $query->where('status', '!=', RoomStatus::Active->value)
                 ->where('updated_at', '<', now()->subDays(7));
-        })->orWhere('updated_at', '<', now()->subDays(14));
+        });
     }
 }

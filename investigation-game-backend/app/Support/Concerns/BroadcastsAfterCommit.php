@@ -13,7 +13,7 @@ trait BroadcastsAfterCommit
             try {
                 broadcast($event);
             } catch (\Throwable $e) {
-                Log::warning("Broadcast failed after commit: " . $e->getMessage());
+                Log::warning('Broadcast failed after commit.', ['exception_class' => $e::class, 'event_class' => $event::class]);
             }
         });
     }

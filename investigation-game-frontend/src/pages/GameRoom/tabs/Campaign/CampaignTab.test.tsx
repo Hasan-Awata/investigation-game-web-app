@@ -109,6 +109,22 @@ describe('shared level preview', () => {
     expect(screen.queryByText('Location content')).not.toBeInTheDocument();
   });
 
+  it('uses authoritative completed request IDs to open an approved procedural gate', () => {
+    mocks.room.game_case!.zones![0].levels = [{ ...level('interrogation'), required_request_id: 20 }];
+    mocks.room.completed_requests = [{ id: 20 }];
+    render(<CampaignTab />);
+    openZone();
+    expect(screen.getByRole('button', { name: 'Start interrogation' })).toBeEnabled();
+  });
+
+  it('does not infer request completion from a similarly filed combination', () => {
+    mocks.room.game_case!.zones![0].levels = [{ ...level('interrogation'), required_request_id: 20 }];
+    mocks.room.completed_requests = [{ id: 21 }];
+    render(<CampaignTab />);
+    openZone();
+    expect(screen.queryByRole('button', { name: 'Start interrogation' })).not.toBeInTheDocument();
+  });
+
   it('opens a newly joined interrogation as content with the same blur behavior', () => {
     mocks.room.game_case!.zones![0].levels = [level('interrogation')];
     mocks.room.encounter_groups = [group];

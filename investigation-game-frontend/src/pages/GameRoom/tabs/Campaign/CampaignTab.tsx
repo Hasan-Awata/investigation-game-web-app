@@ -30,10 +30,7 @@ const CampaignTab = () => {
   const previewLevel = activeLevel ?? levels.find(level => level.id === selectedLevelId)
     ?? levels.find(level => level.is_initial || unlockedIds.has(level.id)) ?? levels[0] ?? null;
   const completedIds = new Set(room.completed_levels?.map(level => level.id) ?? []);
-  const completedRequestIds = new Set((room.game_case?.investigation_requests ?? []).filter(request => {
-    const requiredIds = request.required_evidences?.map(evidence => evidence.id).sort().join(',') ?? '';
-    return room.filed_requests?.some(filed => filed.request_type === request.request_type && [...filed.evidence_ids].sort().join(',') === requiredIds);
-  }).map(request => request.id));
+  const completedRequestIds = new Set(room.completed_requests?.map(request => request.id) ?? []);
   const isFree = !activeGroup;
   const isMapMode = isFree && selectedZoneId === null;
   const discovered = !!previewLevel && (previewLevel.is_initial || unlockedIds.has(previewLevel.id));

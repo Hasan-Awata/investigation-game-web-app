@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+auth.json
+*.pem
+*.key
+.git
+vendor
+node_modules
+storage
+bootstrap/cache/*.php
+public/assets/cases
+public/storage
+*.log
+*.sqlite*
+*.sql
+tests

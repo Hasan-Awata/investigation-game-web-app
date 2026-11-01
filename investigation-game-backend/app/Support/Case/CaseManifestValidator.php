@@ -52,10 +52,42 @@ class CaseManifestValidator
 
         $refs = $this->buildRefRegistries($manifest, $errors);
         $errors = array_merge_recursive($errors, $this->validateCrossReferences($manifest, $refs));
+        $errors = array_merge_recursive($errors, $this->validateInterrogationCycles($manifest));
 
         if (! empty($errors)) {
             throw ValidationException::withMessages($errors);
         }
+    }
+
+    /** Interrogation questions resolve once; revisiting one traps the active group. */
+    private function validateInterrogationCycles(array $manifest): array
+    {
+        $errors = [];
+        foreach ($manifest['zones'] ?? [] as $z => $zone) {
+            foreach ($zone['levels'] ?? [] as $l => $level) {
+                if (($level['presentation_type'] ?? null) !== 'interrogation') continue;
+                $nodes = $level['nodes'] ?? [];
+                $state = [];
+                $visit = function (int $index) use (&$visit, &$state, &$errors, $nodes, $z, $l): void {
+                    $state[$index] = 1;
+                    foreach ($nodes[$index]['choices'] ?? [] as $c => $choice) {
+                        $next = $choice['outcomes']['next_question_index'] ?? null;
+                        if ($next === null || !array_key_exists($next, $nodes)) continue;
+                        if (($state[$next] ?? 0) === 1) {
+                            $errors["zones.{$z}.levels.{$l}.nodes.{$index}.choices.{$c}.outcomes.next_question_index"][] =
+                                'Interrogation navigation cannot contain a cycle: answered questions cannot be answered again.';
+                        } elseif (($state[$next] ?? 0) === 0) {
+                            $visit($next);
+                        }
+                    }
+                    $state[$index] = 2;
+                };
+                foreach (array_keys($nodes) as $index) {
+                    if (($state[$index] ?? 0) === 0) $visit($index);
+                }
+            }
+        }
+        return $errors;
     }
 
     private function rules(): array

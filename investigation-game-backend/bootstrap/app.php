@@ -21,6 +21,20 @@ return Application::configure(basePath: dirname(__DIR__))
         //
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        $exceptions->report(function (\Throwable $exception) {
+            if (!app()->isProduction()) {
+                return null;
+            }
+
+            // Exception messages and arguments may contain SQL bindings or provider secrets.
+            \Illuminate\Support\Facades\Log::error('Application operation failed.', [
+                'exception_class' => $exception::class,
+                'source' => basename($exception->getFile()),
+                'line' => $exception->getLine(),
+            ]);
+
+            return false;
+        });
         $exceptions->shouldRenderJsonWhen(function ($request, \Throwable $e) {
             return $request->is('api/*') || $request->expectsJson();
         });

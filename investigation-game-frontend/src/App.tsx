@@ -22,10 +22,10 @@ const queryClient = new QueryClient({
 
 function AppRouter() {
   const queryClient = useQueryClient();
-  const token = getToken();
+  const [token, setToken] = useState(getToken);
 
   // Rely strictly on the server evaluation
-  const { data: user, isLoading, isError } = useAuthSession();
+  const { data: user, isLoading, isError } = useAuthSession(token);
 
   // The kill-switch state to instantly sever the component tree on 401
   const [isSessionRevoked, setIsSessionRevoked] = useState(false);
@@ -37,6 +37,7 @@ function AppRouter() {
       revoked.current = true;
       // 1. Nuke the token immediately
       logout();
+      setToken(null);
 
       // Safe execution context: removeSafeStorage already swallows the
       // SecurityError thrown by restricted/sandboxed browser contexts.
@@ -62,6 +63,7 @@ function AppRouter() {
     return <Auth onSuccess={(userData) => {
       revoked.current = false;
       setIsSessionRevoked(false);
+      setToken(getToken());
       queryClient.setQueryData(['authUser'], userData);
     }} />;
   }
@@ -80,6 +82,7 @@ function AppRouter() {
     <>
       {!isAuthenticated ? (
         <Auth onSuccess={(userData) => {
+          setToken(getToken());
           queryClient.setQueryData(['authUser'], userData);
         }} />
       ) : (

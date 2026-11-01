@@ -547,7 +547,7 @@ class CaseImportService
                 if (isset($update['is_unlocked'])) {
                     $row['is_unlocked'] = (bool) $update['is_unlocked'];
                 }
-                if (array_key_exists('status', $update)) {
+                if (isset($update['status'])) {
                     $row['status'] = $update['status'];
                 }
 

@@ -141,6 +141,7 @@ export interface GameRoom {
   users?: RoomUser[];
   unlocked_evidences?: Evidence[]; 
   unlocked_levels?: Level[];
+  completed_requests?: Pick<InvestigationRequest, 'id'>[];
   characters?: Character[];
   completed_levels?: Level[];
   votes?: RoomVote[];
@@ -156,6 +157,7 @@ export interface GameRoom {
 export interface FinalStats {
   time_taken: string;
   xp_gained: number;
+  xp_awards?: Record<number, number>;
   max_xp: number;
   suspects_caught: number;
   total_guilty: number;

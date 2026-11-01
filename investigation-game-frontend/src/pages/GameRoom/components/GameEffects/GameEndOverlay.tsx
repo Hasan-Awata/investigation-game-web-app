@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { FinalStats } from '@/types';
+import { getLocalUser } from '@/utils/userState';
 import gameEndOverlayStyles from './GameEndOverlay.module.css';
 
 interface GameEndOverlayProps {
@@ -12,6 +13,9 @@ interface GameEndOverlayProps {
 export default function GameEndOverlay({ status, resolutionMessage, finalStats }: GameEndOverlayProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const userId = getLocalUser()?.id;
+  const awardedXp = userId === undefined ? finalStats?.xp_gained
+    : finalStats?.xp_awards?.[userId] ?? finalStats?.xp_gained;
 
   if (status !== 'solved' && status !== 'failed') return null;
 
@@ -49,7 +53,7 @@ export default function GameEndOverlay({ status, resolutionMessage, finalStats }
             </div>
             <div className={gameEndOverlayStyles['stat-box']}>
               <span className={gameEndOverlayStyles['stat-label']}>{t('pages.gameRoom.gameEndOverlay.xpGranted')}</span>
-              <span className={`${gameEndOverlayStyles['stat-value']} ${gameEndOverlayStyles['highlight']}`}>{finalStats.xp_gained} <span className={gameEndOverlayStyles['stat-sub']}>/ {finalStats.max_xp}</span></span>
+              <span className={`${gameEndOverlayStyles['stat-value']} ${gameEndOverlayStyles['highlight']}`}>{awardedXp} <span className={gameEndOverlayStyles['stat-sub']}>/ {finalStats.max_xp}</span></span>
             </div>
             <div className={gameEndOverlayStyles['stat-box']}>
               <span className={gameEndOverlayStyles['stat-label']}>{t('pages.gameRoom.gameEndOverlay.suspectsCaught')}</span>

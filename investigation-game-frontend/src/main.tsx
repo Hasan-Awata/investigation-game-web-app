@@ -68,7 +68,7 @@ window.Echo = new Echo(
         wsHost: ENV.REVERB_HOST,
         wsPort: ENV.REVERB_PORT,
         wssPort: ENV.REVERB_PORT,
-        forceTLS: false,
+        forceTLS: ENV.REVERB_SCHEME === 'https',
         enabledTransports: ['ws', 'wss'],
         // 3. Explicitly point to the Laravel auth endpoint and attach the token
         authEndpoint: `${backendUrl}/api/broadcasting/auth`,

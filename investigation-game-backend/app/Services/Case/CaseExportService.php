@@ -273,11 +273,11 @@ class CaseExportService
             $mappedOutcomes['unlock_location_point_refs'] = array_map(fn ($id) => $this->choiceRef((int) $id), $outcomes['unlock_location_points']);
         }
         if (! empty($outcomes['character_updates'])) {
-            $mappedOutcomes['character_updates'] = array_map(fn ($update) => [
+            $mappedOutcomes['character_updates'] = array_map(fn ($update) => array_filter([
                 'ref_id' => $this->characterRef((int) $update['id']),
                 'is_unlocked' => $update['is_unlocked'] ?? null,
                 'status' => $update['status'] ?? null,
-            ], $outcomes['character_updates']);
+            ], fn ($value) => $value !== null), $outcomes['character_updates']);
         }
 
         $requirements = $choice->requirements ?? [];

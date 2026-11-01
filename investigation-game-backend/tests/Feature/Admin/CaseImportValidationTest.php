@@ -19,6 +19,40 @@ class CaseImportValidationTest extends TestCase
 
     private const FIXTURES = __DIR__.'/../../Fixtures/case-bundles';
 
+    #[DataProvider('interrogationCycles')]
+    public function test_interrogation_cycles_are_rejected_but_location_navigation_remains_revisitable(array $nodes): void
+    {
+        $manifest = CaseBundleFactory::minimalManifest();
+        $manifest['zones'][0]['levels'][0]['presentation_type'] = 'interrogation';
+        $manifest['zones'][0]['levels'][0]['nodes'] = $nodes;
+        $path = CaseBundleFactory::build($manifest);
+        try {
+            $response = $this->importBundle($path)->assertUnprocessable();
+            $this->assertStringContainsString('Interrogation navigation cannot contain a cycle', $response->getContent());
+            $this->assertDatabaseCount('cases', 0);
+        } finally {
+            unlink($path);
+        }
+        $manifest['zones'][0]['levels'][0]['presentation_type'] = 'location';
+        $path = CaseBundleFactory::build($manifest);
+        try {
+            $this->importBundle($path)->assertCreated();
+        } finally {
+            unlink($path);
+        }
+    }
+
+    public static function interrogationCycles(): array
+    {
+        return [
+            'self' => [[['text' => 'Desk', 'choices' => [['text' => 'Again', 'outcomes' => ['next_question_index' => 0]]]]]],
+            'return branch' => [[
+                ['text' => 'Ledger', 'choices' => [['text' => 'Call', 'outcomes' => ['next_question_index' => 1]]]],
+                ['text' => 'Call', 'choices' => [['text' => 'Ledger', 'outcomes' => ['next_question_index' => 0]]]],
+            ]],
+        ];
+    }
+
     protected function setUp(): void
     {
         parent::setUp();

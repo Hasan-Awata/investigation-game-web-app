@@ -22,9 +22,11 @@ const CharactersTab = React.memo(({ guiltyIds, isSubmitting, feedback, submitVer
   const { isOver: isOverGuilty, setNodeRef: setGuiltyRef } = useDroppable({ id: 'guilty-zone' });
   const { isOver: isOverUnassigned, setNodeRef: setUnassignedRef } = useDroppable({ id: 'unassigned-zone' });
 
-  const initialLevels = room.game_case?.zones?.flatMap(z => z.levels || []).filter(l => l.is_initial) || [];
+  // Locations are explored point by point and never enter completed_levels.
+  const initialLevels = room.game_case?.zones?.flatMap(z => z.levels || [])
+    .filter(l => l.is_initial && l.presentation_type === 'interrogation') || [];
   const completedLevelIds = new Set(room.completed_levels?.map(l => l.id) || []);
-  const allInitialCompleted = initialLevels.length > 0 && initialLevels.every(l => completedLevelIds.has(l.id));
+  const allInitialCompleted = initialLevels.every(l => completedLevelIds.has(l.id));
 
   // 1. The Fix: Map strictly off the guiltyIds array to preserve player drop order
   const guiltyPool = guiltyIds

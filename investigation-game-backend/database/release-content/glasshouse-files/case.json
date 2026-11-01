@@ -1,0 +1,2345 @@
+{
+    "format_version": 1,
+    "case": {
+        "title": "ملفات غلاسهاوس",
+        "story": "سقط إيليا برانت، مدقّق بيانات جنائية متعاقد مع المدينة، من منصة الطابق الرئاسي في برج غلاسهاوس الساعة 03:14 يوم 1 أكتوبر. صفّت المدينة الأمر حادثةً. لكن ملاحظاته تقول غير ذلك: مجموعة بيانات حيوية تُباع مرتين، شركة تابعة صورية تدفع بالحوالات، أرشيفي ليل مات بصمت، ورجل أمن لا يوقّع في الدفتر قط. ستة أشخاص لمسوا هذا الأمر. فريقكم هو آخر تفويضٍ لم يتكبّدَ أحدٌ عناء شرائه. ابحثوا عن كل زوج أيدي، وضعوا كل صفحة حيوية أمام الادعاء العام قبل أن تنطقوا باسم.",
+        "map": "media/map.png",
+        "cover": "media/cover.jpg",
+        "min_player_XP": 50,
+        "XP_on_solve": 900,
+        "max_strikes": 3,
+        "rating_stars": 4.5,
+        "age_rating": "16+",
+        "estimated_playtime": "90-120 دقيقة",
+        "difficulty": "محقّق",
+        "tags": [
+            "نوار",
+            "تجسّس مؤسسي",
+            "عدة مشتبه بهم",
+            "قضية اختبار الميزات"
+        ],
+        "author_name": "QA Suite",
+        "is_published": true
+    },
+    "evidences": [
+        {
+            "ref_id": "ev_124",
+            "title": "01 · تقرير الحادثة — سقوط من الطابق الرئاسي",
+            "description": "تقرير الاستجابة الأولى لسقوط برانت، صُنِّف حادثةً.",
+            "evidence_type": "document",
+            "metadata": {
+                "doc": {
+                    "v": 1,
+                    "theme": "case_file",
+                    "page": {
+                        "w": 800,
+                        "minH": 1131,
+                        "pad": 64
+                    },
+                    "blocks": [
+                        {
+                            "id": "inc_wm",
+                            "type": "watermark",
+                            "span": 12,
+                            "props": {
+                                "text": "نسخة",
+                                "rotate": -25
+                            }
+                        },
+                        {
+                            "id": "inc_lh",
+                            "type": "letterhead",
+                            "span": 12,
+                            "props": {
+                                "agency": "شرطة مدينة المرفأ — الدائرة 19",
+                                "title": "تقرير حادثة",
+                                "sub": "وفاة مفاجئة — تصنيف أولي",
+                                "aside": "CR-2026-0417",
+                                "asideLabel": "رقم القضية",
+                                "rule": true
+                            }
+                        },
+                        {
+                            "id": "inc_mg",
+                            "type": "meta_grid",
+                            "span": 12,
+                            "props": {
+                                "columns": 2,
+                                "tone": "boxed",
+                                "rows": [
+                                    {
+                                        "label": "المتوفى",
+                                        "value": "إ. برانت، مدقّق ميداني"
+                                    },
+                                    {
+                                        "label": "الموقع",
+                                        "value": "برج غلاسهاوس، منصة الطابق 41"
+                                    },
+                                    {
+                                        "label": "التاريخ / الوقت",
+                                        "value": "2026-10-01، 03:14"
+                                    },
+                                    {
+                                        "label": "الضابط المبلِّغ",
+                                        "value": "الرقيب ب. هالوران"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "inc_rl1",
+                            "type": "rule",
+                            "span": 12,
+                            "props": {
+                                "variant": "solid"
+                            }
+                        },
+                        {
+                            "id": "inc_p1",
+                            "type": "prose",
+                            "span": 12,
+                            "props": {
+                                "tone": "serif",
+                                "html": "<p dir=\"rtl\">في حوالي الساعة 03:14، شهد متصلٌ من الردهة المتوفى وهو يسقط سقوطًا حرًّا خلف الواجهة الزجاجية الشمالية. وجدت فرق الاستجابة الجثة على منصة الخدمة. لم يُستردّ أي رسالة.</p><p dir=\"rtl\">التصنيف وقت الكتابة: <span class=\"highlighted\">سقوط حادثي — لم يُثبَت وجود طرف ثالث</span>.</p>"
+                            }
+                        },
+                        {
+                            "id": "inc_p2",
+                            "type": "prose",
+                            "span": 12,
+                            "props": {
+                                "tone": "typed",
+                                "html": "<p dir=\"rtl\">سجّل باب درج الخدمة 41-S <span class=\"redacted\">لا حدَثَ بطاقة</span> خلال الساعة المعنيّة، مع أن إطار الباب يُظهر كشطًّا حديثًا يوافق اقتحامًا قسريًا.</p>"
+                            }
+                        },
+                        {
+                            "id": "inc_sp",
+                            "type": "spacer",
+                            "span": 12,
+                            "props": {
+                                "height": 24
+                            }
+                        },
+                        {
+                            "id": "inc_sg",
+                            "type": "signature_row",
+                            "span": 12,
+                            "props": {
+                                "columns": [
+                                    {
+                                        "caption": "الضابط المبلِّغ"
+                                    },
+                                    {
+                                        "caption": "قائد المناوبة"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "inc_st",
+                            "type": "stamp",
+                            "span": 4,
+                            "style": {
+                                "align": "end"
+                            },
+                            "props": {
+                                "text": "مُعالَج",
+                                "tone": "official"
+                            }
+                        },
+                        {
+                            "id": "inc_bc",
+                            "type": "barcode",
+                            "span": 6,
+                            "props": {
+                                "value": "MET-PH-1130"
+                            }
+                        }
+                    ]
+                }
+            },
+            "is_initial": true,
+            "is_vital_for_conviction": false,
+            "img": null,
+            "audio": null
+        },
+        {
+            "ref_id": "ev_125",
+            "title": "02 · مقابلة — حارسة الردهة الليلية",
+            "description": "تصريح مُسجَّل من دانا مارش، أُخذ عند مكتب الردهة.",
+            "evidence_type": "testimony",
+            "metadata": {
+                "agency": "شرطة مدينة المرفأ — الدائرة 19",
+                "title": "تصريح شاهد",
+                "date": "2026-10-01",
+                "case_number": "CR-2026-0417",
+                "subject_name": "د. مارش",
+                "interviewer": "المحقق ر. أوكافور",
+                "context": "تصريح طوعي أُخذ عند مكتب حارس برج غلاسهاوس في 06:40، أي بعد أربع ساعات من انتشال الجثة.",
+                "transcript": [
+                    {
+                        "type": "q",
+                        "speaker": "المحقق ر. أوكافور",
+                        "text": "احكِ لي عن وردية الليل."
+                    },
+                    {
+                        "type": "a",
+                        "speaker": "د. مارش",
+                        "text": "هادئة حتى الثالثة. لا دخول ولا خروج. لهذا أنا موجودة."
+                    },
+                    {
+                        "type": "q",
+                        "speaker": "المحقق ر. أوكافور",
+                        "text": "والمكالمة في 03:07؟"
+                    },
+                    {
+                        "type": "a",
+                        "speaker": "د. مارش",
+                        "text": "خط الردهة. أجبتُ. صوت رجل، ثابت، كمن يقرأ قائمة. قال — «إنه يرحل الليلة. الدرج هو المكان حيث لا تُتمنَّى السلطات»."
+                    },
+                    {
+                        "type": "q",
+                        "speaker": "المحقق ر. أوكافور",
+                        "text": "ولم تُبلِّغِي عنها؟"
+                    },
+                    {
+                        "type": "a",
+                        "speaker": "د. مارش",
+                        "text": "أبلغت الأمن في 03:09. الرجل على المجلس قال لي أن أُسجّلها كصيانة."
+                    },
+                    {
+                        "type": "q",
+                        "speaker": "المحقق ر. أوكافور",
+                        "text": "هل رأيتِ أحدًا يأخذ درج الخدمة؟"
+                    },
+                    {
+                        "type": "a",
+                        "speaker": "د. مارش",
+                        "text": "رجل بالمعطف الرمادي، أربع دقائق قبل السقوط. لم يوقّع. لا أحد يعبر تلك الردهة دون أن أنتبه له."
+                    },
+                    {
+                        "type": "q",
+                        "speaker": "المحقق ر. أوكافور",
+                        "text": "وأحدٌ آخر يتحرك في تلك الساعة؟"
+                    },
+                    {
+                        "type": "a",
+                        "speaker": "د. مارش",
+                        "text": "عربة الصيانة كانت تُهدر في الرصيف الشمالي حتى الرابعة. لا أحد يسجّل السائقين. اسأل المكتب من يفعل."
+                    }
+                ]
+            },
+            "is_initial": true,
+            "is_vital_for_conviction": false,
+            "img": null,
+            "audio": null
+        },
+        {
+            "ref_id": "ev_126",
+            "title": "03 · تصوير — منصة الطابق الرئاسي",
+            "description": "خليج النافذة الشرقية للمنصة، والشريط لم يتحرك منذ السقوط.",
+            "evidence_type": "image",
+            "metadata": null,
+            "is_initial": true,
+            "is_vital_for_conviction": false,
+            "img": "media/evidences/ev_126.img.jpg",
+            "audio": null
+        },
+        {
+            "ref_id": "ev_127",
+            "title": "04 · صوت — تسجيل الطوارئ 03:07",
+            "description": "مقتطف من غرفة الطوارئ. صوت ثابت يقول «إنه يرحل الليلة» قبل أن ينقطع الخط.",
+            "evidence_type": "audio",
+            "metadata": null,
+            "is_initial": true,
+            "is_vital_for_conviction": false,
+            "img": null,
+            "audio": null
+        },
+        {
+            "ref_id": "ev_128",
+            "title": "05 · سجل المكالمات — مدخل البرج الهاتفي",
+            "description": "سجلات الهاتف لمدخل البرج حول مكالمة 03:07.",
+            "evidence_type": "document",
+            "metadata": {
+                "doc": {
+                    "v": 1,
+                    "theme": "ledger",
+                    "page": {
+                        "w": 800,
+                        "minH": 1131,
+                        "pad": 64
+                    },
+                    "blocks": [
+                        {
+                            "id": "cl_lh",
+                            "type": "letterhead",
+                            "span": 12,
+                            "props": {
+                                "agency": "مدخل خط المرفأ",
+                                "title": "سجل المكالمات",
+                                "sub": "برج غلاسهاوس — الخط الرئيسي 4",
+                                "aside": "2026-10-01",
+                                "asideLabel": "الليلة",
+                                "rule": true
+                            }
+                        },
+                        {
+                            "id": "cl_mg",
+                            "type": "meta_grid",
+                            "span": 12,
+                            "props": {
+                                "columns": 2,
+                                "tone": "rows",
+                                "rows": [
+                                    {
+                                        "label": "الخط الرئيسي",
+                                        "value": "4 / جناح الردهة"
+                                    },
+                                    {
+                                        "label": "النافذة الزمنية",
+                                        "value": "02:45 - 03:20"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "cl_rl",
+                            "type": "rule",
+                            "span": 12,
+                            "props": {
+                                "variant": "dashed"
+                            }
+                        },
+                        {
+                            "id": "cl_tb",
+                            "type": "table",
+                            "span": 12,
+                            "props": {
+                                "tone": "log",
+                                "caption": "مدخل البرج 02:45 - 03:20",
+                                "columns": [
+                                    {
+                                        "key": "time",
+                                        "label": "الوقت"
+                                    },
+                                    {
+                                        "key": "dir",
+                                        "label": "الاتجاه",
+                                        "type": "badge",
+                                        "tones": {
+                                            "in": "وارد",
+                                            "out": "صادر"
+                                        }
+                                    },
+                                    {
+                                        "key": "number",
+                                        "label": "الرقم",
+                                        "type": "mono"
+                                    },
+                                    {
+                                        "key": "sec",
+                                        "label": "الثانية",
+                                        "type": "number"
+                                    }
+                                ],
+                                "rows": [
+                                    {
+                                        "time": "00:52",
+                                        "dir": "out",
+                                        "number": "حراسة — مجلس المراقبة",
+                                        "sec": 211
+                                    },
+                                    {
+                                        "time": "02:47",
+                                        "dir": "in",
+                                        "number": "مجهول — هاتف دفع مسبق",
+                                        "sec": 42
+                                    },
+                                    {
+                                        "time": "03:07",
+                                        "dir": "in",
+                                        "number": "LOOP 0992-C",
+                                        "sec": 12
+                                    },
+                                    {
+                                        "time": "03:11",
+                                        "dir": "out",
+                                        "number": "ميرديان هولدنغز — داخلي 3313",
+                                        "sec": 96
+                                    }
+                                ],
+                                "emptyMessage": "لا نشاط ضمن النافذة المطلوبة."
+                            }
+                        },
+                        {
+                            "id": "cl_sp",
+                            "type": "spacer",
+                            "span": 12,
+                            "props": {
+                                "height": 20
+                            }
+                        },
+                        {
+                            "id": "cl_an",
+                            "type": "annotation",
+                            "span": 8,
+                            "props": {
+                                "text": "قارن الداخلي 03:11 مع سجلات الرحلات — تلك هي غرفة الدفع.",
+                                "rotate": -2
+                            }
+                        },
+                        {
+                            "id": "cl_rl2",
+                            "type": "rule",
+                            "span": 12,
+                            "props": {
+                                "variant": "dotted"
+                            }
+                        },
+                        {
+                            "id": "cl_bc",
+                            "type": "barcode",
+                            "span": 6,
+                            "props": {
+                                "value": "EXCH-T4-0930"
+                            }
+                        }
+                    ]
+                }
+            },
+            "is_initial": false,
+            "is_vital_for_conviction": false,
+            "img": null,
+            "audio": null
+        },
+        {
+            "ref_id": "ev_129",
+            "title": "06 · كشف بنكي — الشركة التابعة",
+            "description": "السجلات المالية للشركة التابعة لميرديان حول فترة التدقيق.",
+            "evidence_type": "document",
+            "metadata": {
+                "doc": {
+                    "v": 1,
+                    "theme": "ledger",
+                    "page": {
+                        "w": 800,
+                        "minH": 1131,
+                        "pad": 64
+                    },
+                    "blocks": [
+                        {
+                            "id": "bs_wm",
+                            "type": "watermark",
+                            "span": 12,
+                            "props": {
+                                "text": "نسخة",
+                                "rotate": -28
+                            }
+                        },
+                        {
+                            "id": "bs_lh",
+                            "type": "letterhead",
+                            "span": 12,
+                            "props": {
+                                "agency": "بنك المرفأ التجاري",
+                                "title": "كشف الحركة",
+                                "sub": "حساب تجاري — عن طريق الشركة التابعة",
+                                "aside": "ACCT-8842",
+                                "asideLabel": "الحساب",
+                                "rule": true
+                            }
+                        },
+                        {
+                            "id": "bs_mg",
+                            "type": "meta_grid",
+                            "span": 12,
+                            "props": {
+                                "columns": 3,
+                                "tone": "boxed",
+                                "rows": [
+                                    {
+                                        "label": "الحساب",
+                                        "value": "ستاندرد بيرر المحدودة"
+                                    },
+                                    {
+                                        "label": "الموقِّع",
+                                        "value": "ن. رينس"
+                                    },
+                                    {
+                                        "label": "الفترة",
+                                        "value": "15 سبتمبر - 5 أكتوبر"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "bs_rl",
+                            "type": "rule",
+                            "span": 12,
+                            "props": {
+                                "variant": "double"
+                            }
+                        },
+                        {
+                            "id": "bs_tb",
+                            "type": "table",
+                            "span": 12,
+                            "props": {
+                                "tone": "ledger",
+                                "caption": "كشف حركة الحساب",
+                                "columns": [
+                                    {
+                                        "key": "date",
+                                        "label": "التاريخ"
+                                    },
+                                    {
+                                        "key": "memo",
+                                        "label": "الوصف"
+                                    },
+                                    {
+                                        "key": "amount",
+                                        "label": "المبلغ",
+                                        "align": "end",
+                                        "type": "number"
+                                    }
+                                ],
+                                "rows": [
+                                    {
+                                        "date": "2026-09-18",
+                                        "memo": "أتعاب استشاريين",
+                                        "amount": 4800
+                                    },
+                                    {
+                                        "date": "2026-09-30",
+                                        "memo": "حوالة — كيان صوري",
+                                        "amount": -412500
+                                    },
+                                    {
+                                        "date": "2026-10-02",
+                                        "memo": "أتعاب قانونية — بعد الحادثة",
+                                        "amount": 25000
+                                    }
+                                ],
+                                "emptyMessage": "لا حركة مُسجّلة."
+                            }
+                        },
+                        {
+                            "id": "bs_tb2",
+                            "type": "table",
+                            "span": 12,
+                            "props": {
+                                "tone": "ledger",
+                                "caption": "مصروفات المدقّق",
+                                "columns": [
+                                    {
+                                        "key": "date",
+                                        "label": "التاريخ"
+                                    },
+                                    {
+                                        "key": "memo",
+                                        "label": "الوصف"
+                                    }
+                                ],
+                                "rows": [],
+                                "emptyMessage": "لم يُدفع لهذا الحساب أي أتعاب تدقيق إطلاقًا."
+                            }
+                        },
+                        {
+                            "id": "bs_p1",
+                            "type": "prose",
+                            "span": 12,
+                            "props": {
+                                "tone": "typed",
+                                "html": "<p dir=\"rtl\">نقلت حوالة 09/30 مبلغ <span class=\"highlighted\">412,500</span> من الحساب بعد ساعات من تسليم المدقّق ملاحظاته الأولية. لا سند للحوالة في الملف.</p>"
+                            }
+                        },
+                        {
+                            "id": "bs_sp",
+                            "type": "spacer",
+                            "span": 12,
+                            "props": {
+                                "height": 18
+                            }
+                        },
+                        {
+                            "id": "bs_st",
+                            "type": "stamp",
+                            "span": 4,
+                            "style": {
+                                "align": "end"
+                            },
+                            "props": {
+                                "text": "سِرّي",
+                                "tone": "confidential"
+                            }
+                        },
+                        {
+                            "id": "bs_bc",
+                            "type": "barcode",
+                            "span": 6,
+                            "props": {
+                                "value": "ACCT 8842-B"
+                            }
+                        }
+                    ]
+                }
+            },
+            "is_initial": false,
+            "is_vital_for_conviction": false,
+            "img": null,
+            "audio": null
+        },
+        {
+            "ref_id": "ev_130",
+            "title": "07 · رقمي — تصوير محطة العمل المُصادَرة",
+            "description": "تصوير جنائي لمحطة عمل الخزنة المسترَدة بموجب الأمر القضائي.",
+            "evidence_type": "digital",
+            "metadata": {
+                "terminal": {
+                    "v": 1,
+                    "theme": "terminal",
+                    "blocks": [
+                        {
+                            "id": "ds_sb1",
+                            "type": "status_banner",
+                            "span": 12,
+                            "props": {
+                                "text": "جلسة تصوير — محطة عمل 4",
+                                "tone": "info",
+                                "caption": "قضية CR-2026-0417 · استلام دليل 8842"
+                            }
+                        },
+                        {
+                            "id": "ds_pl1",
+                            "type": "prompt_line",
+                            "span": 12,
+                            "props": {
+                                "prompt": "root@forensic-workstation:~#",
+                                "command": "lsblk -f",
+                                "output": [
+                                    "NAME   FSTYPE  LABEL",
+                                    "sda    ext4    OS",
+                                    "sdb    ntfs    الخزنة (غير مُركَّبة)"
+                                ],
+                                "tone": "stdout"
+                            }
+                        },
+                        {
+                            "id": "ds_os1",
+                            "type": "output_stream",
+                            "span": 12,
+                            "props": {
+                                "label": "سجل المهمة",
+                                "lines": [
+                                    "[02:00] تصوير sdb إلى /evidence/vault_image.dd",
+                                    "[02:41] اكتمل 98٪",
+                                    "[02:41] استُعيد تدفق واحد محذوف: /archive/copyfour.log"
+                                ],
+                                "tone": "info"
+                            }
+                        },
+                        {
+                            "id": "ds_ft",
+                            "type": "file_tree",
+                            "span": 12,
+                            "props": {
+                                "indent": 2,
+                                "entries": [
+                                    {
+                                        "path": "/evidence/vault_image.dd",
+                                        "size": "1.0 GB",
+                                        "kind": "file",
+                                        "state": "intact"
+                                    },
+                                    {
+                                        "path": "/archive/copyfour.log",
+                                        "size": "9 KB",
+                                        "mtime": "2026-09-30 23:52",
+                                        "kind": "file",
+                                        "state": "recovered"
+                                    },
+                                    {
+                                        "path": "/archive/vault_delegate.enc",
+                                        "size": "212 MB",
+                                        "kind": "file",
+                                        "state": "encrypted"
+                                    },
+                                    {
+                                        "path": "/tmp/wipescript.sh",
+                                        "size": "2 KB",
+                                        "kind": "deleted",
+                                        "state": "corrupted"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "ds_sp",
+                            "type": "spacer",
+                            "span": 12,
+                            "props": {
+                                "height": 16
+                            }
+                        },
+                        {
+                            "id": "ds_pl2",
+                            "type": "prompt_line",
+                            "span": 12,
+                            "props": {
+                                "prompt": "root@forensic-workstation:~#",
+                                "command": "mount /evidence/vault_image.dd",
+                                "output": [
+                                    "مواد المفتاح مفقودة: كلمة مرور المفوَّض مطلوبة"
+                                ],
+                                "tone": "stderr"
+                            }
+                        },
+                        {
+                            "id": "ds_sb2",
+                            "type": "status_banner",
+                            "span": 12,
+                            "props": {
+                                "text": "توقفت الجلسة — القرص يرفض إعادة التركيب",
+                                "tone": "warn",
+                                "caption": "قُرئ تدفق مستعاد واحد؛ الدفتر الذي يسمّيه هو غرفة الحوالات"
+                            }
+                        }
+                    ]
+                }
+            },
+            "is_initial": false,
+            "is_vital_for_conviction": false,
+            "img": null,
+            "audio": null
+        },
+        {
+            "ref_id": "ev_131",
+            "title": "08 · التشريح — إ. برانت",
+            "description": "تقرير ما بعد الوفاة لرئيس الفاحصين الطبيين، موقَّع تحت الاحتجاج.",
+            "evidence_type": "forensic",
+            "metadata": {
+                "doc": {
+                    "v": 1,
+                    "theme": "lab",
+                    "page": {
+                        "w": 800,
+                        "minH": 1131,
+                        "pad": 64
+                    },
+                    "blocks": [
+                        {
+                            "id": "au_lh",
+                            "type": "letterhead",
+                            "span": 12,
+                            "props": {
+                                "agency": "الطب الجنائي",
+                                "title": "تقرير التشريح",
+                                "sub": "مكتب رئيس الفاحصين الطبيين",
+                                "aside": "ME-4471",
+                                "asideLabel": "القضية",
+                                "rule": true
+                            }
+                        },
+                        {
+                            "id": "au_mg",
+                            "type": "meta_grid",
+                            "span": 12,
+                            "props": {
+                                "columns": 4,
+                                "tone": "boxed",
+                                "rows": [
+                                    {
+                                        "label": "القضية",
+                                        "value": "CR-2026-0417"
+                                    },
+                                    {
+                                        "label": "المتوفى",
+                                        "value": "إ. برانت"
+                                    },
+                                    {
+                                        "label": "تاريخ الفحص",
+                                        "value": "2026-10-02"
+                                    },
+                                    {
+                                        "label": "الفاحص",
+                                        "value": "د. أو. فالِك"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "au_tc",
+                            "type": "two_column",
+                            "span": 12,
+                            "props": {
+                                "gap": 28,
+                                "rightWidth": 170,
+                                "left": [
+                                    {
+                                        "id": "au_tf",
+                                        "type": "table",
+                                        "span": 12,
+                                        "props": {
+                                            "tone": "ledger",
+                                            "caption": "النتائج",
+                                            "columns": [
+                                                {
+                                                    "key": "finding",
+                                                    "label": "النتيجة"
+                                                },
+                                                {
+                                                    "key": "note",
+                                                    "label": "ملاحظة"
+                                                }
+                                            ],
+                                            "rows": [
+                                                {
+                                                    "finding": "رضّ قوي، قفا",
+                                                    "note": "إصابة قبل نهاية الحياة"
+                                                },
+                                                {
+                                                    "finding": "كسر التاج، أيسر",
+                                                    "note": "يطابق حافة الدرابزين"
+                                                },
+                                                {
+                                                    "finding": "كشطات، معصم أيمن",
+                                                    "note": "نمط تقييد، قبل الوفاة"
+                                                }
+                                            ],
+                                            "emptyMessage": "لا نتائج مُسجّلة."
+                                        }
+                                    }
+                                ],
+                                "right": [
+                                    {
+                                        "id": "au_dg",
+                                        "type": "diagram",
+                                        "span": 12,
+                                        "props": {
+                                            "preset": "body_outline",
+                                            "caption": "خريطة الإصابات — للاسترشاد فقط"
+                                        }
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "au_rl",
+                            "type": "rule",
+                            "span": 12,
+                            "props": {
+                                "variant": "solid"
+                            }
+                        },
+                        {
+                            "id": "au_p1",
+                            "type": "prose",
+                            "span": 12,
+                            "props": {
+                                "tone": "mono",
+                                "html": "<p dir=\"rtl\"><strong>سبب الوفاة</strong></p><p dir=\"rtl\">رضّ وقع قبل السقوط. لا تدعم أدلة جهاز التوازن فقدَانَ توازن سببُه ذاتيًا: <span class=\"highlighted\">لا يحمل مزلاج النافذة أيَّ إصابة على الزجاج</span>.</p>"
+                            }
+                        },
+                        {
+                            "id": "au_im",
+                            "type": "image",
+                            "span": 6,
+                            "props": {
+                                "url": "media/evidences/ev_126.img.jpg",
+                                "caption": "كشط مزلاج النافذة، 40x",
+                                "filter": "micrograph",
+                                "width": 320
+                            }
+                        },
+                        {
+                            "id": "au_an",
+                            "type": "annotation",
+                            "span": 6,
+                            "props": {
+                                "text": "وقّع الفاحص مرتين. اسأل لماذا.",
+                                "rotate": -3
+                            }
+                        },
+                        {
+                            "id": "au_sp",
+                            "type": "spacer",
+                            "span": 12,
+                            "props": {
+                                "height": 20
+                            }
+                        },
+                        {
+                            "id": "au_sg",
+                            "type": "signature_row",
+                            "span": 12,
+                            "props": {
+                                "columns": [
+                                    {
+                                        "caption": "الفاحص"
+                                    },
+                                    {
+                                        "caption": "المراجع"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "au_st",
+                            "type": "stamp",
+                            "span": 4,
+                            "style": {
+                                "align": "end"
+                            },
+                            "props": {
+                                "text": "أولي",
+                                "tone": "crimson"
+                            }
+                        }
+                    ]
+                }
+            },
+            "is_initial": false,
+            "is_vital_for_conviction": true,
+            "img": null,
+            "audio": null
+        },
+        {
+            "ref_id": "ev_132",
+            "title": "09 · حمض نووي — مقارنة STR",
+            "description": "مقارنة مخبرية لمسحة المنصة مع السجلات المرجعية.",
+            "evidence_type": "forensic",
+            "metadata": {
+                "doc": {
+                    "v": 1,
+                    "theme": "lab",
+                    "page": {
+                        "w": 800,
+                        "minH": 1131,
+                        "pad": 64
+                    },
+                    "blocks": [
+                        {
+                            "id": "dn_lh",
+                            "type": "letterhead",
+                            "span": 12,
+                            "props": {
+                                "agency": "علم الأحياء الجنائي",
+                                "title": "تقرير تحليل STR",
+                                "sub": "مفَرَّد مقارِن",
+                                "aside": "STR-0992",
+                                "asideLabel": "الملف",
+                                "rule": true
+                            }
+                        },
+                        {
+                            "id": "dn_mg",
+                            "type": "meta_grid",
+                            "span": 12,
+                            "props": {
+                                "columns": 3,
+                                "tone": "boxed",
+                                "rows": [
+                                    {
+                                        "label": "العينة",
+                                        "value": "مسحة — مزلاج النافذة"
+                                    },
+                                    {
+                                        "label": "المرجع",
+                                        "value": "سجلات جدول الخدمة"
+                                    },
+                                    {
+                                        "label": "المحلل",
+                                        "value": "ك. إيبارا"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "dn_dg",
+                            "type": "diagram",
+                            "span": 12,
+                            "props": {
+                                "preset": "electropherogram",
+                                "caption": "مسحة جلدية مقابل السجل المرجعي — قممٌ مطابقة"
+                            }
+                        },
+                        {
+                            "id": "dn_tb",
+                            "type": "table",
+                            "span": 12,
+                            "props": {
+                                "tone": "ledger",
+                                "caption": "ملخص المقارنة",
+                                "columns": [
+                                    {
+                                        "key": "locus",
+                                        "label": "الموقع الجيني",
+                                        "type": "mono"
+                                    },
+                                    {
+                                        "key": "result",
+                                        "label": "النتيجة",
+                                        "type": "badge",
+                                        "tones": {
+                                            "match": "مطابق",
+                                            "nomatch": "غير مطابق",
+                                            "partial": "جزئي"
+                                        }
+                                    }
+                                ],
+                                "rows": [
+                                    {
+                                        "locus": "D3S1358",
+                                        "result": "match"
+                                    },
+                                    {
+                                        "locus": "FGA",
+                                        "result": "match"
+                                    },
+                                    {
+                                        "locus": "TH01",
+                                        "result": "partial"
+                                    },
+                                    {
+                                        "locus": "WAJ",
+                                        "result": "match"
+                                    }
+                                ],
+                                "emptyMessage": "لم تُقارَن مواقع جينية."
+                            }
+                        },
+                        {
+                            "id": "dn_rl",
+                            "type": "rule",
+                            "span": 12,
+                            "props": {
+                                "variant": "solid"
+                            }
+                        },
+                        {
+                            "id": "dn_p1",
+                            "type": "prose",
+                            "span": 12,
+                            "props": {
+                                "tone": "mono",
+                                "html": "<p dir=\"rtl\">الخلاصة: أمسَكَ المزلاجَ يدُ حيّة <span class=\"highlighted\">لمُدّة لا تقل عن عدة ثوانٍ</span>. الشدّ، لا الانزلاق، سبَق السقوط.</p>"
+                            }
+                        },
+                        {
+                            "id": "dn_bc",
+                            "type": "barcode",
+                            "span": 6,
+                            "props": {
+                                "value": "STR 0992-C"
+                            }
+                        }
+                    ]
+                }
+            },
+            "is_initial": false,
+            "is_vital_for_conviction": true,
+            "img": null,
+            "audio": null
+        },
+        {
+            "ref_id": "ev_133",
+            "title": "10 · تتبّع الأثر — رَسَب الدرابزين",
+            "description": "طيف الكتل للراسب على ندوبة الدرابزين.",
+            "evidence_type": "forensic",
+            "metadata": {
+                "doc": {
+                    "v": 1,
+                    "theme": "lab",
+                    "page": {
+                        "w": 800,
+                        "minH": 1131,
+                        "pad": 64
+                    },
+                    "blocks": [
+                        {
+                            "id": "tr_lh",
+                            "type": "letterhead",
+                            "span": 12,
+                            "props": {
+                                "agency": "وحدة المواد والأثر",
+                                "title": "تحليل أثري",
+                                "sub": "طيف الكتل — دليل 41-B",
+                                "aside": "MS-2210",
+                                "asideLabel": "الملف",
+                                "rule": true
+                            }
+                        },
+                        {
+                            "id": "tr_mg",
+                            "type": "meta_grid",
+                            "span": 12,
+                            "props": {
+                                "columns": 3,
+                                "tone": "boxed",
+                                "rows": [
+                                    {
+                                        "label": "الدليل",
+                                        "value": "مسحة ندوبة الدرابزين"
+                                    },
+                                    {
+                                        "label": "الطريقة",
+                                        "value": "طيف كتلي / كروماتوغرافيا غازية"
+                                    },
+                                    {
+                                        "label": "المحلل",
+                                        "value": "ف. أدييمي"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "tr_dg",
+                            "type": "diagram",
+                            "span": 12,
+                            "props": {
+                                "preset": "mass_spec",
+                                "caption": "بصمة الرَّسَب — حافة الندوبة"
+                            }
+                        },
+                        {
+                            "id": "tr_ls",
+                            "type": "list",
+                            "span": 12,
+                            "props": {
+                                "ordered": true,
+                                "items": [
+                                    "استلام العينة والتحقق من الخَتْم",
+                                    "غسيل بمذيب وتركيز",
+                                    "تشغيل طيف الكتل، ثلاث مرات",
+                                    "مقارنة مع بيانات توريد المقاول"
+                                ]
+                            }
+                        },
+                        {
+                            "id": "tr_mg2",
+                            "type": "meta_grid",
+                            "span": 12,
+                            "props": {
+                                "columns": 2,
+                                "tone": "rows",
+                                "rows": [
+                                    {
+                                        "label": "المادة",
+                                        "value": "معجون قطع صناعي، حبيبات تنغستن"
+                                    },
+                                    {
+                                        "label": "المصدر المطابق",
+                                        "value": "مخزون مقاول صيانة البناية"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "tr_p1",
+                            "type": "prose",
+                            "span": 12,
+                            "props": {
+                                "tone": "mono",
+                                "html": "<p dir=\"rtl\">يطابق معجون مخزون الدرج <span class=\"highlighted\">ندوبة الدرابزين</span> ضمن هامش السماح. صُعِدت الأداة من درج الخدمة، وعادت يدُها بجسد.</p>"
+                            }
+                        },
+                        {
+                            "id": "tr_sp",
+                            "type": "spacer",
+                            "span": 12,
+                            "props": {
+                                "height": 22
+                            }
+                        },
+                        {
+                            "id": "tr_st",
+                            "type": "stamp",
+                            "span": 4,
+                            "style": {
+                                "align": "end"
+                            },
+                            "props": {
+                                "text": "تم التحقق",
+                                "tone": "official"
+                            }
+                        }
+                    ]
+                }
+            },
+            "is_initial": false,
+            "is_vital_for_conviction": false,
+            "img": null,
+            "audio": null
+        },
+        {
+            "ref_id": "ev_134",
+            "title": "11 · سيرة — ج.-ل. غريف",
+            "description": "ملف استخباري عن رئيس أمن البرج، مشطوب جزئيًا.",
+            "evidence_type": "document",
+            "metadata": {
+                "doc": {
+                    "v": 1,
+                    "theme": "dossier",
+                    "page": {
+                        "w": 800,
+                        "minH": 1131,
+                        "pad": 64
+                    },
+                    "blocks": [
+                        {
+                            "id": "bg_lh",
+                            "type": "letterhead",
+                            "span": 12,
+                            "props": {
+                                "agency": "ملف استخباري — داخلي",
+                                "title": "فحص سيرة",
+                                "sub": "متعاقد أمن رفيع",
+                                "aside": "GB-0114",
+                                "asideLabel": "البطاقة",
+                                "rule": true
+                            }
+                        },
+                        {
+                            "id": "bg_mg",
+                            "type": "meta_grid",
+                            "span": 12,
+                            "props": {
+                                "columns": 2,
+                                "tone": "plain",
+                                "rows": [
+                                    {
+                                        "label": "الموضوع",
+                                        "value": "جان-لوك غريف"
+                                    },
+                                    {
+                                        "label": "الدور",
+                                        "value": "مدير أمن البرج (متعاقد منذ 2019)"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "bg_rl",
+                            "type": "rule",
+                            "span": 12,
+                            "props": {
+                                "variant": "solid"
+                            }
+                        },
+                        {
+                            "id": "bg_p1",
+                            "type": "prose",
+                            "span": 12,
+                            "props": {
+                                "tone": "typed",
+                                "html": "<p dir=\"rtl\">دخل غريف إلى خدمة البرج عام 2019 بموجب عقد من جهة ميرديان. تصف ملاحظات المُقيِّم رجلًا <span class=\"highlighted\">ينجذب إلى الدفاع عن البنايات لا الأشخاص</span>. العمل السابق: <span class=\"redacted\">جهات مرفأيّة معينة، 2009-2018، تسريحٌ موضع نزاع</span>.</p>"
+                            }
+                        },
+                        {
+                            "id": "bg_rd",
+                            "type": "redaction",
+                            "span": 12,
+                            "props": {
+                                "lines": 4,
+                                "label": "مشطوب بقرار من الشؤون القانونية بميرديان"
+                            }
+                        },
+                        {
+                            "id": "bg_dg",
+                            "type": "diagram",
+                            "span": 12,
+                            "props": {
+                                "preset": "fingerprint",
+                                "caption": "بصمة كامنة — درابزين درج الخدمة"
+                            }
+                        },
+                        {
+                            "id": "bg_sp",
+                            "type": "spacer",
+                            "span": 12,
+                            "props": {
+                                "height": 24
+                            }
+                        },
+                        {
+                            "id": "bg_sg",
+                            "type": "signature_row",
+                            "span": 12,
+                            "props": {
+                                "columns": [
+                                    {
+                                        "caption": "المُقيِّم"
+                                    },
+                                    {
+                                        "caption": "الأمين"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "bg_st",
+                            "type": "stamp",
+                            "span": 4,
+                            "style": {
+                                "align": "end"
+                            },
+                            "props": {
+                                "text": "تم التصديق",
+                                "tone": "forged"
+                            }
+                        }
+                    ]
+                }
+            },
+            "is_initial": false,
+            "is_vital_for_conviction": false,
+            "img": null,
+            "audio": null
+        },
+        {
+            "ref_id": "ev_135",
+            "title": "12 · دفتر الأرشيفي الليلي",
+            "description": "دفتر عمل جولز واتس، مسترَد من حظيرة المستندات.",
+            "evidence_type": "document",
+            "metadata": {
+                "doc": {
+                    "v": 1,
+                    "theme": "notebook",
+                    "page": {
+                        "w": 800,
+                        "minH": 1131,
+                        "pad": 64
+                    },
+                    "blocks": [
+                        {
+                            "id": "jn_lh",
+                            "type": "letterhead",
+                            "span": 12,
+                            "props": {
+                                "agency": "دفتر شخصي",
+                                "title": "ج. واتس — وردية الليل",
+                                "rule": true
+                            }
+                        },
+                        {
+                            "id": "jn_mg",
+                            "type": "meta_grid",
+                            "span": 12,
+                            "props": {
+                                "columns": 2,
+                                "tone": "plain",
+                                "rows": [
+                                    {
+                                        "label": "المدوِّن",
+                                        "value": "جولز واتس"
+                                    },
+                                    {
+                                        "label": "آخر تدوين",
+                                        "value": "2026-09-30"
+                                    }
+                                ]
+                            }
+                        },
+                        {
+                            "id": "jn_rl",
+                            "type": "rule",
+                            "span": 12,
+                            "props": {
+                                "variant": "dotted"
+                            }
+                        },
+                        {
+                            "id": "jn_p1",
+                            "type": "prose",
+                            "span": 12,
+                            "props": {
+                                "tone": "handwritten",
+                                "html": "<p dir=\"rtl\">تسع شحنات من غرفة النسخ الرابعة منذ يوليو. تُباع البيانات مرتين، والورقة تتظاهر أنها وُلدت مرة واحدة.</p>"
+                            }
+                        },
+                        {
+                            "id": "jn_p2",
+                            "type": "prose",
+                            "span": 12,
+                            "props": {
+                                "tone": "handwritten",
+                                "html": "<p dir=\"rtl\">المشتري في 09/22 دفع بحوالة، <span class=\"highlighted\">ثم دفع مرة أخرى لينسى التاريخ</span>. أبقيتُ الشريط الذي يحمل التاريخ. سيبقى الشريط أطول عمرًا من كُل من في هذه البناية إن اضطرّ إلى ذلك.</p>"
+                            }
+                        },
+                        {
+                            "id": "jn_p3",
+                            "type": "prose",
+                            "span": 12,
+                            "props": {
+                                "tone": "handwritten",
+                                "html": "<p dir=\"rtl\">تقول ف.: كن في صمت، وقبل الترسِال إلى الخارج. هي ليست مخطئة، وأنا لست شجاعًا. التقارير نسخ من نسخة. لن ينظر أحدٌ إلى مكتب رجل ميت مرتين.</p>"
+                            }
+                        },
+                        {
+                            "id": "jn_sp",
+                            "type": "spacer",
+                            "span": 12,
+                            "props": {
+                                "height": 26
+                            }
+                        },
+                        {
+                            "id": "jn_an",
+                            "type": "annotation",
+                            "span": 8,
+                            "props": {
+                                "text": "إن حدث شيء، فالشريط هو التاريخ",
+                                "rotate": -4
+                            }
+                        }
+                    ]
+                }
+            },
+            "is_initial": false,
+            "is_vital_for_conviction": false,
+            "img": null,
+            "audio": null
+        },
+        {
+            "ref_id": "ev_136",
+            "title": "13 · تصوير — علامات التكسير، باب 41-S",
+            "description": "اقتحام حديث على باب درج الخدمة، مقابل المنصة.",
+            "evidence_type": "image",
+            "metadata": null,
+            "is_initial": false,
+            "is_vital_for_conviction": false,
+            "img": "media/evidences/ev_126.img.jpg",
+            "audio": null
+        },
+        {
+            "ref_id": "ev_137",
+            "title": "14 · مقابلة — تصريح السطح",
+            "description": "تصريح ختامي أُخذ عند سياج المرفأ، يتحدث فيه غريف خارج التسجيل.",
+            "evidence_type": "testimony",
+            "metadata": {
+                "agency": "شرطة مدينة المرفأ — وحدة RoV",
+                "title": "تصريح شبه مُقسَم",
+                "date": "2026-10-19",
+                "case_number": "CR-2026-0417",
+                "subject_name": "ج.-ل. غريف",
+                "interviewer": "المحقق ر. أوكافور",
+                "context": "أُخذ على سطح البرج عند سياج المرفأ. لا مسجّل يعمل؛ أُعيد بناؤه من ملاحظات الضابط المكتوبة في حينها.",
+                "transcript": [
+                    {
+                        "type": "q",
+                        "speaker": "المحقق ر. أوكافور",
+                        "text": "لماذا المدقّق، يا غريف؟"
+                    },
+                    {
+                        "type": "a",
+                        "speaker": "ج.-ل. غريف",
+                        "text": "لأنه عَدَّ. البنايات تنجو بما لا يُعدَّ."
+                    },
+                    {
+                        "type": "q",
+                        "speaker": "المحقق ر. أوكافور",
+                        "text": "رينس أمرت به. فالِك وقّع عليه. من دفع لك؟"
+                    },
+                    {
+                        "type": "a",
+                        "speaker": "ج.-ل. غريف",
+                        "text": "غرفة الحوالات تدفع لي. دفعت لي فوس بتاريخ، ودفع التاريخ لي بصمت. أخذ الأمين المال كي لا ينظر؛ وتولّيت المهمة لأنه حينها لن يهِم إن نظر."
+                    },
+                    {
+                        "type": "q",
+                        "speaker": "المحقق ر. أوكافور",
+                        "text": "وصوتك على خط الردهة في 03:07؟"
+                    },
+                    {
+                        "type": "a",
+                        "speaker": "ج.-ل. غريف",
+                        "text": "تلك كانت خدمة. أنا صُنِعت لها."
+                    }
+                ]
+            },
+            "is_initial": false,
+            "is_vital_for_conviction": true,
+            "img": null,
+            "audio": null
+        }
+    ],
+    "characters": [
+        {
+            "ref_id": "ch_58",
+            "name": "دانا مارش",
+            "background": "حارسة ردهة برج غلاسهاوس الليلية منذ تسع سنوات. تعرف دفتر الردهة أفضل من مالك البناية، وتتذكر من لم يوقّع.",
+            "is_initial": true,
+            "is_guilty": false,
+            "charge": null,
+            "default_status": "available",
+            "img": "media/characters/ch_58.png"
+        },
+        {
+            "ref_id": "ch_59",
+            "name": "كوروين لويس",
+            "background": "نائب الرئيس لشؤون الامتثال في ميرديان هولدنغز. وقّع على البيع الثاني لمجموعة البيانات بابتسامة، وبحسابٍ كاسد يزعم أنه لا يديره.",
+            "is_initial": true,
+            "is_guilty": false,
+            "charge": null,
+            "default_status": "available",
+            "img": "media/characters/ch_59.png"
+        },
+        {
+            "ref_id": "ch_60",
+            "name": "ناديا رينس",
+            "background": "مساعدة تنفيذية لأعيان البرج. تحتال على التقويمات، والحسابات الصامتة، وسجل الرحلات المزوَّر ليلة السقوط.",
+            "is_initial": true,
+            "is_guilty": true,
+            "charge": "fraud",
+            "default_status": "available",
+            "img": "media/characters/ch_60.png"
+        },
+        {
+            "ref_id": "ch_61",
+            "name": "سايلس كرين",
+            "background": "مسير أنظمة سابق في البرج، مضى إحدى عشر شهرًا من عقوبته ذات العامين. بلّغ للمُصلِح أي كاميرا درج تنام. سيتكلّم، لكن عن نفسه فقط.",
+            "is_initial": true,
+            "is_guilty": true,
+            "charge": "accomplice",
+            "default_status": "incarcerated",
+            "img": "media/characters/ch_61.png"
+        },
+        {
+            "ref_id": "ch_62",
+            "name": "رين بوزك",
+            "background": "مقاول صيانة يخدم درجات السلالم خارج ساعات العمل. عربته تُهدر في الرصيف الشمالي حتى الرابعة؛ ولا أحد يسجّل دخوله.",
+            "is_initial": false,
+            "is_guilty": false,
+            "charge": null,
+            "default_status": "available",
+            "img": "media/characters/ch_58.png"
+        },
+        {
+            "ref_id": "ch_63",
+            "name": "د. أوين فالِك",
+            "background": "طبيب ميرديان الدائم، وفاحص البرج عند النداء. وقّع تقرير التشريح مرتين، ووقّع الثانية خطأً ما عدى.",
+            "is_initial": false,
+            "is_guilty": true,
+            "charge": "conspiracy",
+            "default_status": "available",
+            "img": "media/characters/ch_63.png"
+        },
+        {
+            "ref_id": "ch_64",
+            "name": "جولز واتس",
+            "background": "أرشيفي الليل في حظيرة المستندات. نسخ البيانات بدافع الملل والمبدأ معًا، وأبقى الشريط المؤرَّخ، وتوقّف عن التنفس قبل أن ينفق أيًّا منهما.",
+            "is_initial": false,
+            "is_guilty": true,
+            "charge": "theft",
+            "default_status": "deceased",
+            "img": "media/characters/ch_61.png"
+        },
+        {
+            "ref_id": "ch_65",
+            "name": "مارا فوس",
+            "background": "أمينة المستندات التي لاحظت ما نسخه واتس — وحمّل المشتري زيادة مقابل أن ينسى التاريخ. حجزت تُرسُلًا بلا عودة إلى الخارج يوم 2 أكتوبر.",
+            "is_initial": false,
+            "is_guilty": true,
+            "charge": "blackmail",
+            "default_status": "available",
+            "img": "media/characters/ch_61.png"
+        },
+        {
+            "ref_id": "ch_66",
+            "name": "جان-لوك غريف",
+            "background": "مدير أمن البرج منذ 2019. يصون درج الخدمة فوق قانون الردهة، وجسور كل من ابتلعتها البناية.",
+            "is_initial": false,
+            "is_guilty": true,
+            "charge": "murder",
+            "default_status": "available",
+            "img": "media/characters/ch_66.png"
+        }
+    ],
+    "investigation_requests": [
+        {
+            "ref_id": "req_31",
+            "request_type": "phone_records",
+            "unlocks_evidence_ref": "ev_128",
+            "unlocks_level_ref": null,
+            "required_evidence_refs": [
+                "ev_124",
+                "ev_125"
+            ],
+            "required_character_refs": []
+        },
+        {
+            "ref_id": "req_32",
+            "request_type": "search_warrant",
+            "unlocks_evidence_ref": "ev_130",
+            "unlocks_level_ref": null,
+            "required_evidence_refs": [
+                "ev_128"
+            ],
+            "required_character_refs": [
+                "ch_62"
+            ]
+        },
+        {
+            "ref_id": "req_33",
+            "request_type": "financial_records",
+            "unlocks_evidence_ref": "ev_129",
+            "unlocks_level_ref": null,
+            "required_evidence_refs": [
+                "ev_128"
+            ],
+            "required_character_refs": [
+                "ch_59"
+            ]
+        },
+        {
+            "ref_id": "req_34",
+            "request_type": "dna_test",
+            "unlocks_evidence_ref": "ev_132",
+            "unlocks_level_ref": null,
+            "required_evidence_refs": [
+                "ev_126"
+            ],
+            "required_character_refs": [
+                "ch_63"
+            ]
+        }
+    ],
+    "zones": [
+        {
+            "title": "برج غلاسهاوس",
+            "description": "البرج الذي شطب مدقّقَه من دفتر حساباته. ابدأ من الردهة، واصعد.",
+            "order_index": 1,
+            "coord_x": 24,
+            "coord_y": 61,
+            "levels": [
+                {
+                    "ref_id": "lvl_34",
+                    "title": "L01 · إحاطة حارسة الردهة",
+                    "details": "دانا مارش أمّنت مكتب الليل. شَدِّدها برفق: المكالمة، دفتر المكتب، والمقاول الذي لا أحد يسجّله.",
+                    "order_index": 1,
+                    "is_initial": true,
+                    "presentation_type": "interrogation",
+                    "required_request_ref": null,
+                    "img": "media/levels/lvl_34.jpg",
+                    "nodes": [
+                        {
+                            "order_index": 0,
+                            "text": "تخفض دانا صوتها. «أخفض صوتك، هلا؟ الإدارة تكره حركة الشرطة قبل التاسعة».",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_238",
+                                    "text": "اسألها عن دفتر المكتب في ليلة السقوط.",
+                                    "outcomes": {
+                                        "next_question_index": 1
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_239",
+                                    "text": "اسألها عمّا سمعته في مكالمة 03:07.",
+                                    "outcomes": {
+                                        "next_question_index": 2
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_240",
+                                    "text": "اضغط عليها في صفحة السجل الممزقة.",
+                                    "outcomes": {
+                                        "feedback": "أغلقت درج الدفتر وضمَت ذراعيها. حاوزها على الورق، لا على النبرة. [إضراب]",
+                                        "gives_strike": true
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 1,
+                            "text": "الدفتر كله علاماتُ حضورٍ وصمت. «كانت الردهة فارغة تلك الليلة. لهذا أنا موجودة».",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_241",
+                                    "text": "اسألها عن تسجيلات مقاول الصيانة خارج الدوام.",
+                                    "outcomes": {
+                                        "next_question_index": 3,
+                                        "unlock_location_point_refs": [
+                                            "choice_254"
+                                        ],
+                                        "character_updates": [
+                                            {
+                                                "ref_id": "ch_62",
+                                                "is_unlocked": true,
+                                                "status": null
+                                            }
+                                        ]
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_242",
+                                    "text": "اترك الدفتر؛ عد إلى المكالمة.",
+                                    "outcomes": {
+                                        "next_question_index": 2
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 2,
+                            "text": "«أجبتُ خط الردهة في 03:07. صوت رجل — ثابت، كأنه يقرأ قائمة.»",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_243",
+                                    "text": "اقرأ عليها مدخلات مدخل البرج الهاتفي.",
+                                    "outcomes": {
+                                        "next_question_index": 3
+                                    },
+                                    "requirements": {
+                                        "required_evidence_refs": [
+                                            "ev_128"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "ref_id": "choice_244",
+                                    "text": "اترك المكالمة الآن؛ عد إلى الدفتر.",
+                                    "outcomes": {
+                                        "next_question_index": 5
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 3,
+                            "text": "«بوزك؟ هو يخدم درجات السلالم خارج الساعات. لا أحد يسجّل دخوله. بعض الليالي تُهدر عربتُه في الرصيف الشمالي حتى الرابعة.»",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_245",
+                                    "text": "أثبت نافذة عربة بوزك في الملف.",
+                                    "outcomes": [],
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_246",
+                                    "text": "اسأل من طلب منها أسكتَ أمرَ حركة الشرطة.",
+                                    "outcomes": {
+                                        "next_question_index": 4
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 4,
+                            "text": "تنظر دانا إلى الأبواب النحاسية. «عد متى عرفتَ من تطارده. حينها أخبرك بما رأاه مكتب الليل».",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_247",
+                                    "text": "أعلن انتهاء وردية الليل؛ غدًا للمطاردة أسماء.",
+                                    "outcomes": [],
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_248",
+                                    "text": "اسألها مرة أخيرة من يرن بعد منتصف الليل.",
+                                    "outcomes": [],
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 5,
+                            "text": "الدفتر كله علاماتُ حضورٍ وصمت. «كانت الردهة فارغة تلك الليلة. لهذا أنا موجودة».",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_ledger_return",
+                                    "text": "اسألها عن تسجيلات مقاول الصيانة خارج الدوام.",
+                                    "outcomes": {
+                                        "next_question_index": 3,
+                                        "unlock_location_point_refs": [
+                                            "choice_254"
+                                        ],
+                                        "character_updates": [
+                                            {
+                                                "ref_id": "ch_62",
+                                                "is_unlocked": true,
+                                                "status": null
+                                            }
+                                        ]
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "ref_id": "lvl_35",
+                    "title": "L02 · مسح منصة الطابق الرئاسي",
+                    "details": "المنصة، درج الخدمة، حظيرة المستندات. تفقّد المشاهد واقرأ الغرفة التي توقفت فيها المدينة عن السؤال.",
+                    "order_index": 2,
+                    "is_initial": true,
+                    "presentation_type": "location",
+                    "required_request_ref": null,
+                    "img": "media/levels/lvl_34.jpg",
+                    "nodes": [
+                        {
+                            "order_index": 0,
+                            "text": "منصة الطابق الرئاسي — خليج النافذة الشرقية. لم يتحرك الشريط الممدود على الدرابزين منذ السقوط.",
+                            "img": "media/nodes/lvl_35_0.img.jpg",
+                            "choices": [
+                                {
+                                    "ref_id": "choice_249",
+                                    "text": "34,58 | ندوب حادّة على حافة الدرابزين",
+                                    "outcomes": {
+                                        "next_question_index": 1
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_250",
+                                    "text": "72,21 | مزلاج فتحة السقف المنزلق",
+                                    "outcomes": [],
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_251",
+                                    "text": "52,66 | حاضنة كاميرا عين الباب",
+                                    "outcomes": {
+                                        "next_question_index": 2
+                                    },
+                                    "requirements": {
+                                        "required_evidence_refs": [
+                                            "ev_128"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 1,
+                            "text": "درج الخدمة — الباب 41-S الذي لم يسجّل أي بطاقة في تلك الساعة.",
+                            "img": "media/nodes/lvl_35_1.img.jpg",
+                            "choices": [
+                                {
+                                    "ref_id": "choice_252",
+                                    "text": "47,61 | علامة تكسير حديثة على إطار الباب",
+                                    "outcomes": {
+                                        "unlock_evidence_refs": [
+                                            "ev_136"
+                                        ]
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_253",
+                                    "text": "80,30 | مزلاج مخرج الطوارئ المتعثر",
+                                    "outcomes": [],
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 2,
+                            "text": "حظيرة المستندات — مكتب الليل لجولز واتس، على عمق أربعة مكاتب، ممتلئ بأشرطة مؤرَّخة.",
+                            "img": "media/nodes/lvl_35_2.img.jpg",
+                            "choices": [
+                                {
+                                    "ref_id": "choice_254",
+                                    "text": "19,44 | مسجّل بطاقة أمين الأرشيف",
+                                    "outcomes": {
+                                        "unlock_evidence_refs": [
+                                            "ev_135"
+                                        ]
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_255",
+                                    "text": "65,66 | سلّة الحرق ورمادها الدافئ",
+                                    "outcomes": [],
+                                    "requirements": []
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "مقر ميرديان هولدنغز",
+            "description": "غرفة الدفع. بالأمر القضائي في يدك، اقتحم الجناح التنفيذي، ثم الحظيرة حيث وُلد الورق.",
+            "order_index": 2,
+            "coord_x": 63,
+            "coord_y": 34,
+            "levels": [
+                {
+                    "ref_id": "lvl_36",
+                    "title": "L03 · مقابلة الجناح التنفيذي",
+                    "details": "ناديا رينس تحرس الباب؛ د. فالِك يختبئ خلف الجناح الطبي. أحضر الأمر، أحضر الحوالات، ولا تُجازِف بالكذب.",
+                    "order_index": 1,
+                    "is_initial": true,
+                    "presentation_type": "interrogation",
+                    "required_request_ref": "req_33",
+                    "img": "media/levels/lvl_34.jpg",
+                    "nodes": [
+                        {
+                            "order_index": 0,
+                            "text": "تنحني رينس على عتبة الباب. «ليس لديك إذنٌ للصعود، أيها المحقق. الأمر القضائي مع ذلك — أرني الأمر القضائي».",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_256",
+                                    "text": "بسط الأمر المالي عبر مكتبها.",
+                                    "outcomes": {
+                                        "next_question_index": 1
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_257",
+                                    "text": "ادّعِ أنك تحمل قرص الخزنة بالفعل.",
+                                    "outcomes": {
+                                        "feedback": "أجرت مكالمة واحدة، ورجلان من ذوي البدلات يخرجانك إلى الشارع. لا تُباهِ المرأة التي تحرر سجلات الرحلات. [إضراب]",
+                                        "gives_strike": true
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 1,
+                            "text": "توقّع، ثم ترفع حاجبها. «أواق تدقيق اعتيادية. تُوجَّه الشكوى إلى الامتثال — أوه، ذلك سيكون السيد لويس».",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_258",
+                                    "text": "واجهها بحوالات الشركة التابعة.",
+                                    "outcomes": {
+                                        "next_question_index": 2
+                                    },
+                                    "requirements": {
+                                        "required_evidence_refs": [
+                                            "ev_129"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "ref_id": "choice_259",
+                                    "text": "اسأل من يُرن إلى د. فالِك في أوقات غريبة.",
+                                    "outcomes": {
+                                        "next_question_index": 3
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 2,
+                            "text": "«كانت الحوالة تدبيرَ ميراث،» تقول بسلاسة مفرطة. «سجل الرحلات ليوم الثلاثين نموذجٌ اعتيادي، لا تزوير.»",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_260",
+                                    "text": "اضغط عليها في سجلات الرحلات المزوَّرة ليوم الثلاثين.",
+                                    "outcomes": {
+                                        "next_question_index": 3
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_261",
+                                    "text": "اعرض عليها المسلك الهادئ: سمِّ اليد التي حركت المال.",
+                                    "outcomes": {
+                                        "next_question_index": 3
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 3,
+                            "text": "يظهر د. فالِك حاملًا لوحًا لم يُوقَّع منذ أيام. «تقنيًا، يُسمح لي أنا أيضًا بالصعود».",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_262",
+                                    "text": "واجه فالِك بسجل العيادة — ساعة المسحة 02:58.",
+                                    "outcomes": {
+                                        "next_question_index": 4,
+                                        "unlock_evidence_refs": [
+                                            "ev_131"
+                                        ],
+                                        "character_updates": [
+                                            {
+                                                "ref_id": "ch_63",
+                                                "is_unlocked": true,
+                                                "status": null
+                                            }
+                                        ]
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_263",
+                                    "text": "اطلب من فالِك سجل العيادة مباشرة.",
+                                    "outcomes": {
+                                        "next_question_index": 4,
+                                        "unlock_levels_refs": [
+                                            "lvl_37"
+                                        ],
+                                        "character_updates": [
+                                            {
+                                                "ref_id": "ch_63",
+                                                "is_unlocked": true,
+                                                "status": null
+                                            }
+                                        ]
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 4,
+                            "text": "ينغلق الجناح الطبي خلفهما. تبقى وحدك مع صينية حظيرة الأمن ودرج واحد مقفل.",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_264",
+                                    "text": "اسحب ملف غريف الشخصي من صينية حظيرة الأمن.",
+                                    "outcomes": {
+                                        "unlock_evidence_refs": [
+                                            "ev_134"
+                                        ]
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_265",
+                                    "text": "أشِر على مكتب التخزين للتفتيش الشامل.",
+                                    "outcomes": {
+                                        "unlock_levels_refs": [
+                                            "lvl_37"
+                                        ]
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_266",
+                                    "text": "اتهم رينس بإدارة العملية كلها.",
+                                    "outcomes": {
+                                        "feedback": "«نظرية جسورة،» تبتسم، وينتهي اللقاء. هي تدير الورق. اسأل من يدير الدرج. [إضراب]",
+                                        "gives_strike": true
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "ref_id": "lvl_37",
+                    "title": "L04 · مقابلة حظيرة المستندات",
+                    "details": "الحظيرة حيث وُلد الورق وأُحرق. أربعة مكاتب، درج واحد، ووردية ليلية ميتة.",
+                    "order_index": 2,
+                    "is_initial": false,
+                    "presentation_type": "interrogation",
+                    "required_request_ref": null,
+                    "img": "media/levels/lvl_34.jpg",
+                    "nodes": [
+                        {
+                            "order_index": 0,
+                            "text": "تتنفس الحظيرة رائحة الحبر القديم والحرارة العتيقة. المكتب الرابع مختوم بشريط الاستلام.",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_267",
+                                    "text": "افتح درج المكتب الرابع.",
+                                    "outcomes": {
+                                        "next_question_index": 1,
+                                        "unlock_evidence_refs": [
+                                            "ev_135"
+                                        ],
+                                        "character_updates": [
+                                            {
+                                                "ref_id": "ch_64",
+                                                "is_unlocked": true
+                                            }
+                                        ]
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_268",
+                                    "text": "صوِّر علامات التكسير التي صوّرتها سلفًا.",
+                                    "outcomes": {
+                                        "unlock_evidence_refs": [
+                                            "ev_136"
+                                        ]
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 1,
+                            "text": "مسجّل البطاقة ينبض بجدول رجل ميت: تسجيل الدخول 22:00، تسجيل الخروج — أبدًا لا.",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_269",
+                                    "text": "سجّل مسجّل بطاقة الأرشيفي الميت في الملف.",
+                                    "outcomes": {
+                                        "next_question_index": 2,
+                                        "character_updates": [
+                                            {
+                                                "ref_id": "ch_64",
+                                                "is_unlocked": true,
+                                                "status": null
+                                            }
+                                        ]
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_270",
+                                    "text": "تقفَ سجل النسخ إلى اسم فوس.",
+                                    "outcomes": {
+                                        "next_question_index": 2,
+                                        "unlock_levels_refs": [
+                                            "lvl_38"
+                                        ],
+                                        "character_updates": [
+                                            {
+                                                "ref_id": "ch_65",
+                                                "is_unlocked": true,
+                                                "status": "fled"
+                                            }
+                                        ]
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 2,
+                            "text": "سلّة الحرق بجانب باب التحميل ما تزال دافئة. المطر يقرع السقف المقوَّس كورديةٍ ثانية تصل.",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_271",
+                                    "text": "خذ رماد سلّة الحرق إلى وحدة الأثر.",
+                                    "outcomes": {
+                                        "unlock_evidence_refs": [
+                                            "ev_133"
+                                        ]
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_272",
+                                    "text": "لفّ الحظيرة وأنهِ الوردية.",
+                                    "outcomes": [],
+                                    "requirements": []
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "title": "خط المرفأ",
+            "description": "السطح حيث تنتهي المدينة. تعال بتقرير التشريح والمسحة والشريط — أو لا تعال أصلًا.",
+            "order_index": 3,
+            "coord_x": 81.5,
+            "coord_y": 19,
+            "levels": [
+                {
+                    "ref_id": "lvl_38",
+                    "title": "L05 · السطح — غريف",
+                    "details": "جان-لوك غريف يصون الدرج كما يصون الملك قصره. أحضر الإثبات، أو أحضر الريح.",
+                    "order_index": 1,
+                    "is_initial": false,
+                    "presentation_type": "interrogation",
+                    "required_request_ref": null,
+                    "img": "media/levels/lvl_34.jpg",
+                    "nodes": [
+                        {
+                            "order_index": 0,
+                            "text": "ينحني غريف على سياج المرفأ. «سقوط سيّئ. طابق خطأ. البنايات هكذا».",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_273",
+                                    "text": "أبلِغه بوسم باب الصيانة.",
+                                    "outcomes": {
+                                        "next_question_index": 1
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_274",
+                                    "text": "اعرض مطابقة الحمض النووي على مزلاج النافذة.",
+                                    "outcomes": {
+                                        "next_question_index": 2
+                                    },
+                                    "requirements": {
+                                        "required_evidence_refs": [
+                                            "ev_132"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "ref_id": "choice_275",
+                                    "text": "سمَّه القاتل بما لديك بالفعل.",
+                                    "outcomes": {
+                                        "feedback": "يضحك وينحني فوق السياج. «إذًا قلها للريح». [إضراب]",
+                                        "gives_strike": true
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 1,
+                            "text": "«وُسِم باب الصيانة كعملية صيانة،» تقول. «من قبلك. الساعة 03:09.»",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_276",
+                                    "text": "قل إنك سمعت محادثة المرفأ.",
+                                    "outcomes": {
+                                        "next_question_index": 2
+                                    },
+                                    "requirements": {
+                                        "required_choice_refs": [
+                                            "choice_273"
+                                        ]
+                                    }
+                                },
+                                {
+                                    "ref_id": "choice_277",
+                                    "text": "اسأل لماذا لم تنم كاميرا المنصة قط.",
+                                    "outcomes": {
+                                        "next_question_index": 2
+                                    },
+                                    "requirements": {
+                                        "required_evidence_refs": [
+                                            "ev_135"
+                                        ]
+                                    }
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 2,
+                            "text": "تهدأ الريح. في الأسفل، الرصيف الشمالي خالٍ من السيارات.",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_278",
+                                    "text": "ضع التقرير الكشفي والمسحة والشريط بينكما على السياج.",
+                                    "outcomes": {
+                                        "next_question_index": 3
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_279",
+                                    "text": "أخبره أن وحدة الأثر طابقت مخزون معجون الدرج.",
+                                    "outcomes": {
+                                        "next_question_index": 3
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_280",
+                                    "text": "انتظرَه في الصمت حتى ينهار.",
+                                    "outcomes": {
+                                        "next_question_index": 3
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 3,
+                            "text": "ينظر غريف في الخدوش على الدرابزين. «عملٌ دقيقٌ ذات مرة. وفي الليلة التي هَمَّت — هَوَن.»",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_281",
+                                    "text": "اتبعَه نحو درج الخدمة ودعه يرى أنك تعرف.",
+                                    "outcomes": {
+                                        "next_question_index": 4,
+                                        "unlock_evidence_refs": [
+                                            "ev_137"
+                                        ]
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_282",
+                                    "text": "أخبره أن دفتر واتس في يد الادعاء العام، وأنه مؤرَّخ.",
+                                    "outcomes": {
+                                        "next_question_index": 4,
+                                        "unlock_evidence_refs": [
+                                            "ev_137"
+                                        ]
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        },
+                        {
+                            "order_index": 4,
+                            "text": "ينظر غريف إلى المرفأ طويلًا. «لم يكن الأمر أبدًا عن البيانات. كانت البناية تحتاج فقط أن يتوقف العدّ».",
+                            "img": null,
+                            "choices": [
+                                {
+                                    "ref_id": "choice_283",
+                                    "text": "خذ التصريح وأنزله من الدرج.",
+                                    "outcomes": {
+                                        "character_updates": [
+                                            {
+                                                "ref_id": "ch_66",
+                                                "is_unlocked": true,
+                                                "status": null
+                                            }
+                                        ]
+                                    },
+                                    "requirements": []
+                                },
+                                {
+                                    "ref_id": "choice_284",
+                                    "text": "أبلِغ من عند السياج: اسمٌ واحد، ست صفحات من الإثبات.",
+                                    "outcomes": {
+                                        "character_updates": [
+                                            {
+                                                "ref_id": "ch_66",
+                                                "is_unlocked": true,
+                                                "status": null
+                                            }
+                                        ]
+                                    },
+                                    "requirements": []
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
