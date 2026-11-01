@@ -53,6 +53,19 @@ describe.each([
     expect(localStorage.getItem('auth_token')).toBeNull();
     expect(listener).toHaveBeenCalledTimes(1);
   });
+
+  it('returns retry metadata without clearing a token or emitting unauthorized', async () => {
+    localStorage.setItem('auth_token', 'valid');
+    const listener = vi.fn();
+    window.addEventListener('auth:unauthorized', listener);
+    const fetch = vi.fn().mockResolvedValue(Response.json({ message: 'Wait', retry_after: 60 }, { status: 429 }));
+    vi.stubGlobal('fetch', fetch);
+    expect(await send()).toMatchObject({ isSuccess: false, status: 429, retryAfterSeconds: 60 });
+    expect(localStorage.getItem('auth_token')).toBe('valid');
+    expect(listener).not.toHaveBeenCalled();
+    expect(fetch).toHaveBeenCalledTimes(1);
+    window.removeEventListener('auth:unauthorized', listener);
+  });
 });
 
 it('keeps JSON and empty successes unchanged', async () => {
@@ -72,4 +85,15 @@ it('still returns a downloadable blob', async () => {
   if (!result.isSuccess) throw new Error(result.errorMessage);
   expect(result.value.type).toBe('application/zip');
   expect(await result.value.text()).toBe('zip bytes');
+});
+
+it.each([
+  { body: {}, header: '12', expected: 12 },
+  { body: { retry_after: -1 }, header: '12', expected: 12 },
+  { body: { retry_after: 'invalid' }, header: 'invalid', expected: undefined },
+])('handles fallback retry information: $header', async ({ body, header, expected }) => {
+  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json(body, { status: 429, headers: { 'Retry-After': header } })));
+  const result = await request('/login');
+  expect(result.isSuccess).toBe(false);
+  if (!result.isSuccess) expect(result.retryAfterSeconds).toBe(expected);
 });

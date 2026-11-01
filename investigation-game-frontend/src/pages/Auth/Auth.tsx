@@ -14,7 +14,7 @@ export default function Auth({ onSuccess }: AuthProps) {
   
   const {
     isLogin, toggleAuthMode,
-    isLoading, error,
+    isLoading, error, retryAfterSeconds,
     email, setEmail,
     password, setPassword,
     username, setUsername,
@@ -31,7 +31,8 @@ export default function Auth({ onSuccess }: AuthProps) {
           {isLogin ? t('pages.auth.subtitleLogin') : t('pages.auth.subtitleRegister')}
         </p>
 
-        {error && <div className={authStyles['auth-error']}>{error}</div>}
+        {retryAfterSeconds > 0 && <p role="status">{t('pages.auth.rateLimited', { seconds: retryAfterSeconds })}</p>}
+        {error && retryAfterSeconds === 0 && <div className={authStyles['auth-error']}>{error}</div>}
 
         <form onSubmit={handleSubmit} className={authStyles['auth-form']}>
           {!isLogin && (
@@ -71,7 +72,7 @@ export default function Auth({ onSuccess }: AuthProps) {
             className={authStyles['auth-input']}
           />
 
-          <button type="submit" className="btn-primary" disabled={isLoading}>
+          <button type="submit" className="btn-primary" disabled={isLoading || retryAfterSeconds > 0}>
             {isLoading 
               ? t('pages.auth.authenticating') 
               : (isLogin ? t('pages.auth.loginBtn') : t('pages.auth.registerBtn'))}

@@ -19,6 +19,7 @@
     }
   },
   "pages": {
+    "auth": { "rateLimited": "Too many attempts. Try again in {{seconds}} seconds." },
     "gameRoom": {
       "syncDelayed": "Unable to refresh progress. Showing the last saved state; retrying automatically.",
       "evidence": {

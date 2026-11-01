@@ -24,8 +24,8 @@ Route::get('/login', function () {
 })->name('login');
 
 // Public Authentication Routes
-Route::post('/register', [AuthController::class, 'register']);
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:auth-register');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:auth-login');
 
 // Protected Gameplay Routes
 Route::middleware('auth:sanctum')->group(function () {
