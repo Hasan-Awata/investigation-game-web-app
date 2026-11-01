@@ -17,7 +17,7 @@ export const login = async (email: string, password: string): Promise<Result<Aut
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
-  });
+  }, { public: true });
   
   if (result.isSuccess) {
     localStorage.setItem(AUTH_TOKEN_KEY, result.value.token);
@@ -30,7 +30,7 @@ export const register = async (username: string, name: string, email: string, pa
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, name, email, password }),
-  });
+  }, { public: true });
   
   if (result.isSuccess) {
     localStorage.setItem(AUTH_TOKEN_KEY, result.value.token);

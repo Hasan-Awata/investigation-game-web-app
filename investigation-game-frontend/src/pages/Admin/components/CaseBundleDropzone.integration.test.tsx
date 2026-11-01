@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -6,7 +6,8 @@ import CaseBundleDropzone from './CaseBundleDropzone';
 
 vi.mock('react-hot-toast', () => ({ default: { success: vi.fn(), error: vi.fn() } }));
 
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => localStorage.setItem('auth_token', 'test-token'));
+afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
 
 it('shows server field errors through the real API and mutation, then retries successfully', async () => {
   const fetchMock = vi.fn<typeof fetch>()

@@ -15,28 +15,37 @@ function retryMetadata(response: Response, body: unknown) {
 
 export const getToken = () => localStorage.getItem('auth_token');
 
-export const handleUnauthorized = () => {
+export interface ForbiddenDetail { endpoint: string; method: string; message: string }
+export const FORBIDDEN_EVENT = 'api:forbidden';
+export interface RequestPolicy { public?: boolean }
+
+export const handleUnauthorized = (token = getToken()) => {
+  if (!token || token !== getToken()) return;
   localStorage.removeItem('auth_token');
   window.dispatchEvent(new CustomEvent('auth:unauthorized'));
 };
 
-export async function request<T>(endpoint: string, options: RequestInit = {}): Promise<Result<T>> {
+export async function request<T>(endpoint: string, options: RequestInit = {}, policy: RequestPolicy = {}): Promise<Result<T>> {
+  const token = getToken();
+  if (!policy.public && !token) return failure('Authentication required.', undefined, { status: 401 });
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
         'Accept': 'application/json',
-        'Authorization': `Bearer ${getToken()}`,
+        ...(!policy.public && token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
     });
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
+      if (!policy.public && response.status === 401) handleUnauthorized(token);
       const data: { message?: string; errors?: ValidationErrors; retry_after?: unknown } = await response.json().catch(() => ({}));
-      return failure(data.message || `Operation failed (${response.status}).`, data.errors, retryMetadata(response, data.retry_after));
+      if (!policy.public && token === getToken() && response.status === 403) window.dispatchEvent(new CustomEvent<ForbiddenDetail>(FORBIDDEN_EVENT, { detail: { endpoint, method: options.method ?? 'GET', message: data.message || 'Access denied.' } }));
+      return failure(data.message || `Operation failed (${response.status}).`, data.errors, { status: response.status, ...retryMetadata(response, data.retry_after) });
     }
     const text = await response.text();
     const data = text ? JSON.parse(text) : null;
+    if (!policy.public && token !== getToken()) return failure('Session changed.', undefined, { status: 401 });
     return success(data as T);
   } catch (error) {
     return failure(error instanceof Error ? error.message : 'Network error');
@@ -44,20 +53,25 @@ export async function request<T>(endpoint: string, options: RequestInit = {}): P
 }
 
 export async function requestBlob(endpoint: string, options: RequestInit = {}): Promise<Result<Blob>> {
+  const token = getToken();
+  if (!token) return failure('Authentication required.', undefined, { status: 401 });
   try {
     const response = await fetch(`${API_BASE_URL}${endpoint}`, {
       ...options,
       headers: {
-        'Authorization': `Bearer ${getToken()}`,
+        'Authorization': `Bearer ${token}`,
         ...options.headers,
       },
     });
     if (!response.ok) {
-      if (response.status === 401 || response.status === 403) handleUnauthorized();
+      if (response.status === 401) handleUnauthorized(token);
       const data: { message?: string; errors?: ValidationErrors; retry_after?: unknown } = await response.json().catch(() => ({}));
-      return failure(data.message || `Operation failed (${response.status}).`, data.errors, retryMetadata(response, data.retry_after));
+      if (token === getToken() && response.status === 403) window.dispatchEvent(new CustomEvent<ForbiddenDetail>(FORBIDDEN_EVENT, { detail: { endpoint, method: options.method ?? 'GET', message: data.message || 'Access denied.' } }));
+      return failure(data.message || `Operation failed (${response.status}).`, data.errors, { status: response.status, ...retryMetadata(response, data.retry_after) });
     }
-    return success(await response.blob());
+    const blob = await response.blob();
+    if (token !== getToken()) return failure('Session changed.', undefined, { status: 401 });
+    return success(blob);
   } catch (error) {
     return failure(error instanceof Error ? error.message : 'Network error');
   }

@@ -77,6 +77,7 @@ export default function GameRoom() {
     isLoading,
     error,
     syncError,
+    accessDenied,
     accumulatedEvidences,
     accumulatedCharacters,
     refreshRoomData,
@@ -377,6 +378,7 @@ export default function GameRoom() {
     };
   }, [room?.id, patchRoomData, refreshRoomData]);
 
+  if (accessDenied) return <div role="alert">{accessDenied} <a href="/">Return to menu</a></div>;
   if (isLoading) return <div className="terminal-text">{t('pages.gameRoom.synchronizing')}</div>;
   if (error || !room) return <div className="terminal-text error">{error || t('pages.gameRoom.sessionNotFound')}</div>;
 

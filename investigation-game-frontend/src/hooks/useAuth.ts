@@ -1,32 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { login, register, getToken } from '@/services/auth';
-import { ENV } from '@/config/env';
+import { request } from '@/services/request';
+import { AUTH_USER_KEY } from '@/utils/userState';
+import { setSafeStorage } from '@/utils/storage';
 import type { User } from '@/types';
 
 // Authoritative Session Verification Hook
 export function useAuthSession() {
   return useQuery<User>({
     queryKey: ['authUser'],
-    queryFn: async () => {
+    enabled: !!getToken(),
+    queryFn: async ({ signal }) => {
       const token = getToken();
       if (!token) throw new Error('No authentication token found.');
 
-      const backendUrl = ENV.API_BASE_URL;
-      const response = await fetch(`${backendUrl}/api/user`, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Session verification failed. Unauthorized access.');
-      }
-
-      return response.json();
+      const result = await request<User>('/user', { signal });
+      if (!result.isSuccess) throw new Error(result.errorMessage);
+      setSafeStorage('local', AUTH_USER_KEY, result.value);
+      return result.value;
     },
     retry: false,
     staleTime: 1000 * 60 * 5, // Cache the authoritative user object for 5 minutes
@@ -74,6 +66,7 @@ export function useAuth(onSuccess: (user: User) => void) {
     },
     onSettled: () => { submitting.current = false; },
     onSuccess: (data) => {
+      setSafeStorage('local', AUTH_USER_KEY, data.user);
       // Seed the cache with the trusted server response directly
       queryClient.setQueryData(['authUser'], data.user);
       onSuccess(data.user);

@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { FORBIDDEN_EVENT, type ForbiddenDetail } from '@/services/request';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { joinRoom, fetchRoomState } from '@/services/api';
@@ -19,6 +20,8 @@ const readStoredRoomId = (inviteCode: string | undefined): number | null => {
 export function useGameRoom(inviteCode: string | undefined) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const [denied, setDenied] = useState<string | null>(null);
+  const deniedRef = useRef(false);
 
   /**
    * Join barrier: room joining is a state-mutating POST and lives in a
@@ -32,6 +35,7 @@ export function useGameRoom(inviteCode: string | undefined) {
   }));
 
   if (joinState.inviteCode !== inviteCode) {
+    setDenied(null);
     setJoinState({ inviteCode, roomId: readStoredRoomId(inviteCode), error: null });
   }
 
@@ -45,6 +49,8 @@ export function useGameRoom(inviteCode: string | undefined) {
       }));
     },
   });
+
+  useEffect(() => { deniedRef.current = false; }, [inviteCode]);
 
   useEffect(() => {
     if (!inviteCode || joinState.roomId !== null || joinState.error !== null) return;
@@ -80,16 +86,33 @@ export function useGameRoom(inviteCode: string | undefined) {
         signal.removeEventListener('abort', cancel);
       }
     },
-    enabled: !!joinState.inviteCode && joinState.roomId !== null,
+    enabled: !denied && !!joinState.inviteCode && joinState.roomId !== null,
     retry: false,
+    gcTime: 0,
     refetchOnReconnect: 'always',
     refetchOnWindowFocus: 'always',
-    refetchInterval: (query) => query.state.data?.status === 'active' ? 5000 : false,
+    refetchInterval: (query) => !denied && query.state.data?.status === 'active' ? 5000 : false,
     refetchIntervalInBackground: false,
   });
 
   useEffect(() => {
+    const listener = (event: Event) => {
+      const detail = (event as CustomEvent<ForbiddenDetail>).detail;
+      const path = `/rooms/${joinState.roomId}`;
+      if (deniedRef.current || (detail.endpoint !== path && !detail.endpoint.startsWith(`${path}/`))) return;
+      if (detail.method !== 'GET') { void refetch({ cancelRefetch: false }); return; }
+      deniedRef.current = true;
+      setDenied(detail.message);
+      void queryClient.cancelQueries({ queryKey: ['gameRoom', inviteCode] });
+      queryClient.removeQueries({ queryKey: ['gameRoom', inviteCode] });
+    };
+    window.addEventListener(FORBIDDEN_EVENT, listener);
+    return () => window.removeEventListener(FORBIDDEN_EVENT, listener);
+  }, [joinState.roomId, inviteCode, queryClient, refetch]);
+
+  useEffect(() => {
     const recover = () => {
+      if (deniedRef.current) return;
       if (joinState.roomId !== null) void refetch({ cancelRefetch: false });
       else if (joinState.error && !joinMutation.isPending) {
         setJoinState(previous => ({ ...previous, error: null }));
@@ -122,19 +145,20 @@ if (room?.id && inviteCode) {
     }
   }, [queryClient, inviteCode]);
 
-  const refreshRoomData = useCallback(async () => { await refetch({ cancelRefetch: false }); }, [refetch]);
+  const refreshRoomData = useCallback(async () => { if (deniedRef.current) return; await refetch({ cancelRefetch: false }); }, [refetch]);
 
   const errorObject = joinState.error
     ? new Error(joinState.error)
     : error;
 
   return {
-    room,
+    room: denied ? undefined : room,
+    accessDenied: denied,
     syncError: room && error instanceof Error ? error.message : null,
     isLoading: isLoading || (joinState.roomId === null && joinMutation.isPending),
     error: !room && errorObject instanceof Error ? errorObject.message : null,
-    accumulatedEvidences: room?.accumulated_evidences || [] as Evidence[],
-    accumulatedCharacters: room?.accumulated_characters || [] as Character[],
+    accumulatedEvidences: !denied && room?.accumulated_evidences || [] as Evidence[],
+    accumulatedCharacters: !denied && room?.accumulated_characters || [] as Character[],
     refreshRoomData,
     patchRoomData
   };

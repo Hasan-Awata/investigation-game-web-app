@@ -125,6 +125,7 @@ export function useGameMutation<TData, TVars = void, TContext = unknown>(
   } = config;
 
   return useMutation<TData, Error, TVars, TContext>({
+    retry: false,
     mutationFn: async (vars) => {
       let result: Result<TData, unknown>;
 

@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { getLocalUser } from '@/utils/userState';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
+import { useGameMutation } from '@/hooks/useGameMutation';
 import { useRoomData } from '@/context/RoomContext.shared';
 import { getSafeStorage, setSafeStorage, getLocationStateKey, pruneStaleLocationState } from '@/utils/storage';
 import type { Level, Choice, RoomInspection, GameRoom } from '@/types';
@@ -45,15 +46,12 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
     ...(room.inspections?.filter((i: RoomInspection) => i.is_dead_end).map((i: RoomInspection) => i.choice_id) || [])
   ]);
 
-  const inspectMutation = useMutation({
-    mutationFn: async (choiceId: number) => {
-      const result = await api.inspectLocation(room.id, choiceId);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
-      return result.value;
-    },
+  const inspectMutation = useGameMutation({
+    mutationFn: (choiceId: number) => api.inspectLocation(room.id, choiceId),
     // Replace the optimistic guess (and any broadcast copy) with the
     // authoritative server record, keyed by choice_id so it never duplicates.
     onSuccess: (data, choiceId) => {
+      setActiveBubbles(prev => new Set(prev).add(choiceId));
       // Guaranteed fallback: if the response body is missing `inspection`,
       // refetch the room instead of silently losing the inspection state.
       if (!data?.inspection) {
@@ -119,7 +117,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
       return; 
     }
 
-    setActiveBubbles(prev => new Set(prev).add(choice.id));
+    if (inspectMutation.isPending) return;
     inspectMutation.mutate(choice.id);
   };
 
@@ -239,7 +237,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
               zoneClass += ` ${locationPhase['investigated']}`;
             }
 
-            const isBubbleActive = activeBubbles.has(choice.id);
+            const isBubbleActive = isDiscovered && activeBubbles.has(choice.id);
             
             // If the element does not meet evidence prerequisites, it completely vanishes
             const isInteractable = !isNarrativeLocked || isDiscovered;

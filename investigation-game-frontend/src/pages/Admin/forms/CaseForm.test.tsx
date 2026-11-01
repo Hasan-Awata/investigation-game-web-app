@@ -1,4 +1,4 @@
-import { afterEach, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { GameCase } from '@/types';
@@ -17,7 +17,8 @@ vi.mock('@/pages/Admin/components/EntityDashboard', () => ({
   ),
 }));
 
-afterEach(() => vi.unstubAllGlobals());
+beforeEach(() => localStorage.setItem('auth_token', 'test-token'));
+afterEach(() => { vi.unstubAllGlobals(); localStorage.clear(); });
 
 it('shows all export field errors with their literal manifest paths', async () => {
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({

@@ -20,6 +20,18 @@ function setup() {
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
   return renderHook(() => useGameRoom('ABC123'), { wrapper });
 }
+it('hides cached room data and stops recovery after authoritative denial', async () => {
+  const hook = setup();
+  await waitFor(() => expect(hook.result.current.room?.id).toBe(1));
+  act(() => window.dispatchEvent(new CustomEvent('api:forbidden', { detail: { endpoint: '/rooms/1', method: 'GET', message: 'Not a participant.' } })));
+  await waitFor(() => expect(hook.result.current.room).toBeUndefined());
+  expect(hook.result.current.accessDenied).toBe('Not a participant.');
+  const before = vi.mocked(fetchRoomState).mock.calls.length;
+  act(() => window.dispatchEvent(new Event('online')));
+  await act(async () => { await hook.result.current.refreshRoomData(); });
+  expect(fetchRoomState).toHaveBeenCalledTimes(before);
+  hook.unmount();
+});
 it('joins and restores authoritative progress without session storage or Echo', async () => {
   vi.mocked(fetchRoomState).mockResolvedValue(success({ ...room, strikes: 2 }));
   const hook = setup();

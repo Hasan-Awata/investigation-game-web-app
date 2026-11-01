@@ -1,7 +1,8 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { request, requestBlob } from './request';
 import { importAdminCase, exportAdminCase } from './adminApi';
 import { failure } from '@/utils/Result';
+beforeEach(() => localStorage.setItem('auth_token', 'test-token'));
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -22,36 +23,46 @@ describe.each([
     };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ message: 'Invalid bundle.', errors }, { status: 422 })));
 
-    expect(await send()).toEqual(failure('Invalid bundle.', errors));
+    expect(await send()).toEqual(failure('Invalid bundle.', errors, { status: 422 }));
+    expect(localStorage.getItem('auth_token')).toBe('test-token');
   });
 
   it('keeps the sanitized 500 message', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ message: 'Unable to create the case bundle.' }, { status: 500 })));
 
-    expect(await send()).toEqual({ isSuccess: false, errorMessage: 'Unable to create the case bundle.' });
+    expect(await send()).toEqual({ isSuccess: false, errorMessage: 'Unable to create the case bundle.', status: 500 });
+    expect(localStorage.getItem('auth_token')).toBe('test-token');
   });
 
   it('falls back to the HTTP status for a non-JSON error', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Bad Gateway', { status: 502 })));
 
-    expect(await send()).toEqual(failure('Operation failed (502).'));
+    expect(await send()).toEqual(failure('Operation failed (502).', undefined, { status: 502 }));
   });
 
   it('retains network errors as string failures', async () => {
     vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network unavailable')));
 
     expect(await send()).toEqual(failure('Network unavailable'));
+    expect(localStorage.getItem('auth_token')).toBe('test-token');
   });
 
-  it.each([401, 403])('still clears authentication and emits the unauthorized event for %s', async status => {
+  it.each([401, 403])('distinguishes authentication and authorization for %s', async status => {
     localStorage.setItem('auth_token', 'test-token');
     const listener = vi.fn();
     window.addEventListener('auth:unauthorized', listener, { once: true });
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ message: 'Unauthorized.' }, { status })));
 
-    expect(await send()).toEqual(failure('Unauthorized.'));
-    expect(localStorage.getItem('auth_token')).toBeNull();
-    expect(listener).toHaveBeenCalledTimes(1);
+    expect(await send()).toEqual(failure('Unauthorized.', undefined, { status }));
+    expect(localStorage.getItem('auth_token')).toBe(status === 401 ? null : 'test-token');
+    expect(listener).toHaveBeenCalledTimes(status === 401 ? 1 : 0);
+    window.removeEventListener('auth:unauthorized', listener);
+  });
+
+  it.each([401, 403])('handles non-JSON authentication and permission errors: %s', async status => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('Denied', { status })));
+    expect(await send()).toMatchObject({ isSuccess: false, status });
+    expect(localStorage.getItem('auth_token')).toBe(status === 401 ? null : 'test-token');
   });
 
   it('returns retry metadata without clearing a token or emitting unauthorized', async () => {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 
@@ -29,9 +29,12 @@ function AppRouter() {
 
   // The kill-switch state to instantly sever the component tree on 401
   const [isSessionRevoked, setIsSessionRevoked] = useState(false);
+  const revoked = useRef(false);
 
   useEffect(() => {
     const handleForceLogout = () => {
+      if (revoked.current) return;
+      revoked.current = true;
       // 1. Nuke the token immediately
       logout();
 
@@ -42,20 +45,22 @@ function AppRouter() {
       // 2. Instantly sever the protected UI tree to prevent a refetch stampede
       setIsSessionRevoked(true);
 
-      // 3. Defer the cache wipe to the next execution tick, ensuring the component tree is gone
-      setTimeout(() => {
-        queryClient.cancelQueries();
-        queryClient.clear();
-      }, 50);
     };
 
     window.addEventListener('auth:unauthorized', handleForceLogout);
     return () => window.removeEventListener('auth:unauthorized', handleForceLogout);
   }, [queryClient]);
 
+  useEffect(() => {
+    if (!isSessionRevoked) return;
+    void queryClient.cancelQueries();
+    queryClient.clear();
+  }, [isSessionRevoked, queryClient]);
+
   // If the kill-switch is thrown, render the Auth module and wait for a new session
   if (isSessionRevoked) {
     return <Auth onSuccess={(userData) => {
+      revoked.current = false;
       setIsSessionRevoked(false);
       queryClient.setQueryData(['authUser'], userData);
     }} />;
@@ -67,7 +72,9 @@ function AppRouter() {
   }
 
   // Determine authentication purely off the TanStack query resolution
-  const isAuthenticated = !!user && !isError;
+  const isAuthenticated = !!token && !!user;
+
+  if (token && isError && !user) return <div role="alert">Unable to verify session. <button onClick={() => void queryClient.refetchQueries({ queryKey: ['authUser'] })}>Retry</button></div>;
 
   return (
     <>

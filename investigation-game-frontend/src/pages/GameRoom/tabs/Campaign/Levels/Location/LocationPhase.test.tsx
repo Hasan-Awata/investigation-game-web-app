@@ -2,9 +2,19 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import i18n from '@/i18n';
-import { RoomDataProvider } from '@/context/RoomContext';
+import { RoomDataProvider, RoomUIProvider } from '@/context/RoomContext';
 import type { GameRoom, Level } from '@/types';
 import LocationPhase from './LocationPhase';
+import { useState } from 'react';
+import type { GlobalFeedback } from '@/context/RoomContext';
+
+function FeedbackHarness() {
+  const [feedback, setFeedback] = useState<GlobalFeedback | null>(null);
+  return <RoomUIProvider viewedEvidences={new Set<number>()} viewedCharacters={new Set<number>()} markEvidenceAsViewed={vi.fn()} markCharacterAsViewed={vi.fn()} setGameOverData={vi.fn()} addGlobalToast={vi.fn()} globalFeedback={feedback} setGlobalFeedback={setFeedback}>
+    {feedback && <div role="alert">{feedback.message}</div>}
+    <LocationPhase level={level} />
+  </RoomUIProvider>;
+}
 
 const { inspectLocationMock } = vi.hoisted(() => ({ inspectLocationMock: vi.fn() }));
 vi.mock('@/services/api', () => ({ inspectLocation: inspectLocationMock }));
@@ -34,6 +44,19 @@ const level: Level = {
 } as Level;
 
 describe('LocationPhase', () => {
+  it('shows rejection feedback and permits a subsequent inspection without a false discovery', async () => {
+    localStorage.setItem('auth_token', 'valid');
+    inspectLocationMock.mockResolvedValueOnce({ isSuccess: false, status: 403, errorMessage: 'Required procedure is incomplete.' });
+    const client = new QueryClient();
+    render(<QueryClientProvider client={client}><RoomDataProvider room={room} accumulatedEvidences={[]} accumulatedCharacters={[]} refreshRoomData={vi.fn()}><FeedbackHarness /></RoomDataProvider></QueryClientProvider>);
+    fireEvent.click(screen.getByRole('button', { name: /inspect location/i }));
+    fireEvent.click(screen.getByText('Evidence cache'));
+    expect(await screen.findByRole('alert')).toHaveTextContent('Required procedure is incomplete.');
+    expect(localStorage.getItem('auth_token')).toBe('valid');
+    expect(client.getQueryData(['gameRoom', room.invite_code])).toBeUndefined();
+    fireEvent.click(screen.getByText('Evidence cache'));
+    await waitFor(() => expect(inspectLocationMock).toHaveBeenCalledTimes(2));
+  });
   beforeEach(async () => {
     await i18n.changeLanguage('en');
     localStorage.clear();
@@ -55,7 +78,7 @@ describe('LocationPhase', () => {
           accumulatedCharacters={[]}
           refreshRoomData={refreshRoomData}
         >
-          <LocationPhase level={level} />
+          <RoomUIProvider viewedEvidences={new Set<number>()} viewedCharacters={new Set<number>()} markEvidenceAsViewed={vi.fn()} markCharacterAsViewed={vi.fn()} setGameOverData={vi.fn()} addGlobalToast={vi.fn()} globalFeedback={null} setGlobalFeedback={vi.fn()}><LocationPhase level={level} /></RoomUIProvider>
         </RoomDataProvider>
       </QueryClientProvider>,
     );
