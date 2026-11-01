@@ -1,5 +1,5 @@
 import { expect, it, vi, afterEach } from 'vitest';
-import { leaveRoomBeacon, restartRoom } from './api';
+import { joinRoom, leaveRoomBeacon, restartRoom } from './api';
 
 afterEach(() => vi.unstubAllGlobals());
 it('labels authenticated keepalive requests as browser departure', async () => {
@@ -27,4 +27,20 @@ it('restarts using server discovery and a bounded request without tab storage', 
     headers: expect.objectContaining({ Authorization: 'Bearer test-token' }),
   }));
   localStorage.removeItem('auth_token');
+});
+
+it('bounds joins and propagates cancellation to the membership request', async () => {
+  const fetch = vi.fn().mockResolvedValue(Response.json({ room: { id: 1 } }));
+  vi.stubGlobal('fetch', fetch);
+  localStorage.setItem('auth_token', 'test-token');
+  const controller = new AbortController();
+  try {
+    await joinRoom('ABC123', controller.signal);
+    const options = fetch.mock.calls[0][1] as RequestInit;
+    expect(options.signal?.aborted).toBe(false);
+    controller.abort();
+    expect(options.signal?.aborted).toBe(true);
+  } finally {
+    localStorage.removeItem('auth_token');
+  }
 });

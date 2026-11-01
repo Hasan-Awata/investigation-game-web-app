@@ -1,3 +1,20 @@
+.recoveryPanel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  width: min(36rem, calc(100% - 2rem));
+  margin: clamp(2rem, 12vh, 8rem) auto;
+  color: var(--text-primary);
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.recoveryPanel p {
+  margin: 0;
+  line-height: 1.6;
+}
+
 .game-room-layout {
   display: grid;
   grid-template-columns: 280px 1fr;

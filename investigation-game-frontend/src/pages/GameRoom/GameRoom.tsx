@@ -8,7 +8,7 @@ import { RoomDataProvider, RoomUIProvider } from '@/context/RoomContext';
 import type { ToastNotification, GlobalFeedback } from '@/context/RoomContext.shared';
 import GameRoomLayout from './GameRoomLayout';
 import type { GameRoom, Evidence, Character, Level, RoomVote, RoomInspection, FinalStats, FiledRequest, EncounterGroup } from '@/types';
-import './GameRoom.module.css';
+import styles from './GameRoom.module.css';
 
 // --- ENRICHED PAYLOAD TYPINGS ---
 interface LevelTransitionedPayload {
@@ -78,6 +78,9 @@ export default function GameRoom() {
     error,
     syncError,
     accessDenied,
+    canRetry,
+    retryRoom,
+    isRecovering,
     accumulatedEvidences,
     accumulatedCharacters,
     refreshRoomData,
@@ -87,17 +90,17 @@ export default function GameRoom() {
   const { viewedItems: viewedEvidences, markItemAsViewed: markEvidenceAsViewed } = useViewedItems(room?.invite_code, 'evidence');
   const { viewedItems: viewedCharacters, markItemAsViewed: markCharacterAsViewed } = useViewedItems(room?.invite_code, 'characters');
 
-  const [resolutionMessage, setResolutionMessage] = useState<string | null>(null);
-  const [finalStats, setFinalStats] = useState<FinalStats | null>(room?.final_stats || null);
+  const [resolution, setResolution] = useState<{ inviteCode: string | undefined; message: string } | null>(null);
+  const resolutionMessage = resolution?.inviteCode === inviteCode ? resolution?.message ?? null : null;
   const [toasts, setToasts] = useState<ToastNotification[]>([]);
   const [globalFeedback, setGlobalFeedback] = useState<GlobalFeedback | null>(null);
 
   const timeoutsRef = useRef<number[]>([]);
 
   const setGameOverData = useCallback((message: string, stats?: FinalStats) => {
-    setResolutionMessage(message);
-    if (stats) setFinalStats(stats);
-  }, []);
+    setResolution({ inviteCode, message });
+    if (stats) patchRoomData(previous => ({ ...previous, final_stats: stats }));
+  }, [inviteCode, patchRoomData]);
 
   const addGlobalToast = useCallback((toastData: Omit<ToastNotification, 'id'>) => {
     const newToast: ToastNotification = { ...toastData, id: crypto.randomUUID() };
@@ -378,9 +381,16 @@ export default function GameRoom() {
     };
   }, [room?.id, patchRoomData, refreshRoomData]);
 
-  if (accessDenied) return <div role="alert">{accessDenied} <a href="/">Return to menu</a></div>;
+  if (accessDenied) return <div className={styles.recoveryPanel} role="alert">{accessDenied} <a href="/">{t('pages.gameRoom.returnToMenu')}</a></div>;
   if (isLoading) return <div className="terminal-text">{t('pages.gameRoom.synchronizing')}</div>;
-  if (error || !room) return <div className="terminal-text error">{error || t('pages.gameRoom.sessionNotFound')}</div>;
+  if (error || !room) return (
+    <div className={styles.recoveryPanel} role="alert" aria-busy={isRecovering}>
+      <p>{error || t('pages.gameRoom.sessionNotFound')}</p>
+      {canRetry && <button className="btn-primary" disabled={isRecovering} onClick={retryRoom}>
+        {t('pages.gameRoom.retry')}
+      </button>}
+    </div>
+  );
 
   return (
     <RoomDataProvider
@@ -389,14 +399,16 @@ export default function GameRoom() {
       accumulatedCharacters={accumulatedCharacters}
       refreshRoomData={refreshRoomData}
     >
-      {syncError && <p role="status">{t('pages.gameRoom.syncDelayed', 'Unable to refresh progress. Showing the last saved state; retrying automatically.')}</p>}
+      {syncError && <p role="status">{canRetry
+        ? t('pages.gameRoom.syncDelayed', 'Unable to refresh progress. Showing the last saved state; retrying automatically.')
+        : t('pages.gameRoom.syncStopped')} {!canRetry && <a href="/">{t('pages.gameRoom.returnToMenu')}</a>}</p>}
       <RoomUIProvider
         viewedEvidences={viewedEvidences} markEvidenceAsViewed={markEvidenceAsViewed}
         viewedCharacters={viewedCharacters} markCharacterAsViewed={markCharacterAsViewed}
         setGameOverData={setGameOverData as (message: string, stats?: unknown) => void} addGlobalToast={addGlobalToast}
         globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback}
       >
-        <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={finalStats} toasts={toasts} />
+        <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={room.final_stats ?? null} toasts={toasts} />
       </RoomUIProvider>
     </RoomDataProvider>
   );

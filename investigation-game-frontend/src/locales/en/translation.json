@@ -43,9 +43,40 @@
     }
   },
   "pages": {
-    "auth": { "rateLimited": "Too many attempts. Try again in {{seconds}} seconds." },
+    "auth": {
+      "rateLimited": "Too many attempts. Try again in {{seconds}} seconds.",
+      "title": "System access",
+      "subtitleLogin": "Enter your credentials to access the case files.",
+      "subtitleRegister": "Register a new investigator profile.",
+      "usernamePlaceholder": "Username",
+      "fullNamePlaceholder": "Full name",
+      "emailPlaceholder": "Email",
+      "passwordPlaceholder": "Password",
+      "authenticating": "Signing in...",
+      "loginBtn": "Sign in",
+      "registerBtn": "Register",
+      "toggleToRegister": "Need access? Register here.",
+      "toggleToLogin": "Already have access? Sign in."
+    },
     "gameRoom": {
       "syncDelayed": "Unable to refresh progress. Showing the last saved state; retrying automatically.",
+      "retry": "Retry",
+      "returnToMenu": "Return to menu",
+      "syncStopped": "This investigation can no longer be refreshed. Return to the menu to continue.",
+      "synchronizing": "Synchronizing session data...",
+      "noInviteCode": "No invite code provided.",
+      "sessionNotFound": "Session not found.",
+      "gameEndOverlay": {
+        "caseClosed": "Case closed",
+        "caseClosedFallback": "The truth has been uncovered. Excellent work.",
+        "mandateRevoked": "Mandate revoked",
+        "mandateRevokedFallback": "The evidence was misread. The guilty are free, and the innocent pay the price.",
+        "timeElapsed": "Time elapsed",
+        "xpGranted": "XP granted",
+        "suspectsCaught": "Suspects caught",
+        "innocentsAccused": "Innocents accused",
+        "returnToHq": "Return to headquarters"
+      },
       "evidence": {
         "board": {
           "exactCombinationHint": "Warrants require the exact combination of directly relevant evidence and characters. Leave unrelated items out.",

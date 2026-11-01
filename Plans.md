@@ -9,22 +9,23 @@ Reviewed code baseline: `a146322`
 
 80% means a robust, fully playable release within the agreed solo scope, with only assessed minor issues remaining. 100% means the fully intended game with all planned features. Readiness is determined by demonstrated behavior, not the number of checked tasks.
 
-This document contains current issues and outstanding release qualifications, plus the TASK-01 completion record from this change. Other resolved historical issue descriptions and implementation journals have been removed. Existing behavior directly connected to an open issue is retained under that issue as a regression requirement. Original issue IDs are retained for continuity; gaps in numbering are intentional. Do not interpret a missing historical issue as unfinished work.
+This document contains current issues and outstanding release qualifications, plus the TASK-01 and TASK-03 completion records. Other resolved historical issue descriptions and implementation journals have been removed. Existing behavior directly connected to an open issue is retained under that issue as a regression requirement. Original issue IDs are retained for continuity; gaps in numbering are intentional. Do not interpret a missing historical issue as unfinished work.
 
 The launch case is **The Glasshouse Files / ملفات غلاسهاوس**. Existing local browser evidence covers the corrected case in Arabic on desktop Chromium, including a perfect solve, failure outcomes, tab recovery, HTTP recovery, worker restart and subsequent play. It does not establish every branch, mobile support, full browser-process reopening, deployed realtime delivery or intended-host operation.
 
 ### Verified baseline
 
-These results include the final TASK-01 implementation checks:
+These results include the final TASK-03 implementation checks (working tree based on `e0d44a0`):
 
 | Check | Result |
 | --- | --- |
-| Backend suite | 494 tests: 493 passed, 1 skipped; 3,157 assertions; no failures/errors |
+| Backend suite | 496 tests: 495 passed, 1 skipped; 3,226 assertions; no failures/errors |
 | Separate operational suite | Passed: 1 test / 19 assertions, including owned worker restart and isolated database/media restoration |
-| Frontend suite | 134 passed across 25 files |
+| Frontend suite | 150 passed across 26 files |
 | Frontend lint | Passed |
-| Frontend production build | Passed; approximately 977 KB minified JavaScript / 306 KB gzip |
+| Frontend production build | Passed; approximately 980 KB minified JavaScript / 307 KB gzip |
 | Unfinished-case restart | Fixed; 13 focused backend tests / 112 assertions, frontend confirmation/API regressions and six local MySQL checks; browser check waived by the user |
+| Initial-load and terminal-result recovery | Fixed; explicit Retry, authoritative statistics, terminal-room lookup without tab storage, automated regressions and local built-in-browser checks |
 
 The bundle-size warning is a minor performance concern unless testing on the supported devices/connections shows a material gameplay problem. It is not an automatic launch blocker.
 
@@ -101,7 +102,7 @@ The restart behavior must define what happens to the previous room and pending j
 
 **Relevant files:** `investigation-game-frontend/src/pages/MainMenu/CaseBriefingModal/CaseBriefingModal.tsx`, `investigation-game-frontend/src/hooks/useRoomPageHide.ts`, `investigation-game-backend/app/Services/GameRoomService.php`, `investigation-game-backend/app/Services/EncounterGroupService.php`, `investigation-game-backend/app/Services/AssessmentService.php`.
 
-### ISSUE-03 — Recovery does not cover first-load failures or restored result statistics completely
+### ISSUE-03 — Recovery does not cover first-load failures or restored result statistics completely — Resolved
 
 **Priority:** Required reliability correction; missing result statistics are a minor presentation defect.
 **Evidence:** Source inspection. These two edge cases were not independently browser-reproduced in the latest review.
@@ -120,17 +121,40 @@ Also preserve the corrected error semantics: a gameplay 403 retains valid authen
 
 **Task — TASK-03:** Complete initial-load recovery and render final results from authoritative recovered state without weakening existing recovery, security or progression guarantees.
 
+**Approved recovery policy (2026-11-01):** The user chose an explicit Retry button after a failed first snapshot or join, waiting for player action instead of automatically retrying first-load failures. Existing five-second visible polling after a successful snapshot remains. The user confirmed that the built-in browser works now; TASK-03 requires browser verification and does not inherit TASK-01's browser exception.
+
+**Implementation plan (2026-11-01):**
+
+1. Expose localized, keyboard-operable Retry for transient initial read/join failures. Keep joining separate from read refreshes, share in-flight reads, bound joins/reads to 15 seconds, cancel on room change/unmount, and stop retrying permanent failures without revoking valid authentication.
+2. Render final statistics directly from the room cache shared by HTTP snapshots, authenticated mutation responses and realtime updates. Scope resolution messages to the current invite code so another room cannot inherit them. Preserve actual per-participant awards, including zero on replay.
+3. Add focused hook, API and rendered-result regressions for both first-load paths, explicit retries, permanent denials, cancellation, room switching and HTTP-only terminal results. Exercise worker finalization and duplicate delivery against persisted results.
+4. Verify real local browser recovery and restored results, distinguishing HTTP-only recovery from socket recovery. Run frontend tests/lint/build, backend regressions and the separate operational suite; record observed evidence and remove temporary verification fixtures/processes.
+
+**Implementation and evidence (2026-11-01):**
+
+- Transient first-read and join failures now expose a localized Retry button and wait for player action, including after online/focus/visibility events. A successful join is reused when retrying a read. Established active rooms retain visible five-second polling, cached progress on transient failure, shared in-flight refreshes and 15-second read cancellation. Joins also have a 15-second timeout and abort on departure/room change. Permanent errors do not offer or schedule repeated retries; authoritative 403 room reads hide protected data, while gameplay denial retains authentication and current-session 401 still triggers controlled sign-in.
+- `GameRoom` renders `room.final_stats` from the shared room cache. Mutation/realtime results write to that cache, and later HTTP snapshots provide authoritative recovered statistics. Resolution messages are scoped to the invite code. Actual per-participant awards, including zero on replay, remain unchanged.
+- A connected revisit defect was found and fixed: invite-code lookup now returns concluded rooms to their existing participants without adding membership or changing results/retention. New participants cannot join a terminal room. This permits a readable terminal room to reopen without sessionStorage.
+- Filled missing English labels on the affected recovery, sign-in and result surfaces. The error panel uses readable text, a native keyboard-operable button, pending-state protection and localized menu navigation. Other game translations and gameplay rules were outside this correction.
+- Focused frontend checks: 25 tests across the hook, rendered-room/result and API contract files passed. They cover both initial-load paths, deliberate retries, permanent failures, overlap/cancellation, room switching, HTTP-only terminal recovery, zero replay awards, reload/revisit and reconciliation of realtime results with HTTP. Existing socket-reconnection/listener-cleanup and request/authentication regressions pass in the full suite.
+- New backend regressions: 2 tests / 69 assertions. With broadcasting disabled, a real database worker delivers a failing answer; duplicate delivery is harmless. Solved/failed HTTP snapshots and terminal invite lookup preserve stored statistics, distinct participant awards (900 for a first win versus 0 for a replay), best history, membership and retention timestamps; outsiders are rejected. Existing concluded-room, deadline, continuity, restart and progression checks pass.
+- Final backend suite: 496 tests, 495 passed / 1 existing symlink-permission skip, 3,226 assertions; no failures/errors. The remaining skip is ISSUE-07. Final frontend suite: 150 tests across 26 files passed. Lint and production build passed; the existing bundle-size warning remains approximately 980 KB minified / 307 KB gzip. Separate operational suite: 1 test / 19 assertions passed, including worker interruption/restart and isolated restoration.
+- **Actual browser evidence:** built-in Chromium at 1280×720, local frontend `127.0.0.1:5193`, isolated PHP 8.2.12/SQLite/database queue API on port 8093, working tree based on `e0d44a0`, synthetic recovery cases `QA0001`–`QA0003`. Fault injection affected only this isolated test environment. No reset/import of the application database or Glasshouse content was performed.
+- In the browser, successful-join/failed-read and stored-ID/failed-read both waited after HTTP was restored, then recovered using keyboard Retry. A failed join also recovered with explicit Retry. Normal UI answers plus the real worker completed the initial interview; normal indictment closed the first case. Reload and a newly opened tab without stored room identity restored its saved four-minute result and actual `0 / 900` replay award. A separate UI answer produced a delayed worker failure; visible HTTP polling displayed its saved five-minute result and `0 / 900`, and reload preserved them. Switching to the next case showed no old result. Broadcasting was disabled throughout these checks, establishing HTTP-only recovery.
+- Browser-injected 403 hid room content, removed Retry and remained stopped after fault removal; returning to the menu retained the authenticated account. A protected 401 displayed sign-in, and normal sign-in resumed the same room. English and Arabic recovery controls and the recovered result surfaces were visually checked. Realtime reconnection and terminal-event reconciliation were checked separately in automated tests; actual deployed private-channel delivery remains TASK-08. This local browser evidence does not qualify physical mobile devices, full browser-process reopening, production hosting or installed Glasshouse content.
+- Screenshots are retained under `C:\Users\ASUS\.codex\visualizations\2026\11\01\01a198a8-9bd0-76c1-b357-84c10739eb03\task03`. Temporary fixture scripts, logs, database and owned servers are removed after verification; only reviewable screenshots remain.
+
 **Successful-fix verification:**
 
-- [ ] With no cached snapshot, fail the initial read, restore HTTP while the tab stays visible and observe successful automatic recovery or an explicit usable retry control.
-- [ ] Exercise both successful-join/failed-read and stored-ID/failed-read paths.
-- [ ] Verify failed joins remain recoverable and retries do not repeatedly mutate room membership.
-- [ ] Recovery requests remain bounded, do not overlap needlessly, and clean up timers/listeners on unmount or room change.
-- [ ] A 403 denial stops protected recovery and retains login; actual authentication expiry leads to sign-in and recovery as intended.
-- [ ] With realtime blocked, complete or fail a case through the worker, then verify the end screen displays persisted statistics and the viewing player's actual XP award.
-- [ ] Reload or revisit a readable terminal room and verify the same statistics; switching rooms does not reuse the previous game's result.
-- [ ] Existing visible-tab reconnection, cached-progress retention, overdue feedback, worker restart, duplicate delivery and terminal-state regressions still pass.
-- [ ] Browser and automated checks distinguish initial failure recovery, HTTP-only terminal recovery and realtime recovery.
+- [x] With no cached snapshot, fail the initial read, restore HTTP while the tab stays visible and observe successful automatic recovery or an explicit usable retry control.
+- [x] Exercise both successful-join/failed-read and stored-ID/failed-read paths.
+- [x] Verify failed joins remain recoverable and retries do not repeatedly mutate room membership.
+- [x] Recovery requests remain bounded, do not overlap needlessly, and clean up timers/listeners on unmount or room change.
+- [x] A 403 denial stops protected recovery and retains login; actual authentication expiry leads to sign-in and recovery as intended.
+- [x] With realtime blocked, complete or fail a case through the worker, then verify the end screen displays persisted statistics and the viewing player's actual XP award.
+- [x] Reload or revisit a readable terminal room and verify the same statistics; switching rooms does not reuse the previous game's result.
+- [x] Existing visible-tab reconnection, cached-progress retention, overdue feedback, worker restart, duplicate delivery and terminal-state regressions still pass.
+- [x] Browser and automated checks distinguish initial failure recovery, HTTP-only terminal recovery and realtime recovery.
 
 **Relevant files:** `investigation-game-frontend/src/hooks/useGameRoom.ts`, `investigation-game-frontend/src/pages/GameRoom/GameRoom.tsx`, `investigation-game-frontend/src/pages/GameRoom/GameRoomLayout.tsx`, `investigation-game-frontend/src/pages/GameRoom/components/GameEffects/GameEndOverlay.tsx`, `investigation-game-frontend/src/services/request.ts`.
 
@@ -238,12 +262,12 @@ The user now permits discarding old data and clean repopulation. An in-place leg
 ## 2. Active task checklist
 
 - [x] **TASK-01:** Resolve unfinished-case restart and verify connected continuity/encounter lifecycle behavior; completed under the user-approved browser exception documented above.
-- [ ] **TASK-03:** Complete first-load recovery and authoritative terminal-statistics rendering.
+- [x] **TASK-03:** Complete first-load recovery and authoritative terminal-statistics rendering, including explicit Retry, terminal revisits without tab storage, browser HTTP-only recovery and authentication checks.
 - [ ] **TASK-07:** Execute the skipped filesystem-security behavior and confirm the release test baseline.
 - [ ] **TASK-08:** Demonstrate host operation, deployed authentication protection, persistence and restoration.
 - [ ] **TASK-09:** Install and verify corrected published Glasshouse content, using the approved disposable-data policy, and settle the entry policy.
 
-TASK-01 is retained here with its completion evidence for this change. Other resolved standalone tasks are omitted. Their connected invariants are retained under the open issues above; they must remain covered when those issues change.
+TASK-01 and TASK-03 are retained here with their completion evidence. Other resolved standalone tasks are omitted. Their connected invariants are retained under the open issues above; they must remain covered when those issues change.
 
 ## 3. Final 80% acceptance
 

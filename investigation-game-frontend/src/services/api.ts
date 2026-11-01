@@ -39,11 +39,12 @@ export const createRoom = async (caseId: number): Promise<Result<GameRoom>> => {
   return result.isSuccess ? success(result.value.room) : result;
 };
 
-export const joinRoom = async (inviteCode: string): Promise<Result<GameRoom>> => {
+export const joinRoom = async (inviteCode: string, signal?: AbortSignal): Promise<Result<GameRoom>> => {
   const result = await request<RoomResponse>('/rooms/join', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ invite_code: inviteCode }),
+    signal: signal ? AbortSignal.any([signal, AbortSignal.timeout(15_000)]) : AbortSignal.timeout(15_000),
   });
   return result.isSuccess ? success(result.value.room) : result;
 };

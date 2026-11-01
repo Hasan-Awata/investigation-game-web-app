@@ -127,7 +127,6 @@ class GameRoomService
     {
         return DB::transaction(function () use ($inviteCode, $player) {
             $room = GameRoom::where('invite_code', $inviteCode)
-                ->where('status', RoomStatus::Active)
                 ->lockForUpdate()
                 ->first();
 
@@ -139,6 +138,12 @@ class GameRoomService
             $existingParticipant = RoomUser::where('room_id', $room->id)
                 ->where('user_id', $player->id)
                 ->exists();
+
+            // Existing participants can resolve a concluded room after losing tab
+            // storage. This lookup must never add membership to a terminal room.
+            if ($room->status !== RoomStatus::Active && !$existingParticipant) {
+                return Result::failure("Invalid or expired invite code.");
+            }
 
             if (!$existingParticipant) {
                 RoomUser::create([

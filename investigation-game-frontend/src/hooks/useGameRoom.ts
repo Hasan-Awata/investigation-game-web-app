@@ -6,6 +6,21 @@ import { joinRoom, fetchRoomState } from '@/services/api';
 import { getSafeStringStorage, setSafeStringStorage } from '@/utils/storage';
 import type { GameRoom, Evidence, Character } from '@/types';
 
+class RoomRecoveryError extends Error {
+  readonly status?: number;
+
+  constructor(message: string, status?: number) {
+    super(message);
+    this.status = status;
+  }
+
+  get canRetry(): boolean {
+    return ![400, 401, 403, 404, 410, 422].includes(this.status ?? 0);
+  }
+}
+
+const canRetryError = (error: unknown): boolean => !(error instanceof RoomRecoveryError) || error.canRetry;
+
 /**
  * Reads the OPAQUE stored room id for an invite code (raw string — see the
  * getSafeStringStorage contract in utils/storage); null when not stored.
@@ -22,6 +37,7 @@ export function useGameRoom(inviteCode: string | undefined) {
   const queryClient = useQueryClient();
   const [denied, setDenied] = useState<string | null>(null);
   const deniedRef = useRef(false);
+  const joinControllerRef = useRef<AbortController | null>(null);
 
   /**
    * Join barrier: room joining is a state-mutating POST and lives in a
@@ -31,7 +47,7 @@ export function useGameRoom(inviteCode: string | undefined) {
   const [joinState, setJoinState] = useState(() => ({
     inviteCode,
     roomId: readStoredRoomId(inviteCode),
-    error: null as string | null,
+    error: null as RoomRecoveryError | null,
   }));
 
   if (joinState.inviteCode !== inviteCode) {
@@ -40,22 +56,34 @@ export function useGameRoom(inviteCode: string | undefined) {
   }
 
   const joinMutation = useMutation({
-    mutationFn: (code: string) => joinRoom(code),
-    onSuccess: (result, code) => {
+    mutationFn: ({ code, signal }: { code: string; signal: AbortSignal }) => joinRoom(code, signal),
+    onSuccess: (result, { code, signal }) => {
+      if (signal.aborted) return;
       setJoinState((prev) => prev.inviteCode !== code ? prev : ({
         ...prev,
         roomId: result.isSuccess ? result.value.id : null,
-        error: result.isSuccess ? null : result.errorMessage,
+        error: result.isSuccess ? null : new RoomRecoveryError(result.errorMessage, result.status),
+      }));
+    },
+    onError: (error, { code, signal }) => {
+      if (signal.aborted) return;
+      setJoinState(previous => previous.inviteCode !== code ? previous : ({
+        ...previous, error: new RoomRecoveryError(error.message),
       }));
     },
   });
 
-  useEffect(() => { deniedRef.current = false; }, [inviteCode]);
+  useEffect(() => {
+    deniedRef.current = false;
+    return () => joinControllerRef.current?.abort();
+  }, [inviteCode]);
 
   useEffect(() => {
     if (!inviteCode || joinState.roomId !== null || joinState.error !== null) return;
     if (joinMutation.isPending) return;
-    joinMutation.mutate(inviteCode);
+    const controller = new AbortController();
+    joinControllerRef.current = controller;
+    joinMutation.mutate({ code: inviteCode, signal: controller.signal });
     // `mutate` identity is stable in React Query; the pending flag guards
     // against double-fire during the same commit window.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -65,6 +93,7 @@ export function useGameRoom(inviteCode: string | undefined) {
     data: room,
     isLoading,
     error,
+    isFetching,
     refetch
   } = useQuery({
     queryKey: ['gameRoom', joinState.inviteCode],
@@ -79,7 +108,7 @@ export function useGameRoom(inviteCode: string | undefined) {
       const timeout = window.setTimeout(cancel, 15000);
       try {
         const stateResult = await fetchRoomState(roomId, controller.signal);
-        if (!stateResult.isSuccess) throw new Error(stateResult.errorMessage);
+        if (!stateResult.isSuccess) throw new RoomRecoveryError(stateResult.errorMessage, stateResult.status);
         return stateResult.value;
       } finally {
         window.clearTimeout(timeout);
@@ -89,9 +118,11 @@ export function useGameRoom(inviteCode: string | undefined) {
     enabled: !denied && !!joinState.inviteCode && joinState.roomId !== null,
     retry: false,
     gcTime: 0,
-    refetchOnReconnect: 'always',
-    refetchOnWindowFocus: 'always',
-    refetchInterval: (query) => !denied && query.state.data?.status === 'active' ? 5000 : false,
+    // Before the first snapshot succeeds, recovery is a deliberate player action.
+    refetchOnReconnect: (query) => !!query.state.data && canRetryError(query.state.error),
+    refetchOnWindowFocus: (query) => !!query.state.data && canRetryError(query.state.error),
+    refetchInterval: (query) => !denied && query.state.data?.status === 'active'
+      && canRetryError(query.state.error) ? 5000 : false,
     refetchIntervalInBackground: false,
   });
 
@@ -113,10 +144,7 @@ export function useGameRoom(inviteCode: string | undefined) {
   useEffect(() => {
     const recover = () => {
       if (deniedRef.current) return;
-      if (joinState.roomId !== null) void refetch({ cancelRefetch: false });
-      else if (joinState.error && !joinMutation.isPending) {
-        setJoinState(previous => ({ ...previous, error: null }));
-      }
+      if (room && canRetryError(error)) void refetch({ cancelRefetch: false });
     };
     const onVisible = () => { if (document.visibilityState === 'visible') recover(); };
     window.addEventListener('online', recover);
@@ -127,13 +155,13 @@ export function useGameRoom(inviteCode: string | undefined) {
       window.removeEventListener('pageshow', recover);
       document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [joinState.roomId, joinState.error, joinMutation.isPending, refetch]);
+  }, [room, error, refetch]);
 
   useEffect(() => {
-if (room?.id && inviteCode) {
-        // Same opaque raw-string contract as the read above.
-        setSafeStringStorage('session', `active_room_id_for_${inviteCode}`, room.id.toString());
-      }
+    if (room?.id && inviteCode) {
+      // Same opaque raw-string contract as the read above.
+      setSafeStringStorage('session', `active_room_id_for_${inviteCode}`, room.id.toString());
+    }
   }, [room?.id, inviteCode]);
 
   const patchRoomData = useCallback((updater: (oldRoom: GameRoom) => GameRoom) => {
@@ -145,17 +173,28 @@ if (room?.id && inviteCode) {
     }
   }, [queryClient, inviteCode]);
 
-  const refreshRoomData = useCallback(async () => { if (deniedRef.current) return; await refetch({ cancelRefetch: false }); }, [refetch]);
+  const refreshRoomData = useCallback(async () => {
+    if (deniedRef.current || joinState.roomId === null || !canRetryError(error)) return;
+    await refetch({ cancelRefetch: false });
+  }, [refetch, joinState.roomId, error]);
 
-  const errorObject = joinState.error
-    ? new Error(joinState.error)
-    : error;
+  const errorObject = joinState.error ?? error;
+  const canRetry = !!inviteCode && !denied && !!errorObject
+    && canRetryError(errorObject);
+  const retryRoom = useCallback(() => {
+    if (!canRetry) return;
+    if (joinState.roomId !== null) { void refreshRoomData(); return; }
+    if (!joinMutation.isPending) setJoinState(previous => ({ ...previous, error: null }));
+  }, [canRetry, joinState.roomId, joinMutation.isPending, refreshRoomData]);
 
   return {
     room: denied ? undefined : room,
     accessDenied: denied,
+    canRetry,
+    retryRoom,
+    isRecovering: isFetching || joinMutation.isPending,
     syncError: room && error instanceof Error ? error.message : null,
-    isLoading: isLoading || (joinState.roomId === null && joinMutation.isPending),
+    isLoading: isLoading || (!!inviteCode && joinState.roomId === null && !joinState.error),
     error: !room && errorObject instanceof Error ? errorObject.message : null,
     accumulatedEvidences: !denied && room?.accumulated_evidences || [] as Evidence[],
     accumulatedCharacters: !denied && room?.accumulated_characters || [] as Character[],
