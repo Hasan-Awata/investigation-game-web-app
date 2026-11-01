@@ -2,13 +2,18 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EncounterGroup, GameRoom, Level } from '@/types';
 import CampaignTab from './CampaignTab';
+import { RoomDataProvider } from '@/context/RoomContext';
 
 const mocks = vi.hoisted(() => ({ room: {} as GameRoom, phase: {
   activeGroup: null as EncounterGroup | null,
   isInitiating: false, isJoining: false,
   initiatePhase: vi.fn(), joinGroup: vi.fn(),
 } }));
-vi.mock('@/context/RoomContext.shared', () => ({ useRoomData: () => ({ room: mocks.room }) }));
+vi.mock('@/context/RoomContext.shared', async importOriginal => {
+  const original = await importOriginal<typeof import('@/context/RoomContext.shared')>();
+  const { useContext } = await import('react');
+  return { ...original, useRoomData: () => useContext(original.RoomDataContext) ?? { room: mocks.room } };
+});
 vi.mock('@/hooks/useInvestigationPhase', () => ({ useInvestigationPhase: () => mocks.phase }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string, fallback?: string) => fallback ?? key }) }));
 vi.mock('./CampaignMap', () => ({ default: ({ onEnterZone }: { onEnterZone: (id: number) => void }) => <button onClick={() => onEnterZone(1)}>Enter zone</button> }));
@@ -27,6 +32,21 @@ describe('shared level preview', () => {
     mocks.room = { id: 1, case_id: 1, host_user_id: 1, invite_code: 'TEST', status: 'active', strikes: 0,
       game_case: { id: 1, title: 'Case', story: '', min_player_XP: 0, XP_on_solve: 10, max_strikes: 3,
         zones: [{ id: 1, case_id: 1, title: 'District', order_index: 1, levels: [level('location')] }] } };
+  });
+
+  it('updates memoized zones when the room context receives a new snapshot', () => {
+    const refresh = vi.fn();
+    const content = (room: GameRoom) => <RoomDataProvider room={room} accumulatedEvidences={[]} accumulatedCharacters={[]} refreshRoomData={refresh}><CampaignTab /></RoomDataProvider>;
+    const view = render(content(mocks.room));
+    openZone();
+    expect(screen.getByRole('heading', { name: 'District' })).toBeInTheDocument();
+    const updatedRoom: GameRoom = { ...mocks.room, game_case: { ...mocks.room.game_case!, zones: [
+      { ...mocks.room.game_case!.zones![0], title: 'Updated district', levels: [{ ...level('location'), details: 'Updated lead details' }] },
+    ] } };
+    view.rerender(content(updatedRoom));
+    expect(screen.getByRole('heading', { name: 'Updated district' })).toBeInTheDocument();
+    expect(screen.getByText('Updated lead details')).toBeInTheDocument();
+    expect(screen.queryByText('Lead details')).not.toBeInTheDocument();
   });
 
   it('opens locations on sharp details and blurs only after swapping to content', () => {

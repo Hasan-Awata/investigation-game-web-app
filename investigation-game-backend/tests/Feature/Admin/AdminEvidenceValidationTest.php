@@ -76,7 +76,9 @@ class AdminEvidenceValidationTest extends TestCase
         $response = $this->put("/api/admin/evidences/{$this->evidence->id}", [
             ...$this->updatePayload(),
             'evidence_type' => 'digital',
-            'image' => UploadedFile::fake()->create('screen.png', 100, 'image/png'),
+            'image' => UploadedFile::fake()->createWithContent('screen.png', base64_decode(
+                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
+            )),
         ]);
 
         $response->assertUnprocessable()->assertInvalid(['image']);
@@ -84,6 +86,10 @@ class AdminEvidenceValidationTest extends TestCase
             'Direct image uploads are only supported for image, testimony, or physical evidence types.',
             $response->json('errors.image.0'),
         );
+        $this->assertSame([$response->json('errors.image.0')], $response->json('errors.image'));
+        $this->assertSame('testimony', $this->evidence->fresh()->evidence_type->value);
+        $this->assertSame('Interview notes', $this->evidence->fresh()->title);
+        $this->assertSame(['transcript' => 'Original transcript'], $this->evidence->fresh()->metadata);
     }
 
     public function test_update_without_evidence_type_validates_metadata_against_existing_type(): void

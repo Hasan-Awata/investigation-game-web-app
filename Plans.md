@@ -25,11 +25,11 @@ The assessment included architecture-guided source inspection, local automated c
 | Check | Observed result |
 | --- | --- |
 | Frontend production build | Passed |
-| Frontend automated tests | 64 of 64 passed |
-| Backend automated suite | 430 tests; 6 errors, 1 failure, 1 skipped |
-| Backend test errors | User fixtures missing the required `username` field; affected encounter lifecycle and reset tests |
-| Backend assertion failure | Expected evidence-upload validation message differed from the returned image-dimensions message |
-| Frontend lint | 1 error and 1 warning |
+| Frontend automated tests | Current TASK-07 baseline: 117 of 117 passed across 20 files |
+| Backend automated suite | Current TASK-07 baseline: 471 tests; 470 passed, 1 skipped; 2622 assertions; no errors or failures |
+| Backend test errors | Corrected shared user factory; reset tests now reach and pass their intended assertions |
+| Backend assertion failure | Corrected invalid image fixture; intended evidence-type rejection and unchanged persisted evidence verified |
+| Frontend lint | Passed with no errors or warnings; earlier tasks had already corrected the original findings |
 | Focused solo backend happy path | Question resolution, case completion, and XP award passed with a synthetic fixture and explicit finalization invocation |
 | Focused issue reproductions | Last-player departure failed the room; final verdict left an encounter lock; finished room accepted a location inspection |
 
@@ -163,13 +163,19 @@ Location inspection uses shared gameplay feedback, never retries automatically, 
 
 **Priority:** Required release-confidence work. **Evidence:** Local test and lint runs.
 
-Six backend tests error because their user fixtures omit the required `username` field. One evidence-validation test fails because its expected message differs from the actual validation response. Frontend lint reports an impure `Date.now()` call during interrogation rendering and a dependency warning in `CampaignTab`.
+The original assessment reported six backend fixture errors, one evidence-validation assertion failure, and frontend countdown-purity and Campaign dependency lint findings. Before TASK-07 changes on revision `265da96`, the current baseline was 469 backend tests / 2594 assertions with two reset-fixture errors, one evidence assertion failure, and one skip. All 115 frontend tests, build, and lint already passed; earlier tasks had corrected the encounter fixtures and frontend lint findings.
 
 These results must be investigated according to their cause. Fixture errors do not establish product failures, and a message mismatch does not establish that invalid evidence is accepted. They do prevent affected checks from providing the intended assurance. The existing skipped backend test also needs an understood reason and scope before release sign-off.
 
 **Why it needs fixing:** A release baseline needs dependable checks that exercise the intended behavior. Otherwise, new gameplay regressions can be hidden among existing failures, especially in encounter lifecycle coverage.
 
 **Relevant sources:** `investigation-game-backend/database/factories/UserFactory.php`, `investigation-game-backend/tests/Feature/EncounterGroupLifecycleTest.php`, `investigation-game-backend/tests/Feature/ResetGameDataTest.php`, `investigation-game-backend/tests/Feature/Admin/AdminEvidenceValidationTest.php`, `investigation-game-frontend/src/pages/GameRoom/tabs/Campaign/Levels/Interrogation/InterrogationPhase.tsx`, `investigation-game-frontend/src/pages/GameRoom/tabs/Campaign/CampaignTab.tsx`.
+
+**Corrections and preservation (2026-11-01, TASK-07 working tree based on `265da96`):** The shared user factory now supplies a unique username while preserving explicit attributes and factory states. New regressions persist multiple default users and verify unique usernames/emails and explicit overrides. Existing reset and encounter lifecycle assertions remain intact and pass. The evidence test previously supplied an empty file labeled PNG, unintentionally violating image dimensions as well as the evidence-type restriction. It now supplies real 1x1 PNG bytes without requiring GD, retains the exact intended type-restriction message, asserts no additional image errors, and verifies persisted evidence is unchanged. Production validation is unchanged. Frontend production code is unchanged: focused regressions verify countdown ticking, one refresh per expired deadline, delayed feedback, replacement deadlines, timer cleanup, and Campaign updates through the real room context. No earlier regression tests, assertions, or discovery were removed.
+
+**Final automated evidence:** Windows/XAMPP PHP 8.2.12, PHPUnit 11.5.56, SQLite `:memory:`; effective testing configuration checked before database-changing runs, with empty database URL, array cache/session and sync default queue. Existing worker regressions explicitly select the database queue on the isolated connection; media tests retain their temporary public roots and fake storage. Focused backend command `php vendor/phpunit/phpunit/phpunit --filter 'UserFactoryTest|ResetGameDataTest|AdminEvidenceValidationTest|EncounterGroupLifecycleTest'` passes: 14 tests / 84 assertions. Focused frontend tests pass: 21 tests / 2 files. Full backend randomized command `php vendor/phpunit/phpunit/phpunit --order-by=random --random-order-seed=20261101 --display-skipped` exits 0: 471 tests / 2622 assertions, 470 passed, 1 skipped, no failures/errors. Final configured `composer test` exits 0 with the same totals. Composer's subprocess initially could not open its bootstrap inside the sandbox; the configured command executed outside the sandbox with the same isolated test configuration. This was an execution restriction, not a product defect. Final frontend `npm run test` exits 0: 117 tests / 20 files; `npm run build` and `npm run lint` exit 0. Build retains the assessed large-bundle warning (977.13 KB minified / 306.59 KB gzip) and informational plugin timings. Changed PHP syntax and diff whitespace checks pass. Existing ISSUE-01 through ISSUE-06 local regression coverage remains included and passing.
+
+**Remaining security verification gap:** `MediaOwnershipTest::test_symlink_escape_cannot_authorize_reads_or_deletes` remains skipped because PHP cannot create its file symlink under the current Windows account. A separate retry outside the sandbox also skipped (1 test, 0 assertions); it is not passing evidence. This test verifies that a link within owned case media cannot authorize export/read or deletion of a target outside that directory. Existing traversal and ownership checks pass, but do not replace this filesystem behavior. Run PHP under a Windows account/process granted the Create symbolic links user right (SeCreateSymbolicLinkPrivilege), then rerun `php vendor/phpunit/phpunit/phpunit --filter test_symlink_escape_cannot_authorize_reads_or_deletes --display-skipped` and the complete backend suite. No machine security settings, skips, or CI configuration were changed. TASK-07 and the full-suite sign-off gate remain unchecked until that security behavior executes successfully. Browser playthroughs, deployed queue/realtime, production database concurrency, and other broader release gates remain unverified.
 
 ### ISSUE-08 — Essential deployment and recovery behavior is unverified
 
@@ -247,10 +253,10 @@ Release evidence should identify the tested revision, environment, cases, observ
 
 ### Gate D — Release baseline and sign-off
 
-- [ ] The production frontend build succeeds for the revision being released.
+- [x] The production frontend build succeeds for the revision being released.
 - [ ] Frontend and backend test suites pass, with any skip explicitly reviewed and no essential release requirement left uncovered.
-- [ ] Lint passes without unresolved errors; warnings are resolved or explicitly assessed as nonblocking.
-- [ ] Regression checks reproduce the relevant failure conditions from ISSUE-01 through ISSUE-06 and demonstrate the intended corrected behavior.
+- [x] Lint passes without unresolved errors; warnings are resolved or explicitly assessed as nonblocking.
+- [x] Regression checks reproduce the relevant failure conditions from ISSUE-01 through ISSUE-06 and demonstrate the intended corrected behavior.
 - [ ] The complete browser playthrough and recovery checks run against the actual release candidate, including any changes made after earlier verification.
 - [ ] Remaining issues are recorded with their impact and any necessary workaround. None prevents completing a release case, destroys progress unexpectedly, blocks subsequent games, compromises essential security, or prevents recovery from the tested interruptions.
 - [ ] The release scope, verified cases, supported device/browser scope, and operational ownership are explicitly recorded.

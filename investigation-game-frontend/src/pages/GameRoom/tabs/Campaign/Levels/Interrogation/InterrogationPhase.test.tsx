@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import i18n from '@/i18n';
@@ -15,6 +15,7 @@ vi.mock('@/utils/userState', () => ({ getLocalUser: getLocalUserMock }));
 vi.mock('@/hooks/useInvestigationPhase', () => ({ useInvestigationPhase: useInvestigationPhaseMock }));
 
 const scrollIntoViewMock = vi.fn();
+const refreshRoomDataMock = vi.fn();
 const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 const questionId = 31;
 const level: Level = {
@@ -47,7 +48,7 @@ const renderPhase = (roomOverrides: Partial<GameRoom> = {}, displayedLevel = lev
       room={room}
       accumulatedEvidences={[]}
       accumulatedCharacters={[]}
-      refreshRoomData={vi.fn()}
+      refreshRoomData={refreshRoomDataMock}
     >
       {children}
     </RoomDataProvider>
@@ -58,6 +59,7 @@ const renderPhase = (roomOverrides: Partial<GameRoom> = {}, displayedLevel = lev
 describe('InterrogationPhase', () => {
   beforeEach(async () => {
     scrollIntoViewMock.mockClear();
+    refreshRoomDataMock.mockReset();
     HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
     await i18n.changeLanguage('en');
     getLocalUserMock.mockReturnValue({ id: 11, name: 'Creator' });
@@ -86,6 +88,7 @@ describe('InterrogationPhase', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
   });
 
@@ -127,6 +130,38 @@ describe('InterrogationPhase', () => {
     });
     renderPhase();
     expect(screen.getByText(/Finalizing in \d+ seconds/)).toBeInTheDocument();
+  });
+
+  it('ticks to expiry once per deadline, explains delays, and cleans up its timer', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-11-01T00:00:00Z'));
+    useInvestigationPhaseMock.mockReturnValue({
+      ...useInvestigationPhaseMock(),
+      activeGroup: { ...useInvestigationPhaseMock().activeGroup, finalizes_at: new Date(Date.now() + 6000).toISOString() },
+    });
+    const view = renderPhase();
+    expect(screen.getByRole('status')).toHaveTextContent('Finalizing in 6 seconds');
+    act(() => vi.advanceTimersByTime(1000));
+    expect(screen.getByRole('status')).toHaveTextContent('Finalizing in 5 seconds');
+    act(() => vi.advanceTimersByTime(5000));
+    expect(screen.getByRole('status')).toHaveTextContent('Waiting for the server');
+    expect(refreshRoomDataMock).toHaveBeenCalledTimes(1);
+    act(() => vi.advanceTimersByTime(15000));
+    expect(screen.getByRole('status')).toHaveTextContent('Confirmation is taking longer than expected');
+    expect(refreshRoomDataMock).toHaveBeenCalledTimes(1);
+
+    useInvestigationPhaseMock.mockReturnValue({
+      ...useInvestigationPhaseMock(),
+      activeGroup: { ...useInvestigationPhaseMock().activeGroup, finalizes_at: new Date(Date.now() + 3000).toISOString() },
+    });
+    view.rerender(<InterrogationPhase level={level} />);
+    expect(screen.getByRole('status')).toHaveTextContent('Finalizing in 3 seconds');
+    act(() => vi.advanceTimersByTime(3000));
+    expect(refreshRoomDataMock).toHaveBeenCalledTimes(2);
+    view.unmount();
+    expect(vi.getTimerCount()).toBe(0);
+    act(() => vi.advanceTimersByTime(30000));
+    expect(refreshRoomDataMock).toHaveBeenCalledTimes(2);
   });
 
   it('prevents a late joiner from voting on the open question', () => {
