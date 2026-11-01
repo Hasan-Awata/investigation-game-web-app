@@ -15,7 +15,7 @@ const CampaignTab = () => {
   const { t } = useTranslation();
   const { room } = useRoomData();
   const { activeGroup, isInitiating, isJoining, initiatePhase, joinGroup } = useInvestigationPhase();
-  const zones: Zone[] = room.game_case?.zones ?? [];
+  const zones = useMemo<Zone[]>(() => room.game_case?.zones ?? [], [room.game_case?.zones]);
   const sortedZones = useMemo(() => [...zones].sort((a, b) => a.order_index - b.order_index), [zones]);
   const [selectedZoneId, setSelectedZoneId] = useState<number | null>(null);
   const [selectedLevelId, setSelectedLevelId] = useState<number | null>(null);
@@ -43,10 +43,12 @@ const CampaignTab = () => {
   const available = discovered && !gated && !completed && room.status === 'active';
   const joinableGroup = previewLevel && room.encounter_groups?.find(group => group.level_id === previewLevel.id && group.status === 'active');
   const isActiveLevel = !!activeGroup && previewLevel?.id === activeGroup.level_id;
-  const [showInfo, setShowInfo] = useState(false);
+  const [contentLevelId, setContentLevelId] = useState<number | null>(null);
+  const canSwap = discovered && !gated && ((isLocation && isFree) || isActiveLevel || completed);
+  const showContent = canSwap && contentLevelId === previewLevel?.id;
 
   const returnToMap = () => {
-    if (isFree) { setSelectedZoneId(null); setSelectedLevelId(null); }
+    if (isFree) { setSelectedZoneId(null); setSelectedLevelId(null); setContentLevelId(null); }
   };
 
   return <div className={campaignTab['campaign-tab-wrapper']}>
@@ -63,7 +65,7 @@ const CampaignTab = () => {
               const isCompleted = completedIds.has(level.id);
               const isGated = isDiscovered && !!level.required_request_id && !completedRequestIds.has(level.required_request_id);
               const status: 'undiscovered' | 'gated' | 'actionable' | 'completed' = !isDiscovered ? 'undiscovered' : isGated ? 'gated' : isCompleted ? 'completed' : 'actionable';
-              return <LevelCard key={level.id} level={level} status={status} isSelected={previewLevel?.id === level.id} displayTitle={isDiscovered ? level.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')} onSelect={() => { if (isFree && isDiscovered) { setSelectedLevelId(level.id); setShowInfo(false); } }} />;
+              return <LevelCard key={level.id} level={level} status={status} isSelected={previewLevel?.id === level.id} displayTitle={isDiscovered ? level.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')} onSelect={() => { if (isFree && isDiscovered) { setSelectedLevelId(level.id); setContentLevelId(null); } }} />;
             })}
             <button type="button" className={`${campaignTab['return-map-card']} ${!isFree ? campaignTab['locked'] : ''}`} disabled={!isFree} onClick={returnToMap}>
               <div className={levelCard['list-item-content']}>
@@ -80,15 +82,16 @@ const CampaignTab = () => {
             </button>
           </div>
           {previewLevel && <div className={campaignTab['preview-column']}>
-            <div className={`${campaignTab['preview-bg-layer']} ${gated || showInfo ? campaignTab['blurred'] : ''}`} style={{ backgroundImage: `url(${discovered ? previewLevel.img_url || '/placeholder-crime-scene.jpg' : ''})` }} />
+            <div className={`${campaignTab['preview-bg-layer']} ${showContent ? campaignTab['blurred'] : ''}`} style={{ backgroundImage: `url(${discovered ? previewLevel.img_url || '/placeholder-crime-scene.jpg' : ''})` }} />
             <div className={campaignTab['top-right-actions']}>
-              {isLocation && isFree && (
+              {canSwap && (
                 <button 
                   type="button" 
                   className={campaignTab['swap-view-btn']} 
-                  onClick={() => setShowInfo(value => !value)}
-                  title={showInfo ? t('pages.gameRoom.campaign.showGameplay', 'Show workspace') : t('pages.gameRoom.campaign.showLevelInfo', 'Show details')}
-                  aria-label={showInfo ? t('pages.gameRoom.campaign.showGameplay', 'Show workspace') : t('pages.gameRoom.campaign.showLevelInfo', 'Show details')}
+                  onClick={() => setContentLevelId(showContent ? null : previewLevel.id)}
+                  title={showContent ? t('pages.gameRoom.campaign.showLevelInfo', 'Show details') : t('pages.gameRoom.campaign.showGameplay', 'Show workspace')}
+                  aria-label={showContent ? t('pages.gameRoom.campaign.showLevelInfo', 'Show details') : t('pages.gameRoom.campaign.showGameplay', 'Show workspace')}
+                  aria-pressed={showContent}
                 >
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="17 11 21 7 17 3"></polyline>
@@ -100,13 +103,13 @@ const CampaignTab = () => {
               )}
               {gated && <p className={campaignTab['host-warning-text']}>{t('pages.gameRoom.campaign.warrantRequired', 'PREREQUISITE REQUIRED')}</p>}
               {available && !isLocation && isFree && (joinableGroup
-                ? <button type="button" className="btn-primary tactical-btn" disabled={isJoining} onClick={() => joinGroup(joinableGroup.id)}>{isJoining ? t('pages.gameRoom.campaign.joiningEncounter', 'Joining…') : t('pages.gameRoom.campaign.joinEncounter', 'Join encounter')}</button>
-                : <button type="button" className="btn-primary tactical-btn" disabled={isInitiating} onClick={() => initiatePhase(previewLevel.id)}>{isInitiating ? t('pages.gameRoom.campaign.lockingCoordinator', 'Starting…') : t('pages.gameRoom.campaign.commenceInvestigation', 'Start interrogation')}</button>)}
+                ? <button type="button" className="btn-primary tactical-btn" disabled={isJoining} onClick={() => joinGroup(joinableGroup.id, () => setContentLevelId(previewLevel.id))}>{isJoining ? t('pages.gameRoom.campaign.joiningEncounter', 'Joining…') : t('pages.gameRoom.campaign.joinEncounter', 'Join encounter')}</button>
+                : <button type="button" className="btn-primary tactical-btn" disabled={isInitiating} onClick={() => initiatePhase(previewLevel.id, () => setContentLevelId(previewLevel.id))}>{isInitiating ? t('pages.gameRoom.campaign.lockingCoordinator', 'Starting…') : t('pages.gameRoom.campaign.commenceInvestigation', 'Start interrogation')}</button>)}
             </div>
             <div className={campaignTab['preview-content-layer']}>
-              {gated || showInfo || (!isActiveLevel && !isLocation) ? <div className={campaignTab['info-view']}><div className={campaignTab['preview-content-box']}><h3 className={campaignTab['preview-title']}>{discovered ? previewLevel.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')}</h3><p className={campaignTab['preview-desc']}>{gated ? t('pages.gameRoom.campaign.gatedDesc', 'A required request has not been completed.') : previewLevel.details}</p></div></div> : (
+              {!showContent ? <div className={campaignTab['info-view']}><div className={campaignTab['preview-content-box']}><h3 className={campaignTab['preview-title']}>{discovered ? previewLevel.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')}</h3><p className={campaignTab['preview-desc']}>{gated ? t('pages.gameRoom.campaign.gatedDesc', 'A required request has not been completed.') : previewLevel.details}</p></div></div> : (
                 <div className={campaignTab['gameplay-view']}>
-                  {previewLevel.presentation_type === 'interrogation' && isActiveLevel && <InterrogationPhase level={previewLevel} />}
+                  {previewLevel.presentation_type === 'interrogation' && (isActiveLevel || completed) && <InterrogationPhase level={previewLevel} />}
                   {previewLevel.presentation_type === 'location' && isFree && !gated && <LocationPhase level={previewLevel} />}
                   {previewLevel.presentation_type === 'location' && !isFree && <p>{t('pages.gameRoom.campaign.activeEncounterLocked', 'Finish your active interrogation before entering a location.')}</p>}
                   {available && !isLocation && !isFree && <p>{t('pages.gameRoom.campaign.activeEncounterLocked', 'Finish your active interrogation before entering another level.')}</p>}

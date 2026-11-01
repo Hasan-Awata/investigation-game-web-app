@@ -267,8 +267,8 @@ class EncounterGroupService
     private function applyChoiceOutcome(GameRoom $room, EncounterGroup $group, Choice $choice): void
     {
         $outcomes = $choice->outcomes ?? [];
-        $evidence = collect();
-        $levels = collect();
+        $evidence = new \Illuminate\Database\Eloquent\Collection();
+        $levels = new \Illuminate\Database\Eloquent\Collection();
         $characterUpdates = [];
         $unlockedLocationPointIds = [];
         if (!empty($outcomes['unlock_evidence'])) {

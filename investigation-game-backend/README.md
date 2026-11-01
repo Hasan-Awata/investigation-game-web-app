@@ -9,6 +9,10 @@
 
 ## Case bundle setup
 
+### Run the local app
+
+From `investigation-game-backend`, run `composer run dev` to start the API, database queue listener, Reverb, and the sibling frontend together. Stop separately started copies first to avoid port conflicts. Interrogation countdowns require the queue listener: running only `php artisan serve` and Reverb will save votes without processing their delayed answers. Keep the development command running while playing. To add only the missing worker to an already running app, use `php artisan queue:work --sleep=1 --tries=3 --timeout=60` in a separate terminal.
+
 ### Repair encounters after upgrading
 
 After deploying the backend and restarting queue workers, run `php artisan encounters:release-concluded` from the backend directory. It closes stale active encounter groups in solved/failed rooms in batches of 100 rooms, preserving votes, membership history, results, and XP. Each room is repaired transactionally; active investigations are untouched. The command reports the number of groups closed, can be safely rerun, and exits unsuccessfully if a repair fails. This is a deployment step for existing stale locks; newly concluded investigations release encounters automatically.

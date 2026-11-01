@@ -89,6 +89,10 @@ A missed completion event can therefore leave the visible interrogation stale ev
 
 **Why it needs fixing:** A brief connection interruption must not leave a player indefinitely waiting at a completed countdown. Server progression and the displayed state must converge after recovery, and operational failures must be detectable.
 
+**Local interrogation follow-up (2026-11-01):** The running local worker exposed a separate finalization crash: unlock outcomes passed empty support collections to `ItemsUnlocked`, which requires Eloquent collections. Both empty defaults now use the required type. Database-worker regressions cover two consecutive answers, level-only, evidence-only, character-only, location-point-only and combined unlocks, plus duplicate delivery. Conversation history now renders persisted room resolutions in order, retains only approved answers, survives reload/resumption, and remains accessible for completed interrogations through Swap. The shared preview/blur behavior is preserved.
+
+**Local recovery and verification:** Restarted the local worker and retried only the identified failed interrogation job. A database read confirmed one resolution for the stalled question 109, progression to question 111, and zero queued/failed jobs. This is local recovery evidence, not production or browser verification. Focused backend checks pass (26 tests / 461 assertions); all frontend tests pass (82 tests / 15 files), lint/build, PHP syntax, and diff whitespace checks pass. The full backend suite reports 452 tests / 2294 assertions with the same two reset-fixture username errors, evidence-validation message failure, and one skip. Browser and deployment release gates remain unchecked.
+
 **Relevant sources:** `investigation-game-backend/app/Services/EncounterGroupService.php`, `investigation-game-backend/app/Jobs/FinalizeEncounterQuestion.php`, `investigation-game-frontend/src/hooks/useInvestigationPhase.ts`, `investigation-game-frontend/src/hooks/useGameRoom.ts`, `investigation-game-frontend/src/pages/GameRoom/GameRoom.tsx`.
 
 ### ISSUE-04 — Public authentication endpoints have no verified abuse protection

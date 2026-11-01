@@ -54,8 +54,8 @@ export function useInvestigationPhase() {
     isJoining: joinMutation.isPending,
     handleSelectChoice,
     clearVote: (questionId: number) => clearMutation.mutate(questionId),
-    initiatePhase: (levelId: number) => startMutation.mutate(levelId),
-    joinGroup: (groupId: number) => joinMutation.mutate(groupId),
+    initiatePhase: (levelId: number, onStarted?: () => void) => startMutation.mutate(levelId, { onSuccess: onStarted }),
+    joinGroup: (groupId: number, onJoined?: () => void) => joinMutation.mutate(groupId, { onSuccess: onJoined }),
     addToast: () => undefined,
   };
 }

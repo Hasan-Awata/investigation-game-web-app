@@ -14,6 +14,14 @@ export default function InterrogationPhase({ level }: InterrogationPhaseProps) {
   const { activeGroup, localVotes, isSubmitting, handleSelectChoice, clearVote } = useInvestigationPhase();
   const currentUser = getLocalUser();
   const question = level.questions?.find((item: Question) => item.id === activeGroup?.current_question_id);
+  const history = (room.question_resolutions ?? [])
+    .filter(resolution => resolution.level_id === level.id)
+    .sort((a, b) => a.resolved_at.localeCompare(b.resolved_at) || a.id - b.id)
+    .flatMap(resolution => {
+      const resolvedQuestion = level.questions?.find(item => item.id === resolution.question_id);
+      const answer = resolvedQuestion?.choices?.find(choice => choice.id === resolution.choice_id);
+      return resolvedQuestion && answer ? [{ id: resolution.id, question: resolvedQuestion, answer }] : [];
+    });
   const requiredVoterIds = activeGroup?.required_voter_ids ?? [];
   const isRequiredVoter = requiredVoterIds.includes(currentUser?.id ?? -1);
   const ownVote = question ? localVotes[question.id] : undefined;
@@ -21,7 +29,7 @@ export default function InterrogationPhase({ level }: InterrogationPhaseProps) {
   const weightedTally = activeGroup?.tally ?? {};
   const maxVotes = Math.max(0, ...Object.values(weightedTally));
   const isTie = Object.values(weightedTally).filter(value => value === maxVotes).length > 1;
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(Date.now);
   useEffect(() => {
     const interval = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(interval);
@@ -30,13 +38,21 @@ export default function InterrogationPhase({ level }: InterrogationPhaseProps) {
     ? Math.max(0, Math.ceil((new Date(activeGroup.finalizes_at).getTime() - now) / 1000))
     : null;
 
-  if (!activeGroup || activeGroup.level_id !== level.id || !question) {
+  const hasOpenQuestion = activeGroup?.level_id === level.id && !!question;
+  if (!hasOpenQuestion && history.length === 0) {
     return <div className="terminal-text">{t('pages.gameRoom.campaign.levels.interrogation.waitingForGroup', 'Start or join this interrogation to play.')}</div>;
   }
 
   return (
     <section aria-live="polite" className={interrogationPhase['interrogation-log']}>
-      <div className={`chat-bubble ${interrogationPhase['suspect-bubble']}`}><p>{question.text}</p></div>
+      {history.map(exchange => (
+        <div key={exchange.id} className={interrogationPhase['chat-exchange']}>
+          <div className={`${interrogationPhase['chat-bubble']} ${interrogationPhase['suspect-bubble']}`}><p>{exchange.question.text}</p></div>
+          <div className={`${interrogationPhase['chat-bubble']} ${interrogationPhase['agent-bubble']}`}><p>{exchange.answer.text}</p></div>
+        </div>
+      ))}
+      {hasOpenQuestion && question && activeGroup && <>
+      <div className={`${interrogationPhase['chat-bubble']} ${interrogationPhase['suspect-bubble']}`}><p>{question.text}</p></div>
       <div className={interrogationPhase['investigator-interaction-area']}>
         <p>
           {isTie
@@ -78,6 +94,7 @@ export default function InterrogationPhase({ level }: InterrogationPhaseProps) {
           })}
         </ul>
       </div>
+      </>}
     </section>
   );
 }
