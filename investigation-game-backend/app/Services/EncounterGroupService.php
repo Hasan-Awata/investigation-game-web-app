@@ -26,6 +26,29 @@ class EncounterGroupService
 {
     use BroadcastsAfterCommit;
 
+    public function closeForConcludedRoom(GameRoom $room): int
+    {
+        return DB::transaction(function () use ($room): int {
+            $room = GameRoom::query()->whereKey($room->id)->lockForUpdate()->firstOrFail();
+            if ($room->status === RoomStatus::Active) return 0;
+
+            $groups = $room->encounterGroups()->where('status', 'active')->orderBy('id')->lockForUpdate()->get();
+            foreach ($groups as $group) {
+                $this->releaseActiveMembers($group);
+                $group->update([
+                    'status' => $room->status === RoomStatus::Solved ? 'completed' : 'failed',
+                    'active_room_id' => null,
+                    'active_level_id' => null,
+                    'finalizes_at' => null,
+                    'completed_at' => now(),
+                ]);
+                $this->broadcastAfterCommit(new EncounterGroupUpdated($group->fresh()));
+            }
+
+            return $groups->count();
+        });
+    }
+
     public function start(GameRoom $room, Level $level, User $user): Result
     {
         return DB::transaction(function () use ($room, $level, $user): Result {
@@ -278,18 +301,6 @@ class EncounterGroupService
             $room->increment('strikes');
             $room->refresh();
             if ($room->strikes >= $room->gameCase->max_strikes) {
-                $activeGroups = EncounterGroup::query()->where('room_id', $room->id)->where('status', 'active')->get();
-                foreach ($activeGroups as $activeGroup) {
-                    $this->releaseActiveMembers($activeGroup);
-                    $activeGroup->update([
-                        'status' => 'failed',
-                        'active_room_id' => null,
-                        'active_level_id' => null,
-                        'completed_at' => now(),
-                        'finalizes_at' => null,
-                    ]);
-                    $this->broadcastAfterCommit(new EncounterGroupUpdated($activeGroup->fresh()));
-                }
                 app(AssessmentService::class)->failFromEncounterStrikes($room);
                 return;
             }

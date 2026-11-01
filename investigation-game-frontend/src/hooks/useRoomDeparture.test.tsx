@@ -1,0 +1,45 @@
+import { act, renderHook, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import type { ReactNode } from 'react';
+import { expect, it, vi } from 'vitest';
+import { useLeaveRoom } from './useLeaveRoom';
+import { useRoomPageHide } from './useRoomPageHide';
+import { leaveRoom, leaveRoomBeacon } from '@/services/api';
+import { clearRoomSessionData } from '@/utils/storage';
+import { success, failure } from '@/utils/Result';
+import type { GameRoom } from '@/types';
+
+const { navigate, feedback } = vi.hoisted(() => ({ navigate: vi.fn(), feedback: vi.fn() }));
+vi.mock('react-router-dom', () => ({ useNavigate: () => navigate }));
+vi.mock('@/services/api', () => ({ leaveRoom: vi.fn(), leaveRoomBeacon: vi.fn() }));
+vi.mock('@/utils/storage', () => ({ clearRoomSessionData: vi.fn() }));
+vi.mock('@/context/RoomContext.shared', () => ({ useRoomUI: () => ({ setGlobalFeedback: feedback, addGlobalToast: vi.fn() }) }));
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
+const room: GameRoom = { id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', strikes: 0 };
+it('sends departure only for real pagehide and removes its listener on teardown', () => {
+  const hook = renderHook(() => useRoomPageHide(1));
+  act(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
+  expect(leaveRoomBeacon).not.toHaveBeenCalled();
+  act(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: false })));
+  expect(leaveRoomBeacon).toHaveBeenCalledExactlyOnceWith(1);
+  hook.unmount();
+  window.dispatchEvent(new PageTransitionEvent('pagehide'));
+  expect(leaveRoomBeacon).toHaveBeenCalledTimes(1);
+});
+it('cleans up and navigates only after successful explicit departure', async () => {
+  const client = new QueryClient();
+  const invalidate = vi.spyOn(client, 'invalidateQueries');
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+  const failed = vi.fn();
+  vi.mocked(leaveRoom).mockResolvedValueOnce(failure('offline')).mockResolvedValueOnce(success({ message: 'Left' }));
+  const hook = renderHook(() => useLeaveRoom(room, failed), { wrapper });
+  act(() => hook.result.current.mutate());
+  await waitFor(() => expect(failed).toHaveBeenCalled());
+  expect(clearRoomSessionData).not.toHaveBeenCalled();
+  expect(navigate).not.toHaveBeenCalled();
+  expect(feedback).toHaveBeenCalledWith(expect.objectContaining({ type: 'error', message: 'offline' }));
+  act(() => hook.result.current.mutate());
+  await waitFor(() => expect(navigate).toHaveBeenCalledWith('/'));
+  expect(clearRoomSessionData).toHaveBeenCalledWith(1, 'ABC123');
+  expect(invalidate).toHaveBeenCalledWith({ queryKey: ['cases'] });
+});

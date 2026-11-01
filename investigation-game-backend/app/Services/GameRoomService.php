@@ -14,6 +14,7 @@ use App\Models\EncounterGroup;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Enums\RoomStatus;
+use App\Enums\RoomLeaveReason;
 use App\Enums\LevelPresentationType;
 use App\Support\Result;
 use App\Support\Concerns\BroadcastsAfterCommit;
@@ -102,11 +103,11 @@ class GameRoomService
     /**
      * Process a player leaving the session and handle host migration if necessary.
      */
-    public function leaveRoom(GameRoom $room, User $player): Result
+    public function leaveRoom(GameRoom $room, User $player, RoomLeaveReason $reason = RoomLeaveReason::Explicit): Result
     {
-        return DB::transaction(function () use ($room, $player) {
+        return DB::transaction(function () use ($room, $player, $reason) {
             User::query()->whereKey($player->id)->lockForUpdate()->firstOrFail();
-            GameRoom::query()->whereKey($room->id)->lockForUpdate()->firstOrFail();
+            $room = GameRoom::query()->whereKey($room->id)->lockForUpdate()->firstOrFail();
             $roomUser = RoomUser::where('room_id', $room->id)
                 ->where('user_id', $player->id)
                 ->lockForUpdate()
@@ -118,11 +119,20 @@ class GameRoomService
 
             $wasHost = ($room->host_user_id === $player->id);
 
+            // Membership is durable for a lone host; browser absence is not abandonment.
+            if ($reason === RoomLeaveReason::PageHide && (
+                $room->status !== RoomStatus::Active ||
+                ($wasHost && !$room->users()->where('user_id', '!=', $player->id)->exists())
+            )) {
+                return Result::success(['message' => 'Session preserved for resumption.']);
+            }
+
             // 1. Remove the departing player
             $roomUser->delete();
 
             $membership = EncounterGroupMember::query()
                 ->where('user_id', $player->id)
+                ->whereHas('group', fn ($query) => $query->where('room_id', $room->id))
                 ->whereNull('left_at')
                 ->lockForUpdate()
                 ->first();
@@ -162,7 +172,7 @@ class GameRoomService
                     $nextPlayer->update(['role' => 'host']);
 
                     $this->broadcastAfterCommit(new HostMigrated($room, $nextPlayer->user));
-                } else {
+                } elseif ($room->status === RoomStatus::Active) {
                     // Mark the session as abandoned if completely empty
                     $room->update(['status' => RoomStatus::Failed]);
                 }

@@ -9,6 +9,10 @@
 
 ## Case bundle setup
 
+### Repair encounters after upgrading
+
+After deploying the backend and restarting queue workers, run `php artisan encounters:release-concluded` from the backend directory. It closes stale active encounter groups in solved/failed rooms in batches of 100 rooms, preserving votes, membership history, results, and XP. Each room is repaired transactionally; active investigations are untouched. The command reports the number of groups closed, can be safely rerun, and exits unsuccessfully if a repair fails. This is a deployment step for existing stale locks; newly concluded investigations release encounters automatically.
+
 Enable PHP's ZIP extension for both CLI and web requests before running `composer install`. Run `composer check-platform-reqs --lock` to verify the installed extensions.
 
 Local case media lives in `public/assets/cases`. Preserve this directory across deployments and back it up together with the database; restoring only the database leaves broken media references. The web server (Nginx/Apache) must deny script execution in this directory. PHP needs write access here and in `storage/app/private`, where bundle extraction uses temporary `tmp/case-bundle-*` directories. Allow disk space for the uploaded ZIP, up to 200 MiB of extraction and another copy of the referenced local media during import.

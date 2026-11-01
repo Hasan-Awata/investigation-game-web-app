@@ -61,8 +61,9 @@ class GameRoomController extends Controller
 
     public function leave(Request $request, GameRoom $room): JsonResponse
     {
+        $validated = $request->validate(['reason' => 'sometimes|string|in:explicit,pagehide']);
         $player = $request->user();
-        $result = $this->roomService->leaveRoom($room, $player);
+        $result = $this->roomService->leaveRoom($room, $player, \App\Enums\RoomLeaveReason::from($validated['reason'] ?? 'explicit'));
 
         if ($result->isFailure()) {
             return response()->json(['error' => 'Disconnect Failed', 'message' => $result->errorMessage], 400);

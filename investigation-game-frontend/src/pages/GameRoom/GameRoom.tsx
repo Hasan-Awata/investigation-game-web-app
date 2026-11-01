@@ -137,10 +137,6 @@ export default function GameRoom() {
     };
 
     const channel = window.Echo.private(`room.${roomId}`);
-    const refreshWhenPageReturns = () => {
-      if (document.visibilityState === 'visible') refreshRoomData();
-    };
-    document.addEventListener('visibilitychange', refreshWhenPageReturns);
 
     // 1. Level Transitions & Game State
     channel.listen('LevelTransitioned', (e: LevelTransitionedPayload) => {
@@ -367,7 +363,6 @@ export default function GameRoom() {
       channel.stopListening('HostMigrated');
 
       window.Echo.leave(`room.${roomId}`);
-      document.removeEventListener('visibilitychange', refreshWhenPageReturns);
     };
   }, [room?.id, patchRoomData, refreshRoomData]);
 

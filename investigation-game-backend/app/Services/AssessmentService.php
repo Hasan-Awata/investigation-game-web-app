@@ -16,15 +16,19 @@ class AssessmentService
 {
     use BroadcastsAfterCommit;
 
+    public function __construct(private readonly EncounterGroupService $encounters) {}
+
     public function failFromEncounterStrikes(GameRoom $room): void
     {
-        $room->refresh();
-        $case = $room->gameCase;
-        $totalGuilty = Character::query()->where('case_id', $case->id)->where('is_guilty', true)->count();
-        $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
-        $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
-        $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
-        $this->broadcastAfterCommit(new LevelTransitioned($room, 'The maximum strike count was reached. The case has failed.', $stats));
+        DB::transaction(function () use ($room): void {
+            $room = GameRoom::query()->whereKey($room->id)->lockForUpdate()->firstOrFail();
+            if ($room->status !== RoomStatus::Active) return;
+            $case = $room->gameCase;
+            $totalGuilty = Character::query()->where('case_id', $case->id)->where('is_guilty', true)->count();
+            $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
+            $this->conclude($room, RoomStatus::Failed, $stats, CaseUserStatus::FailedStrikes, 0);
+            $this->broadcastAfterCommit(new LevelTransitioned($room, 'The maximum strike count was reached. The case has failed.', $stats));
+        });
     }
 
     /**
@@ -56,8 +60,7 @@ class AssessmentService
 
             if (!empty($missingVital)) {
                 $stats = $this->generateFinalStats($room, 0, 0, $totalGuiltyCount, 0);
-                $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
-                $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedNoProof->value, 0);
+                $this->conclude($room, RoomStatus::Failed, $stats, CaseUserStatus::FailedNoProof, 0);
 
                 $message = 'INSTANT FAILURE: The DA threw out the case due to lack of definitive proof. You failed to uncover vital evidence.';
                 $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
@@ -106,8 +109,7 @@ class AssessmentService
             if ($totalGuiltyCount === 0) {
                 if (count($submittedCharacterIds) === 0) {
                     $stats = $this->generateFinalStats($room, $case->XP_on_solve, 0, 0, 0);
-                    $room->update(['status' => RoomStatus::Solved, 'final_stats' => $stats]);
-                    $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
+                    $this->conclude($room, RoomStatus::Solved, $stats, CaseUserStatus::SolvedPerfect, $case->XP_on_solve);
 
                     $message = 'PERFECT WIN: You successfully proved that no foul play was involved. Case closed.';
                     $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
@@ -127,8 +129,7 @@ class AssessmentService
 
                     if ($room->strikes >= $maxStrikes) {
                         $stats = $this->generateFinalStats($room, 0, 0, 0, count($innocentsSubmitted));
-                        $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
-                        $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
+                        $this->conclude($room, RoomStatus::Failed, $stats, CaseUserStatus::FailedStrikes, 0);
 
                         $message = 'DEPARTMENT THRESHOLD EXCEEDED. You accused innocent people of a fabricated crime. The DA has pulled your mandate.' . $innocentMessage;
                 $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
@@ -152,8 +153,7 @@ class AssessmentService
 
             if (count($missedGuilty) === 0 && count($innocentsSubmitted) === 0) {
                 $stats = $this->generateFinalStats($room, $case->XP_on_solve, count($correctGuesses), $totalGuiltyCount, 0);
-                $room->update(['status' => RoomStatus::Solved, 'final_stats' => $stats]);
-                $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPerfect->value, $case->XP_on_solve);
+                $this->conclude($room, RoomStatus::Solved, $stats, CaseUserStatus::SolvedPerfect, $case->XP_on_solve);
 
                 $message = 'PERFECT WIN: You successfully identified all perpetrators with irrefutable proof. Case closed.';
                 $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
@@ -176,8 +176,7 @@ class AssessmentService
                 $xpPayload = (int) floor($case->XP_on_solve * $multiplier);
                 $stats = $this->generateFinalStats($room, $xpPayload, count($correctGuesses), $totalGuiltyCount, $innocentsAccusedCount);
 
-                $room->update(['status' => RoomStatus::Solved, 'final_stats' => $stats]);
-                $this->finalizeCaseForParticipants($room, CaseUserStatus::SolvedPartial->value, $xpPayload);
+                $this->conclude($room, RoomStatus::Solved, $stats, CaseUserStatus::SolvedPartial, $xpPayload);
 
                 $message = 'PARTIAL WIN: You successfully caught all perpetrators, but collateral damage was done.' . $innocentMessage;
                 $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
@@ -195,8 +194,7 @@ class AssessmentService
 
             if (count($unpossessedMissedGuilty) > 0) {
                 $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
-                $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
-                $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedIncomplete->value, 0);
+                $this->conclude($room, RoomStatus::Failed, $stats, CaseUserStatus::FailedIncomplete, 0);
 
                 $message = 'INSTANT FAILURE: The true masterminds were never even on your radar. The remaining guilty people have escaped.' . $innocentMessage;
                 $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
@@ -215,8 +213,7 @@ class AssessmentService
 
                 if ($room->strikes >= $maxStrikes) {
                     $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
-                    $room->update(['status' => RoomStatus::Failed, 'final_stats' => $stats]);
-                    $this->finalizeCaseForParticipants($room, CaseUserStatus::FailedStrikes->value, 0);
+                    $this->conclude($room, RoomStatus::Failed, $stats, CaseUserStatus::FailedStrikes, 0);
 
                     $message = 'DEPARTMENT THRESHOLD EXCEEDED. You failed to indict the correct suspects. The DA has pulled your mandate.' . $innocentMessage;
                     $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
@@ -237,6 +234,13 @@ class AssessmentService
                 ]);
             }
         });
+    }
+
+    private function conclude(GameRoom $room, RoomStatus $status, array $stats, CaseUserStatus $result, int $xp): void
+    {
+        $room->update(['status' => $status, 'final_stats' => $stats]);
+        $this->encounters->closeForConcludedRoom($room);
+        $this->finalizeCaseForParticipants($room, $result->value, $xp);
     }
 
     private function finalizeCaseForParticipants(GameRoom $room, string $finalStatus, int $xpGained): void

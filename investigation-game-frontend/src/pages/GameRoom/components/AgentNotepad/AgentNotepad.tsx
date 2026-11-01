@@ -18,6 +18,25 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
   // We use a ref for the storage key so it's instantly available without triggering re-renders
   const storageKey = useRef(`notepad_fallback`);
   const isInitialized = useRef(false);
+  const pendingWrite = useRef<{ key: string; notes: string } | null>(null);
+
+  useEffect(() => {
+    const flush = () => {
+      const pending = pendingWrite.current;
+      if (!pending) return;
+      setSafeStorage('local', pending.key, pending.notes);
+      pendingWrite.current = null;
+    };
+    const onHidden = () => {
+      if (document.visibilityState === 'hidden') flush();
+    };
+    window.addEventListener('pagehide', flush);
+    document.addEventListener('visibilitychange', onHidden);
+    return () => {
+      window.removeEventListener('pagehide', flush);
+      document.removeEventListener('visibilitychange', onHidden);
+    };
+  }, [roomId]);
 
   // 1. Initialization, Safe Hydration, and Cross-Tab Sync
   //
@@ -42,6 +61,7 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
     // e.newValue is a quoted string and cannot be assigned to state directly.
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === storageKey.current && e.newValue !== null) {
+        pendingWrite.current = null;
         setNotes(getSafeStorage<string>('local', storageKey.current, ''));
         setIsSaved(true); // Flag as saved to prevent a redundant write-back in this tab
       }
@@ -58,6 +78,7 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
 
     const timerId = setTimeout(() => {
       setSafeStorage('local', storageKey.current, notes);
+      pendingWrite.current = null;
       setIsSaved(true);
     }, 800);
 
@@ -68,6 +89,7 @@ export default function AgentNotepad({ roomId }: AgentNotepadProps) {
   const handleNoteChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     // 3. UI updates instantly. The I/O side-effect is completely decoupled.
     setNotes(e.target.value);
+    pendingWrite.current = { key: storageKey.current, notes: e.target.value };
     setIsSaved(false); 
   };
 

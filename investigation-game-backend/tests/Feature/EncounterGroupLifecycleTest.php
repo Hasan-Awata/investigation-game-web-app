@@ -26,9 +26,9 @@ class EncounterGroupLifecycleTest extends TestCase
 
     public function test_any_member_can_start_parallel_groups_and_late_joiner_votes_on_the_next_question(): void
     {
-        $starter = User::factory()->create();
-        $joiner = User::factory()->create();
-        $parallelStarter = User::factory()->create();
+        $starter = User::factory()->create(['username' => fake()->unique()->userName()]);
+        $joiner = User::factory()->create(['username' => fake()->unique()->userName()]);
+        $parallelStarter = User::factory()->create(['username' => fake()->unique()->userName()]);
         $case = GameCase::create(['title' => 'Group Case', 'story' => 'Story', 'XP_on_solve' => 10]);
         $zone = Zone::create(['case_id' => $case->id, 'title' => 'Zone', 'order_index' => 1]);
         $firstLevel = Level::create([
@@ -62,7 +62,7 @@ class EncounterGroupLifecycleTest extends TestCase
         $room->unlockedLevels()->attach([$firstLevel->id, $parallelLevel->id]);
 
         $service = app(EncounterGroupService::class);
-        $outsider = User::factory()->create();
+        $outsider = User::factory()->create(['username' => fake()->unique()->userName()]);
         $unauthorizedStart = $service->start($room, $firstLevel, $outsider);
         $this->assertTrue($unauthorizedStart->isFailure());
 
@@ -137,7 +137,7 @@ class EncounterGroupLifecycleTest extends TestCase
     {
         Queue::fake();
         $fixture = $this->parallelEncounterFixture();
-        $thirdPlayer = User::factory()->create();
+        $thirdPlayer = User::factory()->create(['username' => fake()->unique()->userName()]);
         RoomUser::create(['room_id' => $fixture['room']->id, 'user_id' => $thirdPlayer->id, 'role' => 'participant', 'joined_at' => now()]);
         $nextQuestion = $fixture['levels'][0]->questions()->create(['order_index' => 2, 'text' => 'Follow-up question']);
         $answerA = $nextQuestion->choices()->create(['text' => 'Answer A']);
@@ -208,7 +208,7 @@ class EncounterGroupLifecycleTest extends TestCase
     /** @return array{room: GameRoom, players: array<int, User>, levels: array<int, Level>, questions: array<int, \App\Models\Question>, choices: array<int, Choice>} */
     private function parallelEncounterFixture(int $maxStrikes = 3, array $firstChoiceOutcomes = []): array
     {
-        $players = [User::factory()->create(), User::factory()->create()];
+        $players = [User::factory()->create(['username' => fake()->unique()->userName()]), User::factory()->create(['username' => fake()->unique()->userName()])];
         $case = GameCase::create([
             'title' => 'Finalization Case',
             'story' => 'Story',
@@ -241,7 +241,7 @@ class EncounterGroupLifecycleTest extends TestCase
         foreach ($players as $player) {
             RoomUser::create(['room_id' => $room->id, 'user_id' => $player->id, 'role' => 'participant', 'joined_at' => now()]);
         }
-        $room->unlockedLevels()->attach(collect($levels)->modelKeys());
+        $room->unlockedLevels()->attach(collect($levels)->pluck('id')->all());
 
         return compact('room', 'players', 'levels', 'questions', 'choices');
     }

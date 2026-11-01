@@ -36,9 +36,9 @@ export function useGameRoom(inviteCode: string | undefined) {
   }
 
   const joinMutation = useMutation({
-    mutationFn: () => joinRoom(joinState.inviteCode as string),
-    onSuccess: (result) => {
-      setJoinState((prev) => ({
+    mutationFn: (code: string) => joinRoom(code),
+    onSuccess: (result, code) => {
+      setJoinState((prev) => prev.inviteCode !== code ? prev : ({
         ...prev,
         roomId: result.isSuccess ? result.value.id : null,
         error: result.isSuccess ? null : result.errorMessage,
@@ -49,7 +49,7 @@ export function useGameRoom(inviteCode: string | undefined) {
   useEffect(() => {
     if (!inviteCode || joinState.roomId !== null || joinState.error !== null) return;
     if (joinMutation.isPending) return;
-    joinMutation.mutate();
+    joinMutation.mutate(inviteCode);
     // `mutate` identity is stable in React Query; the pending flag guards
     // against double-fire during the same commit window.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,7 +74,29 @@ export function useGameRoom(inviteCode: string | undefined) {
     },
     enabled: !!joinState.inviteCode && joinState.roomId !== null,
     retry: false,
+    refetchOnReconnect: 'always',
+    refetchOnWindowFocus: 'always',
+    refetchInterval: (query) => query.state.data?.status === 'active' ? 5000 : false,
+    refetchIntervalInBackground: false,
   });
+
+  useEffect(() => {
+    const recover = () => {
+      if (joinState.roomId !== null) void refetch();
+      else if (joinState.error && !joinMutation.isPending) {
+        setJoinState(previous => ({ ...previous, error: null }));
+      }
+    };
+    const onVisible = () => { if (document.visibilityState === 'visible') recover(); };
+    window.addEventListener('online', recover);
+    window.addEventListener('pageshow', recover);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.removeEventListener('online', recover);
+      window.removeEventListener('pageshow', recover);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [joinState.roomId, joinState.error, joinMutation.isPending, refetch]);
 
   useEffect(() => {
 if (room?.id && inviteCode) {
@@ -101,7 +123,7 @@ if (room?.id && inviteCode) {
   return {
     room,
     isLoading: isLoading || (joinState.roomId === null && joinMutation.isPending),
-    error: errorObject instanceof Error ? errorObject.message : null,
+    error: !room && errorObject instanceof Error ? errorObject.message : null,
     accumulatedEvidences: room?.accumulated_evidences || [] as Evidence[],
     accumulatedCharacters: room?.accumulated_characters || [] as Character[],
     refreshRoomData,

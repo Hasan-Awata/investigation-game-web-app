@@ -122,7 +122,7 @@ export const leaveRoom = async (roomId: number): Promise<Result<LeaveRoomRespons
 };
 
 /**
- * Unloading beacon for the same leave endpoint.
+ * Browser departure preserves lone-host sessions and migrates multiplayer hosts.
  *
  * Runs on `pagehide` so a host who closes the tab without the exit modal
  * still triggers host migration. `keepalive: true` lets the request survive
@@ -138,7 +138,9 @@ export const leaveRoomBeacon = async (roomId: number): Promise<void> => {
       headers: {
         'Accept': 'application/json',
         'Authorization': `Bearer ${getToken()}`,
+        'Content-Type': 'application/json',
       },
+      body: JSON.stringify({ reason: 'pagehide' }),
       keepalive: true,
     });
   } catch {
