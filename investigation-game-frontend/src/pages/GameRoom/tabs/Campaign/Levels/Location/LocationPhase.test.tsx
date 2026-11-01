@@ -44,14 +44,15 @@ const level: Level = {
 } as Level;
 
 describe('LocationPhase', () => {
-  it('shows rejection feedback and permits a subsequent inspection without a false discovery', async () => {
+  it.each(['Required procedure is incomplete.', 'This investigation has already concluded.'])('shows rejection feedback (%s) and permits a subsequent inspection without a false discovery', async (message) => {
     localStorage.setItem('auth_token', 'valid');
-    inspectLocationMock.mockResolvedValueOnce({ isSuccess: false, status: 403, errorMessage: 'Required procedure is incomplete.' });
+    inspectLocationMock.mockResolvedValueOnce({ isSuccess: false, status: 403, errorMessage: message });
     const client = new QueryClient();
     render(<QueryClientProvider client={client}><RoomDataProvider room={room} accumulatedEvidences={[]} accumulatedCharacters={[]} refreshRoomData={vi.fn()}><FeedbackHarness /></RoomDataProvider></QueryClientProvider>);
     fireEvent.click(screen.getByRole('button', { name: /inspect location/i }));
     fireEvent.click(screen.getByText('Evidence cache'));
-    expect(await screen.findByRole('alert')).toHaveTextContent('Required procedure is incomplete.');
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(screen.queryByText(i18n.t('pages.gameRoom.campaign.levels.location.foundUseful'))).not.toBeInTheDocument();
     expect(localStorage.getItem('auth_token')).toBe('valid');
     expect(client.getQueryData(['gameRoom', room.invite_code])).toBeUndefined();
     fireEvent.click(screen.getByText('Evidence cache'));

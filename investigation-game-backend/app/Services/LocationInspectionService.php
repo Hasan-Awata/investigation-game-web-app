@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Enums\LevelPresentationType;
+use App\Enums\RoomStatus;
+use Illuminate\Database\Eloquent\Collection;
 use App\Models\Character;
 use App\Models\Choice;
 use App\Models\Evidence;
@@ -26,6 +28,9 @@ class LocationInspectionService
     {
         return DB::transaction(function () use ($room, $choiceId, $user): Result {
             $room = GameRoom::query()->whereKey($room->id)->lockForUpdate()->firstOrFail();
+            if ($room->status !== RoomStatus::Active) {
+                return Result::failure('This investigation has already concluded.');
+            }
             if (EncounterGroupMember::query()->where('user_id', $user->id)->whereNull('left_at')->exists()) {
                 return Result::failure('Finish your active interrogation before inspecting a location.');
             }
@@ -65,8 +70,8 @@ class LocationInspectionService
             );
             if (!$inspection->wasRecentlyCreated) return Result::success(['inspection' => $inspection, 'duplicate' => true]);
 
-            $evidence = collect();
-            $levels = collect();
+            $evidence = new Collection();
+            $levels = new Collection();
             $characters = [];
             $unlockedLocationPointIds = [];
             if (!empty($outcomes['unlock_evidence'])) {
