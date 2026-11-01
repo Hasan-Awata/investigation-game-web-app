@@ -108,7 +108,6 @@ describe('shared level preview', () => {
     openZone();
     fireEvent.click(screen.getByRole('button', { name: 'Show workspace' }));
     expect(screen.getByText('Interrogation content')).toBeInTheDocument();
-    expect(screen.getByText('This interrogation is complete.')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Start interrogation' })).not.toBeInTheDocument();
   });
 });

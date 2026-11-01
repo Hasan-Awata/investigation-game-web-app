@@ -113,7 +113,6 @@ const CampaignTab = () => {
                   {previewLevel.presentation_type === 'location' && isFree && !gated && <LocationPhase level={previewLevel} />}
                   {previewLevel.presentation_type === 'location' && !isFree && <p>{t('pages.gameRoom.campaign.activeEncounterLocked', 'Finish your active interrogation before entering a location.')}</p>}
                   {available && !isLocation && !isFree && <p>{t('pages.gameRoom.campaign.activeEncounterLocked', 'Finish your active interrogation before entering another level.')}</p>}
-                  {completed && <p>{t('pages.gameRoom.campaign.levelCompleted', 'This interrogation is complete.')}</p>}
                 </div>
               )}
             </div>

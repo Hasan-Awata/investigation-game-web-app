@@ -258,6 +258,15 @@
         },
         "levels": {
           "interrogation": {
+            "conversation": "المحادثة",
+            "interviewee": "الشخص المستجوَب",
+            "investigator": "المحقق",
+            "chooseResponse": "اختر ردك",
+            "evidenceRequired": "يتطلب دليلاً",
+            "weightedVotes": "مجموع أوزان الأصوات: {{count}}",
+            "votesSubmitted": "تم تقديم {{votes}} من أصل {{total}} أصوات مطلوبة",
+            "waitingForGroup": "ابدأ هذا الاستجواب أو انضم إليه للمتابعة.",
+            "finalizingIn": "اعتماد الإجابة خلال {{seconds}} ثوانٍ",
             "suspect": "المشتبه به",
             "tieDetected": "⚠️ تم اكتشاف تعادل: قم بتغيير التصويت للحل",
             "groupRoster": "أعضاء مجموعة الاستجواب",

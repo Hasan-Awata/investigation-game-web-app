@@ -1,5 +1,6 @@
-import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactNode } from 'react';
 import i18n from '@/i18n';
 import { RoomDataProvider } from '@/context/RoomContext';
 import type { GameRoom, Level } from '@/types';
@@ -13,6 +14,8 @@ const { getLocalUserMock, useInvestigationPhaseMock } = vi.hoisted(() => ({
 vi.mock('@/utils/userState', () => ({ getLocalUser: getLocalUserMock }));
 vi.mock('@/hooks/useInvestigationPhase', () => ({ useInvestigationPhase: useInvestigationPhaseMock }));
 
+const scrollIntoViewMock = vi.fn();
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 const questionId = 31;
 const level: Level = {
   id: 8,
@@ -39,20 +42,23 @@ const renderPhase = (roomOverrides: Partial<GameRoom> = {}, displayedLevel = lev
     accumulated_evidences: [],
     ...roomOverrides,
   };
-  return render(
+  const wrapper = ({ children }: { children: ReactNode }) => (
     <RoomDataProvider
       room={room}
       accumulatedEvidences={[]}
       accumulatedCharacters={[]}
       refreshRoomData={vi.fn()}
     >
-      <InterrogationPhase level={displayedLevel} />
-    </RoomDataProvider>,
+      {children}
+    </RoomDataProvider>
   );
+  return render(<InterrogationPhase level={displayedLevel} />, { wrapper });
 };
 
 describe('InterrogationPhase', () => {
   beforeEach(async () => {
+    scrollIntoViewMock.mockClear();
+    HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
     await i18n.changeLanguage('en');
     getLocalUserMock.mockReturnValue({ id: 11, name: 'Creator' });
     useInvestigationPhaseMock.mockReturnValue({
@@ -79,12 +85,19 @@ describe('InterrogationPhase', () => {
     });
   });
 
+  afterEach(() => {
+    HTMLElement.prototype.scrollIntoView = originalScrollIntoView;
+  });
+
   it('shows the server tally and roster vote readiness, and exposes change and clear actions', () => {
     renderPhase();
 
     expect(screen.getByText('Where were you?')).toBeInTheDocument();
-    expect(screen.getByText('Creator: Submitted: At home')).toBeInTheDocument();
-    expect(screen.getByText('Analyst: Waiting for vote')).toBeInTheDocument();
+    const members = within(screen.getByRole('list', { name: 'Group roster' })).getAllByRole('listitem');
+    expect(within(members[0]).getByText('Creator')).toBeInTheDocument();
+    expect(within(members[0]).getByText('Submitted: At home')).toBeInTheDocument();
+    expect(within(members[1]).getByText('Analyst')).toBeInTheDocument();
+    expect(within(members[1]).getByText('Waiting for vote')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /At home/ })).toHaveTextContent('(2)');
     expect(screen.getByRole('button', { name: /At work/ })).toHaveTextContent('(0)');
     expect(screen.getByRole('button', { name: 'Clear my vote' })).toBeEnabled();
@@ -124,7 +137,7 @@ describe('InterrogationPhase', () => {
       activeGroup: { ...useInvestigationPhaseMock().activeGroup, required_voter_ids: [11] },
     });
     renderPhase();
-    expect(screen.getByText('You will vote starting with the next question.')).toBeInTheDocument();
+    expect(screen.getByText('You will vote starting with the next question.', { selector: 'p' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /At home/ })).toBeDisabled();
     expect(screen.getByRole('button', { name: /At work/ })).toBeDisabled();
   });
@@ -157,5 +170,61 @@ describe('InterrogationPhase', () => {
     expect(screen.getByText('At home')).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.queryByText('At work')).not.toBeInTheDocument();
+  });
+
+  it('preserves selecting a different response and clearing the current vote', () => {
+    const phase = useInvestigationPhaseMock();
+    renderPhase();
+    expect(screen.getByRole('button', { name: /At home/ })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: /At work/ }));
+    expect(phase.handleSelectChoice).toHaveBeenCalledWith(expect.anything(), questionId, level.questions![0].choices![1], 'active');
+    fireEvent.click(screen.getByRole('button', { name: 'Clear my vote' }));
+    expect(phase.clearVote).toHaveBeenCalledWith(questionId);
+  });
+
+  it('keeps evidence-gated choices locked while other answers remain playable', () => {
+    renderPhase({}, { ...level, questions: [{ ...level.questions![0], choices: [
+      level.questions![0].choices![0],
+      { ...level.questions![0].choices![1], requirements: { required_evidence: [77] } },
+    ] }] });
+    expect(screen.getByRole('button', { name: /At work/ })).toBeDisabled();
+    expect(screen.getByText('Evidence required')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /At home/ })).toBeEnabled();
+  });
+
+  it('keeps every response and clear action disabled while submitting or after the room concludes', () => {
+    useInvestigationPhaseMock.mockReturnValue({ ...useInvestigationPhaseMock(), isSubmitting: true });
+    const view = renderPhase();
+    expect(screen.getAllByRole('button').every(button => button.hasAttribute('disabled'))).toBe(true);
+    view.unmount();
+    useInvestigationPhaseMock.mockReturnValue({ ...useInvestigationPhaseMock(), isSubmitting: false });
+    renderPhase({ status: 'solved' });
+    expect(screen.getAllByRole('button').every(button => button.hasAttribute('disabled'))).toBe(true);
+  });
+
+  it('labels the conversation and response controls in Arabic without hiding multiplayer details', async () => {
+    await i18n.changeLanguage('ar');
+    renderPhase();
+    expect(document.documentElement.dir).toBe('rtl');
+    expect(screen.getByRole('region', { name: 'المحادثة' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'اختر ردك' })).toBeInTheDocument();
+    expect(screen.getByRole('list', { name: 'أعضاء مجموعة الاستجواب' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'إلغاء تصويتي' })).toBeEnabled();
+  });
+
+  it('follows a new question while preserving scroll position during updates to the current vote', () => {
+    const view = renderPhase();
+    expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
+    useInvestigationPhaseMock.mockReturnValue({ ...useInvestigationPhaseMock(), localVotes: {} });
+    view.rerender(<InterrogationPhase level={level} />);
+    expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
+
+    const nextQuestion = { id: 32, level_id: level.id, text: 'Who saw you?', choices: [] };
+    useInvestigationPhaseMock.mockReturnValue({ ...useInvestigationPhaseMock(), activeGroup: {
+      ...useInvestigationPhaseMock().activeGroup, current_question_id: nextQuestion.id,
+    } });
+    view.rerender(<InterrogationPhase level={{ ...level, questions: [...level.questions!, nextQuestion] }} />);
+    expect(screen.getByText('Who saw you?')).toBeInTheDocument();
+    expect(scrollIntoViewMock).toHaveBeenCalledTimes(2);
   });
 });
