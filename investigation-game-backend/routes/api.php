@@ -41,6 +41,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Room Management
     Route::post('/rooms', [GameRoomController::class, 'store']);
+    Route::post('/rooms/restart', [GameRoomController::class, 'restart']);
     Route::post('/rooms/join', [GameRoomController::class, 'join']);
 
     // Room-scoped gameplay routes: participant-only (IDOR guard)

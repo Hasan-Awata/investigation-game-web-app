@@ -2,10 +2,11 @@ import { useEffect, useId, useRef, useState } from 'react';
 import type { KeyboardEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import '@/i18n';
 import type { GameCase } from '../../../types';
 import { CaseUserStatus } from '../../../types';
-import { createRoom } from '../../../services/api';
+import { createRoom, restartRoom } from '../../../services/api';
 import styles from './CaseBriefingModal.module.css';
 
 interface CaseBriefingModalProps {
@@ -16,10 +17,20 @@ interface CaseBriefingModalProps {
 export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingModalProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmingRestart, setConfirmingRestart] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  const confirmationId = useId();
+  const requestPending = useRef(false);
+  const primaryButtonRef = useRef<HTMLButtonElement>(null);
+  const cancelButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (confirmingRestart) cancelButtonRef.current?.focus();
+  }, [confirmingRestart]);
 
   useEffect(() => {
     const previouslyFocused = document.activeElement;
@@ -36,6 +47,16 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === 'Escape' && !isLoading) {
       event.stopPropagation();
+      if (confirmingRestart) {
+        if (error) {
+          onClose();
+          return;
+        }
+        setConfirmingRestart(false);
+        setError(null);
+        primaryButtonRef.current?.focus();
+        return;
+      }
       onClose();
       return;
     }
@@ -59,13 +80,35 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
   };
 
   const handleStartSession = async () => {
+    if (requestPending.current) return;
+    if (gameCase.active_room_invite_code && !confirmingRestart) {
+      setConfirmingRestart(true);
+      setError(null);
+      return;
+    }
+    requestPending.current = true;
     setIsLoading(true);
     setError(null);
-    const result = await createRoom(gameCase.id);
-    if (result.isSuccess) {
-      navigate(`/room/${result.value.invite_code}`);
-    } else {
-      setError(result.errorMessage);
+    try {
+      const result = gameCase.active_room_invite_code
+        ? await restartRoom(gameCase.id, gameCase.active_room_invite_code)
+        : await createRoom(gameCase.id);
+      if (result.isSuccess) {
+        if (gameCase.active_room_invite_code) {
+          queryClient.removeQueries({ queryKey: ['gameRoom', gameCase.active_room_invite_code] });
+        }
+        if (!gameCase.active_room_invite_code) void queryClient.invalidateQueries({ queryKey: ['cases'] });
+        navigate(`/room/${result.value.invite_code}`);
+      } else {
+        setError(gameCase.active_room_invite_code
+          ? `${t('components.caseBriefing.restartFailed')} ${result.errorMessage}`
+          : result.errorMessage);
+      }
+    } catch {
+      setError(t(gameCase.active_room_invite_code ? 'components.caseBriefing.restartFailed' : 'components.caseBriefing.startFailed'));
+    } finally {
+      if (gameCase.active_room_invite_code) void queryClient.invalidateQueries({ queryKey: ['cases'] });
+      requestPending.current = false;
       setIsLoading(false);
     }
   };
@@ -81,6 +124,8 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
   let primaryButtonText = t('components.caseBriefing.startCase');
   if (isLoading) {
     primaryButtonText = t('components.caseBriefing.encrypting');
+  } else if (confirmingRestart) {
+    primaryButtonText = t('components.caseBriefing.confirmRestart');
   } else if (activeInviteCode) {
     primaryButtonText = t('components.caseBriefing.restartCase');
   } else if (isFinished) {
@@ -106,7 +151,7 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
     : {};
 
   return (
-    <div className={styles.modalBackdrop} onClick={onClose}>
+    <div className={styles.modalBackdrop} onClick={() => { if (!requestPending.current) onClose(); }}>
       <div
         ref={modalRef}
         className={styles.modalContent}
@@ -200,12 +245,31 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
         </div>
 
         <div className={styles.modalActions}>
+          {confirmingRestart && (
+            <p id={confirmationId} className={styles.restartExplanation} role="status">
+              {t('components.caseBriefing.restartExplanation')}
+            </p>
+          )}
           {error && <div className={styles.modalErrorMessage} role="alert">{error}</div>}
-          <button type="button" className={styles.btnPrimary} onClick={handleStartSession} disabled={isLoading} aria-busy={isLoading}>
+          <button ref={primaryButtonRef} type="button" className={styles.btnPrimary} onClick={handleStartSession} disabled={isLoading} aria-busy={isLoading} aria-describedby={confirmingRestart ? confirmationId : undefined}>
             {primaryButtonText}
           </button>
 
-          {showContinue && (
+          {confirmingRestart && (
+            <button ref={cancelButtonRef} type="button" className={styles.btnSecondary} disabled={isLoading} onClick={() => {
+              if (error) {
+                onClose();
+                return;
+              }
+              setConfirmingRestart(false);
+              setError(null);
+              primaryButtonRef.current?.focus();
+            }}>
+              {t(error ? 'components.caseBriefing.backToCases' : 'components.caseBriefing.cancelRestart')}
+            </button>
+          )}
+
+          {showContinue && !confirmingRestart && (
             <button
               type="button"
               className={`${styles.btnSecondary} ${styles.continueBtn}`}

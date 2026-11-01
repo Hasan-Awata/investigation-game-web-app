@@ -48,6 +48,16 @@ export const joinRoom = async (inviteCode: string): Promise<Result<GameRoom>> =>
   return result.isSuccess ? success(result.value.room) : result;
 };
 
+export const restartRoom = async (caseId: number, inviteCode: string): Promise<Result<GameRoom>> => {
+  const result = await request<RoomResponse>('/rooms/restart', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ case_id: caseId, invite_code: inviteCode }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  return result.isSuccess ? success(result.value.room) : result;
+};
+
 export const fetchRoomState = async (roomId: number, signal?: AbortSignal): Promise<Result<GameRoom>> => {
   const result = await request<RoomResponse>(`/rooms/${roomId}`, { signal });
   return result.isSuccess ? success(result.value.room) : result;

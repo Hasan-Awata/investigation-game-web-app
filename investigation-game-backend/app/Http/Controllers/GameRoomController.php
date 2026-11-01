@@ -46,6 +46,23 @@ class GameRoomController extends Controller
         return response()->json(['message' => 'Room created successfully', 'room' => $result->value], 201);
     }
 
+    public function restart(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'case_id' => 'required|integer|exists:cases,id',
+            'invite_code' => 'required|string|max:6',
+        ]);
+        $result = $this->roomService->restartRoom(
+            GameCase::findOrFail($validated['case_id']),
+            $validated['invite_code'],
+            $request->user()
+        );
+        if ($result->isFailure()) {
+            return response()->json(['error' => 'Restart Failed', 'message' => $result->errorMessage], 409);
+        }
+        return response()->json(['message' => 'Investigation restarted successfully', 'room' => $result->value], 200);
+    }
+
     public function join(Request $request): JsonResponse
     {
         $validated = $request->validate(['invite_code' => 'required|string']);

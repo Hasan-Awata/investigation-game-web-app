@@ -68,6 +68,59 @@ class GameRoomService
     }
 
     /**
+     * A source room can be restarted once per player, including after a lost response.
+     */
+    public function restartRoom(GameCase $gameCase, string $inviteCode, User $player): Result
+    {
+        return DB::transaction(function () use ($gameCase, $inviteCode, $player): Result {
+            User::query()->whereKey($player->id)->lockForUpdate()->firstOrFail();
+            $source = GameRoom::query()->where('invite_code', $inviteCode)
+                ->where('case_id', $gameCase->id)->lockForUpdate()->first();
+            if (!$source) {
+                return Result::failure('This investigation is unavailable. Refresh the case list.');
+            }
+
+            $restart = DB::table('room_restarts')->where('source_room_id', $source->id)
+                ->where('user_id', $player->id)->first();
+            if ($restart) {
+                $replacement = GameRoom::query()->find($restart->replacement_room_id);
+                if (!$replacement || !$replacement->isParticipant((int) $player->id)) {
+                    return Result::failure('The replacement investigation is unavailable. Refresh the case list.');
+                }
+                return Result::success($replacement);
+            }
+
+            if ($source->status !== RoomStatus::Active || !$source->users()->where('user_id', $player->id)->exists()) {
+                return Result::failure('You can only restart an active investigation you participate in. Refresh the case list.');
+            }
+            if (EncounterGroupMember::query()->where('user_id', $player->id)->whereNull('left_at')
+                ->whereHas('group', fn ($query) => $query->where('room_id', '!=', $source->id))->exists()) {
+                return Result::failure('Leave your encounter in the other investigation before restarting this one.');
+            }
+
+            // Explicit departure abandons an empty room without recording a verdict or XP penalty.
+            // In shared rooms it releases only this player and preserves the remaining investigation.
+            $departure = $this->leaveRoom($source, $player);
+            if ($departure->isFailure()) {
+                throw new \RuntimeException('Restart departure failed.');
+            }
+            $created = $this->createRoom($gameCase, $player);
+            if ($created->isFailure()) {
+                throw new \RuntimeException('Restart room initialization failed.');
+            }
+
+            DB::table('room_restarts')->insert([
+                'source_room_id' => $source->id,
+                'user_id' => $player->id,
+                'replacement_room_id' => $created->value->id,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            return $created;
+        });
+    }
+
+    /**
      * Process a player joining an existing active room via an invite code.
      */
     public function joinRoom(string $inviteCode, User $player): Result

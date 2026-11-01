@@ -54,6 +54,12 @@ Before checking TASK-08 complete, record host/revision, safe effective configura
 
 From `investigation-game-backend`, run `composer run dev` to start the API, database queue listener, Reverb, and the sibling frontend together. Stop separately started copies first to avoid port conflicts. Interrogation countdowns require the queue listener: running only `php artisan serve` and Reverb will save votes without processing their delayed answers. Keep the development command running while playing. To add only the missing worker to an already running app, use `php artisan queue:work --sleep=1 --tries=3 --timeout=60` in a separate terminal.
 
+### Restarting an unfinished investigation (TASK-01)
+
+Apply `2026_11_01_000001_create_room_restarts_table` with the normal release migrations before serving the updated frontend. The menu's Restart Case action asks for confirmation, then calls authenticated `POST /api/rooms/restart` with `case_id` and the server-discovered previous `invite_code`; no tab storage is needed. Departure, encounter release, replacement initialization and retry tracking share one transaction. Retrying the same source room as the same player returns the same replacement, including after an interrupted HTTP response. Conflicts require refreshing discovery or leaving an unrelated active encounter; they do not discard that encounter automatically.
+
+Restart abandons a solo attempt without adding a case verdict or XP penalty. Its empty old room receives the existing terminal `failed` storage status and remains subject to seven-day terminal retention. In shared rooms, only the requester leaves; host migration and remaining players' progression continue normally. Existing verdict history and replay reward reductions are preserved. Old queue deliveries remain scoped to their original group/room and are checked against current status and deadlines. Routine refresh/pagehide still uses the separate resumption behavior. No database reset or content import is required for this fix.
+
 ### Delayed interrogation recovery and worker operation
 
 Use an asynchronous queue for interrogations. The inspected local configuration uses MySQL, `QUEUE_CONNECTION=database`, and `BROADCAST_CONNECTION=reverb`; production settings have not been verified. A synchronous or null queue cannot provide the five-second delayed progression contract. HTTP room reads never process answers.

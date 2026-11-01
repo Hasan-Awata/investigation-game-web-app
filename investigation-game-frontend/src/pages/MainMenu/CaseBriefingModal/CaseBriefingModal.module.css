@@ -232,6 +232,16 @@
   background: rgba(var(--accent-cyan-rgb), 0.4);
 }
 
+.restartExplanation {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.6;
+  text-align: start;
+  overflow-wrap: anywhere;
+}
+
 .modalErrorMessage {
   width: 100%;
   padding: 1rem 1.25rem;

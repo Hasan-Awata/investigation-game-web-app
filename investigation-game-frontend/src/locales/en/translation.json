@@ -1,4 +1,28 @@
 {
+  "components": {
+    "caseBriefing": {
+      "authoredBy": "Authored by",
+      "system": "System",
+      "standard": "Standard",
+      "unknown": "Unknown",
+      "unrated": "Unrated",
+      "startCase": "Start Case",
+      "encrypting": "Preparing investigation...",
+      "restartCase": "Restart Case",
+      "replayCase": "Replay Case",
+      "perfectReplay": "(perfect replay)",
+      "partialReplay": "(partial replay)",
+      "penaltyAllowance": "(reduced replay reward)",
+      "continueInvestigation": "Continue Investigation",
+      "xp": "XP",
+      "confirmRestart": "Confirm Restart",
+      "cancelRestart": "Keep Current Investigation",
+      "restartExplanation": "Start a fresh investigation? You will leave your current attempt. If you are playing alone, it will be abandoned. Other players can continue their investigation, with a new host if needed. Restarting adds no XP penalty; existing replay rules still apply.",
+      "startFailed": "Unable to prepare the investigation. Please try again.",
+      "restartFailed": "Unable to confirm the restart. Retry to open the same new investigation if it was already created.",
+      "backToCases": "Back to Case List"
+    }
+  },
   "system": {
     "loading": "Establishing Secure Connection...",
     "error": "System Error:"
