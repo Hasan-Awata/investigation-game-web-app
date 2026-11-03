@@ -9,16 +9,57 @@
 
 ## Case bundle setup
 
+### Verified local Glasshouse installation
+
+The local milestone uses MySQL, database queue/cache, Reverb and desktop Chromium. Glasshouse is published with zero minimum XP; registration and rewards are unchanged. VPS deployment remains a separate qualification.
+
+From this backend directory, build a new output (never overwrite a source):
+
+```powershell
+php scripts/release-content/build-glasshouse-release.php ../cases/the-glasshouse-files.zip ../cases/glasshouse-local-zero-xp.zip --authoring
+```
+
+The adjacent provenance JSON records hashes. The exact reviewed-export input remains supported without `--authoring`. Unknown sources or differing media bytes are rejected.
+
+Create a dedicated empty local MySQL database, set its name in local `.env`, keep `APP_ENV=local`, `QUEUE_CONNECTION=database`, `CACHE_STORE=database` and `BROADCAST_CONNECTION=reverb`, and ensure stale configuration caches cannot override these settings. Never print credentials. The installed local target is `investigation_game_local_release`; previous databases and source archives are retained.
+
+```powershell
+php artisan migrate --force
+php artisan case:install-glasshouse ../cases/glasshouse-local-zero-xp.zip --confirm-database=investigation_game_local_release
+composer run dev
+```
+
+Installation verifies the approved manifest/media and rejects a nonempty catalog. It never resets a database. Open `http://localhost:5173/` and register a fresh account. API uses port 8000; Reverb uses 8080. Keep the development command running for delayed answers; stop its owned services together after play. Browser observations and remaining qualification limits are recorded in `Plans.md`. To inspect the production frontend separately, stop the development frontend, run `npm run build`, then `npm run preview -- --host 127.0.0.1 --port 5173 --strictPort` from the frontend directory. Keep API, queue and Reverb running and verify the preview origin is allowed by local API configuration. Explicit IPv4 binding avoids a localhost IPv6-only listener during local browser checks.
+
+For a local recovery drill, pause application writes, workers and maintenance first; capture MySQL with a protected credentials file and a transaction-consistent dump, plus required media and a checksum manifest. Restore into a separate empty database and media root, isolate queue/cache and provider writes, then resume saved progress through the UI. Do not overwrite the installed database or claim a dump import alone proves recovery. The 2026-11-03/04 local drill compared every restored table and 71 media checksums, then completed the saved game through the production frontend against the separate restored database/media root. The automated operational suite separately demonstrates isolated SQLite restoration.
+
+Use `mysqldump --defaults-extra-file=PRIVATE.cnf --single-transaction --routines --triggers --hex-blob --result-file=database.sql DATABASE` while writers remain paused. Copy `public/assets` at the same capture point, record relative-path SHA-256 values, create a new empty restore database and import with `mysql --defaults-extra-file=PRIVATE.cnf RESTORE_DATABASE` using the dump as standard input. Delete the temporary credentials file after the operation. Set the restore process's `DB_DATABASE` and a distinct `CACHE_PREFIX`; serve its copied public media root and start its own queue listener with the same database selection. Preserve the original `.env`, database and media. Validate table contents and checksums before opening the saved room. Do not run either game's workers against the other's queue. These are local manual recovery instructions; production scheduling and intended-VPS qualification remain deferred.
+
+### Windows filesystem-security qualification (TASK-07)
+
+Run the following from the backend directory in a UAC-elevated terminal with the same PHP installation used by the application. Sandbox approval alone does not grant Windows administrator privileges. Use `whoami /priv` to record the token's privileges; successful execution of the real-symlink test below establishes filesystem capability. No permanent Developer Mode or security-policy change is required.
+
+```powershell
+php --version
+whoami /priv
+php vendor/phpunit/phpunit/phpunit --filter test_symlink_escape_cannot_authorize_reads_or_deletes tests/Feature/Admin/MediaOwnershipTest.php --display-skipped --fail-on-skipped --do-not-cache-result
+php vendor/phpunit/phpunit/phpunit tests/Feature/Admin/MediaOwnershipTest.php --display-skipped --fail-on-skipped --do-not-cache-result
+php vendor/phpunit/phpunit/phpunit --display-skipped --fail-on-skipped --do-not-cache-result
+php vendor/phpunit/phpunit/phpunit tests/Operations --display-skipped --fail-on-skipped --do-not-cache-result
+```
+
+Require exit code zero for each command, actual assertions in the focused test, and no skipped essential behavior. Stop and investigate any failure or skip; do not substitute hard links or mocked filesystem checks. Tests use the PHPUnit SQLite configuration and temporary media fixtures, not the player database or installed case media. Keep configuration caches absent or explicitly redirected to an unused test-owned path so application configuration cannot override test isolation. The operational suite owns its temporary database/media tree and worker processes. Record revision, runtime, privilege context, commands and assertion counts in `PLANS.md`. Run frontend `npm test`, `npm run lint` and `npm run build` from the sibling frontend directory without elevation.
+
 ### Operations and recovery (TASK-08)
 
-No intended deployment host is selected. The historical PHP/Apache Dockerfile mentions Render; it does not establish a current platform decision. Do not infer production settings from `.env.example` or the local environment. Never paste `.env`, cached configuration, tokens, queue payloads, failed exception bodies, or player records into verification reports.
+The user selected an existing VPS for later manual hosting; it has not been qualified. The historical PHP/Apache Dockerfile mentions Render and does not establish current deployment settings. Do not infer production settings from `.env.example` or the local environment. Never paste `.env`, cached configuration, tokens, queue payloads, failed exception bodies, or player records into verification reports.
 
 | Evidence level | Current scope |
 | --- | --- |
 | Required | Persistent database and case media, asynchronous queue, supervised processes, scheduler, secure API/realtime, protected diagnostics and backups |
-| Configured locally | MySQL, database queue/cache, Reverb; Cloudinary credentials present, actual launch asset use unverified |
+| Configured locally | MySQL, database queue/cache, Reverb; installed launch assets verified locally, including an isolated MySQL/media restore |
 | Isolated demonstration | Explicit `tests/Operations` suite uses synthetic file-backed SQLite, private queue, separate PHP workers and restored media; see Plans.md for observed run results |
-| Intended host | Not selected; supervision, network delivery, deployment persistence, provider restore, and host backup procedures remain unverified |
+| Intended host | Existing VPS deferred; supervision, network delivery, deployment persistence, provider restore, and host backup procedures remain unverified |
 
 Runtime: PHP >=8.2 with Composer lockfile platform requirements (including ZIP, database PDO driver and mbstring); CLI workers on Unix also need pcntl for effective job timeouts. Run `composer check-platform-reqs --lock`. Build frontend with its lockfile and a supported Node version (`npm ci`, `npm run build`); Vite variables are baked into that build. Set `APP_ENV=production`, `APP_DEBUG=false`, stable protected `APP_KEY`, HTTPS `APP_URL`, correct database credentials, and explicit asynchronous `QUEUE_CONNECTION=database`. Use persistent shared `CACHE_STORE=database` (or an already adopted shared Redis store), consistent cache prefix/key across replicas, and installed cache/jobs/failed-jobs tables. Do not use array/null cache or memory fallback for authentication budgets. Do not clear shared cache during deployment: this resets abuse counters and can erase queue restart signals.
 

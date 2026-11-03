@@ -56,6 +56,8 @@ class MediaOwnershipTest extends TestCase
 
     public function test_symlink_escape_cannot_authorize_reads_or_deletes(): void
     {
+        config(['app.url' => 'https://game.test']);
+        Http::fake();
         File::ensureDirectoryExists(public_path('assets/cases/test'));
         file_put_contents(public_path('marker.png'), 'outside');
         $link = public_path('assets/cases/test/linked.png');
@@ -65,11 +67,28 @@ class MediaOwnershipTest extends TestCase
 
         try {
             $url = '/assets/cases/test/linked.png';
+            $this->assertTrue(is_link($link));
+            $this->assertSame(realpath(public_path('marker.png')), realpath($link));
+            $this->assertFalse(str_starts_with(
+                str_replace('\\', '/', (string) realpath($link)),
+                str_replace('\\', '/', (string) realpath(public_path('assets/cases'))).'/',
+            ));
             $this->assertNull(app(CaseBundleMediaResolver::class)->archiveLocal($url));
+            $case = GameCase::create([
+                'title' => 'Symlink escape', 'story' => 'Story', 'XP_on_solve' => 10,
+                'img_url' => 'https://game.test'.$url,
+            ]);
+            $this->actingAsAdmin();
+            $this->getJson("/api/admin/cases/{$case->id}/export")
+                ->assertUnprocessable()->assertJsonValidationErrors('case.cover');
+            Http::assertNothingSent();
             app(MediaService::class)->delete($url);
             $this->assertFileExists(public_path('marker.png'));
+            $this->assertSame('outside', file_get_contents(public_path('marker.png')));
         } finally {
-            unlink($link);
+            if (is_link($link)) {
+                unlink($link);
+            }
         }
     }
 

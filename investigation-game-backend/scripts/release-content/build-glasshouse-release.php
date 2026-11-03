@@ -5,6 +5,7 @@ declare(strict_types=1);
 // Offline only: preserve the original export and never connect to a game database.
 $source = $argv[1] ?? '';
 $destination = $argv[2] ?? '';
+$authoring = ($argv[3] ?? '') === '--authoring';
 $content = dirname(__DIR__, 2).'/database/release-content/glasshouse-files';
 $inventory = json_decode(file_get_contents($content.'/source.json'), true, flags: JSON_THROW_ON_ERROR);
 
@@ -18,15 +19,30 @@ if ($archive->open($source, ZipArchive::RDONLY) !== true) {
     throw new RuntimeException('Could not open original export.');
 }
 try {
+    $expectedBundle = $authoring ? $inventory['authoring_source']['bundle_sha256'] : $inventory['original_bundle_sha256'];
+    if (hash_file('sha256', $source) !== $expectedBundle) throw new RuntimeException('Unrecognized source bundle.');
     $manifest = $archive->getFromName('case.json');
-    if ($manifest === false || hash('sha256', $manifest) !== $inventory['original_manifest_sha256']) {
+    $expectedManifest = $authoring ? $inventory['authoring_source']['manifest_sha256'] : $inventory['original_manifest_sha256'];
+    $entries = [];
+    if ($authoring) {
+        for ($i = 0; $i < $archive->numFiles; $i++) {
+            $name = $archive->getNameIndex($i);
+            if (str_starts_with($name, 'media/') && !str_ends_with($name, '/')) {
+                $entries[hash('sha256', $archive->getFromName($name))] = $name;
+            }
+        }
+    }
+    $media = [];
+    if ($manifest === false || hash('sha256', $manifest) !== $expectedManifest) {
         throw new RuntimeException('Source manifest differs from the reviewed Glasshouse export.');
     }
     foreach ($inventory['media_sha256'] as $name => $hash) {
-        $bytes = $archive->getFromName($name);
+        $inputName = $authoring ? ($entries[$hash] ?? '') : $name;
+        $bytes = $archive->getFromName($inputName);
         if ($bytes === false || hash('sha256', $bytes) !== $hash) {
             throw new RuntimeException('Source media differs from the reviewed export: '.$name);
         }
+        $media[$name] = $bytes;
     }
 } finally {
     $archive->close();
@@ -46,10 +62,18 @@ try {
 } finally {
     fclose($output);
 }
-if ($archive->open($destination) !== true) throw new RuntimeException('Could not open release bundle.');
+if ($archive->open($destination, ZipArchive::OVERWRITE) !== true) throw new RuntimeException('Could not open release bundle.');
 try {
+    foreach ($media as $name => $bytes) {
+        if (!$archive->addFromString($name, $bytes)) throw new RuntimeException('Could not write verified media.');
+    }
     if (!$archive->addFile($content.'/case.json', 'case.json')) throw new RuntimeException('Could not write corrected manifest.');
 } finally {
     if (!$archive->close()) throw new RuntimeException('Could not finalize release bundle.');
 }
 echo 'Release bundle SHA-256: '.hash_file('sha256', $destination).PHP_EOL;
+
+$provenance = ['source_sha256' => hash_file('sha256', $source), 'manifest_sha256' => hash_file('sha256', $content.'/case.json'), 'media_sha256' => $inventory['media_sha256'], 'bundle_sha256' => hash_file('sha256', $destination)];
+$record = fopen($destination.'.provenance.json', 'xb');
+if ($record === false) throw new RuntimeException('Could not create provenance record.');
+try { fwrite($record, json_encode($provenance, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR)); } finally { fclose($record); }

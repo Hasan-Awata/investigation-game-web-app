@@ -16,7 +16,6 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\Admin\Concerns\ImportsCaseBundles;
-use Tests\Support\CaseBundleFactory;
 use Tests\TestCase;
 
 class GlasshousePlayabilityTest extends TestCase
@@ -33,21 +32,22 @@ class GlasshousePlayabilityTest extends TestCase
         parent::setUp();
         $this->actingAsAdmin();
         $this->manifest = json_decode(file_get_contents(database_path('release-content/glasshouse-files/case.json')), true, flags: JSON_THROW_ON_ERROR);
-        // Exercise the actual authored graph; browser checks cover the original media bytes.
-        $testManifest = $this->manifest;
-        array_walk_recursive($testManifest, function (&$value): void {
-            if (is_string($value) && str_starts_with($value, 'media/')) $value = 'media/image.png';
-        });
-        $image = base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=');
-        $bundle = CaseBundleFactory::build($testManifest, ['media/image.png' => $image]);
+        $bundle = tempnam(sys_get_temp_dir(), 'glasshouse-release-');
+        unlink($bundle);
+        $process = new \Symfony\Component\Process\Process([
+            PHP_BINARY, base_path('scripts/release-content/build-glasshouse-release.php'),
+            dirname(base_path()).'/cases/the-glasshouse-files.zip', $bundle, '--authoring',
+        ]);
+        $process->mustRun();
         try {
             $id = $this->importBundle($bundle)->assertCreated()->json('case_id');
             $this->case = GameCase::findOrFail($id);
         } finally {
             unlink($bundle);
+            unlink($bundle.'.provenance.json');
         }
         config(['queue.default' => 'database']);
-        $this->player = User::factory()->create(['XP' => 50]);
+        $this->player = User::factory()->create(['XP' => 0]);
     }
 
     #[DataProvider('lobbyRoutes')]
@@ -81,7 +81,7 @@ class GlasshousePlayabilityTest extends TestCase
                 $this->assertSame($strike, $room->fresh()->strikes);
                 $this->assertSame($strike < 3 ? 'active' : 'failed', $room->fresh()->status->value);
             }
-            $this->assertSame(50, $this->player->fresh()->XP);
+            $this->assertSame(0, $this->player->fresh()->XP);
             $this->assertDatabaseHas('case_user', ['user_id' => $this->player->id, 'status' => 'failed_strikes']);
             $this->start(app(GameRoomService::class)->createRoom($this->case, $this->player)->value, 'lvl_34');
             return;
@@ -92,7 +92,7 @@ class GlasshousePlayabilityTest extends TestCase
         $result = app(AssessmentService::class)->evaluateFinalVerdict($room, $guilty, $vital);
         $this->assertFalse($result->isFailure(), $result->errorMessage ?? '');
         $this->assertSame('solved', $room->fresh()->status->value);
-        $this->assertSame($ending === 'partial' ? 644 : 950, $this->player->fresh()->XP);
+        $this->assertSame($ending === 'partial' ? 594 : 900, $this->player->fresh()->XP);
         $this->assertSame(6, $room->fresh()->final_stats['suspects_caught']);
         $this->assertSame('1 minute', $room->fresh()->final_stats['time_taken']);
         $this->assertDatabaseHas('case_user', ['user_id' => $this->player->id, 'status' => $ending === 'partial' ? 'solved_partial' : 'solved_perfect']);
@@ -118,7 +118,7 @@ class GlasshousePlayabilityTest extends TestCase
         $result = app(AssessmentService::class)->evaluateFinalVerdict($room, []);
         $this->assertFalse($result->isFailure());
         $this->assertSame('failed', $room->fresh()->status->value);
-        $this->assertSame(50, $this->player->fresh()->XP);
+        $this->assertSame(0, $this->player->fresh()->XP);
         $this->assertDatabaseHas('case_user', ['user_id' => $this->player->id, 'status' => 'failed_no_proof']);
         $this->assertSame(0, $room->encounterGroups()->where('status', 'active')->count());
         $next = app(GameRoomService::class)->createRoom($this->case, $this->player)->value;

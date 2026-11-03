@@ -7,19 +7,19 @@ Reviewed code baseline: `a146322`
 
 **Estimated readiness: 75/100. The 80% shipping threshold is not yet met.**
 
-80% means a robust, fully playable release within the agreed solo scope, with only assessed minor issues remaining. 100% means the fully intended game with all planned features. Readiness is determined by demonstrated behavior, not the number of checked tasks.
+Following the user-approved scope change on 2026-11-03, 80% means verified local solo readiness on Windows/MySQL and desktop Chromium, with only assessed minor issues remaining. VPS deployment qualification is a later gate and is not claimed by local 80%. 100% means the fully intended game with all planned features. Readiness is determined by demonstrated behavior, not the number of checked tasks.
 
-This document contains current issues and outstanding release qualifications, plus the TASK-01 and TASK-03 completion records. Other resolved historical issue descriptions and implementation journals have been removed. Existing behavior directly connected to an open issue is retained under that issue as a regression requirement. Original issue IDs are retained for continuity; gaps in numbering are intentional. Do not interpret a missing historical issue as unfinished work.
+This document contains current issues and outstanding release qualifications, plus the TASK-01, TASK-03 and TASK-07 completion records. Other resolved historical issue descriptions and implementation journals have been removed. Existing behavior directly connected to an open issue is retained under that issue as a regression requirement. Original issue IDs are retained for continuity; gaps in numbering are intentional. Do not interpret a missing historical issue as unfinished work.
 
 The launch case is **The Glasshouse Files / ملفات غلاسهاوس**. Existing local browser evidence covers the corrected case in Arabic on desktop Chromium, including a perfect solve, failure outcomes, tab recovery, HTTP recovery, worker restart and subsequent play. It does not establish every branch, mobile support, full browser-process reopening, deployed realtime delivery or intended-host operation.
 
 ### Verified baseline
 
-These results include the final TASK-03 implementation checks (working tree based on `e0d44a0`):
+These results include the TASK-07 qualification (2026-11-03 working tree based on `27d4d02`) and prior TASK-01/TASK-03 recovery checks:
 
 | Check | Result |
 | --- | --- |
-| Backend suite | 496 tests: 495 passed, 1 skipped; 3,226 assertions; no failures/errors |
+| Backend suite | 496 passed; 3,236 assertions; no skips/failures/errors (TASK-07 elevated Windows run) |
 | Separate operational suite | Passed: 1 test / 19 assertions, including owned worker restart and isolated database/media restoration |
 | Frontend suite | 150 passed across 26 files |
 | Frontend lint | Passed |
@@ -158,7 +158,7 @@ Also preserve the corrected error semantics: a gameplay 403 retains valid authen
 
 **Relevant files:** `investigation-game-frontend/src/hooks/useGameRoom.ts`, `investigation-game-frontend/src/pages/GameRoom/GameRoom.tsx`, `investigation-game-frontend/src/pages/GameRoom/GameRoomLayout.tsx`, `investigation-game-frontend/src/pages/GameRoom/components/GameEffects/GameEndOverlay.tsx`, `investigation-game-frontend/src/services/request.ts`.
 
-### ISSUE-07 — Filesystem ownership security test still cannot execute
+### ISSUE-07 — Filesystem ownership security test still cannot execute — Resolved
 
 **Priority:** Outstanding security verification.
 **Evidence:** Latest backend suite skipped `MediaOwnershipTest::test_symlink_escape_cannot_authorize_reads_or_deletes` because the current Windows process cannot create a symlink.
@@ -171,13 +171,26 @@ Also preserve the corrected error semantics: a gameplay 403 retains valid authen
 
 **Task — TASK-07:** Execute the symlink ownership test in an appropriate environment, resolve any real defect it exposes, and establish a passing automated baseline with no essential behavior hidden by skips.
 
+**Implementation and evidence (2026-11-03):** Verified working tree based on `27d4d0234f65bda0632d17264ddc22f267c2f53d`, including the strengthened `MediaOwnershipTest` and documentation changes. Native Windows build 10.0.26200, XAMPP PHP 8.2.12 ZTS x64, PHPUnit 11.5.56, SQLite in memory and randomized temporary public media roots. No cached application configuration was present. The initial unelevated run and subsequent outside-sandbox run both skipped the test with zero assertions; the strict latter command exited 1. This confirms sandbox approval alone did not supply the required OS privilege.
+
+A UAC-elevated PowerShell process ran the same PHP executable. Its token contained `SeCreateSymbolicLinkPrivilege` (reported disabled by `whoami /priv` before PHP execution); actual successful PHP symlink creation established capability. No permanent OS settings were changed. The test confirms a real link resolves outside owned case media, archive resolution denies it, authenticated export returns 422 with `case.cover` validation and no HTTP fallback, and deletion preserves the external target's original bytes. Cleanup unlinks only the test-owned link in `finally`, and the existing fixture teardown removes its temporary media root. No production defect was exposed or production behavior changed.
+
+Commands, run from `investigation-game-backend`, used `C:\xampp\php\php.exe vendor/phpunit/phpunit/phpunit` with `--display-skipped --fail-on-skipped --do-not-cache-result` in every invocation:
+
+- `--filter test_symlink_escape_cannot_authorize_reads_or_deletes tests/Feature/Admin/MediaOwnershipTest.php`: 1 test / 10 assertions, passed.
+- `tests/Feature/Admin/MediaOwnershipTest.php`: 20 tests / 66 assertions, passed, including traversal/provider ownership, shared retention, shipped signatures and authorized export/delete.
+- No path/filter (complete configured Unit and Feature suites): 496 tests / 3,236 assertions, passed. No skipped tests, failures or errors.
+- `tests/Operations`: 1 test / 19 assertions, passed with no skips, including owned worker interruption/restart and isolated database/media restoration. All four PHP commands exited zero. Qualification ran from 19:47 to 19:48 Asia/Damascus; the elevated launcher exited and no newly created `case-media-*` or `game-ops-*` temporary directories remained after completion.
+
+Frontend checks ran without elevation from `investigation-game-frontend`: `npm test` passed 150 tests across 26 files; `npm run lint` and `npm run build` passed. JavaScript output was 979.54 kB minified / 306.82 kB gzip; the existing size warning remains minor. Repeatable Windows qualification commands are in the backend README. The earlier skipped baseline above is historical; TASK-08 host and TASK-09 content qualification remain open.
+
 **Successful-fix verification:**
 
-- [ ] Execute the named test on a filesystem/process that supports the required symlink; record environment and assertion results.
-- [ ] Confirm export/read is denied and the external target survives attempted deletion.
-- [ ] Run the complete backend suite in that environment and document any remaining skips individually.
-- [ ] Keep traversal, provider ownership, shared-media retention and normal authorized export/delete checks passing.
-- [ ] Frontend tests, lint and production build remain clean on the release revision.
+- [x] Execute the named test on a filesystem/process that supports the required symlink; record environment and assertion results.
+- [x] Confirm export/read is denied and the external target survives attempted deletion.
+- [x] Run the complete backend suite in that environment and document any remaining skips individually.
+- [x] Keep traversal, provider ownership, shared-media retention and normal authorized export/delete checks passing.
+- [x] Frontend tests, lint and production build remain clean on the release revision.
 
 **Relevant file:** `investigation-game-backend/tests/Feature/Admin/MediaOwnershipTest.php`.
 
@@ -216,6 +229,57 @@ Also preserve the corrected error semantics: a gameplay 403 retains valid authen
 
 **Relevant files:** `investigation-game-backend/README.md`, `investigation-game-backend/scripts/operations-status.php`, `investigation-game-backend/tests/Operations/RecoveryTest.php`, `investigation-game-backend/app/Providers/AppServiceProvider.php`, `investigation-game-backend/config/queue.php`, `investigation-game-backend/config/broadcasting.php`, `investigation-game-backend/routes/console.php`, `investigation-game-backend/app/Models/GameRoom.php`.
 
+### Local readiness implementation and qualification record (2026-11-03/04; in progress)
+
+The user selected an existing VPS for later manual hosting. No hosting purchase or VPS change is part of this milestone. TASK-08 remains open for intended-host qualification. Its local checks are recorded separately; production alerts and scheduled production backups are deferred. Future targets: daily backups, seven-day retention, up to 24 hours of lost progress, restoration within four hours after response begins.
+
+Working tree based on `27d4d02`: corrected Glasshouse now requires 0 XP, remains published, and retains its authored graph. Registration/reward rules are unchanged. The offline builder accepts the exact approved authoring ZIP with `--authoring`, verifies source/manifest SHA-256, and maps all 13 required assets by matching reviewed byte hashes. The reviewed-export path is preserved. Source ZIPs were retained. The new `case:install-glasshouse` command requires local/testing mode, exact database confirmation, an empty catalog and approved manifest/media bytes before calling the existing importer with local storage.
+
+Installed into dedicated MySQL database `investigation_game_local_release`; only the local `.env` database selection changed. Previous databases were retained and the external-media-deleting reset command was not used. All migrations applied; case 1 imported successfully. A repeated installation was rejected without replacing the catalog. Bundle: `cases/glasshouse-local-zero-xp.zip`; SHA-256 `5aa54c85b308af9b728e035d0d52ee346e596a0b494c1b80b0c278f6761b8cf0`. Its adjacent `.provenance.json` records source/manifest/media/bundle hashes. Evidence 04 audio remains excluded.
+
+Verification:
+
+- Real-media authored-case regressions now build the exact approved bundle instead of substituting a tiny image; players start at 0 XP. Five tests / 400 assertions passed, covering both L01 routes, six guilty characters, three vital proofs, intended statuses, procedural/location progression, perfect/partial/failure outcomes and subsequent play.
+- Installer/source-rejection regressions: two tests / eight assertions passed.
+- Final full backend: 499 tests / 3,249 assertions passed, no skips, using Windows UAC elevation and `--display-skipped --fail-on-skipped --do-not-cache-result`. This includes the added real private-channel authorization-route regression (guest/nonparticipant rejection and participant authorization; one test / five assertions). Separate operational suite: one test / 19 assertions passed. That suite remains isolated SQLite evidence; the separate MySQL-compatible restore below used the installed game.
+- Frontend: 150 tests across 26 files, lint and production build passed. Existing JavaScript warning: 979.54 kB minified / 306.82 kB gzip.
+- `composer run dev` successfully launched API `127.0.0.1:8000`, frontend `localhost:5173`, database queue listener and Reverb on port 8080. Duplicate task-owned launchers were stopped before the restore drill. A production preview was subsequently served with `npm run preview -- --host 127.0.0.1 --port 5173 --strictPort`; explicit IPv4 binding resolved an IPv6-only localhost preview listener.
+- Browser automation became available and the user instructed the agent to perform verification itself. The former request for user-run observations is superseded. The observations below were collected by the agent using normal UI actions, with no gameplay API calls or progress edits.
+
+Environment: Windows 11 Home 10.0.26200 (build 26200), XAMPP PHP 8.2.12 x64, MariaDB 10.4.32 using the application's MySQL driver, Node 24.15.0 and the in-app desktop Chromium browser. The browser tool does not expose its Chromium version or a browser-process restart action. Baseline revision `27d4d0234f65bda0632d17264ddc22f267c2f53d` plus the documented working-tree changes. The approved authoring ZIP SHA-256 is `89f5e81b537bac44be32d6972fd1970ed3aa6e2f00e36dccb28288cfeb44b149`; corrected manifest SHA-256 is `4e6d5cc7e5d2e6f13ad8de6d0eb22779806550dae4842681a61fc7c361e40561`. Source and previous databases were preserved.
+
+Agent browser observations, spanning 2026-11-03 UTC / 2026-11-04 Asia/Damascus:
+
+- Registered a fresh synthetic account with 0 XP, discovered exactly one published launch case, entered its zero-XP briefing and started room `Z8XOKO`. Development serving rendered the local cover, map, portraits, evidence photograph and all three L02 scene images. All four location points were inspected. Evidence 04 audio remained excluded.
+- Completed the contractor L01 route, all four procedural requests, L03, the corrected L04 desk/Voss branch and L05 through real delayed queue progression. Selected all six guilty characters in the UI and submitted a perfect verdict with all three vital proofs possessed. Result: **900 / 900 XP, 6 / 6 perpetrators, zero innocent accusations, zero strikes, 39 minutes**. The browser did not pre-credit XP or edit gameplay rows.
+- Restarted the application against the independently restored database/media root, then continued and completed that saved investigation through the production frontend. Reverb remained stopped throughout the restored portion (no listener on 8080); accepted votes, delayed answers, unlocks and terminal results converged over HTTP.
+- Stopped the restore-owned queue listener and children before submitting the first L03 vote. The UI confirmed the accepted vote was saved and waiting for server confirmation. Refreshed, restarted the listener against the restore database/cache namespace, observed the real finalization job complete and resumed at the next question with the previous answer in the transcript. Duplicate-delivery protection additionally remains covered by the isolated encounter lifecycle/continuity tests.
+- Stopped only the restore API and opened a new tab at the saved room. The English initial recovery screen displayed **Unable to verify session / Retry**. Restarted that API and clicked Retry; the saved room recovered. The prior visible room also caught up after the outage.
+- Refreshed the solved room and opened it in a new tab, closing the old gameplay tab. Both displayed persisted 39-minute, 900-XP, 6/6, zero-innocent results. Discovery displayed 900 total XP, retained the perfect history and offered a zero-additional-XP replay. Subsequent play created separate room `GCDKMN`.
+- Expired only this synthetic account's token in the isolated restore database, leaving gameplay unchanged. The next load presented sign-in; English **System access / Email / Password / Sign in** copy rendered. Normal sign-in recovered `GCDKMN` and its saved dialogue. Returned to Arabic gameplay and resumed through discovery.
+- Completed the alternate L01 route (`238 → 242 → 244 → ledger_return → 245`) through the real queue on that replay; it returned normally to the map without the former dialogue cycle. Perfect/partial/premature/strike failure, rewards and subsequent encounter behavior also passed the real-bundle authored regressions.
+- A read-only check of the restored perfect game confirmed `solved`, the persisted 900-XP player award, `solved_perfect` best history, zero active encounter members and zero failed jobs. Authentication budgets, database-cache persistence, permission failures retaining valid authentication, token maintenance and room retention ran against isolated fixtures in the backend/frontend suites; no Windows scheduled task or production monitoring was installed.
+- Confirmed the unfinished replay's explicit Restart Case dialog, accepted it and entered new room `8JNACY` with zero strikes. Left that verification-only attempt through its normal exit confirmation. The prior perfect result and 900 XP remained intact after restart and exit.
+
+Consistent local recovery evidence: all task-owned API/frontend/queue/Reverb processes were stopped before capture. `mysqldump --defaults-extra-file=PRIVATE.cnf --single-transaction --routines --triggers --hex-blob --result-file=database.sql investigation_game_local_release` captured the database; copied `public/assets` at the same paused point and compared all **71 media file hashes**. Restored via `mysql --defaults-extra-file=PRIVATE.cnf investigation_game_restore_20261103204320` with dump stdin into a newly created database, compared every table's rows, and served a separate copied public root. The protected temporary credentials file was removed in `finally`. The original `.env` still selects `investigation_game_local_release`; the restored API/queue received process-only database and `glasshouse_restore_` cache overrides. No provider assets were written or deleted. Dump timestamp: 2026-11-03 20:43:20 UTC; screenshot of resumed restored dialogue: 21:01:43 UTC; perfect restored result: 21:13:16 UTC. The observed recovery/resumption interval was under 19 minutes, within the four-hour local drill target. This is no claim of VPS recovery performance or a scheduled backup policy.
+
+Final commands from the backend, executed through the task-owned UAC helper at 2026-11-04 00:06–00:08 +03:00:
+
+```powershell
+php vendor/phpunit/phpunit/phpunit --filter test_symlink_escape_cannot_authorize_reads_or_deletes tests/Feature/Admin/MediaOwnershipTest.php --display-skipped --fail-on-skipped --do-not-cache-result
+php vendor/phpunit/phpunit/phpunit tests/Feature/Admin/MediaOwnershipTest.php --display-skipped --fail-on-skipped --do-not-cache-result
+php vendor/phpunit/phpunit/phpunit --display-skipped --fail-on-skipped --do-not-cache-result
+php vendor/phpunit/phpunit/phpunit tests/Operations --display-skipped --fail-on-skipped --do-not-cache-result
+```
+
+Results respectively: **1 test / 10 assertions; 20 / 66; 499 / 3,249; 1 / 19**, all exit 0, no skips. UAC elevation was real; `whoami /priv` listed `SeCreateSymbolicLinkPrivilege` as disabled in the initial token listing, while the PHP test actually created and exercised the symlink successfully. No permanent Windows policy change was made. Frontend commands without elevation: `npm test -- --run` (**26 files / 150 tests**), `npm run lint`, `npm run build`, all exit 0. The existing 979.54-kB / 306.82-kB gzip warning remains minor: development and production gameplay loaded and completed without a demonstrated bundle-related failure. This is a local desktop observation, not mobile/network performance qualification.
+
+Evidence artifacts are retained under `C:/Users/ASUS/.codex/visualizations/2026/11/03/01a1a242-d561-70e3-9888-607074454e6d`: `task07-*.log`, `mysql-restore-20261103204320/database.sql`, `checksums.json`, `mysql-local-restore.php`, `restored-router.php`, `restored-checks.php`, `restored-pending-dialogue.png`, `http-retry.png` and `glasshouse-perfect-restored.png`. Backup/restore fixtures are intentionally retained as recovery evidence; credentials are not included. The ignored `LOCAL-VERIFICATION.md` is only a working route aid; this tracked record is authoritative.
+
+Cleanup: the restore-owned queue listener and child worker, restored API and production preview were stopped after the checks. Process inspection found no remaining matching task-owned runtime and no listeners on 5173/8000/8080. The temporary `client.cnf` was absent. The two normal verification browser tabs were closed; the earlier connection-error tab could not be reacquired for closure because the browser URL policy blocks its generated error-page URL. MySQL itself, the installed source database, original source archives and intentional recovery evidence were retained. `git diff --check` passed; status contained only the intended plan/README, release manifest/builder, installer and verification-test changes. No commit, deployment, database reset or permanent Windows setting change was performed.
+
+**Remaining qualification limitation:** full browser-process closure/relaunch has not been observed because the connected browser exposes tab closure/opening but no process lifecycle control. Tab closure/reopening, refresh, application/API restart and real token-expiry recovery passed; none is labelled as a full browser-process restart. TASK-09 and final local 80% sign-off remain open until that explicit required observation exists. No user-run checklist is being requested again. VPS qualification, mobile support, host purchases, production alerts and scheduled production backups remain outside this milestone. Raw unread-indicator translation keys and some English gameplay labels were observed; Arabic progression and English entry/recovery remained usable, assessed as minor copy issues.
+
 ### ISSUE-09 — The database must receive the verified Glasshouse content, with a consistent entry policy
 
 **Priority:** Content release blocker; entry policy also needs clarification.
@@ -245,17 +309,18 @@ The user now permits discarding old data and clean repopulation. An in-place leg
 
 **Successful-fix verification:**
 
-- [ ] Record the source ZIP, corrected manifest, asset inventory and final bundle/content identity used for repopulation.
-- [ ] Verify the fresh database has the intended published Glasshouse case and corrected graph, with no stale duplicate or unintended draft serving as the launch case.
-- [ ] Verify every referenced required asset exists and renders; retain usable source assets until replacement validation succeeds.
-- [ ] Register a fresh account and enter through normal discovery and UI using the agreed XP policy; do not rely only on a pre-credited fixture.
-- [ ] Complete the case through the actual application, queue and supported browser after repopulation; no direct gameplay API calls or database edits substitute for player actions.
-- [ ] Exercise both tested L01 routes and verify all six guilty characters and three vital proofs are reachable with intended statuses.
-- [ ] Exercise required procedural requests, location points, dialogue branches and final indictment interactions.
-- [ ] Verify perfect, relevant failure and partial/replay outcomes through an appropriate mix of browser and focused automated coverage; document which outcomes were observed where.
-- [ ] Verify actual XP, final statistics, best history, restart/subsequent play and the recovery corrections from ISSUE-01/ISSUE-03.
-- [ ] Re-run the authored-case regression suite against the content actually selected for installation; a different synthetic or corrected manifest alone is insufficient.
-- [ ] Record the final host/revision/content combination and remaining minor limitations.
+- [x] Record the source ZIP, corrected manifest, asset inventory and final bundle/content identity used for repopulation.
+- [x] Verify the fresh database has the intended published Glasshouse case and corrected graph, with no stale duplicate or unintended draft serving as the launch case.
+- [x] Verify every referenced required asset exists and renders; retain usable source assets until replacement validation succeeds.
+- [x] Register a fresh account and enter through normal discovery and UI using the agreed XP policy; do not rely only on a pre-credited fixture.
+- [x] Complete the case through the actual application, queue and supported browser after repopulation; no direct gameplay API calls or database edits substitute for player actions.
+- [x] Exercise both tested L01 routes and verify all six guilty characters and three vital proofs are reachable with intended statuses.
+- [x] Exercise required procedural requests, location points, dialogue branches and final indictment interactions.
+- [x] Verify perfect, relevant failure and partial/replay outcomes through an appropriate mix of browser and focused automated coverage; document which outcomes were observed where.
+- [x] Verify actual XP, final statistics, best history, restart/subsequent play and the recovery corrections from ISSUE-01/ISSUE-03 (except the explicit full browser-process restart below).
+- [x] Re-run the authored-case regression suite against the content actually selected for installation; a different synthetic or corrected manifest alone is insufficient.
+- [x] Record the final host/revision/content combination and remaining minor limitations.
+- [ ] Observe full browser-process closure/relaunch against this installation; tab closure/reopening is recorded separately and does not discharge this requirement.
 
 **Relevant sources:** `cases/the-glasshouse-files.zip`, `investigation-game-backend/database/release-content/glasshouse-files/case.json`, `investigation-game-backend/database/release-content/glasshouse-files/source.json`, `investigation-game-backend/scripts/release-content/build-glasshouse-release.php`, `investigation-game-backend/app/Services/Case/CaseImportService.php`, `investigation-game-backend/tests/Feature/GlasshousePlayabilityTest.php`, `investigation-game-frontend/src/pages/MainMenu/CaseCard/CaseCard.tsx`, `investigation-game-frontend/src/pages/MainMenu/CaseBriefingModal/CaseBriefingModal.tsx`.
 
@@ -263,25 +328,25 @@ The user now permits discarding old data and clean repopulation. An in-place leg
 
 - [x] **TASK-01:** Resolve unfinished-case restart and verify connected continuity/encounter lifecycle behavior; completed under the user-approved browser exception documented above.
 - [x] **TASK-03:** Complete first-load recovery and authoritative terminal-statistics rendering, including explicit Retry, terminal revisits without tab storage, browser HTTP-only recovery and authentication checks.
-- [ ] **TASK-07:** Execute the skipped filesystem-security behavior and confirm the release test baseline.
+- [x] **TASK-07:** Execute the skipped filesystem-security behavior and confirm the release test baseline; real Windows symlink, export/delete checks and complete backend/frontend qualification passed on 2026-11-03.
 - [ ] **TASK-08:** Demonstrate host operation, deployed authentication protection, persistence and restoration.
 - [ ] **TASK-09:** Install and verify corrected published Glasshouse content, using the approved disposable-data policy, and settle the entry policy.
 
-TASK-01 and TASK-03 are retained here with their completion evidence. Other resolved standalone tasks are omitted. Their connected invariants are retained under the open issues above; they must remain covered when those issues change.
+TASK-01, TASK-03 and TASK-07 are retained here with their completion evidence. Other resolved standalone tasks are omitted. Their connected invariants are retained under the open issues above; they must remain covered when those issues change.
 
 ## 3. Final 80% acceptance
 
 The current passing automated baseline is recorded above. It must be repeated on the final release revision after the remaining changes.
 
 - [ ] All active tasks have specific implementation and verification evidence, with no remaining gameplay blocker.
-- [ ] A fresh account can enter and complete the installed launch case through the supported interface.
+- [x] A fresh account can enter and complete the installed launch case through the supported interface.
 - [ ] Refresh, tab/browser reopening, initial HTTP failure, visible-tab recovery and pending finalization preserve correct progress.
-- [ ] Restart, explicit abandonment, terminal cleanup and subsequent play leave consistent memberships and rewards.
-- [ ] Recovered end screens show persisted results and the correct player's actual award.
-- [ ] Direct gameplay requests cannot mutate concluded rooms or bypass resource authorization; permission failures retain valid sessions and real expiry is recoverable.
-- [ ] Final frontend/backend tests, operational checks, lint and build pass; essential skipped coverage has been executed.
-- [ ] The intended host demonstrates worker/scheduler operation, realtime authorization, public authentication controls, persistent storage and a playable restore.
-- [ ] Final browser evidence identifies the code revision, installed content version, host and supported device/browser scope.
+- [x] Restart, explicit abandonment, terminal cleanup and subsequent play leave consistent memberships and rewards.
+- [x] Recovered end screens show persisted results and the correct player's actual award.
+- [x] Direct gameplay requests cannot mutate concluded rooms or bypass resource authorization; permission failures retain valid sessions and real expiry is recoverable.
+- [x] Final frontend/backend tests, operational checks, lint and build pass; essential skipped coverage has been executed.
+- [x] Local worker/realtime/authentication, persistence and a playable MySQL/media restore are demonstrated. Intended-VPS supervisor/scheduler, proxy/TLS, alerts and deployment qualification remain a separate TASK-08 gate.
+- [x] Final browser evidence identifies the code revision, installed content version, local runtime and desktop Chromium scope; VPS evidence is deferred.
 - [ ] Remaining issues are explicitly assessed as minor: they do not block completion, unexpectedly lose progress, lock subsequent games, compromise essential security or defeat the verified recovery behavior.
 
-**Sign-off:** 80% is reached when this evidence exists for the installed release. A reset, a successful import, a green build or a single uninterrupted solve alone does not establish it. Old pre-launch data may be discarded; new player progress must be reliable after launch.
+**Sign-off:** Local 80% is reached when the local evidence above exists for the installed release; production/VPS readiness requires the separate TASK-08 qualification. A reset, a successful import, a green build or a single uninterrupted solve alone does not establish it. Old pre-launch data may be discarded; new player progress must be reliable after launch.
