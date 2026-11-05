@@ -19,7 +19,7 @@ const icons: Record<MetadataKind, ReactNode> = {
 };
 
 export default function CaseMetadataBadge({ kind, children, rewardState = 'standard' }: CaseMetadataBadgeProps) {
-  const tone = kind === 'price' ? styles.price : kind === 'reward' ? styles[rewardState] : '';
+  const tone = kind === 'price' || kind === 'advisory' ? styles[kind] : kind === 'reward' ? styles[rewardState] : '';
   return (
     <div className={`${styles.badge} ${tone}`}>
       <svg aria-hidden="true" className={styles.icon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

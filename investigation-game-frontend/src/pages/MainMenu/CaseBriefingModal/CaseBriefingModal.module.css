@@ -26,7 +26,6 @@
   grid-template-rows: minmax(0, 1fr) auto;
   overflow: hidden;
   box-shadow: 0 24px 64px rgba(var(--bg-dark-rgb), 0.84);
-  animation: panelSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .modalContent:focus {
@@ -159,9 +158,10 @@
 }
 
 .metadataRow {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  column-gap: 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 2rem;
   row-gap: 1.25rem;
   padding-bottom: 1.5rem;
   border-bottom: var(--border-thin);
@@ -235,14 +235,13 @@
   line-height: 1.5;
   overflow-wrap: anywhere;
   cursor: pointer;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .btnPrimary {
   border: 1px solid var(--accent-cyan);
   background: var(--accent-cyan);
   color: var(--text-third);
-  box-shadow: 0 4px 20px rgba(var(--accent-cyan-rgb), 0.35);
 }
 
 .btnPrimary:last-child {
@@ -252,7 +251,6 @@
 .btnPrimary:hover:not(:disabled) {
   background: var(--bg-dark);
   color: var(--accent-cyan);
-  box-shadow: 0 8px 28px rgba(var(--accent-cyan-rgb), 0.5);
 }
 
 .btnSecondary {
@@ -276,7 +274,6 @@
   background: rgba(var(--border-light-rgb), 0.15);
   color: var(--text-secondary);
   border-color: transparent;
-  box-shadow: none;
   cursor: wait;
 }
 
@@ -297,16 +294,7 @@
   to { opacity: 1; }
 }
 
-@keyframes panelSlideUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 @media (max-width: 900px) {
-  .metadataRow {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
   .heroHeader {
     padding: 5rem 1.5rem 1.5rem;
     min-height: 280px;
@@ -348,7 +336,6 @@
   }
 
   .metadataRow {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     column-gap: 1rem;
     row-gap: 1rem;
   }
@@ -378,8 +365,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .modalBackdrop,
-  .modalContent {
+  .modalBackdrop {
     animation: none;
   }
 

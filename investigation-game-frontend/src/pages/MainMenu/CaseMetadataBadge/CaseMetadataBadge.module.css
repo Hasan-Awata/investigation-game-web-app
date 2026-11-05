@@ -1,6 +1,6 @@
 .badge {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   min-width: 0;
   gap: 0.5rem;
   color: var(--text-secondary);
@@ -8,6 +8,7 @@
   font-size: 0.95rem;
   font-weight: 400;
   line-height: 1.6;
+  text-shadow: none;
   overflow-wrap: anywhere;
 }
 
@@ -17,7 +18,7 @@
   flex-shrink: 0;
   width: 1.15rem;
   height: 1.15rem;
-  margin-top: 0.2rem;
+  filter: none;
 }
 
 .rewardValue {
@@ -27,5 +28,7 @@
 
 .standard { color: var(--accent-amber); }
 .neutral { color: var(--text-secondary); }
+.advisory { font-weight: 700; }
+.advisory,
 .penalty { color: var(--accent-crimson); }
 .price { color: #7d9b6a; }
