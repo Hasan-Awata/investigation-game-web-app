@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { Zone } from '@/types';
+import CampaignMap from './CampaignMap';
 import ZoneCard from './ZoneCard';
 
 vi.mock('react-i18next', () => ({
@@ -33,7 +34,7 @@ function openZone(currentZone = zone) {
   const onClose = vi.fn();
   const onEnter = vi.fn();
   render(<ZoneCard zone={currentZone} unlockedLevelIds={new Set([2])} onClose={onClose} onEnter={onEnter} />);
-  const dialog = screen.getByRole('dialog', { name: zone.title });
+  const dialog = screen.getByRole('dialog', { name: currentZone.title });
   return { dialog, onClose, onEnter };
 }
 
@@ -75,4 +76,17 @@ it('passes the selected zone ID to Travel', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Travel to Zone' }));
   expect(onEnter).toHaveBeenCalledExactlyOnceWith(42);
   expect(onClose).not.toHaveBeenCalled();
+});
+
+it('opens a discovered zone from the map and omits zones with no discovered leads', () => {
+  const onEnterZone = vi.fn();
+  const hiddenZone: Zone = { ...zone, id: 43, title: 'Undiscovered district', levels: [] };
+  render(<CampaignMap zones={[hiddenZone, zone]} unlockedLevelIds={new Set([2])} onEnterZone={onEnterZone} />);
+
+  expect(screen.queryByText(hiddenZone.title)).not.toBeInTheDocument();
+  fireEvent.click(screen.getByText(zone.title));
+
+  const dialog = screen.getByRole('dialog', { name: zone.title });
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Travel to Zone' }));
+  expect(onEnterZone).toHaveBeenCalledExactlyOnceWith(zone.id);
 });

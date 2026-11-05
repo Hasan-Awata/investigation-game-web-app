@@ -200,14 +200,60 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
+  .dialog[open]::backdrop {
+    animation: backdropFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .dossier {
+    animation: dossierSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .lead {
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
   .close,
   .travel {
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, translate 0.1s ease;
+    --button-transition: 0.2s;
+    transition-property: background-color, border-color, color, transform, translate;
+    transition-duration: var(--button-transition), var(--button-transition), var(--button-transition), var(--button-transition), 0.1s;
+  }
+
+  .travel {
+    --button-transition: 0.25s;
+    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .close:active,
   .travel:active {
     translate: 0 1px;
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .close:hover {
+    transform: scale(1.08);
+  }
+
+  .travel:hover {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes backdropFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes dossierSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
   }
 }
 

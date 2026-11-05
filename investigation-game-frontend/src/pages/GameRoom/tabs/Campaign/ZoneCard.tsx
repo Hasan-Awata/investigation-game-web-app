@@ -12,9 +12,14 @@ interface ZoneCardProps {
 
 type LeadState = 'available' | 'warrant' | 'restricted';
 
-function LeadIcon({ state, type, label }: { state: LeadState; type?: Level['presentation_type']; label?: string }) {
+interface LeadIconProps {
+  type?: Level['presentation_type'] | 'restricted';
+  label?: string;
+}
+
+function LeadIcon({ type, label }: LeadIconProps) {
   let shape;
-  if (state === 'restricted') {
+  if (type === 'restricted') {
     shape = <><rect x="5" y="11" width="14" height="10" rx="2" /><path d="M8 11V7a4 4 0 1 1 8 0v4" /></>;
   } else if (type === 'interrogation') {
     shape = <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />;
@@ -85,14 +90,14 @@ export default function ZoneCard({ zone, unlockedLevelIds, onClose, onEnter }: Z
             <ul className={styles.leads} role="list">
               {levels.map(level => {
                 const discovered = level.is_initial || unlockedLevelIds.has(level.id);
-                const state: LeadState = !discovered ? 'restricted' : level.required_request_id ? 'warrant' : 'available';
-                const warrantHint = state === 'warrant' ? warrantLabel : undefined;
+                const requiresWarrant = discovered && Boolean(level.required_request_id);
+                const state: LeadState = requiresWarrant ? 'warrant' : discovered ? 'available' : 'restricted';
+                const warrantHint = requiresWarrant ? warrantLabel : undefined;
 
                 return (
                   <li key={level.id} className={styles.lead} data-state={state}>
                     <LeadIcon
-                      state={state}
-                      type={discovered ? level.presentation_type : undefined}
+                      type={discovered ? level.presentation_type : 'restricted'}
                       label={warrantHint}
                     />
                     <span className={styles.leadTitle}>

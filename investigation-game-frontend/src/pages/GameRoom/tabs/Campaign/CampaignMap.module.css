@@ -6,15 +6,8 @@
   margin: 0; 
   overflow: hidden;
   background-color: #0a0a0a;
-  box-sizing: border-box;
   overscroll-behavior: none; 
   touch-action: none;
-}
-
-@media all and (display-mode: fullscreen) {
-  .campaign-map-container {
-    height: 100vh; 
-  }
 }
 
 .campaign-map-container::after {
@@ -55,6 +48,7 @@
 }
 
 .map-pin-wrapper {
+  position: absolute;
   cursor: pointer;
   display: flex;
   flex-direction: column;
@@ -69,11 +63,10 @@
   100% { transform: translate(-50%, -100%); opacity: 1; }
 }
 
-/* --- THE SVG TACTICAL MARKERS --- */
 .tactical-svg-pin {
   color: var(--accent-cyan);
   filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.5));
-  transition: all 0.15s ease-out;
+  transition: filter 0.15s ease-out, transform 0.15s ease-out;
   display: block;
 }
 
@@ -82,7 +75,6 @@
   transform: translateY(-3px) scale(1.05);
 }
 
-/* --- CLEAN TOOLTIP (Simple Fade, No Sliding) --- */
 .pin-tooltip {
   position: absolute;
   bottom: 100%;
@@ -98,7 +90,7 @@
   pointer-events: none;
   box-shadow: 0 4px 10px rgba(0,0,0,0.5);
   transform: translateY(6px); 
-  transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  transition: opacity 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
   z-index: 20;
   margin-bottom: 8px;
 }
@@ -106,11 +98,4 @@
 .map-pin-wrapper:hover .pin-tooltip {
   opacity: 1;
   transform: translateY(0);
-}
-
-@media (max-width: 1000px) {
-  .campaign-map-container {
-    margin-top: 0; 
-    height: 100vh; 
-  }
 }
