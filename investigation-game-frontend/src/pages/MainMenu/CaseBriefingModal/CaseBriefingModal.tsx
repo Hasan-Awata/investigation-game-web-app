@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query';
 import '@/i18n';
-import type { GameCase } from '../../../types';
+import type { GameCase, User } from '../../../types';
+import { getSafeStorage, removeSafeStorage, setSafeStorage } from '@/utils/storage';
 import { CaseUserStatus } from '../../../types';
 import { createRoom, restartRoom } from '../../../services/api';
 import styles from './CaseBriefingModal.module.css';
@@ -14,22 +15,58 @@ import type { RewardState } from '../CaseMetadataBadge/CaseMetadataBadge';
 
 interface CaseBriefingModalProps {
   gameCase: GameCase;
+  userId?: User['id'];
   onClose: () => void;
 }
 
-export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingModalProps) {
+export default function CaseBriefingModal({ gameCase, userId, onClose }: CaseBriefingModalProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
   const [confirmingRestart, setConfirmingRestart] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const favoriteKey = `case_favorite:${userId ?? 'local'}:${gameCase.id}`;
+  const [isFavorite, setIsFavorite] = useState(() => getSafeStorage<boolean>('local', favoriteKey, false) === true);
+  const [shareFeedback, setShareFeedback] = useState<'copied' | 'manual' | null>(null);
+  const shareUrl = new URL('/', window.location.origin);
+  shareUrl.searchParams.set('case', String(gameCase.id));
   const modalRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const confirmationId = useId();
   const requestPending = useRef(false);
   const primaryButtonRef = useRef<HTMLButtonElement>(null);
   const cancelButtonRef = useRef<HTMLButtonElement>(null);
+
+  const toggleFavorite = () => {
+    if (isFavorite) removeSafeStorage('local', favoriteKey);
+    else setSafeStorage('local', favoriteKey, true);
+    setIsFavorite(!isFavorite);
+  };
+
+  const shareCase = async () => {
+    setShareFeedback(null);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: gameCase.title, url: shareUrl.href });
+        return;
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') return;
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(shareUrl.href);
+      setShareFeedback('copied');
+    } catch {
+      setShareFeedback('manual');
+    }
+  };
+
+  useEffect(() => {
+    if (shareFeedback !== 'copied') return;
+    const timeout = window.setTimeout(() => setShareFeedback(null), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [shareFeedback]);
 
   useEffect(() => {
     if (confirmingRestart) cancelButtonRef.current?.focus();
@@ -153,19 +190,37 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
         onKeyDown={handleKeyDown}
         onClick={(e) => e.stopPropagation()}
       >
-        <button type="button" className={styles.closeBtn} onClick={onClose} disabled={isLoading} title="Close" aria-label="Close">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
-            <path d="m6 6 12 12M6 18 18 6" />
-          </svg>
-        </button>
+        <div className={styles.heroActions}>
+          <button type="button" className={`${styles.heroButton} ${styles.closeBtn}`} onClick={onClose} disabled={isLoading} title="Close" aria-label="Close">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+              <path d="m6 6 12 12M6 18 18 6" />
+            </svg>
+          </button>
+          <div className={styles.shareAction}>
+            <button type="button" className={`${styles.heroButton} ${styles.shareBtn}`} onClick={shareCase} disabled={isLoading} title={t('components.caseBriefing.share')} aria-label={t('components.caseBriefing.share')}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" aria-hidden="true">
+                <path d="m8.7 10.5 6.6-3.8m-6.6 6.8 6.6 3.8" />
+                <circle cx="6" cy="12" r="3" /><circle cx="18" cy="5" r="3" /><circle cx="18" cy="19" r="3" />
+              </svg>
+            </button>
+            {shareFeedback && (
+              <div className={styles.shareFeedback} role="status">
+                {t(shareFeedback === 'copied' ? 'components.caseBriefing.linkCopied' : 'components.caseBriefing.copyCaseLink')}
+                {shareFeedback === 'manual' && <input readOnly tabIndex={0} aria-label={t('components.caseBriefing.copyCaseLink')} value={shareUrl.href} onFocus={event => event.currentTarget.select()} />}
+              </div>
+            )}
+          </div>
+          <button type="button" className={`${styles.heroButton} ${styles.favoriteBtn}`} onClick={toggleFavorite} disabled={isLoading} title={t('components.caseBriefing.favorite')} aria-label={t('components.caseBriefing.favorite')} aria-pressed={isFavorite}>
+            <svg viewBox="0 0 24 24" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" aria-hidden="true">
+              <path d="M20.8 5.8a5.3 5.3 0 0 0-7.5 0L12 7.1l-1.3-1.3a5.3 5.3 0 0 0-7.5 7.5l1.3 1.3L12 22l7.5-7.4 1.3-1.3a5.3 5.3 0 0 0 0-7.5Z" />
+            </svg>
+          </button>
+        </div>
 
         <div className={styles.modalScrollArea} tabIndex={0} role="region" aria-labelledby={titleId}>
           <div className={styles.heroHeader} style={heroStyle}>
             <div className={styles.heroGradientOverlay}></div>
             <div className={styles.heroContent}>
-              <div className={styles.modalAuthor}>
-                {t('components.caseBriefing.authoredBy')} {gameCase.author_name || t('components.caseBriefing.system')}
-              </div>
               <h2 id={titleId} className={styles.modalTitle}>{gameCase.title}</h2>
               {gameCase.tags && gameCase.tags.length > 0 && (
                 <div className={styles.dossierTags}>
@@ -179,6 +234,9 @@ export default function CaseBriefingModal({ gameCase, onClose }: CaseBriefingMod
 
           <div className={styles.modalBody}>
             <div className={styles.metadataRow}>
+              <CaseMetadataBadge kind="author">
+                {gameCase.author_name || t('components.caseBriefing.system')}
+              </CaseMetadataBadge>
               <CaseMetadataBadge kind="playtime">{gameCase.estimated_playtime || t('components.caseBriefing.unknown')}</CaseMetadataBadge>
               <CaseMetadataBadge kind="difficulty">{gameCase.difficulty || t('components.caseBriefing.standard')}</CaseMetadataBadge>
               <CaseRating rating={gameCase.rating_stars} />

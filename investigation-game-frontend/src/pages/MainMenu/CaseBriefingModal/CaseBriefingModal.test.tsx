@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import i18n from '@/i18n';
 import type { GameCase, GameRoom } from '@/types';
@@ -24,12 +24,35 @@ beforeEach(async () => {
   await i18n.changeLanguage('en');
 });
 
+afterEach(() => vi.unstubAllGlobals());
+
 function renderBriefing(selectedCase = gameCase) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const close = vi.fn();
-  render(<QueryClientProvider client={client}><CaseBriefingModal gameCase={selectedCase} onClose={close} /></QueryClientProvider>);
-  return { client, close };
+  const { unmount } = render(<QueryClientProvider client={client}><CaseBriefingModal gameCase={selectedCase} onClose={close} /></QueryClientProvider>);
+  return { client, close, unmount };
 }
+
+it('copies the case briefing link without exposing the active room invite', async () => {
+  const writeText = vi.fn().mockResolvedValue(undefined);
+  vi.stubGlobal('navigator', { clipboard: { writeText } });
+  renderBriefing();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Share case' }));
+
+  expect(await screen.findByText('Case link copied')).toBeVisible();
+  expect(writeText).toHaveBeenCalledExactlyOnceWith(`${window.location.origin}/?case=7`);
+});
+
+it('retains a favorite when the briefing is reopened and lets the player remove it', () => {
+  const { unmount } = renderBriefing();
+  fireEvent.click(screen.getByRole('button', { name: 'Favorite case', pressed: false }));
+  unmount();
+
+  renderBriefing();
+  fireEvent.click(screen.getByRole('button', { name: 'Favorite case', pressed: true }));
+  expect(screen.getByRole('button', { name: 'Favorite case', pressed: false })).toBeVisible();
+});
 
 it('requires confirmation without tab storage and cancelling or pressing Escape keeps the investigation', () => {
   const { close } = renderBriefing();
@@ -120,8 +143,9 @@ it.each([
   const rewardValue = screen.getByText('100');
   expect(rewardValue).toHaveTextContent(/^100$/);
   const rewardItem = rewardValue.parentElement!;
-  expect(rewardItem.parentElement!.children).toHaveLength(6);
-  expect(rewardItem.parentElement!.children[4]).toBe(rewardItem);
+  expect(rewardItem.parentElement!.children).toHaveLength(7);
+  expect(rewardItem.parentElement!.firstElementChild).toHaveTextContent('System');
+  expect(rewardItem.parentElement!.children[5]).toBe(rewardItem);
   expect(rewardItem.nextElementSibling).toHaveTextContent('Free');
   expect(screen.queryByText(/9876/)).not.toBeInTheDocument();
 });

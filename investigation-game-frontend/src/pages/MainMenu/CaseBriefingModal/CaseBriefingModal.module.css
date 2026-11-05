@@ -13,6 +13,11 @@
 }
 
 .modalContent {
+  --action-radius: 10px;
+  --action-inset: 1.25rem;
+  --content-inset: 2.5rem;
+  --modal-inner-radius: calc(var(--action-radius) + var(--action-inset));
+  --modal-border-width: 1px;
   position: relative;
   width: 100%;
   max-width: 920px;
@@ -20,8 +25,8 @@
   max-height: min(90dvh, calc(100dvh - 2rem));
   min-height: 0;
   background: var(--bg-dark);
-  border: 1px solid rgba(var(--border-light-rgb), 0.2);
-  border-radius: 22px;
+  border: var(--modal-border-width) solid rgba(var(--border-light-rgb), 0.2);
+  border-radius: calc(var(--modal-inner-radius) + var(--modal-border-width));
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto;
   overflow: hidden;
@@ -39,26 +44,33 @@
   scrollbar-gutter: stable;
 }
 
-.closeBtn {
+.heroActions {
+  --hero-action-inset: 1rem;
+  --hero-action-size: 44px;
   position: absolute;
-  top: 1rem;
-  inset-inline-end: 1rem;
+  inset-block-start: var(--hero-action-inset);
+  inset-inline-end: var(--hero-action-inset);
+  display: grid;
+  gap: 0.625rem;
+  z-index: 10;
+}
+
+.heroButton {
   background: rgba(var(--bg-dark-rgb), 0.85);
   border: 1px solid rgba(var(--border-light-rgb), 0.3);
   color: var(--text-primary);
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
+  width: var(--hero-action-size);
+  height: var(--hero-action-size);
+  border-radius: max(0px, calc(var(--modal-inner-radius) - var(--hero-action-inset)));
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.1rem;
   cursor: pointer;
-  transition: background-color 0.2s ease, border-color 0.2s ease;
-  z-index: 10;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
 
-.closeBtn svg {
+.heroButton svg {
   width: 1.25rem;
   height: 1.25rem;
 }
@@ -68,9 +80,47 @@
   border-color: var(--accent-crimson);
 }
 
-.closeBtn:disabled {
+.heroButton:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.shareBtn,
+.favoriteBtn {
+  background: var(--bg-panel);
+}
+
+.shareBtn:is(:hover, :active):not(:disabled) {
+  color: var(--accent-cyan);
+}
+
+.favoriteBtn:is(:hover, :active):not(:disabled),
+.favoriteBtn[aria-pressed='true'] {
+  color: var(--accent-crimson);
+}
+
+.shareAction {
+  position: relative;
+}
+
+.shareFeedback {
+  position: absolute;
+  inset-block-start: 0;
+  inset-inline-end: calc(100% + 0.5rem);
+  width: max-content;
+  max-width: min(14rem, 55vw);
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.375rem;
+  background: var(--bg-panel);
+  color: var(--text-primary);
+}
+
+.shareFeedback input {
+  display: block;
+  width: 100%;
+  direction: ltr;
+  background: var(--bg-dark);
+  border: var(--border-thin);
 }
 
 .heroHeader {
@@ -104,6 +154,7 @@
   flex-direction: column;
   gap: 0.75rem;
   min-width: 0;
+  padding-inline-end: max(0px, calc(4.5rem - var(--content-inset)));
   overflow-wrap: anywhere;
 }
 
@@ -117,15 +168,6 @@
   font-weight: 700;
   line-height: 1.2;
   text-wrap: balance;
-}
-
-.modalAuthor {
-  font-family: var(--font-mono, monospace);
-  color: var(--accent-amber);
-  font-size: 0.85rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  line-height: 1.6;
 }
 
 .dossierTags {
@@ -150,7 +192,7 @@
 }
 
 .modalBody {
-  padding: 0 2.5rem 2rem;
+  padding: 0 var(--content-inset) 2rem;
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
@@ -216,9 +258,14 @@
   justify-content: center;
   flex-wrap: wrap;
   gap: 1rem;
-  padding: 1.25rem 2.5rem;
+  padding: var(--action-inset) var(--content-inset) var(--content-inset);
+  overflow: hidden;
+  scrollbar-gutter: stable;
   background: var(--bg-dark);
-  border-top: var(--border-thin);
+}
+
+.modalActions:has(> .continueBtn) {
+  column-gap: 2rem;
 }
 
 .btnPrimary,
@@ -227,7 +274,7 @@
   min-width: 0;
   min-height: 52px;
   padding: 0.875rem 1.5rem;
-  border-radius: 9999px;
+  border-radius: var(--action-radius);
   font-weight: 700;
   font-family: var(--font-mono, monospace);
   text-transform: uppercase;
@@ -264,7 +311,12 @@
   border-color: var(--text-primary);
 }
 
-.continueBtn,
+.continueBtn {
+  border-color: var(--accent-cyan);
+  background: var(--text-third);
+  color: var(--accent-cyan);
+}
+
 .continueBtn:hover:not(:disabled) {
   border-color: var(--accent-cyan);
 }
@@ -277,7 +329,7 @@
   cursor: wait;
 }
 
-.closeBtn:focus-visible,
+.heroButton:focus-visible,
 .btnPrimary:focus-visible,
 .btnSecondary:focus-visible {
   outline: 2px solid var(--accent-cyan);
@@ -295,6 +347,11 @@
 }
 
 @media (max-width: 900px) {
+  .modalContent {
+    --action-inset: 1rem;
+    --content-inset: 1.5rem;
+  }
+
   .heroHeader {
     padding: 5rem 1.5rem 1.5rem;
     min-height: 280px;
@@ -305,11 +362,7 @@
   }
 
   .modalBody {
-    padding: 0 1.5rem 1.5rem;
-  }
-
-  .modalActions {
-    padding: 1rem 1.5rem;
+    padding-block-end: 1.5rem;
   }
 }
 
@@ -323,15 +376,12 @@
   }
 
   .modalContent {
+    --content-inset: 1rem;
     max-height: calc(100dvh - max(0.5rem, env(safe-area-inset-top)) - max(0.5rem, env(safe-area-inset-bottom)));
   }
 
   .heroHeader {
     min-height: 240px;
-    padding-inline: 1rem;
-  }
-
-  .modalBody {
     padding-inline: 1rem;
   }
 
@@ -343,7 +393,6 @@
   .modalActions {
     flex-direction: column;
     gap: 0.75rem;
-    padding: 1rem;
   }
 
   .btnPrimary,
@@ -359,8 +408,8 @@
     min-height: 220px;
   }
 
-  .modalActions {
-    padding-block: 0.75rem;
+  .modalContent {
+    --action-inset: 0.75rem;
   }
 }
 
@@ -369,7 +418,7 @@
     animation: none;
   }
 
-  .closeBtn,
+  .heroButton,
   .btnPrimary,
   .btnSecondary {
     transition: none;

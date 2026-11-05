@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import type { GameCase, User } from '@/types';
@@ -14,6 +14,7 @@ import LanguageToggle from '@/components/LanguageToggle';
 
 export default function MainMenu() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   // Lazy initialiser, NOT `useState(null)` + `useEffect(() => setUser(getLocalUser()))`:
@@ -24,7 +25,6 @@ export default function MainMenu() {
 // JSON.parse on the raw localStorage value with no try/catch, so a corrupted
 // payload threw a SyntaxError straight into render. getLocalUser never throws.
 const [user, setUser] = useState<User | null>(() => getLocalUser());
-  const [selectedCase, setSelectedCase] = useState<GameCase | null>(null);
 
   const { data: cases = [], isLoading, error } = useQuery({
     queryKey: ['cases'],
@@ -42,6 +42,14 @@ const [user, setUser] = useState<User | null>(() => getLocalUser());
     logout();
     queryClient.clear();
     window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+  };
+
+  const selectedCase = cases.find(gameCase => String(gameCase.id) === searchParams.get('case'));
+  const selectCase = (id?: GameCase['id']) => {
+    const next = new URLSearchParams(searchParams);
+    if (id === undefined) next.delete('case');
+    else next.set('case', String(id));
+    setSearchParams(next, { replace: true });
   };
 
   if (isLoading) return <div className="terminal-text">{t('pages.mainMenu.decrypting')}</div>;
@@ -88,7 +96,7 @@ const [user, setUser] = useState<User | null>(() => getLocalUser());
             <div
               key={gameCase.id}
               className={styles.caseCardWrapper}
-              onClick={() => setSelectedCase(gameCase)}
+              onClick={() => selectCase(gameCase.id)}
             >
               <CaseCard 
                 gameCase={gameCase} 
@@ -102,8 +110,10 @@ const [user, setUser] = useState<User | null>(() => getLocalUser());
 
       {selectedCase && (
         <CaseBriefingModal
+          key={`${user?.id}:${selectedCase.id}`}
           gameCase={selectedCase}
-          onClose={() => setSelectedCase(null)}
+          userId={user?.id}
+          onClose={() => selectCase()}
         />
       )}
     </div>

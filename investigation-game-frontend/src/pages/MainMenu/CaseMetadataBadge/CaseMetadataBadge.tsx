@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import styles from './CaseMetadataBadge.module.css';
 
 export type RewardState = 'standard' | 'neutral' | 'penalty';
-type MetadataKind = 'playtime' | 'difficulty' | 'advisory' | 'reward' | 'price';
+type MetadataKind = 'playtime' | 'difficulty' | 'advisory' | 'reward' | 'price' | 'author';
 
 interface CaseMetadataBadgeProps {
   kind: MetadataKind;
@@ -11,6 +11,7 @@ interface CaseMetadataBadgeProps {
 }
 
 const icons: Record<MetadataKind, ReactNode> = {
+  author: <><circle cx="12" cy="7" r="3.5"/><path d="M5 21v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2"/></>,
   playtime: <><path d="M9 2h6M12 2v3m6 2 1.5-1.5"/><circle cx="12" cy="14" r="8"/><path d="M12 10v4l2 2"/></>,
   difficulty: <><path d="M4 20v-5h3v5H4Zm6.5 0V9h3v11h-3Zm6.5 0V3h3v17h-3Z"/></>,
   advisory: <><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z"/><path d="M12 8v5m0 3h.01"/></>,
