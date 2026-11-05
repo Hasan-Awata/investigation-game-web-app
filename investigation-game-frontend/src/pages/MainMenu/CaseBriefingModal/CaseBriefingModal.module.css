@@ -160,56 +160,11 @@
 
 .metadataRow {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   column-gap: 1.5rem;
   row-gap: 1.25rem;
   padding-bottom: 1.5rem;
   border-bottom: var(--border-thin);
-}
-
-.metadataItem {
-  display: flex;
-  align-items: flex-start;
-  min-width: 0;
-  gap: 0.5rem;
-  color: var(--text-secondary);
-  font-family: var(--font-primary, sans-serif);
-  font-size: 0.95rem;
-  font-weight: 400;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-
-.metadataItem > span {
-  min-width: 0;
-}
-
-.metadataIcon {
-  flex-shrink: 0;
-  width: 1.15rem;
-  height: 1.15rem;
-  margin-top: 0.2rem;
-}
-
-.metaValueHighlightMono {
-  font-family: var(--font-mono, monospace);
-  font-weight: 600;
-}
-
-.rewardStandard {
-  color: var(--accent-amber);
-}
-
-.rewardNeutral {
-  color: var(--text-secondary);
-}
-
-.rewardPenalty {
-  color: var(--text-primary);
-}
-
-.rewardPenalty .metadataIcon {
-  color: var(--accent-crimson);
 }
 
 .modalStoryContainer {
@@ -348,6 +303,10 @@
 }
 
 @media (max-width: 900px) {
+  .metadataRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .heroHeader {
     padding: 5rem 1.5rem 1.5rem;
     min-height: 280px;

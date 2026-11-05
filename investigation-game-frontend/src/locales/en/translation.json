@@ -1,6 +1,8 @@
 {
   "components": {
     "caseBriefing": {
+      "starRating": "{{rating}} out of 5 stars",
+      "freePrice": "Free",
       "authoredBy": "Authored by",
       "system": "System",
       "standard": "Standard",

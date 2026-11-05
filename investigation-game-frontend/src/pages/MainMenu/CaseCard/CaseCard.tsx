@@ -2,6 +2,8 @@ import { useTranslation } from 'react-i18next';
 import type { GameCase } from '../../../types';
 import { CaseUserStatus } from '../../../types';
 import '@/i18n';
+import CaseRating from '../CaseMetadataBadge/CaseRating';
+import CaseMetadataBadge from '../CaseMetadataBadge/CaseMetadataBadge';
 import caseCardStyles from './CaseCard.module.css';
 
 interface CaseCardProps {
@@ -57,20 +59,11 @@ export default function CaseCard({ gameCase, imageUrl, userXp = 0 }: CaseCardPro
         
         <div className={caseCardStyles['metadataRow']}>
           {gameCase.difficulty && (
-            <div className={caseCardStyles['metadataItem']}>
-              <svg aria-hidden="true" className={caseCardStyles['metadataIcon']} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              </svg>
-              <span>{gameCase.difficulty}</span>
-            </div>
+            <CaseMetadataBadge kind="difficulty">{gameCase.difficulty}</CaseMetadataBadge>
           )}
-          
-          <div className={`${caseCardStyles['metadataItem']} ${caseCardStyles['rewardStandard']}`}>
-            <svg aria-hidden="true" className={caseCardStyles['metadataIcon']} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 12V8H4v4"/><path d="M2 6h20v12H2z"/><path d="M12 12h.01"/><path d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
-            </svg>
-            <span className={caseCardStyles['metaValueHighlightMono']}>{gameCase.XP_on_solve} {t('components.caseBriefing.xp', 'XP')}</span>
-          </div>
+          <CaseRating rating={gameCase.rating_stars} />
+          <CaseMetadataBadge kind="reward">{gameCase.XP_on_solve}</CaseMetadataBadge>
+          <CaseMetadataBadge kind="price">{t('components.caseBriefing.freePrice')}</CaseMetadataBadge>
         </div>
 
       </div>

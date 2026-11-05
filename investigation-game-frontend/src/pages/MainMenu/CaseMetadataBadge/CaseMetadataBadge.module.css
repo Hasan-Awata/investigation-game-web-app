@@ -1,0 +1,31 @@
+.badge {
+  display: flex;
+  align-items: flex-start;
+  min-width: 0;
+  gap: 0.5rem;
+  color: var(--text-secondary);
+  font-family: var(--font-primary, sans-serif);
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.badge > span { min-width: 0; }
+
+.icon {
+  flex-shrink: 0;
+  width: 1.15rem;
+  height: 1.15rem;
+  margin-top: 0.2rem;
+}
+
+.rewardValue {
+  font-family: var(--font-mono, monospace);
+  font-weight: 600;
+}
+
+.standard { color: var(--accent-amber); }
+.neutral { color: var(--text-secondary); }
+.penalty { color: var(--accent-crimson); }
+.price { color: #7d9b6a; }

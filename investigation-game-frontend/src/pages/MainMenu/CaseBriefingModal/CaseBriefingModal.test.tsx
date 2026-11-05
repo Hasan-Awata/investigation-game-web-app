@@ -6,6 +6,7 @@ import type { GameCase, GameRoom } from '@/types';
 import { failure, success } from '@/utils/Result';
 import type { Result } from '@/utils/Result';
 import CaseBriefingModal from './CaseBriefingModal';
+import CaseCard from '../CaseCard/CaseCard';
 
 const mocks = vi.hoisted(() => ({ createRoom: vi.fn(), restartRoom: vi.fn(), navigate: vi.fn() }));
 vi.mock('@/services/api', () => ({ createRoom: mocks.createRoom, restartRoom: mocks.restartRoom }));
@@ -109,4 +110,59 @@ it('shows the confirmation and cancellation in Arabic', async () => {
   expect(screen.getByRole('button', { name: 'تأكيد البدء من جديد' })).toBeVisible();
   expect(screen.getByRole('button', { name: 'الاحتفاظ بالتحقيق الحالي' })).toHaveFocus();
   expect(screen.getByRole('status')).toHaveTextContent('لا تفرض إعادة البدء عقوبة على نقاط الخبرة');
+});
+
+
+it.each([
+  undefined, 'solved_perfect', 'solved_partial', 'failed_no_proof', 'failed_incomplete', 'failed_strikes',
+] as const)('shows only server completion XP and free price for %s without gateway XP', status => {
+  renderBriefing({ ...gameCase, min_player_XP: 9876, user_status: status });
+  const rewardValue = screen.getByText('100');
+  expect(rewardValue).toHaveTextContent(/^100$/);
+  const rewardItem = rewardValue.parentElement!;
+  expect(rewardItem.parentElement!.children).toHaveLength(6);
+  expect(rewardItem.parentElement!.children[4]).toBe(rewardItem);
+  expect(rewardItem.nextElementSibling).toHaveTextContent('Free');
+  expect(screen.queryByText(/9876/)).not.toBeInTheDocument();
+});
+
+it('localizes the free price placeholder in Arabic', async () => {
+  await i18n.changeLanguage('ar');
+  renderBriefing();
+  expect(screen.getByText('مجانية')).toBeVisible();
+  expect(screen.queryByText('Free')).not.toBeInTheDocument();
+});
+
+
+it.each(['en', 'ar'])('shows localized free pricing on the menu card in %s without changing its base reward', async language => {
+  await i18n.changeLanguage(language);
+  render(<CaseCard gameCase={{ ...gameCase, difficulty: 'Hard', user_status: 'solved_perfect' }} />);
+  expect(screen.getByText(language === 'ar' ? 'مجانية' : 'Free')).toBeVisible();
+  expect(screen.getByText('100')).toBeVisible();
+  expect(screen.getByText('Hard')).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Glasshouse' })).toBeEnabled();
+});
+
+
+it.each([
+  [3.77, '3.5 out of 5 stars', 3, 1],
+  [2.22, '2.5 out of 5 stars', 2, 1],
+  [4, '4 out of 5 stars', 4, 0],
+  [5, '5 out of 5 stars', 5, 0],
+  [undefined, 'Unrated', 0, 0],
+  [0, 'Unrated', 0, 0],
+  [NaN, 'Unrated', 0, 0],
+  [6, 'Unrated', 0, 0],
+] as const)('shows a shared five-star rating for %s', (rating, label, full, half) => {
+  const selectedCase = { ...gameCase, rating_stars: rating };
+  renderBriefing(selectedCase);
+  render(<CaseCard gameCase={selectedCase} />);
+  const groups = screen.getAllByRole('img', { name: label });
+  expect(groups).toHaveLength(2);
+  for (const group of groups) {
+    expect(group.querySelectorAll('svg')).toHaveLength(5);
+    expect(group.querySelectorAll('polygon[fill="currentColor"][stroke]')).toHaveLength(full);
+    expect(group.querySelectorAll('polygon[fill="currentColor"]:not([stroke])')).toHaveLength(half);
+    expect(group.textContent).toBe('');
+  }
 });

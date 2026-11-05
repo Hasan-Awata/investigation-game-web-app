@@ -1,0 +1,22 @@
+.rating {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+  color: var(--accent-cyan);
+}
+
+.star {
+  inline-size: 1rem;
+  min-inline-size: 0;
+  block-size: 1rem;
+}
+
+.halfFill {
+  clip-path: inset(0 50% 0 0);
+}
+
+.halfFill:dir(rtl) {
+  clip-path: inset(0 0 0 50%);
+}

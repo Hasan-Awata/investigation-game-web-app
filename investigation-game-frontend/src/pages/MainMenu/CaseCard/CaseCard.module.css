@@ -124,34 +124,6 @@
   padding-top: 0.5rem;
 }
 
-.metadataItem {
-  display: flex;
-  align-items: center;
-  min-width: 0;
-  gap: 0.5rem;
-  color: var(--text-secondary);
-  font-family: var(--font-primary, sans-serif);
-  font-size: 0.9rem;
-  font-weight: 400;
-  line-height: 1.6;
-  overflow-wrap: anywhere;
-}
-
-.metadataIcon {
-  width: 1.1rem;
-  height: 1.1rem;
-  flex-shrink: 0;
-}
-
-.metaValueHighlightMono {
-  font-family: var(--font-mono, monospace);
-  font-weight: 600;
-}
-
-.rewardStandard {
-  color: var(--accent-amber);
-}
-
 .case-story {
   margin: 0;
   font-size: 0.9rem;

@@ -29,6 +29,8 @@
       "placeholder": "سجل الجداول الزمنية، وتناقضات المشتبه بهم، وروابط الأدلة هنا..."
     },
     "caseBriefing": {
+      "starRating": "{{rating}} من 5 نجوم",
+      "freePrice": "مجانية",
       "authoredBy": "تأليف",
       "system": "النظام",
       "playerRating": "تقييم اللاعبين",
