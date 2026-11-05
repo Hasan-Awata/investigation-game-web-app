@@ -322,17 +322,15 @@
         },
         "map": {
           "backToMap": "العودة إلى الخريطة",
-          "travelToZone": "السفر إلى المنطقة",
-          "activeLeads": "الخيوط النشطة",
+          "travelToZone": "الذهاب إلى المنطقة",
           "goToLocation": "الذهاب إلى الموقع",
           "noDescription": "لا يوجد وصف متاح لهذه المنطقة.",
           "levelsPreview": "نظرة على الخيوط",
           "closeEsc": "إغلاق ESC",
           "zoneSysIndex": "فهرس_نظام_المنطقة {{index}}",
-          "entriesCount": "عدد السجلات: {{count}}",
           "dataAvailable": "البيانات متاحة",
           "restricted": "وصول مقيد",
-          "warrantRequired": "مطلوب تصريح / مذكرة"
+          "warrantRequired": "مطلوب تصريح"
         }
       },
       "hooks": {
