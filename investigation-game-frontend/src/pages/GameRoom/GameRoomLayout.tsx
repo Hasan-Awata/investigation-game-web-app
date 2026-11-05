@@ -236,9 +236,23 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
           <div id={`${sidebarId}-session`} className={styles.sidebarSection} hidden={isSidebarCollapsed}>
             <div className={styles.sidebarHeadingWrapper}>
               <h3 className={styles.sidebarHeading}>{t('gameRoom.sessionCode')}</h3>
-              <button className={`${styles.copyBtn} ${isCopied ? styles.copied : ''}`} onClick={handleCopyCode}>
-                {isCopied ? '✓' : '⧉'}
-              </button>
+              <div className={styles.sessionActions}>
+                <button className={`${styles.sessionActionBtn} ${styles.copyBtn} ${isCopied ? styles.copied : ''}`} onClick={handleCopyCode}>
+                  {isCopied ? '✓' : '⧉'}
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.sessionActionBtn} ${styles.leaveBtn}`}
+                  onClick={() => setShowExitWarning(true)}
+                  title={t('pages.gameRoom.layout.tabs.returnToMenu', 'Exit')}
+                  aria-label={t('pages.gameRoom.layout.tabs.returnToMenu', 'Exit')}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <path d="m16 17 5-5-5-5M21 12H9" />
+                  </svg>
+                </button>
+              </div>
             </div>
             <div className={styles.inviteCodeDisplay}>{room.invite_code}</div>
           </div>
@@ -360,7 +374,6 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
                   {t('pages.gameRoom.layout.tabs.campaign')}
                 </button>
               </div>
-              <button className={styles.actionBlockBtn} onClick={() => setShowExitWarning(true)}>{t('pages.gameRoom.layout.tabs.returnToMenu', 'Exit')}</button>
             </nav>
           </header>
 
