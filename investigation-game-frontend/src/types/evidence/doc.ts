@@ -26,13 +26,6 @@ import { clampSpan, nextBlockId } from './shared';
  * Themes
  * ------------------------------------------------------------------ */
 
-/**
- * Exactly five themes. Board-card skins are derived 1:1 from this list via
- * `DOC_THEME_SKINS`, so adding a theme means adding a skin (see PlansEvidence.md
- * section 3.2). Per-document looks that do not warrant their own card skin
- * (the contract's legal styling, the memo's sticky note) are expressed as block
- * props instead.
- */
 export type DocTheme = 'case_file' | 'notebook' | 'ledger' | 'dossier' | 'lab';
 
 export const DOC_THEMES: readonly DocTheme[] = [
@@ -261,18 +254,6 @@ export const DEFAULT_DOC: DocDocument = {
   theme: 'case_file',
   page: { ...DEFAULT_PAGE },
   blocks: [],
-};
-
-/**
- * Board-card skin per theme, 1:1 with `DOC_THEMES`. Replaces the old
- * `sub_type`-driven card dispatch. See PlansEvidence.md section 3.2.
- */
-export const DOC_THEME_SKINS: Record<DocTheme, string> = {
-  case_file: 'official',
-  notebook: 'handwritten',
-  ledger: 'tabular',
-  dossier: 'dossier',
-  lab: 'report',
 };
 
 /* ------------------------------------------------------------------ *

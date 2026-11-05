@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import { getChoiceCoordinate, type ChoiceCoordinate } from '@/pages/Admin/utils/coordinates';
-import type { Evidence, Level, Character } from '@/types';
+import type { Evidence, Level, Character, Choice } from '@/types';
 import choiceEditorCardStyles from './ChoiceEditorCard.module.css';
 import adminDashboard from '../../AdminDashboard.module.css';
 
@@ -10,19 +10,8 @@ export interface DraftChoice {
   id?: number | string;
   text: string;
   coordinate?: ChoiceCoordinate;
-  outcomes?: {
-    unlock_evidence?: number[];
-    unlock_levels?: number[];
-    unlock_location_points?: number[];
-    character_updates?: { id: number; is_unlocked?: boolean; status?: string }[];
-    next_question_id?: number | null;
-    gives_strike?: boolean;
-    feedback?: string;
-  };
-  requirements?: {
-    required_evidence?: number[];
-    required_choices?: number[];
-  };
+  outcomes?: Omit<NonNullable<Choice['outcomes']>, 'unlock_suspects' | 'unlock_victims'>;
+  requirements?: NonNullable<Choice['requirements']>;
 }
 
 interface ChoiceEditorCardProps {

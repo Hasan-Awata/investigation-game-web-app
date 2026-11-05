@@ -50,7 +50,7 @@ interface ItemsUnlockedPayload {
   unlocked_evidences?: Evidence[];
   unlocked_levels?: Level[];
   character_updates?: CharacterUpdatePayload[];
-  strikes?: number;
+  strikes?: number | null;
   unlocked_location_point_ids?: number[];
 }
 
@@ -304,7 +304,7 @@ export default function GameRoom() {
 
           accumulated_characters: updatedCharacters, // Apply the patched character array
 
-          strikes: e.strikes !== undefined ? e.strikes : oldRoom.strikes
+          strikes: e.strikes ?? oldRoom.strikes
         };
       });
 

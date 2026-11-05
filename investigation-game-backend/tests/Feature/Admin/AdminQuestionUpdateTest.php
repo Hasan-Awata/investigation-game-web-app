@@ -106,4 +106,36 @@ class AdminQuestionUpdateTest extends TestCase
         $this->assertSame('Denied', $no->outcomes['feedback']);
         $this->assertTrue($no->outcomes['gives_strike']);
     }
+
+    public function test_location_point_unlocks_survive_question_creation_and_unrelated_edits(): void
+    {
+        $location = Level::create([
+            'zone_id' => $this->level->zone_id,
+            'title' => 'Crime scene',
+            'details' => 'Details',
+            'order_index' => 2,
+            'presentation_type' => 'location',
+        ]);
+        $point = $location->questions()->create(['text' => 'Scene'])
+            ->choices()->create(['text' => '10,20 | Desk']);
+        $payload = [
+            'level_id' => $this->level->id,
+            'text' => 'Follow this lead',
+            'store_locally' => '0',
+            'choices' => [['text' => 'Search the desk', 'outcomes' => ['unlock_location_points' => [$point->id]]]],
+        ];
+
+        $response = $this->postJson('/api/admin/questions', $payload)->assertCreated();
+        $question = Question::findOrFail($response->json('question.id'));
+        $choice = $question->choices()->sole();
+        $this->assertSame([$point->id], $choice->outcomes['unlock_location_points']);
+
+        $payload['text'] = 'Edited dialogue';
+        $payload['choices'][0]['id'] = $choice->id;
+        $this->putJson("/api/admin/questions/{$question->id}", $payload)->assertOk();
+
+        $this->assertSame('Edited dialogue', $question->fresh()->text);
+        $this->assertSame([$point->id], $choice->fresh()->outcomes['unlock_location_points']);
+        $this->assertSame([$choice->id], $question->choices()->pluck('id')->all());
+    }
 }

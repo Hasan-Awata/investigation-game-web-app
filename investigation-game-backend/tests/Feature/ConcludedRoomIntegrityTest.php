@@ -141,6 +141,7 @@ class ConcludedRoomIntegrityTest extends TestCase
     public function test_active_inspection_outcomes_and_duplicates(array $keys): void
     {
         ['user' => $user, 'room' => $room, 'lead' => $lead, 'choice' => $choice, 'point' => $point, 'evidence' => $evidence, 'character' => $character] = $this->fixture($keys);
+        $room->update(['strikes' => 2]);
         Event::fake(self::EVENTS);
         $service = app(LocationInspectionService::class);
         $result = $service->inspect($room, $choice->id, $user);
@@ -156,5 +157,15 @@ class ConcludedRoomIntegrityTest extends TestCase
         $this->assertSame($before, $this->snapshot());
         Event::assertDispatchedTimes(LocationInspected::class, 1);
         Event::assertDispatchedTimes(ItemsUnlocked::class, $keys ? 1 : 0);
+        if ($keys) {
+            Event::assertDispatched(ItemsUnlocked::class, function (ItemsUnlocked $event): bool {
+                $payload = $event->broadcastWith();
+                $this->assertArrayHasKey('strikes', $payload);
+                $this->assertNull($payload['strikes']);
+                $this->assertSame(2, $event->room->strikes);
+
+                return true;
+            });
+        }
     }
 }

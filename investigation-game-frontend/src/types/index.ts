@@ -95,25 +95,6 @@ export interface RoomVote {
   choice_id: number;
 }
 
-/**
- * Weighted-consensus outcome for one question (host weight = 2), shared by
- * CampaignTab and the phase components it feeds. Always produced by the
- * memoized O(1) lookup in CampaignTab — never recomputed inside render loops.
- */
-export interface QuestionConsensus {
-  votesCast: number;
-  isResolved: boolean;
-  isTie: boolean;
-  winningChoiceId: number | null;
-}
-
-export const UNRESOLVED_CONSENSUS: QuestionConsensus = {
-  votesCast: 0,
-  isResolved: false,
-  isTie: false,
-  winningChoiceId: null,
-};
-
 export interface RoomInspection {
   id?: number;
   room_id: number;

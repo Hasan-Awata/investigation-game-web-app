@@ -6,7 +6,6 @@ use App\Models\Concerns\HasMediaUrls;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Enums\EvidenceType;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 
 class Evidence extends Model
 {

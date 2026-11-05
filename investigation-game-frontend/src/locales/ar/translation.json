@@ -276,6 +276,7 @@
             "investigator": "المحقق",
             "chooseResponse": "اختر ردك",
             "evidenceRequired": "يتطلب دليلاً",
+            "requirementsMissing": "يلزم العثور على الدليل المطلوب أو اختيار رد سابق أولاً.",
             "weightedVotes": "مجموع أوزان الأصوات: {{count}}",
             "votesSubmitted": "تم تقديم {{votes}} من أصل {{total}} أصوات مطلوبة",
             "waitingForGroup": "ابدأ هذا الاستجواب أو انضم إليه للمتابعة.",

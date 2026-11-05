@@ -19,11 +19,3 @@ export const TERMINAL_BLOCK_REGISTRY: Record<TerminalBlockType, TerminalBlockCom
 
 export const getBlockComponent = (type: TerminalBlockType): TerminalBlockComponent | undefined =>
   TERMINAL_BLOCK_REGISTRY[type];
-
-export const TERMINAL_BLOCK_TYPES: readonly TerminalBlockType[] = [
-  'prompt_line',
-  'output_stream',
-  'status_banner',
-  'file_tree',
-  'spacer',
-] as const;

@@ -6,10 +6,12 @@ use App\Models\Choice;
 use App\Models\Evidence;
 use App\Models\GameCase;
 use App\Services\Case\CaseExportService;
+use App\Services\MediaService;
 use Cloudinary\Api\ApiResponse;
 use Cloudinary\Api\Upload\UploadApi;
 use Cloudinary\Cloudinary;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
@@ -36,6 +38,31 @@ class DocumentBundleImagesTest extends TestCase
         $this->actingAsAdmin();
         Storage::fake('local');
         Http::preventStrayRequests();
+    }
+
+    #[DataProvider('blockImageStorageModes')]
+    public function test_block_image_upload_accepts_serialized_boolean_storage_modes(string $encoded, bool $storeLocally): void
+    {
+        $case = GameCase::create(['title' => 'Block upload', 'story' => 'Story', 'XP_on_solve' => 100]);
+        $url = '/assets/cases/test/Evidences/Blocks/image.png';
+        $this->mock(MediaService::class, function (Mockery\MockInterface $mock) use ($case, $storeLocally, $url): void {
+            $mock->shouldReceive('store')->once()
+                ->with(Mockery::type(UploadedFile::class), $case->title, 'Evidences/Blocks', $storeLocally, $case->id)
+                ->andReturn($url);
+        });
+
+        $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/media/block-image', [
+            'case_id' => (string) $case->id,
+            'store_locally' => $encoded,
+            'image' => UploadedFile::fake()->createWithContent('image.png', base64_decode(self::IMAGE)),
+        ])->assertCreated()
+            ->assertJsonPath('url', rtrim((string) config('app.url'), '/').$url)
+            ->assertJsonPath('relative_path', $url);
+    }
+
+    public static function blockImageStorageModes(): array
+    {
+        return ['local' => ['1', true], 'provider' => ['0', false]];
     }
 
     #[DataProvider('metadataFormats')]

@@ -1,5 +1,5 @@
 import { type Result, success } from '../utils/Result';
-import type { GameCase, GameRoom, User, FinalStats, RoomInspection, VoteResponse, EncounterGroup } from '../types';
+import type { GameCase, GameRoom, User, FinalStats, RoomInspection, VoteResponse, EncounterGroup, Evidence, Level } from '../types';
 import { request, getToken } from './request';
 import { ENV } from '@/config/env';
 
@@ -15,6 +15,13 @@ interface SubmitSuspectVerdictResponse {
   message: string;
   room?: GameRoom;
   stats?: FinalStats;
+}
+
+export interface InvestigationRequestResponse {
+  status: string;
+  message: string;
+  unlocked_evidence: Evidence[];
+  unlocked_levels: Level[];
 }
 
 interface InspectLocationResponse {
@@ -106,8 +113,8 @@ export const submitSuspectVerdict = async (
 export const submitInvestigationRequest = async (
   roomId: number,
   payload: { evidenceIds?: number[]; characterIds?: number[] }
-): Promise<Result<{ status: string; message: string; unlocked_evidence: number[]; unlocked_levels?: number[] }>> => {
-  const result = await request<{ status: string; message: string; unlocked_evidence: number[]; unlocked_levels?: number[] }>(`/rooms/${roomId}/investigate`, {
+): Promise<Result<InvestigationRequestResponse>> => {
+  const result = await request<InvestigationRequestResponse>(`/rooms/${roomId}/investigate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ evidence_ids: payload.evidenceIds ?? [], character_ids: payload.characterIds ?? [] })

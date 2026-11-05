@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { submitInvestigationRequest } from '@/services/api';
+import { submitInvestigationRequest, type InvestigationRequestResponse } from '@/services/api';
 import { useGameMutation } from './useGameMutation';
 import { useSafeTimeout } from './useSafeTimeout';
 import type { GameRoom } from '@/types';
@@ -27,7 +27,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
   const filedRequests: FiledRequest[] = room.filed_requests || [];
 
   const requestMutation = useGameMutation<
-    { status: string; message: string; unlocked_evidence: number[]; unlocked_levels?: number[] },
+    InvestigationRequestResponse,
     void,
     RequestRollback
   >({

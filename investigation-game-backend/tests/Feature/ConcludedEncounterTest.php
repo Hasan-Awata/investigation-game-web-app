@@ -6,7 +6,6 @@ use App\Jobs\FinalizeEncounterQuestion;
 use App\Models\Character;
 use App\Models\Evidence;
 use App\Models\GameCase;
-use App\Models\GameRoom;
 use App\Models\User;
 use App\Models\Zone;
 use App\Services\AssessmentService;

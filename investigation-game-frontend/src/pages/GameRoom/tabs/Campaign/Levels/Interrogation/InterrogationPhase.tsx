@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useRoomData } from '@/context/RoomContext.shared';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import { getLocalUser } from '@/utils/userState';
+import { checkIsLockedByNarrative } from '@/utils/narrativeLocks';
 import type { Level, Question } from '@/types';
 import styles from './InterrogationPhase.module.css';
 
@@ -13,6 +14,7 @@ export default function InterrogationPhase({ level }: InterrogationPhaseProps) {
   const { room, refreshRoomData } = useRoomData();
   const { activeGroup, localVotes, isSubmitting, handleSelectChoice, clearVote } = useInvestigationPhase();
   const currentUser = getLocalUser();
+  const ownVotes = room.votes?.filter(vote => vote.user_id === currentUser?.id) ?? [];
   const question = level.questions?.find((item: Question) => item.id === activeGroup?.current_question_id);
   const currentQuestionRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -93,7 +95,7 @@ export default function InterrogationPhase({ level }: InterrogationPhaseProps) {
           <div className={styles['vote-choices-grid']}>
             {question.choices?.map(choice => {
               const selected = ownVote === choice.id;
-              const locked = !!choice.requirements?.required_evidence?.some(id => !room.accumulated_evidences?.some(evidence => evidence.id === id));
+              const locked = checkIsLockedByNarrative(choice, room.accumulated_evidences ?? [], ownVotes);
               return (
                 <button key={choice.id} type="button" disabled={!isRequiredVoter || locked || isSubmitting || room.status !== 'active'} aria-pressed={selected}
                   className={styles['response-choice']}
@@ -104,7 +106,9 @@ export default function InterrogationPhase({ level }: InterrogationPhaseProps) {
                   </span>
                   <span className={styles['choice-copy']}>
                     <span>{choice.text}</span>
-                    {locked && <small>{t('pages.gameRoom.campaign.levels.interrogation.evidenceRequired', 'Evidence required')}</small>}
+                    {locked && <small>{choice.requirements?.required_choices?.length
+                      ? t('pages.gameRoom.campaign.levels.interrogation.requirementsMissing', 'Missing required evidence or an earlier response.')
+                      : t('pages.gameRoom.campaign.levels.interrogation.evidenceRequired', 'Evidence required')}</small>}
                   </span>
                   <small className={styles['choice-tally']} aria-label={t('pages.gameRoom.campaign.levels.interrogation.weightedVotes', { count: weightedTally[choice.id] ?? 0, defaultValue: 'Weighted vote total: {{count}}' })}>({weightedTally[choice.id] ?? 0})</small>
                 </button>

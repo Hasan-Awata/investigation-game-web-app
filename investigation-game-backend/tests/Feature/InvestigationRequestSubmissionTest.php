@@ -127,7 +127,10 @@ class InvestigationRequestSubmissionTest extends TestCase
             'character_ids' => [$this->initialCharacter->id],
         ]);
 
-        $response->assertOk()->assertJsonPath('status', 'success');
+        $response->assertOk()->assertJsonPath('status', 'success')
+            ->assertJsonPath('unlocked_evidence.0.id', $this->rewardEvidence->id)
+            ->assertJsonPath('unlocked_evidence.0.title', $this->rewardEvidence->title)
+            ->assertJsonPath('unlocked_levels', []);
         $this->assertNotEmpty($response->json('message'));
 
         $unlockedEvidenceIds = array_column($response->json('unlocked_evidence'), 'id');

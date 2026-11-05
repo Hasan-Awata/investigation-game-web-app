@@ -47,7 +47,6 @@ export default function AdminLocationForm({
             <MediaUploader
               label={t.envMapLabel}
               accept="image/*"
-              maxSizeMB={10}
               ref={actions.registerFileRef('image')}
               onChange={setImage}
             />

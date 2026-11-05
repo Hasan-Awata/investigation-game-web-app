@@ -10,6 +10,7 @@ import { createBlock, cloneBlock, emptyDoc } from './blockFactory';
 import { DOC_THEMES, type DocTheme, type DocDocument } from '@/types/evidence/doc';
 import { templates, type TemplateName } from '@/pages/GameRoom/tabs/EvidenceBoard/DocViewer/templates-index';
 import { uploadAdminBlockImage } from '@/services/adminApi';
+import { serializeFormData } from '@/pages/Admin/utils/serializeFormData';
 import toast from 'react-hot-toast';
 import styles from './DocBuilder.module.css';
 
@@ -73,10 +74,7 @@ export function DocBuilder({ doc, onChange, caseId, storeLocally, evidenceId }: 
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
-      const formData = new FormData();
-      formData.append('case_id', caseId.toString());
-      formData.append('image', file);
-      formData.append('store_locally', storeLocally.toString());
+      const formData = serializeFormData({ case_id: caseId, image: file, store_locally: storeLocally });
       const result = await uploadAdminBlockImage(formData);
       if (result.isSuccess) {
         updateBlock(blockId, { props: { ...doc.blocks.find(b => b.id === blockId)!.props, url: result.value.url } });

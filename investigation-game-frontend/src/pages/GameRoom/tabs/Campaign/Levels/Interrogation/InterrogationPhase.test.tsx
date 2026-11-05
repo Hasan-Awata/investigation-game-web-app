@@ -238,6 +238,22 @@ describe('InterrogationPhase', () => {
     expect(screen.getByRole('button', { name: /At home/ })).toBeEnabled();
   });
 
+  it.each([
+    ['missing', [], false],
+    ['another player', [{ id: 9, room_id: 4, encounter_group_id: 6, user_id: 12, question_id: 20, choice_id: 90 }], false],
+    ['own earlier group', [{ id: 9, room_id: 4, encounter_group_id: 6, user_id: 11, question_id: 20, choice_id: 90 }], true],
+  ] as const)('uses %s historical votes to gate a prerequisite choice', (_label, votes, allowed) => {
+    const phase = useInvestigationPhaseMock();
+    renderPhase({ votes: [...votes] }, { ...level, questions: [{ ...level.questions![0], choices: [
+      { ...level.questions![0].choices![1], requirements: { required_choices: [90] } },
+    ] }] });
+    const button = screen.getByRole('button', { name: /At work/ });
+    if (allowed) expect(button).toBeEnabled();
+    else expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(phase.handleSelectChoice).toHaveBeenCalledTimes(allowed ? 1 : 0);
+  });
+
   it('keeps every response and clear action disabled while submitting or after the room concludes', () => {
     useInvestigationPhaseMock.mockReturnValue({ ...useInvestigationPhaseMock(), isSubmitting: true });
     const view = renderPhase();

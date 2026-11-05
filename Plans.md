@@ -1,352 +1,212 @@
-# Production Readiness: Remaining Issues and Acceptance Criteria
+# Feature Isolation and Robustness Plan
 
-Review date: 2026-11-01
-Reviewed code baseline: `a146322`
+Status: Planned. Implementation and verification remain outstanding.
 
-## Current verdict and scope
+## Objective and constraints
 
-**Estimated readiness: 75/100. The 80% shipping threshold is not yet met.**
+Keep one Laravel application and one React application. Improve internal boundaries so each feature owns its rules, shared workflows have explicit coordination, and failures leave the game recoverable.
 
-Following the user-approved scope change on 2026-11-03, 80% means verified local solo readiness on Windows/MySQL and desktop Chromium, with only assessed minor issues remaining. VPS deployment qualification is a later gate and is not claimed by local 80%. 100% means the fully intended game with all planned features. Readiness is determined by demonstrated behavior, not the number of checked tasks.
+Build on existing services, hooks, transactions, recovery behavior, and integration tests. Preserve behavior and response contracts during extractions before deliberately changing them.
 
-This document contains current issues and outstanding release qualifications, plus the TASK-01, TASK-03 and TASK-07 completion records. Other resolved historical issue descriptions and implementation journals have been removed. Existing behavior directly connected to an open issue is retained under that issue as a regression requirement. Original issue IDs are retained for continuity; gaps in numbering are intentional. Do not interpret a missing historical issue as unfinished work.
+- Inspect `graphify-out/graph.json` before locating code and dependencies, then verify against current working files.
+- Preserve unrelated work and existing uncommitted changes.
+- Deliver small, independently reviewable changes in the order below.
+- Reuse existing safeguards and tests before introducing replacements.
+- Keep pure business calculations independent of Laravel and database orchestration in focused application services.
+- Keep critical gameplay writes synchronous and atomic. Publish notifications after commit.
+- Introduce abstractions only for demonstrated duplication or dependency problems.
+- Avoid microservices, a generic repository for every model, an event bus for every action, and wholesale directory rewrites.
+- Proposed service and type names are illustrative; follow repository conventions during implementation.
 
-The launch case is **The Glasshouse Files / ملفات غلاسهاوس**. Existing local browser evidence covers the corrected case in Arabic on desktop Chromium, including a perfect solve, failure outcomes, tab recovery, HTTP recovery, worker restart and subsequent play. It does not establish every branch, mobile support, full browser-process reopening, deployed realtime delivery or intended-host operation.
+## Feature ownership
 
-### Verified baseline
-
-These results include the TASK-07 qualification (2026-11-03 working tree based on `27d4d02`) and prior TASK-01/TASK-03 recovery checks:
-
-| Check | Result |
+| Area | Owns |
 | --- | --- |
-| Backend suite | 496 passed; 3,236 assertions; no skips/failures/errors (TASK-07 elevated Windows run) |
-| Separate operational suite | Passed: 1 test / 19 assertions, including owned worker restart and isolated database/media restoration |
-| Frontend suite | 150 passed across 26 files |
-| Frontend lint | Passed |
-| Frontend production build | Passed; approximately 980 KB minified JavaScript / 307 KB gzip |
-| Unfinished-case restart | Fixed; 13 focused backend tests / 112 assertions, frontend confirmation/API regressions and six local MySQL checks; browser check waived by the user |
-| Initial-load and terminal-result recovery | Fixed; explicit Retry, authoritative statistics, terminal-room lookup without tab storage, automated regressions and local built-in-browser checks |
+| Room sessions | Creation, joining, departure, host migration, restart |
+| Encounters | Membership, voting, deadlines, dialogue advancement |
+| Locations | Inspection eligibility and inspection records |
+| Investigation requests | Submission matching and request completion |
+| Progression | Applying shared unlock effects |
+| Case conclusion | Verdict outcome, terminal status, final statistics, XP |
+| Case authoring | Editing, validation, import/export, media references |
 
-The bundle-size warning is a minor performance concern unless testing on the supported devices/connections shows a material gameplay problem. It is not an automatic launch blocker.
+These are boundaries within the current codebase, not separate applications or packages. Features interact through small, explicit operations instead of directly modifying another feature's internal state or tables.
 
-### Database and content policy
+## 1. Establish a verified baseline
 
-**The user does not require preservation of existing database data. A clean reset and repopulation with the Glasshouse case is an acceptable resolution path when that work is executed.** Compatibility with old room IDs, player history, saved sessions and legacy case records is not a release requirement. This replaces the previous requirement to preserve the current source-case database records during promotion.
+- [ ] Run backend tests, frontend tests, TypeScript build, and lint.
+- [ ] Record existing failures separately from regressions introduced during this work.
+- [ ] Identify and preserve existing uncommitted changes.
+- [ ] Write a short architecture document defining ownership and permitted dependency directions.
+- [ ] Identify the owner of every important gameplay state change.
 
-The supplied source archive is:
+**Completion check:** Checks have a known baseline and each important state change has a clear owner.
 
-`D:\Laravel\investigation-game\cases\the-glasshouse-files.zip`
+## 2. Protect gameplay invariants
 
-It was inspected read-only during this documentation update:
+Build on existing tests for concluded rooms, delayed queue delivery, snapshot recovery, and authored playthroughs. Extend coverage where it is missing.
 
-- SHA-256: `89f5e81b537bac44be32d6972fd1970ed3aa6e2f00e36dccb28288cfeb44b149`.
-- The root manifest contains 3 zones, 14 evidence entries and 9 characters.
-- Its case has `is_published: false` and `min_player_XP: 50`.
-- It matches the older authoring bundle recorded in `database/release-content/glasshouse-files/source.json`; it is not the verified corrected release bundle.
+- [ ] Concluded rooms reject every gameplay mutation.
+- [ ] Repeated requests and jobs cannot duplicate XP, inspections, unlock effects, or question resolutions.
+- [ ] Players cannot act on resources belonging to another room or case.
+- [ ] Departure and restart preserve other players' valid sessions.
+- [ ] Every conclusion path closes active encounters and persists final results consistently.
+- [ ] Refresh and reconnect restore authoritative state.
+- [ ] Player responses never expose hidden answers or private authoring fields.
 
-A database reset alone does not correct old case content, supply missing media, or publish a draft. ISSUE-09 defines what must be true after repopulation. The supplied archive must be retained as an available source until a replacement bundle has been verified. Disposal of old database data does not imply disposal of the only usable case assets or permission to affect an unrelated environment.
+Use focused service integration tests for database behavior and a few full workflow tests for feature interactions. Test observable rules rather than implementation details such as whether a helper was called.
 
-The content review above did not perform a reset, import or deployment. The subsequent TASK-01 implementation and verification are recorded below.
+**Completion check:** Breaking a critical invariant produces a meaningful test failure.
 
-## 1. Current issues
+## 3. Extract shared progression effects
 
-### ISSUE-01 — Restarting an unfinished case can retain the old encounter lock — Resolved
+Start with duplicated unlock handling in `investigation-game-backend/app/Services/EncounterGroupService.php` and `investigation-game-backend/app/Services/LocationInspectionService.php`.
 
-**Priority:** Gameplay release blocker.
-**Evidence:** Source inspection and successful isolated reproduction of the failure.
+- [ ] Introduce one small progression service for evidence, level, character, and location-point changes.
+- [ ] Validate that effect targets belong to the room's case.
+- [ ] Return a typed description of the changes actually applied.
+- [ ] Participate in the caller's transaction so effects remain atomic with the triggering action.
+- [ ] Route interrogation and location unlocks through the shared implementation.
+- [ ] Review investigation-request unlocks and reuse the same effects where their semantics match.
+- [ ] Keep dialogue advancement in encounters, inspection records in locations, and request matching in investigation requests.
+- [ ] Preserve existing event timing and payload contracts during extraction.
+- [ ] Consolidate event construction only where the semantics match.
+- [ ] Verify repeated application is harmless wherever gameplay permits retries.
 
-**Issue and cause:** The briefing modal displays Restart Case when an active room exists. Its start handler creates another room and navigates to it without releasing or resolving the player's old encounter membership. Encounter entry correctly rejects a player who already belongs to an active encounter, regardless of which room owns it.
+**Completion check:** Changing a shared unlock rule requires one implementation change, and all participating features behave consistently.
 
-Reproduction: start a solo interrogation, return to the menu without explicitly abandoning it, choose Restart Case, and attempt to start the new interrogation. The new room is created, but entry fails with “Leave your current encounter before starting another.” The old room remains active. A player can reach the menu after closing/reopening the tab or using browser history.
+## 4. Give case conclusion one owner
 
-**Why it needs fixing:** Restart is an offered product action. It must produce a playable investigation rather than a new room the player cannot use. Correct cleanup after a terminal verdict does not cover restarting an unfinished game.
+Remove circular coordination between encounter resolution, assessment, and cleanup.
 
-**Connected behavior to preserve:** The old unload failure and terminal-verdict lock have already been corrected. Pagehide preserves a lone host's investigation, membership, accepted votes and deadlines; explicit abandonment performs cleanup; terminal verdicts release affected groups transactionally. Preserve these behaviors, multiplayer host migration, historical records in the new game, authorization, and the one-active-encounter invariant. Current active rooms survive pruning indefinitely; terminal rooms are eligible after seven days. Routine reads do not extend retention.
+- [ ] Establish one case-conclusion operation owning terminal status, final statistics, and XP persistence.
+- [ ] Expose a narrow encounter-owned operation for closing active groups.
+- [ ] Make departure invoke encounter-owned cleanup instead of directly editing encounter votes and membership tables.
+- [ ] Structure conclusion cleanup so it does not call back through a service that can trigger conclusion again.
+- [ ] Keep terminal status, rewards, statistics, and required cleanup in one transaction.
+- [ ] Make repeated conclusion attempts safe and preserve the original committed result.
+- [ ] Extract verdict and XP calculations into small pure functions or classes where this makes rules independently testable.
+- [ ] Keep persistence and workflow orchestration outside those pure calculations.
 
-The restart behavior must define what happens to the previous room and pending jobs, including shared-room implications. It must not implicitly destroy other participants' work or silently discard a solo investigation without the appropriate user-facing intent. Independent future games must work even though old database data is disposable for the one-time reset.
+Do not distribute critical conclusion changes across asynchronous listeners.
 
-**Task — TASK-01:** Make restarting an unfinished investigation a complete, consistent lifecycle operation, with a usable new room and no leftover restriction from the previous attempt.
+**Completion check:** Conclusion is atomic and repeatable, and the service call graph has no circular coordination.
 
-**Approved restart policy (2026-11-01):** The user chose confirmation followed by abandonment without an additional XP penalty. A shared-room restart leaves only the requesting player; remaining participants keep their investigation and the host migrates when necessary. An empty old room uses the existing terminal `failed` storage status and its encounter becomes `abandoned`; restart does not create or alter a `case_user` verdict, award XP, or change existing replay reductions. Historical results remain intact. Ordinary pagehide/refresh remains a separate continuity action.
+## 5. Separate room reads from gameplay decisions
 
-**Implementation plan (2026-11-01):**
+Start with `investigation-game-backend/app/Http/Controllers/GameRoomController.php`.
 
-1. Apply the approved policy above; any further undocumented gameplay decision must be settled with the user before implementation.
-2. Introduce an authenticated restart operation identified by the previous room's server-provided invite code, so it works without sessionStorage. Authorize participation on the server and lock the player and previous room before changing membership. Reject unrelated active-encounter conflicts without modifying either investigation.
-3. Run previous-attempt cleanup and new-room initialization in one database transaction. Reuse the existing encounter departure and host-migration behavior where it matches the approved policy. Preserve completed history and other participants' progress. Roll back every change if initialization or cleanup fails.
-4. Persist the replacement-room identity for each requesting player and source room. Duplicate submissions and retries after a lost response must return the same replacement without restarting it again; stale or unauthorized requests must not create extra rooms.
-5. Add a localized, keyboard-accessible confirmation explaining the approved previous-attempt and XP consequences. Cancellation changes nothing. Disable concurrent actions while the request runs, retain a usable error/retry path, and refresh relevant room/case caches after success.
-6. Cover restart during an active interrogation and pending finalization, lost-response retries, repeated clicks, direct-request authorization, rollback, unrelated memberships, historical rewards, and the approved shared-room policy. Deliver old delayed jobs repeatedly and prove they cannot mutate the replacement or duplicate outcomes.
-7. Verify the normal UI path from the menu and after reopening without tab storage; recheck refresh/resumption, explicit abandonment, terminal cleanup, subsequent play, and host migration. Run focused regressions, the full backend/frontend suites, lint and build. Record actual evidence before checking acceptance items.
+- [ ] Move room snapshot assembly into a dedicated query/presenter.
+- [ ] Load required relationships efficiently and replace per-group queries with batching where appropriate.
+- [ ] Extract weighted tally calculation so reads and encounter resolution share the same rule.
+- [ ] Extract location availability rules so reads and inspection eligibility cannot drift.
+- [ ] Keep the snapshot reader focused on reading and presenting state.
+- [ ] Return explicit player-visible response shapes rather than relying mainly on hiding fields from fully serialized models.
+- [ ] Apply one consistent policy for hidden answers and authoring-only fields.
+- [ ] Keep controllers focused on validation, invoking operations, and mapping results to HTTP responses.
 
-**Implementation and evidence:** `POST /api/rooms/restart` now authorizes and locks the source/player, performs departure and new-room creation transactionally, and uses the new `room_restarts` table to return the same replacement after duplicate submissions or a lost response. The menu uses server-discovered invite codes and localized confirmation; cancellation before submission changes nothing. Pending requests disable dismissal and duplicate actions, time out after 15 seconds, and expose a safe retry. After an uncertain response, returning to the refreshed case list avoids promising that the old attempt can still be continued. Existing create/replay paths remain available.
+**Completion check:** Reading a room never advances gameplay, player responses expose only intended fields, and controllers contain no gameplay calculations.
 
-- Full backend suite after implementation: 494 tests, 493 passed / 1 existing symlink-permission skip, 3,157 assertions; no failures/errors. The skip remains ISSUE-07 and is unrelated to restart.
-- Focused new backend regressions: 13 tests / 112 assertions covering pending/stale jobs, no-penalty rewards, idempotent retries, host/non-host shared departures, direct authorization, unrelated encounter conflicts, initialization and cleanup rollback, successive restarts, late pagehide isolation, source pruning and deleted-replacement retry protection. Existing continuity, terminal cleanup and migration tests pass in the full suite.
-- Full frontend suite: 134 tests across 25 files passed. Seven new modal tests cover confirmation/cancellation, focus, pending dismissal, repeated clicks, failed/lost-response retry, English/Arabic copy and unchanged first-play/replay behavior; the API contract also has a new bounded-request regression.
-- Frontend lint and production build passed. The existing bundle warning remains approximately 977 KB minified / 306 KB gzip.
-- Separate operational suite passed: 1 test / 19 assertions, including real worker interruption/restart and isolated restoration.
-- Local MySQL was started for verification; only `2026_11_01_000001_create_room_restarts_table` was applied. A six-check MySQL transaction verified pending-vote restart, membership release, usable replacement, idempotent retry and untouched verdict history; all synthetic writes were rolled back. The verification-owned database process was then shut down gracefully, restoring its initial stopped state. No reset or content replacement was performed.
-- **Browser exception approved by the user:** Local browser access is unavailable due to a regional restriction. The user explicitly requested dropping that check. No new rendered-browser, visual-layout or physical tab-reopen result is claimed. TASK-01 is complete within this approved verification scope; unrelated host/content/browser qualifications under other tasks remain open.
+## 6. Make feature contracts explicit
 
-**Successful-fix verification:**
+- [ ] Replace ambiguous arrays at important boundaries with a few typed structures, starting with validated progression effects and their results.
+- [ ] Define inputs, outputs, and failure cases for operations called across feature boundaries.
+- [ ] Return stable error codes alongside user-facing messages.
+- [ ] Keep HTTP status mapping at the delivery boundary.
+- [ ] Move shared frontend response and event types outside page components.
+- [ ] Validate critical network payloads at runtime; TypeScript types alone do not validate external data.
+- [ ] Retain and extend backend/frontend parity checks for duplicated contracts.
+- [ ] Keep pure domain rules independent of Laravel while retaining focused Laravel services for database workflows.
 
-- [x] Menu confirmation and restart/entry contracts pass DOM/API tests; real browser execution waived by the user.
-- [x] Server discovery and restart work without sessionStorage in regressions; physical tab reopening waived by the user.
-- [x] Restart with a vote awaiting finalization; old jobs cannot affect the new room or create duplicate outcomes.
-- [x] Verify and record the intended previous-room behavior, including failure/cancellation and repeated-click handling.
-- [x] Existing automated refresh/pagehide/disconnection continuity checks pass; new browser execution waived by the user.
-- [x] Explicit abandonment, terminal verdict cleanup, subsequent play and multiplayer migration remain correct.
-- [x] Backend membership invariants hold for direct requests, not only UI actions; failed operations leave consistent state.
-- [x] Focused backend/frontend regressions, local MySQL checks and the operational suite pass; browser verification explicitly waived because of regional unavailability.
+Do not create a DTO for every method or wrap every Eloquent model in a generic repository.
 
-**Relevant files:** `investigation-game-frontend/src/pages/MainMenu/CaseBriefingModal/CaseBriefingModal.tsx`, `investigation-game-frontend/src/hooks/useRoomPageHide.ts`, `investigation-game-backend/app/Services/GameRoomService.php`, `investigation-game-backend/app/Services/EncounterGroupService.php`, `investigation-game-backend/app/Services/AssessmentService.php`.
+**Completion check:** Callers can understand another feature's public operation without inspecting its internals.
 
-### ISSUE-03 — Recovery does not cover first-load failures or restored result statistics completely — Resolved
-
-**Priority:** Required reliability correction; missing result statistics are a minor presentation defect.
-**Evidence:** Source inspection. These two edge cases were not independently browser-reproduced in the latest review.
-
-**Issue A and cause — First room snapshot fails:** `useGameRoom` disables query retries and enables periodic refresh only when cached room data already exists with active status. If joining succeeds but the first snapshot fails, or a stored room ID is available but its initial read fails, there is no room data to enable polling. The UI shows an initial error. A later focus, visibility or online event can retry, but recovery of the backend while the same tab stays visible does not itself trigger a new request.
-
-**Why it needs fixing:** An initial transient HTTP failure should not strand the player on an error screen after the service recovers. Network events do not necessarily fire when only the backend was unavailable. Recovery must cover both cached sessions and first reads.
-
-**Issue B and cause — Result statistics are local state:** `GameRoom` initializes local `finalStats` from an asynchronously loaded room, normally before that room exists. Later HTTP snapshots do not update this state. A recovered terminal room can therefore display its end-game overlay without saved statistics when no callback or realtime event supplied them.
-
-**Why it needs fixing:** The persisted outcome should render consistently after resumption and missed events. Players should see their actual award and result even when realtime delivery is unavailable. This does not imply that the backend result or XP was lost.
-
-**Connected behavior to preserve:** Five-second visible active-room polling, 15-second read cancellation, shared in-flight refreshes, socket reconnection, deadline refresh and pending-confirmation feedback are implemented. Existing local worker/interruption checks and actual-case HTTP recovery have passed. Preserve read-only room snapshots, server-authoritative finalization, stale-deadline guards, duplicate-job protection and terminal cleanup.
-
-Also preserve the corrected error semantics: a gameplay 403 retains valid authentication; an authoritative room-read denial hides protected data and stops recovery; a current protected-request 401 triggers controlled reauthentication. Recovery must never retry a permanent denial indefinitely. Actual per-participant `xp_awards`, replay reductions and final statistics must remain intact.
-
-**Task — TASK-03:** Complete initial-load recovery and render final results from authoritative recovered state without weakening existing recovery, security or progression guarantees.
-
-**Approved recovery policy (2026-11-01):** The user chose an explicit Retry button after a failed first snapshot or join, waiting for player action instead of automatically retrying first-load failures. Existing five-second visible polling after a successful snapshot remains. The user confirmed that the built-in browser works now; TASK-03 requires browser verification and does not inherit TASK-01's browser exception.
-
-**Implementation plan (2026-11-01):**
-
-1. Expose localized, keyboard-operable Retry for transient initial read/join failures. Keep joining separate from read refreshes, share in-flight reads, bound joins/reads to 15 seconds, cancel on room change/unmount, and stop retrying permanent failures without revoking valid authentication.
-2. Render final statistics directly from the room cache shared by HTTP snapshots, authenticated mutation responses and realtime updates. Scope resolution messages to the current invite code so another room cannot inherit them. Preserve actual per-participant awards, including zero on replay.
-3. Add focused hook, API and rendered-result regressions for both first-load paths, explicit retries, permanent denials, cancellation, room switching and HTTP-only terminal results. Exercise worker finalization and duplicate delivery against persisted results.
-4. Verify real local browser recovery and restored results, distinguishing HTTP-only recovery from socket recovery. Run frontend tests/lint/build, backend regressions and the separate operational suite; record observed evidence and remove temporary verification fixtures/processes.
-
-**Implementation and evidence (2026-11-01):**
-
-- Transient first-read and join failures now expose a localized Retry button and wait for player action, including after online/focus/visibility events. A successful join is reused when retrying a read. Established active rooms retain visible five-second polling, cached progress on transient failure, shared in-flight refreshes and 15-second read cancellation. Joins also have a 15-second timeout and abort on departure/room change. Permanent errors do not offer or schedule repeated retries; authoritative 403 room reads hide protected data, while gameplay denial retains authentication and current-session 401 still triggers controlled sign-in.
-- `GameRoom` renders `room.final_stats` from the shared room cache. Mutation/realtime results write to that cache, and later HTTP snapshots provide authoritative recovered statistics. Resolution messages are scoped to the invite code. Actual per-participant awards, including zero on replay, remain unchanged.
-- A connected revisit defect was found and fixed: invite-code lookup now returns concluded rooms to their existing participants without adding membership or changing results/retention. New participants cannot join a terminal room. This permits a readable terminal room to reopen without sessionStorage.
-- Filled missing English labels on the affected recovery, sign-in and result surfaces. The error panel uses readable text, a native keyboard-operable button, pending-state protection and localized menu navigation. Other game translations and gameplay rules were outside this correction.
-- Focused frontend checks: 25 tests across the hook, rendered-room/result and API contract files passed. They cover both initial-load paths, deliberate retries, permanent failures, overlap/cancellation, room switching, HTTP-only terminal recovery, zero replay awards, reload/revisit and reconciliation of realtime results with HTTP. Existing socket-reconnection/listener-cleanup and request/authentication regressions pass in the full suite.
-- New backend regressions: 2 tests / 69 assertions. With broadcasting disabled, a real database worker delivers a failing answer; duplicate delivery is harmless. Solved/failed HTTP snapshots and terminal invite lookup preserve stored statistics, distinct participant awards (900 for a first win versus 0 for a replay), best history, membership and retention timestamps; outsiders are rejected. Existing concluded-room, deadline, continuity, restart and progression checks pass.
-- Final backend suite: 496 tests, 495 passed / 1 existing symlink-permission skip, 3,226 assertions; no failures/errors. The remaining skip is ISSUE-07. Final frontend suite: 150 tests across 26 files passed. Lint and production build passed; the existing bundle-size warning remains approximately 980 KB minified / 307 KB gzip. Separate operational suite: 1 test / 19 assertions passed, including worker interruption/restart and isolated restoration.
-- **Actual browser evidence:** built-in Chromium at 1280×720, local frontend `127.0.0.1:5193`, isolated PHP 8.2.12/SQLite/database queue API on port 8093, working tree based on `e0d44a0`, synthetic recovery cases `QA0001`–`QA0003`. Fault injection affected only this isolated test environment. No reset/import of the application database or Glasshouse content was performed.
-- In the browser, successful-join/failed-read and stored-ID/failed-read both waited after HTTP was restored, then recovered using keyboard Retry. A failed join also recovered with explicit Retry. Normal UI answers plus the real worker completed the initial interview; normal indictment closed the first case. Reload and a newly opened tab without stored room identity restored its saved four-minute result and actual `0 / 900` replay award. A separate UI answer produced a delayed worker failure; visible HTTP polling displayed its saved five-minute result and `0 / 900`, and reload preserved them. Switching to the next case showed no old result. Broadcasting was disabled throughout these checks, establishing HTTP-only recovery.
-- Browser-injected 403 hid room content, removed Retry and remained stopped after fault removal; returning to the menu retained the authenticated account. A protected 401 displayed sign-in, and normal sign-in resumed the same room. English and Arabic recovery controls and the recovered result surfaces were visually checked. Realtime reconnection and terminal-event reconciliation were checked separately in automated tests; actual deployed private-channel delivery remains TASK-08. This local browser evidence does not qualify physical mobile devices, full browser-process reopening, production hosting or installed Glasshouse content.
-- Screenshots are retained under `C:\Users\ASUS\.codex\visualizations\2026\11\01\01a198a8-9bd0-76c1-b357-84c10739eb03\task03`. Temporary fixture scripts, logs, database and owned servers are removed after verification; only reviewable screenshots remain.
-
-**Successful-fix verification:**
-
-- [x] With no cached snapshot, fail the initial read, restore HTTP while the tab stays visible and observe successful automatic recovery or an explicit usable retry control.
-- [x] Exercise both successful-join/failed-read and stored-ID/failed-read paths.
-- [x] Verify failed joins remain recoverable and retries do not repeatedly mutate room membership.
-- [x] Recovery requests remain bounded, do not overlap needlessly, and clean up timers/listeners on unmount or room change.
-- [x] A 403 denial stops protected recovery and retains login; actual authentication expiry leads to sign-in and recovery as intended.
-- [x] With realtime blocked, complete or fail a case through the worker, then verify the end screen displays persisted statistics and the viewing player's actual XP award.
-- [x] Reload or revisit a readable terminal room and verify the same statistics; switching rooms does not reuse the previous game's result.
-- [x] Existing visible-tab reconnection, cached-progress retention, overdue feedback, worker restart, duplicate delivery and terminal-state regressions still pass.
-- [x] Browser and automated checks distinguish initial failure recovery, HTTP-only terminal recovery and realtime recovery.
-
-**Relevant files:** `investigation-game-frontend/src/hooks/useGameRoom.ts`, `investigation-game-frontend/src/pages/GameRoom/GameRoom.tsx`, `investigation-game-frontend/src/pages/GameRoom/GameRoomLayout.tsx`, `investigation-game-frontend/src/pages/GameRoom/components/GameEffects/GameEndOverlay.tsx`, `investigation-game-frontend/src/services/request.ts`.
-
-### ISSUE-07 — Filesystem ownership security test still cannot execute — Resolved
-
-**Priority:** Outstanding security verification.
-**Evidence:** Latest backend suite skipped `MediaOwnershipTest::test_symlink_escape_cannot_authorize_reads_or_deletes` because the current Windows process cannot create a symlink.
-
-**Issue and cause:** The test cannot establish whether a link inside the owned case-media directory can authorize reading/exporting or deleting a target outside that directory. Other traversal and ownership checks pass, but do not execute this filesystem behavior. This is an environment limitation, not a demonstrated vulnerability.
-
-**Why it needs verification:** Filesystem ownership checks protect files beyond the case's assets. A clean test exit with this skip does not prove the missing behavior.
-
-**Connected behavior to preserve:** The old username-fixture errors, invalid PNG fixture, countdown purity error and Campaign dependency warning are resolved. Keep their tests and current coverage; do not revive those resolved issues or weaken checks to obtain a clean run.
-
-**Task — TASK-07:** Execute the symlink ownership test in an appropriate environment, resolve any real defect it exposes, and establish a passing automated baseline with no essential behavior hidden by skips.
-
-**Implementation and evidence (2026-11-03):** Verified working tree based on `27d4d0234f65bda0632d17264ddc22f267c2f53d`, including the strengthened `MediaOwnershipTest` and documentation changes. Native Windows build 10.0.26200, XAMPP PHP 8.2.12 ZTS x64, PHPUnit 11.5.56, SQLite in memory and randomized temporary public media roots. No cached application configuration was present. The initial unelevated run and subsequent outside-sandbox run both skipped the test with zero assertions; the strict latter command exited 1. This confirms sandbox approval alone did not supply the required OS privilege.
-
-A UAC-elevated PowerShell process ran the same PHP executable. Its token contained `SeCreateSymbolicLinkPrivilege` (reported disabled by `whoami /priv` before PHP execution); actual successful PHP symlink creation established capability. No permanent OS settings were changed. The test confirms a real link resolves outside owned case media, archive resolution denies it, authenticated export returns 422 with `case.cover` validation and no HTTP fallback, and deletion preserves the external target's original bytes. Cleanup unlinks only the test-owned link in `finally`, and the existing fixture teardown removes its temporary media root. No production defect was exposed or production behavior changed.
-
-Commands, run from `investigation-game-backend`, used `C:\xampp\php\php.exe vendor/phpunit/phpunit/phpunit` with `--display-skipped --fail-on-skipped --do-not-cache-result` in every invocation:
-
-- `--filter test_symlink_escape_cannot_authorize_reads_or_deletes tests/Feature/Admin/MediaOwnershipTest.php`: 1 test / 10 assertions, passed.
-- `tests/Feature/Admin/MediaOwnershipTest.php`: 20 tests / 66 assertions, passed, including traversal/provider ownership, shared retention, shipped signatures and authorized export/delete.
-- No path/filter (complete configured Unit and Feature suites): 496 tests / 3,236 assertions, passed. No skipped tests, failures or errors.
-- `tests/Operations`: 1 test / 19 assertions, passed with no skips, including owned worker interruption/restart and isolated database/media restoration. All four PHP commands exited zero. Qualification ran from 19:47 to 19:48 Asia/Damascus; the elevated launcher exited and no newly created `case-media-*` or `game-ops-*` temporary directories remained after completion.
-
-Frontend checks ran without elevation from `investigation-game-frontend`: `npm test` passed 150 tests across 26 files; `npm run lint` and `npm run build` passed. JavaScript output was 979.54 kB minified / 306.82 kB gzip; the existing size warning remains minor. Repeatable Windows qualification commands are in the backend README. The earlier skipped baseline above is historical; TASK-08 host and TASK-09 content qualification remain open.
-
-**Successful-fix verification:**
-
-- [x] Execute the named test on a filesystem/process that supports the required symlink; record environment and assertion results.
-- [x] Confirm export/read is denied and the external target survives attempted deletion.
-- [x] Run the complete backend suite in that environment and document any remaining skips individually.
-- [x] Keep traversal, provider ownership, shared-media retention and normal authorized export/delete checks passing.
-- [x] Frontend tests, lint and production build remain clean on the release revision.
-
-**Relevant file:** `investigation-game-backend/tests/Feature/Admin/MediaOwnershipTest.php`.
-
-### ISSUE-08 — Intended-host operation and security remain unqualified
-
-**Priority:** Release qualification blocker.
-**Evidence:** No intended host is selected in the current operational documentation. Local tests and a synthetic restore drill pass; they are not host evidence.
-
-**Issue and cause:** Worker supervision, delivered operational alerts, production database behavior, private-channel delivery, effective TLS/proxy/cache settings, scheduled maintenance and deployment persistence have not been demonstrated together on the intended host. Public authentication protection is implemented, but its host enforcement remains unverified and is consolidated here from the former ISSUE-04.
-
-**Why it needs verification:** A correctly implemented game can still stall if workers are absent, lose media on replacement, accept incorrect proxy identities, or reset rate-limit counters across application instances. These are basic operating requirements for a robust small launch.
-
-**Connected behavior to preserve:**
-
-- Login limits: 30/minute/IP and 5/minute/normalized-email-and-IP. Registration: 5/minute/IP and 20/hour/IP. HMAC identifiers, 429 retry metadata and independent frontend cooldowns are implemented; successes do not reset counters.
-- Pagehide continuity, terminal encounter cleanup, HTTP recovery, concluded-room mutation rejection and duplicate-job guards already have local regression coverage.
-- The operational suite uses separate PHP workers, private SQLite/database queue/cache, synthetic media and isolated restoration. It passed 1 test / 19 assertions in the latest review.
-- `scripts/operations-status.php` reports failed jobs and overdue encounters, with bounded returned IDs. An empty queue does not prove that an idle worker is alive.
-- Active investigations are retained indefinitely; terminal rooms may be pruned after seven days. Preserve this approved policy and account for active-room storage growth.
-
-**Task — TASK-08:** Qualify the selected host with the actual release application/content, including persistent operation, authentication controls and recovery procedures. Legacy database preservation is not required for initial repopulation; recoverability of player data created after launch remains required.
-
-**Successful-fix verification:**
-
-- [ ] Record supported launch devices/browser, host topology, database, queue, broadcasting provider, persistent storage, proxy trust, process manager and operator responsibilities without exposing secrets.
-- [ ] Demonstrate real delayed progression, owned worker interruption/restart, supervisor restart and actionable failed-job/worker-outage notification.
-- [ ] Verify authorized private-channel subscription and event receipt, unauthorized rejection and browser recovery with sockets blocked but HTTP available.
-- [ ] Verify authentication limits across requests, host restarts and replicas where applicable, with persistent/shared counters and genuine client identity behind the actual proxy.
-- [ ] Verify secure frontend/API/realtime URLs, generic client errors and protected useful diagnostics.
-- [ ] Verify actual scheduled invocation and room/token retention behavior.
-- [ ] Demonstrate deployment/restart preserves database and required media; validate image/container permissions if that deployment route is selected.
-- [ ] Restore representative post-launch-style progress plus local/external media into an isolated host-matched environment and continue play through the normal interface.
-- [ ] Record backup cadence/retention, recovery expectations, failure response owner and observed recovery results.
-- [ ] Verify session expiry/sign-in recovery and browser-process close/reopen on the agreed supported browser scope.
-- [ ] Run representative gameplay on the intended host without severe loading stalls or timeouts.
-
-**Relevant files:** `investigation-game-backend/README.md`, `investigation-game-backend/scripts/operations-status.php`, `investigation-game-backend/tests/Operations/RecoveryTest.php`, `investigation-game-backend/app/Providers/AppServiceProvider.php`, `investigation-game-backend/config/queue.php`, `investigation-game-backend/config/broadcasting.php`, `investigation-game-backend/routes/console.php`, `investigation-game-backend/app/Models/GameRoom.php`.
-
-### Local readiness implementation and qualification record (2026-11-03/04; in progress)
-
-The user selected an existing VPS for later manual hosting. No hosting purchase or VPS change is part of this milestone. TASK-08 remains open for intended-host qualification. Its local checks are recorded separately; production alerts and scheduled production backups are deferred. Future targets: daily backups, seven-day retention, up to 24 hours of lost progress, restoration within four hours after response begins.
-
-Working tree based on `27d4d02`: corrected Glasshouse now requires 0 XP, remains published, and retains its authored graph. Registration/reward rules are unchanged. The offline builder accepts the exact approved authoring ZIP with `--authoring`, verifies source/manifest SHA-256, and maps all 13 required assets by matching reviewed byte hashes. The reviewed-export path is preserved. Source ZIPs were retained. The new `case:install-glasshouse` command requires local/testing mode, exact database confirmation, an empty catalog and approved manifest/media bytes before calling the existing importer with local storage.
-
-Installed into dedicated MySQL database `investigation_game_local_release`; only the local `.env` database selection changed. Previous databases were retained and the external-media-deleting reset command was not used. All migrations applied; case 1 imported successfully. A repeated installation was rejected without replacing the catalog. Bundle: `cases/glasshouse-local-zero-xp.zip`; SHA-256 `5aa54c85b308af9b728e035d0d52ee346e596a0b494c1b80b0c278f6761b8cf0`. Its adjacent `.provenance.json` records source/manifest/media/bundle hashes. Evidence 04 audio remains excluded.
-
-Verification:
-
-- Real-media authored-case regressions now build the exact approved bundle instead of substituting a tiny image; players start at 0 XP. Five tests / 400 assertions passed, covering both L01 routes, six guilty characters, three vital proofs, intended statuses, procedural/location progression, perfect/partial/failure outcomes and subsequent play.
-- Installer/source-rejection regressions: two tests / eight assertions passed.
-- Final full backend: 499 tests / 3,249 assertions passed, no skips, using Windows UAC elevation and `--display-skipped --fail-on-skipped --do-not-cache-result`. This includes the added real private-channel authorization-route regression (guest/nonparticipant rejection and participant authorization; one test / five assertions). Separate operational suite: one test / 19 assertions passed. That suite remains isolated SQLite evidence; the separate MySQL-compatible restore below used the installed game.
-- Frontend: 150 tests across 26 files, lint and production build passed. Existing JavaScript warning: 979.54 kB minified / 306.82 kB gzip.
-- `composer run dev` successfully launched API `127.0.0.1:8000`, frontend `localhost:5173`, database queue listener and Reverb on port 8080. Duplicate task-owned launchers were stopped before the restore drill. A production preview was subsequently served with `npm run preview -- --host 127.0.0.1 --port 5173 --strictPort`; explicit IPv4 binding resolved an IPv6-only localhost preview listener.
-- Browser automation became available and the user instructed the agent to perform verification itself. The former request for user-run observations is superseded. The observations below were collected by the agent using normal UI actions, with no gameplay API calls or progress edits.
-
-Environment: Windows 11 Home 10.0.26200 (build 26200), XAMPP PHP 8.2.12 x64, MariaDB 10.4.32 using the application's MySQL driver, Node 24.15.0 and the in-app desktop Chromium browser. The browser tool does not expose its Chromium version or a browser-process restart action. Baseline revision `27d4d0234f65bda0632d17264ddc22f267c2f53d` plus the documented working-tree changes. The approved authoring ZIP SHA-256 is `89f5e81b537bac44be32d6972fd1970ed3aa6e2f00e36dccb28288cfeb44b149`; corrected manifest SHA-256 is `4e6d5cc7e5d2e6f13ad8de6d0eb22779806550dae4842681a61fc7c361e40561`. Source and previous databases were preserved.
-
-Agent browser observations, spanning 2026-11-03 UTC / 2026-11-04 Asia/Damascus:
-
-- Registered a fresh synthetic account with 0 XP, discovered exactly one published launch case, entered its zero-XP briefing and started room `Z8XOKO`. Development serving rendered the local cover, map, portraits, evidence photograph and all three L02 scene images. All four location points were inspected. Evidence 04 audio remained excluded.
-- Completed the contractor L01 route, all four procedural requests, L03, the corrected L04 desk/Voss branch and L05 through real delayed queue progression. Selected all six guilty characters in the UI and submitted a perfect verdict with all three vital proofs possessed. Result: **900 / 900 XP, 6 / 6 perpetrators, zero innocent accusations, zero strikes, 39 minutes**. The browser did not pre-credit XP or edit gameplay rows.
-- Restarted the application against the independently restored database/media root, then continued and completed that saved investigation through the production frontend. Reverb remained stopped throughout the restored portion (no listener on 8080); accepted votes, delayed answers, unlocks and terminal results converged over HTTP.
-- Stopped the restore-owned queue listener and children before submitting the first L03 vote. The UI confirmed the accepted vote was saved and waiting for server confirmation. Refreshed, restarted the listener against the restore database/cache namespace, observed the real finalization job complete and resumed at the next question with the previous answer in the transcript. Duplicate-delivery protection additionally remains covered by the isolated encounter lifecycle/continuity tests.
-- Stopped only the restore API and opened a new tab at the saved room. The English initial recovery screen displayed **Unable to verify session / Retry**. Restarted that API and clicked Retry; the saved room recovered. The prior visible room also caught up after the outage.
-- Refreshed the solved room and opened it in a new tab, closing the old gameplay tab. Both displayed persisted 39-minute, 900-XP, 6/6, zero-innocent results. Discovery displayed 900 total XP, retained the perfect history and offered a zero-additional-XP replay. Subsequent play created separate room `GCDKMN`.
-- Expired only this synthetic account's token in the isolated restore database, leaving gameplay unchanged. The next load presented sign-in; English **System access / Email / Password / Sign in** copy rendered. Normal sign-in recovered `GCDKMN` and its saved dialogue. Returned to Arabic gameplay and resumed through discovery.
-- Completed the alternate L01 route (`238 → 242 → 244 → ledger_return → 245`) through the real queue on that replay; it returned normally to the map without the former dialogue cycle. Perfect/partial/premature/strike failure, rewards and subsequent encounter behavior also passed the real-bundle authored regressions.
-- A read-only check of the restored perfect game confirmed `solved`, the persisted 900-XP player award, `solved_perfect` best history, zero active encounter members and zero failed jobs. Authentication budgets, database-cache persistence, permission failures retaining valid authentication, token maintenance and room retention ran against isolated fixtures in the backend/frontend suites; no Windows scheduled task or production monitoring was installed.
-- Confirmed the unfinished replay's explicit Restart Case dialog, accepted it and entered new room `8JNACY` with zero strikes. Left that verification-only attempt through its normal exit confirmation. The prior perfect result and 900 XP remained intact after restart and exit.
-
-Consistent local recovery evidence: all task-owned API/frontend/queue/Reverb processes were stopped before capture. `mysqldump --defaults-extra-file=PRIVATE.cnf --single-transaction --routines --triggers --hex-blob --result-file=database.sql investigation_game_local_release` captured the database; copied `public/assets` at the same paused point and compared all **71 media file hashes**. Restored via `mysql --defaults-extra-file=PRIVATE.cnf investigation_game_restore_20261103204320` with dump stdin into a newly created database, compared every table's rows, and served a separate copied public root. The protected temporary credentials file was removed in `finally`. The original `.env` still selects `investigation_game_local_release`; the restored API/queue received process-only database and `glasshouse_restore_` cache overrides. No provider assets were written or deleted. Dump timestamp: 2026-11-03 20:43:20 UTC; screenshot of resumed restored dialogue: 21:01:43 UTC; perfect restored result: 21:13:16 UTC. The observed recovery/resumption interval was under 19 minutes, within the four-hour local drill target. This is no claim of VPS recovery performance or a scheduled backup policy.
-
-Final commands from the backend, executed through the task-owned UAC helper at 2026-11-04 00:06–00:08 +03:00:
-
-```powershell
-php vendor/phpunit/phpunit/phpunit --filter test_symlink_escape_cannot_authorize_reads_or_deletes tests/Feature/Admin/MediaOwnershipTest.php --display-skipped --fail-on-skipped --do-not-cache-result
-php vendor/phpunit/phpunit/phpunit tests/Feature/Admin/MediaOwnershipTest.php --display-skipped --fail-on-skipped --do-not-cache-result
-php vendor/phpunit/phpunit/phpunit --display-skipped --fail-on-skipped --do-not-cache-result
-php vendor/phpunit/phpunit/phpunit tests/Operations --display-skipped --fail-on-skipped --do-not-cache-result
-```
-
-Results respectively: **1 test / 10 assertions; 20 / 66; 499 / 3,249; 1 / 19**, all exit 0, no skips. UAC elevation was real; `whoami /priv` listed `SeCreateSymbolicLinkPrivilege` as disabled in the initial token listing, while the PHP test actually created and exercised the symlink successfully. No permanent Windows policy change was made. Frontend commands without elevation: `npm test -- --run` (**26 files / 150 tests**), `npm run lint`, `npm run build`, all exit 0. The existing 979.54-kB / 306.82-kB gzip warning remains minor: development and production gameplay loaded and completed without a demonstrated bundle-related failure. This is a local desktop observation, not mobile/network performance qualification.
-
-Evidence artifacts are retained under `C:/Users/ASUS/.codex/visualizations/2026/11/03/01a1a242-d561-70e3-9888-607074454e6d`: `task07-*.log`, `mysql-restore-20261103204320/database.sql`, `checksums.json`, `mysql-local-restore.php`, `restored-router.php`, `restored-checks.php`, `restored-pending-dialogue.png`, `http-retry.png` and `glasshouse-perfect-restored.png`. Backup/restore fixtures are intentionally retained as recovery evidence; credentials are not included. The ignored `LOCAL-VERIFICATION.md` is only a working route aid; this tracked record is authoritative.
-
-Cleanup: the restore-owned queue listener and child worker, restored API and production preview were stopped after the checks. Process inspection found no remaining matching task-owned runtime and no listeners on 5173/8000/8080. The temporary `client.cnf` was absent. The two normal verification browser tabs were closed; the earlier connection-error tab could not be reacquired for closure because the browser URL policy blocks its generated error-page URL. MySQL itself, the installed source database, original source archives and intentional recovery evidence were retained. `git diff --check` passed; status contained only the intended plan/README, release manifest/builder, installer and verification-test changes. No commit, deployment, database reset or permanent Windows setting change was performed.
-
-**Remaining qualification limitation:** full browser-process closure/relaunch has not been observed because the connected browser exposes tab closure/opening but no process lifecycle control. Tab closure/reopening, refresh, application/API restart and real token-expiry recovery passed; none is labelled as a full browser-process restart. TASK-09 and final local 80% sign-off remain open until that explicit required observation exists. No user-run checklist is being requested again. VPS qualification, mobile support, host purchases, production alerts and scheduled production backups remain outside this milestone. Raw unread-indicator translation keys and some English gameplay labels were observed; Arabic progression and English entry/recovery remained usable, assessed as minor copy issues.
-
-### ISSUE-09 — The database must receive the verified Glasshouse content, with a consistent entry policy
-
-**Priority:** Content release blocker; entry policy also needs clarification.
-**Evidence:** The prior playthrough used corrected isolated content. The latest review did not independently query the current source database. The supplied authoring ZIP was inspected during this update and is the older draft bundle.
-
-**Issue and cause:** Application changes and a corrected checked-in manifest do not replace case rows already in the database. Import is add-only and rejects a duplicate title. The previously recorded source case still had original defects, whereas automated playability tests import the corrected release manifest.
-
-The user now permits discarding old data and clean repopulation. An in-place legacy migration is not required. However, blindly importing the supplied ZIP would restore its old graph and draft publication flag; flushing does not itself resolve those differences.
-
-**Why it needs fixing:** The game served to players must contain the same playable content that was verified. A passing test of another manifest cannot establish that the imported case is solvable or even visible in case discovery.
-
-**Connected content corrections to preserve within this issue:**
-
-- L01 ledger → call → resolved-ledger navigation previously trapped the encounter. The corrected graph uses a separate return prompt; interrogation-cycle validation must remain effective.
-- L04 previously made Watts and Voss/rooftop mutually exclusive, preventing discovery of all six guilty characters. Preserve the corrected desk-owner discovery and intended deceased/fled states.
-- Unlock-only character updates must not assign a null runtime status after import/export.
-- Completed procedural requests must unlock the intended level through authoritative completed-request IDs.
-- Final indictment readiness must not require a completion pivot that location exploration never creates. Keep interrogation requirements, suspect possession and vital-proof assessment.
-- Preserve reactive production-build sign-in, actual per-player XP awards, replay/best-result rules, minute-duration display, terminal cleanup and HTTP recovery.
-- Evidence 04's absent audio was explicitly excluded from required playable media as a board-design placeholder. Do not claim that recording was tested or silently make it mandatory.
-
-**Source compatibility:** The existing `scripts/release-content/build-glasshouse-release.php` expects the reviewed database export and its media hashes recorded in `source.json`. It does not accept any arbitrary Glasshouse ZIP. The supplied authoring bundle has a different hash, manifest and media layout from that reviewed export. Source assets and corrected references must be reconciled and verified rather than bypassing integrity checks or assuming paths match.
-
-**Entry-policy discrepancy:** The manifest declares 50 minimum XP, while registration grants 0 XP. Contrary to the previous note, current code does not enforce that minimum: the card adds a visual class, the start button remains available, and backend creation has no XP check. Do not document new players as definitively blocked. Define one consistent launch policy and prove a fresh account has an intended route into the sole launch case; enforcing 50 XP without an earning route would create a real onboarding blocker.
-
-**Task — TASK-09:** Establish a reproducible, published and playable Glasshouse installation from verified case assets and corrected content, with a consistent entry policy. A clean reset/repopulation is permitted; preserving historical database data is unnecessary.
-
-**Successful-fix verification:**
-
-- [x] Record the source ZIP, corrected manifest, asset inventory and final bundle/content identity used for repopulation.
-- [x] Verify the fresh database has the intended published Glasshouse case and corrected graph, with no stale duplicate or unintended draft serving as the launch case.
-- [x] Verify every referenced required asset exists and renders; retain usable source assets until replacement validation succeeds.
-- [x] Register a fresh account and enter through normal discovery and UI using the agreed XP policy; do not rely only on a pre-credited fixture.
-- [x] Complete the case through the actual application, queue and supported browser after repopulation; no direct gameplay API calls or database edits substitute for player actions.
-- [x] Exercise both tested L01 routes and verify all six guilty characters and three vital proofs are reachable with intended statuses.
-- [x] Exercise required procedural requests, location points, dialogue branches and final indictment interactions.
-- [x] Verify perfect, relevant failure and partial/replay outcomes through an appropriate mix of browser and focused automated coverage; document which outcomes were observed where.
-- [x] Verify actual XP, final statistics, best history, restart/subsequent play and the recovery corrections from ISSUE-01/ISSUE-03 (except the explicit full browser-process restart below).
-- [x] Re-run the authored-case regression suite against the content actually selected for installation; a different synthetic or corrected manifest alone is insufficient.
-- [x] Record the final host/revision/content combination and remaining minor limitations.
-- [ ] Observe full browser-process closure/relaunch against this installation; tab closure/reopening is recorded separately and does not discharge this requirement.
-
-**Relevant sources:** `cases/the-glasshouse-files.zip`, `investigation-game-backend/database/release-content/glasshouse-files/case.json`, `investigation-game-backend/database/release-content/glasshouse-files/source.json`, `investigation-game-backend/scripts/release-content/build-glasshouse-release.php`, `investigation-game-backend/app/Services/Case/CaseImportService.php`, `investigation-game-backend/tests/Feature/GlasshousePlayabilityTest.php`, `investigation-game-frontend/src/pages/MainMenu/CaseCard/CaseCard.tsx`, `investigation-game-frontend/src/pages/MainMenu/CaseBriefingModal/CaseBriefingModal.tsx`.
-
-## 2. Active task checklist
-
-- [x] **TASK-01:** Resolve unfinished-case restart and verify connected continuity/encounter lifecycle behavior; completed under the user-approved browser exception documented above.
-- [x] **TASK-03:** Complete first-load recovery and authoritative terminal-statistics rendering, including explicit Retry, terminal revisits without tab storage, browser HTTP-only recovery and authentication checks.
-- [x] **TASK-07:** Execute the skipped filesystem-security behavior and confirm the release test baseline; real Windows symlink, export/delete checks and complete backend/frontend qualification passed on 2026-11-03.
-- [ ] **TASK-08:** Demonstrate host operation, deployed authentication protection, persistence and restoration.
-- [ ] **TASK-09:** Install and verify corrected published Glasshouse content, using the approved disposable-data policy, and settle the entry policy.
-
-TASK-01, TASK-03 and TASK-07 are retained here with their completion evidence. Other resolved standalone tasks are omitted. Their connected invariants are retained under the open issues above; they must remain covered when those issues change.
-
-## 3. Final 80% acceptance
-
-The current passing automated baseline is recorded above. It must be repeated on the final release revision after the remaining changes.
-
-- [ ] All active tasks have specific implementation and verification evidence, with no remaining gameplay blocker.
-- [x] A fresh account can enter and complete the installed launch case through the supported interface.
-- [ ] Refresh, tab/browser reopening, initial HTTP failure, visible-tab recovery and pending finalization preserve correct progress.
-- [x] Restart, explicit abandonment, terminal cleanup and subsequent play leave consistent memberships and rewards.
-- [x] Recovered end screens show persisted results and the correct player's actual award.
-- [x] Direct gameplay requests cannot mutate concluded rooms or bypass resource authorization; permission failures retain valid sessions and real expiry is recoverable.
-- [x] Final frontend/backend tests, operational checks, lint and build pass; essential skipped coverage has been executed.
-- [x] Local worker/realtime/authentication, persistence and a playable MySQL/media restore are demonstrated. Intended-VPS supervisor/scheduler, proxy/TLS, alerts and deployment qualification remain a separate TASK-08 gate.
-- [x] Final browser evidence identifies the code revision, installed content version, local runtime and desktop Chromium scope; VPS evidence is deferred.
-- [ ] Remaining issues are explicitly assessed as minor: they do not block completion, unexpectedly lose progress, lock subsequent games, compromise essential security or defeat the verified recovery behavior.
-
-**Sign-off:** Local 80% is reached when the local evidence above exists for the installed release; production/VPS readiness requires the separate TASK-08 qualification. A reset, a successful import, a green build or a single uninterrupted solve alone does not establish it. Old pre-launch data may be discarded; new player progress must be reliable after launch.
+## 7. Isolate frontend state updates and recovery
+
+Start with `investigation-game-frontend/src/pages/GameRoom/GameRoom.tsx`.
+
+- [ ] Move realtime subscription setup, teardown, and connection recovery into a dedicated hook.
+- [ ] Extract pure, feature-specific cache update functions.
+- [ ] Retain one authoritative room cache instead of duplicating persisted state in feature stores.
+- [ ] Expose feature data and actions through focused hooks and selectors.
+- [ ] Keep notifications, viewed-item state, and other UI state separate from persisted gameplay state.
+- [ ] Use explicit renderer mappings for level types where they simplify conditional rendering.
+- [ ] Preserve existing block registry extension patterns.
+- [ ] Preserve snapshot recovery after refresh and reconnect.
+- [ ] Handle duplicate, incomplete, and unexpected events through idempotent updates or snapshot refresh.
+- [ ] Verify subscription cleanup, timer cleanup, room switching, and stale asynchronous responses.
+
+Introduce event sequence/version tracking only if a demonstrated ordering problem requires it.
+
+**Completion check:** An encounter event change does not require changing location update logic, and missed events can be recovered through a room snapshot.
+
+## 8. Verify concurrency, retries, and failure behavior
+
+- [ ] Audit lock acquisition and document a consistent order for workflows touching the same records.
+- [ ] Verify critical uniqueness rules have database constraints.
+- [ ] Keep external side effects outside transactions and publish gameplay notifications after commit.
+- [ ] Verify stale queued deadlines are harmless.
+- [ ] Verify duplicate jobs cannot apply outcomes twice.
+- [ ] Define and verify worker retry and timeout settings.
+- [ ] Add bounded network timeouts while preserving caller cancellation signals.
+- [ ] Distinguish validation, access, network, timeout, and session-change failures in the frontend.
+- [ ] After an uncertain mutation response, refresh authoritative state before offering a retry that could repeat the action.
+- [ ] Verify overlapping votes, departures, finalization, and conclusion preserve valid state.
+- [ ] Exercise important concurrency cases against the production database engine; SQLite-only checks do not establish locking behavior.
+
+Reuse existing safeguards wherever they already satisfy these requirements.
+
+**Completion check:** Retries, disconnects, overlapping actions, and delayed jobs leave valid, recoverable state.
+
+## 9. Protect authoring changes and stored content
+
+- [ ] Document the policy for editing cases with active rooms.
+- [ ] Initially block destructive structural edits while active rooms depend on a case.
+- [ ] Explicitly define which cosmetic edits are safe during active play.
+- [ ] Share applicable validation rules between admin editing and bundle import.
+- [ ] Verify references belong to the correct case.
+- [ ] Preserve and extend import/export round-trip tests.
+- [ ] Verify failed imports clean up database changes and newly created files.
+- [ ] Validate authored paths for reachable progression and required vital evidence.
+- [ ] Verify rejected edits leave existing content and active rooms unchanged.
+
+Introduce full content versioning only if editing live cases becomes a demonstrated product requirement.
+
+**Completion check:** An admin edit or imported bundle cannot silently invalidate an active investigation.
+
+## 10. Make verification and recovery routine
+
+- [ ] Create or update an automated quality gate for backend tests, frontend tests, TypeScript build, and lint.
+- [ ] Include contract parity checks and a representative authored playthrough.
+- [ ] Run queue delivery and recovery integration checks in an appropriate environment.
+- [ ] Document deployment steps for migrations, configuration, worker restart, and scheduler operation.
+- [ ] Document backup and restore procedures and verify an actual restore in a safe environment.
+- [ ] Provide enough operational visibility to identify failed jobs, overdue encounter finalizations, and application failures.
+- [ ] Use safe room/group identifiers in diagnostics without logging secrets, tokens, or sensitive player data.
+- [ ] Extend existing operational tests instead of introducing a large monitoring platform.
+
+**Completion check:** Developers can verify changes consistently, and operators can diagnose and recover from stopped workers or failed deployments.
+
+## Delivery sequence and verification policy
+
+1. Establish the baseline and invariant coverage before structural changes.
+2. Extract progression effects before changing lifecycle coordination.
+3. Establish lifecycle ownership before refactoring snapshot assembly and contracts.
+4. Stabilize backend response contracts before reorganizing frontend event handling.
+5. Verify concurrency and authoring protections against the refactored boundaries.
+6. Finish with automated verification and operational documentation.
+
+Keep every extraction independently reviewable. Do not combine unrelated cleanup or behavioral changes into a refactor. Run focused checks after each change and broader checks at milestones. Record commands, outcomes, and unresolved limitations as work progresses. Mark steps complete only after their completion checks pass.
+
+## Success criteria
+
+- A new inspection rule mostly changes location code and its tests.
+- A voting change mostly changes encounter code and its tests.
+- A shared unlock rule has one implementation and focused coverage.
+- Features communicate through explicit operations instead of editing one another's internal state.
+- Conclusion and rewards remain correct under retries and concurrent actions.
+- Player snapshots and realtime updates agree on rules and contracts.
+- Lost responses, missed events, refreshes, and worker interruptions do not permanently lose committed progress.
+- Repeatable checks detect critical regressions before release.
+- The resulting structure remains understandable without enterprise-scale frameworks or infrastructure expansion.

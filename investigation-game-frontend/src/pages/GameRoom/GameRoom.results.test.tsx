@@ -123,3 +123,31 @@ it('reconciles realtime terminal statistics with the authoritative HTTP snapshot
   expect(screen.getByText('pages.gameRoom.gameEndOverlay.xpGranted').parentElement).toHaveTextContent('0 / 900');
   view.unmount();
 });
+
+it.each([
+  ['absent', {}, 2],
+  ['null', { strikes: null }, 2],
+  ['zero', { strikes: 0 }, 0],
+  ['positive', { strikes: 3 }, 3],
+] as const)('applies %s strike fields without corrupting the cached room', async (_label, patch, expected) => {
+  const handlers = new Map<string, (event: unknown) => void>();
+  vi.stubGlobal('Echo', {
+    connectionStatus: () => 'connected',
+    connector: { onConnectionChange: () => vi.fn() },
+    private: () => ({
+      listen: (name: string, handler: (event: unknown) => void) => handlers.set(name, handler),
+      stopListening: vi.fn(),
+    }),
+    leave: vi.fn(),
+  });
+  vi.mocked(fetchRoomState).mockResolvedValue(success({ ...active, strikes: 2 }));
+  const view = setup();
+  await screen.findByText('Room 1: active');
+  await waitFor(() => expect(handlers.has('ItemsUnlocked')).toBe(true));
+
+  const event = { unlocked_evidences: [], unlocked_levels: [], character_updates: [], ...patch };
+  await act(async () => { handlers.get('ItemsUnlocked')!(event); handlers.get('ItemsUnlocked')!(event); });
+
+  expect(view.client.getQueryData<Room>(['gameRoom', 'ABC123'])?.strikes).toBe(expected);
+  view.unmount();
+});

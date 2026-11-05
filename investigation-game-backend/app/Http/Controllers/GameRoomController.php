@@ -4,14 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\GameCase;
 use App\Models\Level;
-use App\Models\Question;
 use App\Models\Choice;
-use App\Models\RoomInspection;
 use App\Enums\LevelPresentationType;
 use App\Services\GameRoomService;
 use App\Support\Concerns\BroadcastsAfterCommit;
-use App\Events\LevelTransitioned;
-use App\Events\LocationInspected;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Models\GameRoom;

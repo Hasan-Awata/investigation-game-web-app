@@ -19,17 +19,6 @@
  * `AdminEvidenceController::normalizeMetadata`).
  */
 
-export type FormValue =
-  | string
-  | number
-  | boolean
-  | File
-  | Blob
-  | null
-  | undefined
-  | FormValue[]
-  | { [key: string]: FormValue };
-
 const RAW_JSON_KEYS = new Set(['metadata']);
 
 const appendValue = (formData: FormData, key: string, value: unknown): void => {

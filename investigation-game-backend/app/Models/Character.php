@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Models\Concerns\HasMediaUrls;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Casts\Attribute;
 use App\Enums\CharacterStatus;
 use App\Enums\CharacterCharge;
 

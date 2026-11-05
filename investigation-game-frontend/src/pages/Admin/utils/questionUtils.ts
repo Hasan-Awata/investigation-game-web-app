@@ -2,25 +2,14 @@ import type { DraftChoice } from '@/pages/Admin/forms/Shared/ChoiceEditorCard';
 import { formatCoordinateText } from '@/pages/Admin/utils/coordinates';
 import { serializeFormData } from '@/pages/Admin/utils/serializeFormData';
 
-export interface ChoiceOutcomes {
-  feedback: string;
-  next_question_id: number | null;
-  gives_strike: boolean;
-  unlock_evidence: number[];
-  unlock_levels: number[];
-  character_updates: { id: number; is_unlocked?: boolean; status?: string }[];
-}
-
-export interface ChoiceRequirements {
-  required_evidence: number[];
-  required_choices: number[];
-}
+export type ChoiceOutcomes = Required<NonNullable<DraftChoice['outcomes']>>;
+export type ChoiceRequirements = Required<NonNullable<DraftChoice['requirements']>>;
 
 export const defaultRequirements = (): ChoiceRequirements => ({ required_evidence: [], required_choices: [] });
 
 export const defaultOutcomes = (): ChoiceOutcomes => ({
   feedback: '', next_question_id: null, gives_strike: false,
-  unlock_evidence: [], unlock_levels: [], character_updates: [],
+  unlock_evidence: [], unlock_levels: [], unlock_location_points: [], character_updates: [],
 });
 
 type ChoiceRequirementsDraft = NonNullable<DraftChoice['requirements']>;
@@ -44,11 +33,9 @@ const normalizeOutcomes = (outcomes?: DraftChoice['outcomes']): ChoiceOutcomesDr
   const feedback = outcomes.feedback?.trim();
   if (feedback) clean.feedback = feedback;
   if (outcomes.next_question_id) clean.next_question_id = Number(outcomes.next_question_id);
-  if (Array.isArray(outcomes.unlock_evidence) && outcomes.unlock_evidence.length > 0) {
-    clean.unlock_evidence = outcomes.unlock_evidence.map(Number);
-  }
-  if (Array.isArray(outcomes.unlock_levels) && outcomes.unlock_levels.length > 0) {
-    clean.unlock_levels = outcomes.unlock_levels.map(Number);
+  for (const key of ['unlock_evidence', 'unlock_levels', 'unlock_location_points'] as const) {
+    const ids = outcomes[key];
+    if (Array.isArray(ids) && ids.length > 0) clean[key] = ids.map(Number);
   }
   if (Array.isArray(outcomes.character_updates) && outcomes.character_updates.length > 0) {
     clean.character_updates = outcomes.character_updates;

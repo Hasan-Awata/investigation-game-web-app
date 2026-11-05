@@ -144,6 +144,7 @@
             "investigator": "Investigator",
             "chooseResponse": "Choose your response",
             "evidenceRequired": "Evidence required",
+            "requirementsMissing": "Missing required evidence or an earlier response.",
             "weightedVotes": "Weighted vote total: {{count}}",
             "votesSubmitted": "{{votes}} of {{total}} required votes submitted",
             "waitingForGroup": "Start or join this interrogation to play.",

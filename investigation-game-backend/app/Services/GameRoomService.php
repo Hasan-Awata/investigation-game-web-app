@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Enums\RoomStatus;
 use App\Enums\RoomLeaveReason;
-use App\Enums\LevelPresentationType;
 use App\Support\Result;
 use App\Support\Concerns\BroadcastsAfterCommit;
 use App\Events\HostMigrated;

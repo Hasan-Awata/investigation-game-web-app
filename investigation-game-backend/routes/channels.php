@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Broadcast;
-use App\Models\GameRoom;
 use App\Models\RoomUser;
 use App\Models\User;
 
