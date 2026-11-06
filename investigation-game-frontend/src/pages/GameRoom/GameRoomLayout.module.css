@@ -163,6 +163,44 @@
   display: none;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  /* Animate the sidebar contents while the grid and drop target settle immediately. */
+  .layoutContainer[data-sidebar-motion="expanded"] :is(.sidebarHeadingWrapper, .inviteCodeDisplay, .sidebarToggleContent) {
+    --sidebar-inline-reveal: inset(0 12px 0 0);
+    animation: sidebar-content-reveal 200ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  [dir="rtl"] .layoutContainer[data-sidebar-motion="expanded"] :is(.sidebarHeadingWrapper, .inviteCodeDisplay, .sidebarToggleContent) {
+    --sidebar-inline-reveal: inset(0 0 0 12px);
+  }
+
+  .sidebarCollapsed .sidebarToggleHeader {
+    animation: sidebar-rail-settle 160ms ease-out;
+  }
+
+  @media (max-width: 1000px) {
+    .layoutContainer[data-sidebar-motion="expanded"] :is(.sidebarHeadingWrapper, .inviteCodeDisplay, .sidebarToggleContent) {
+      --sidebar-block-reveal: inset(0 0 8px 0);
+    }
+  }
+}
+
+@keyframes sidebar-content-reveal {
+  from {
+    clip-path: var(--sidebar-block-reveal, var(--sidebar-inline-reveal));
+    opacity: 0.72;
+  }
+  to {
+    clip-path: inset(0);
+    opacity: 1;
+  }
+}
+
+@keyframes sidebar-rail-settle {
+  from { opacity: 0.72; }
+  to { opacity: 1; }
+}
+
 .sidebarCollapsed .sidebarPanel {
   padding-inline: 9px;
 }
@@ -269,40 +307,6 @@
   border: 1px dashed rgba(var(--accent-cyan-rgb, 0, 255, 255), 0.3);
 }
 
-.agentList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.agentItem {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-family: var(--font-primary, sans-serif);
-  font-size: 0.95rem;
-  color: var(--text-primary, #ffffff);
-}
-
-.agentRole {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--text-secondary, #a1a1aa);
-}
-
-.hostRole {
-  background: var(--accent-amber, #ffb800);
-  box-shadow: 0 0 8px rgba(255, 179, 0, 0.5);
-}
-
-.participantRole {
-  background: var(--accent-cyan, #00ffff);
-}
-
 /* --- Main Workspace --- */
 .workspacePanel {
   min-inline-size: 0;
@@ -343,7 +347,6 @@
   border-radius: 12px;
   
   padding: 0.35rem;
-  padding-inline-start: 1rem;
   
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   width: max-content; 
@@ -352,6 +355,8 @@
 }
 
 .navLinks {
+  position: relative;
+  isolation: isolate;
   min-inline-size: 0;
   overflow-x: auto;
   scrollbar-width: thin;
@@ -383,13 +388,91 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
-.activeTab {
+.activeTab,
+.tabHighlight {
   background: var(--accent-cyan, #00ffff);
-  color: var(--bg-dark, #0a0a0c);
   box-shadow: 0 4px 15px rgba(var(--accent-cyan-rgb, 0, 255, 255), 0.3);
-  font-weight: 700;
 }
 
+.activeTab {
+  color: var(--bg-dark, #0a0a0c);
+}
+
+.tabHighlight {
+  border-radius: 8px;
+}
+
+@property --room-highlight-x {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+@property --room-highlight-width {
+  syntax: '<length>';
+  inherits: true;
+  initial-value: 0px;
+}
+
+.tabHighlight,
+.tabInk {
+  display: none;
+}
+
+.navLinks[data-shared-highlight] .tabHighlight,
+.navLinks[data-shared-highlight] .tabInk {
+  position: absolute;
+  pointer-events: none;
+}
+
+.navLinks[data-shared-highlight] .tabHighlight {
+  display: block;
+  z-index: 1;
+  left: var(--room-highlight-x);
+  top: var(--room-highlight-y);
+  width: var(--room-highlight-width);
+  height: var(--room-highlight-height);
+}
+
+.navLinks[data-shared-highlight] .activeTab {
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-secondary, #a1a1aa);
+}
+
+.navLinks[data-shared-highlight] .tabBtn {
+  transition-property: color, background-color;
+}
+
+.navLinks[data-shared-highlight] .tabLabel,
+.navLinks[data-shared-highlight] .unreadIndicator {
+  z-index: 2;
+}
+
+.tabLabel {
+  position: relative;
+}
+
+.navLinks[data-shared-highlight] .tabInk {
+  display: grid;
+  place-items: center;
+  z-index: 2;
+  inset: -1px;
+  color: var(--bg-dark, #0a0a0c);
+  clip-path: inset(
+    calc(var(--room-highlight-y) - var(--room-tab-y))
+    calc(100% + var(--room-tab-x) - var(--room-highlight-x) - var(--room-highlight-width))
+    calc(100% + var(--room-tab-y) - var(--room-highlight-y) - var(--room-highlight-height))
+    calc(var(--room-highlight-x) - var(--room-tab-x))
+    round 8px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navLinks .tabBtn {
+    transition: none;
+  }
+}
 .unreadIndicator {
   position: absolute;
   top: 0px;

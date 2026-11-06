@@ -1,42 +1,24 @@
-import { Activity, useState, useMemo, useId, useRef } from 'react';
-import { createPortal } from 'react-dom';
+import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { 
-  DndContext, 
-  DragOverlay, 
-  PointerSensor, 
-  TouchSensor, 
-  useSensor, 
-  useSensors, 
-  getClientRect,
-  defaultDropAnimationSideEffects 
-} from '@dnd-kit/core';
-import type { ClientRect, DragStartEvent, DragEndEvent } from '@dnd-kit/core';
-
+import { DndContext } from '@dnd-kit/core';
 import { useRoomData, useRoomUI } from '@/context/RoomContext.shared';
-import type { ToastNotification } from '@/context/RoomContext';
-import { useRoomPageHide } from '@/hooks/useRoomPageHide';
-import { useLeaveRoom } from '@/hooks/useLeaveRoom';
+import type { ToastNotification } from '@/context/RoomContext.shared';
 import { useInvestigationRequest } from '@/hooks/useInvestigationRequest';
+import { useLeaveRoom } from '@/hooks/useLeaveRoom';
+import { useRoomPageHide } from '@/hooks/useRoomPageHide';
 import { useSuspectVerdict } from '@/hooks/useSuspectVerdict';
-
-import CaseDetailsTab from './tabs/CaseDetails/CaseDetailsTab';
-import EvidenceBoardTab from './tabs/EvidenceBoard/EvidenceBoardTab';
-import PersonsOfInterestTab from './tabs/Characters/CharactersTab';
-import CampaignTab from './tabs/Campaign/CampaignTab';
-import AgentNotepad from '@/pages/GameRoom/components/AgentNotepad/AgentNotepad';
-import ProceduralRequestTray from './components/ProceduralRequestTray/ProceduralRequestTray';
-import ActiveAgents from './components/ActiveAgents/ActiveAgents';
-import GameRoomSettings from './components/GameRoomSettings/GameRoomSettings';
-import { EvidenceCardOverlay } from './tabs/EvidenceBoard/EvidenceCard';
-import { CharacterCardOverlay } from './tabs/Characters/CharacterCard';
-import GameEndOverlay from './components/GameEffects/GameEndOverlay';
-import styles from './GameRoomLayout.module.css';
-
-type Tab = 'details' | 'evidences' | 'campaign' | 'characters';
-type SidebarTab = 'ledger' | 'agents' | 'procedural' | 'settings';
-
 import type { FinalStats } from '@/types';
+import GameEndOverlay from './components/GameEffects/GameEndOverlay';
+import RoomExitDialog from './components/RoomDialogs/RoomExitDialog';
+import RoomFeedbackDialog from './components/RoomDialogs/RoomFeedbackDialog';
+import RoomDragOverlay from './components/RoomDragOverlay/RoomDragOverlay';
+import RoomSidebar from './components/RoomSidebar/RoomSidebar';
+import type { SidebarTab } from './components/RoomSidebar/RoomSidebar';
+import RoomToasts from './components/RoomToasts/RoomToasts';
+import type { WorkspaceTab } from './components/RoomWorkspace/RoomNavigation';
+import RoomWorkspace from './components/RoomWorkspace/RoomWorkspace';
+import { useRoomDragAndDrop } from './hooks/useRoomDragAndDrop';
+import styles from './GameRoomLayout.module.css';
 
 interface GameRoomLayoutProps {
   resolutionMessage: string | null;
@@ -49,370 +31,124 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
   const { room, accumulatedEvidences, accumulatedCharacters, refreshRoomData } = useRoomData();
   const { viewedEvidences, viewedCharacters, globalFeedback, setGlobalFeedback, setGameOverData } = useRoomUI();
 
-  const [activeTab, setActiveTab] = useState<Tab>('details');
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('details');
   const [campaignRoomId, setCampaignRoomId] = useState<typeof room.id | null>(null);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('agents');
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+  const [sidebarState, setSidebarState] = useState<'initial' | 'expanded' | 'collapsed'>('initial');
+  const isSidebarCollapsed = sidebarState === 'collapsed';
   const sidebarId = useId();
-  const dragSourceRect = useRef<ClientRect | null>(null);
-  const [isCopied, setIsCopied] = useState(false);
+  const sidebarRef = useRef<HTMLElement>(null);
   const [showExitWarning, setShowExitWarning] = useState(false);
-  const departure = useLeaveRoom(room, () => setShowExitWarning(false));
-  const isLeaving = departure.isPending;
-  
-  // Global Drag & Drop State
-  const [activeDragId, setActiveDragId] = useState<number | null>(null);
-  const [activeDragType, setActiveDragType] = useState<'EVIDENCE' | 'CHARACTER' | null>(null);
-  const [activeDragSource, setActiveDragSource] = useState<'unassigned' | 'guilty' | null>(null);
+  const closeExitWarning = () => setShowExitWarning(false);
+  const departure = useLeaveRoom(room, closeExitWarning);
 
-  const {
-    trayEvidences, trayCharacters, requestType, setRequestType,
-    addEvidenceToTray, addCharacterToTray, removeItem,
-    isSubmitting, feedback: requestFeedback,
-    clearFeedback: clearRequestFeedback, submitRequest, filedRequests
-  } = useInvestigationRequest(room, refreshRoomData);
-
-  const {
-    guiltyIds, feedback: characterFeedback, isSubmitting: isCharacterSubmitting,
-    handleCharacterDrop, submitVerdict, clearFeedback: clearCharacterFeedback
-  } = useSuspectVerdict(room, refreshRoomData, setGameOverData);
+  const request = useInvestigationRequest(room, refreshRoomData);
+  const verdict = useSuspectVerdict(room, refreshRoomData, setGameOverData);
 
   useRoomPageHide(room.id);
 
-  const handleCopyCode = async () => {
-    if (!room?.invite_code) return;
-    try {
-      await navigator.clipboard.writeText(room.invite_code);
-      setIsCopied(true);
-      setTimeout(() => setIsCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy text: ', err);
-    }
-  };
-
-  const handleLeaveSession = () => departure.mutate();
-
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
-  );
-
   const selectSidebarTab = (tab: SidebarTab) => {
     setSidebarTab(tab);
-    setIsSidebarCollapsed(false);
+    setSidebarState(state => state === 'collapsed' ? 'expanded' : state);
   };
 
-  const showProceduralTray = () => {
-    setIsSidebarCollapsed(false);
-    setSidebarTab('procedural');
+  const selectWorkspaceTab = (tab: WorkspaceTab) => {
+    if (tab === 'campaign') setCampaignRoomId(room.id);
+    setActiveTab(tab);
   };
 
-  const clearDragState = () => {
-    dragSourceRect.current = null;
-    setActiveDragId(null);
-    setActiveDragType(null);
-    setActiveDragSource(null);
-  };
-
-  const handleDragStart = (event: DragStartEvent) => {
-    const { type, characterId, sourcePool } = event.active.data.current || {};
-
-    // Expanding the panel moves cards before dnd-kit takes its initial measurement.
-    const source = event.activatorEvent.target;
-    const card = source instanceof Element ? source.closest<HTMLElement>('[aria-roledescription="draggable"]') : null;
-    dragSourceRect.current = isSidebarCollapsed && card ? getClientRect(card, { ignoreTransform: true }) : null;
-    
-    setActiveDragType(type || 'EVIDENCE');
-    setActiveDragId(type === 'CHARACTER' ? characterId : (event.active.id as number));
-    setActiveDragSource(sourcePool || null);
-
-    // Both evidences and characters can be filed on a procedural request;
-    // surface the tray so its droppable zone exists while dragging.
-    if (type === 'EVIDENCE' || type === 'CHARACTER') {
-      showProceduralTray();
-    }
-  };
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (over) {
-      const dragType = active.data.current?.type;
-      
-      if (dragType === 'EVIDENCE' && over.id === 'procedural-tray') {
-        addEvidenceToTray(active.id as number);
-      } else if (dragType === 'CHARACTER') {
-        const charId = active.data.current?.characterId;
-        if (over.id === 'procedural-tray') addCharacterToTray(charId);
-        if (over.id === 'guilty-zone') handleCharacterDrop(charId, 'guilty');
-        if (over.id === 'unassigned-zone') handleCharacterDrop(charId, 'unassigned');
-      }
-    }
-
-    clearDragState();
-  };
-
-  const activeEvidence = useMemo(() => 
-    activeDragType === 'EVIDENCE' ? accumulatedEvidences.find((ev) => ev.id === activeDragId) : null, 
-  [accumulatedEvidences, activeDragId, activeDragType]);
-
-  const activeCharacter = useMemo(() => 
-    activeDragType === 'CHARACTER' ? accumulatedCharacters.find((c) => c.id === activeDragId) : null, 
-  [accumulatedCharacters, activeDragId, activeDragType]);
+  const drag = useRoomDragAndDrop({
+    accumulatedEvidences,
+    accumulatedCharacters,
+    sidebarRef,
+    isTrayVisible: !isSidebarCollapsed && sidebarTab === 'procedural',
+    showProceduralTray: () => selectSidebarTab('procedural'),
+    addEvidenceToTray: request.addEvidenceToTray,
+    addCharacterToTray: request.addCharacterToTray,
+    handleCharacterDrop: verdict.handleCharacterDrop,
+  });
 
   const hasUnreadEvidence = accumulatedEvidences.some(ev => !viewedEvidences.has(ev.id));
-  const hasUnreadCharacters = accumulatedCharacters.some(c => !viewedCharacters.has(c.id));
-
-  const maxStrikes = room.game_case?.max_strikes || 5;
-  const currentStrikes = room.strikes || 0;
-  const radius = 20; 
-  const circumference = 2 * Math.PI * radius;
-  const segmentLength = Math.max(0, (circumference / maxStrikes) - 3.5);
-
-  const measureDraggable = (node: HTMLElement) => dragSourceRect.current ?? getClientRect(node, { ignoreTransform: true });
+  const hasUnreadCharacters = accumulatedCharacters.some(character => !viewedCharacters.has(character.id));
 
   return (
-    <DndContext sensors={sensors} measuring={{ draggable: { measure: measureDraggable } }} onDragStart={handleDragStart} onDragEnd={handleDragEnd} onDragCancel={clearDragState}>
-      <div className={`${styles.layoutContainer} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''}`}>
-        
+    <DndContext {...drag.contextProps}>
+      <div
+        className={`${styles.layoutContainer} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''}`}
+        data-sidebar-motion={sidebarState}
+        onPointerDownCapture={drag.trackPendingPointer}
+      >
         {globalFeedback && (
-          <div className="feedback-modal-overlay" style={{ zIndex: 9999 }}>
-            <div className={`feedback-modal-content ${globalFeedback.type}`}>
-              <h3 className="feedback-title">{globalFeedback.title}</h3>
-              <p className="feedback-message">{globalFeedback.message}</p>
-              <button className="btn-secondary mt-1" onClick={() => setGlobalFeedback(null)}>
-                {t('pages.gameRoom.layout.acknowledge')}
-              </button>
-            </div>
-          </div>
+          <RoomFeedbackDialog
+            {...globalFeedback}
+            acknowledgeLabel={t('pages.gameRoom.layout.acknowledge')}
+            onAcknowledge={() => setGlobalFeedback(null)}
+          />
         )}
 
-        {requestFeedback && (
-          <div className="feedback-modal-overlay" style={{ zIndex: 9999 }}>
-            <div className={`feedback-modal-content ${requestFeedback.type}`}>
-              <h3 className="feedback-title">
-                {requestFeedback.type === 'success' ? t('pages.gameRoom.evidence.board.requestApproved') : t('pages.gameRoom.evidence.board.requestDenied')}
-              </h3>
-              <p className="feedback-message">{requestFeedback.message}</p>
-              <button className="btn-secondary mt-1" onClick={clearRequestFeedback}>
-                {t('pages.gameRoom.evidence.board.acknowledge')}
-              </button>
-            </div>
-          </div>
+        {request.feedback && (
+          <RoomFeedbackDialog
+            type={request.feedback.type}
+            title={request.feedback.type === 'success'
+              ? t('pages.gameRoom.evidence.board.requestApproved')
+              : t('pages.gameRoom.evidence.board.requestDenied')}
+            message={request.feedback.message}
+            acknowledgeLabel={t('pages.gameRoom.evidence.board.acknowledge')}
+            onAcknowledge={request.clearFeedback}
+          />
         )}
 
         {showExitWarning && (
-          <div className="feedback-modal-overlay" style={{ zIndex: 9999 }}>
-            <div className="feedback-modal-content error">
-              <h3 className="feedback-title">{t('pages.gameRoom.layout.exitWarningTitle', 'Abandon Investigation?')}</h3>
-              <p className="feedback-message">{t('pages.gameRoom.layout.exitWarningDesc')}</p>
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button className="btn-secondary" onClick={() => setShowExitWarning(false)}>{t('pages.gameRoom.layout.stay', 'Maintain Connection')}</button>
-                <button className="btn-primary" style={{ background: 'var(--accent-crimson)', borderColor: 'var(--accent-crimson)', color: 'var(--bg-dark)' }} onClick={handleLeaveSession} disabled={isLeaving}>
-                  {isLeaving ? t('pages.gameRoom.layout.leaving', 'Severing...') : t('pages.gameRoom.layout.leave', 'Sever Connection')}
-                </button>
-              </div>
-            </div>
-          </div>
+          <RoomExitDialog
+            isLeaving={departure.isPending}
+            onCancel={closeExitWarning}
+            onLeave={() => departure.mutate()}
+          />
         )}
 
-        {createPortal(
-          <div className="toast-container">
-            {toasts.map((toast) => (
-              <div key={toast.id} className="system-toast-notification">
-                <div className="toast-icon pulse-icon"><img src={toast.icon} alt={toast.type} className="toast-svg-graphic" /></div>
-                <div className="toast-text-block">
-                  <span className="toast-header">{toast.title}</span>
-                  <p className="toast-message">{toast.message}</p>
-                </div>
-              </div>
-            ))}
-          </div>,
-          document.body
-        )}
-
+        <RoomToasts toasts={toasts} />
         <GameEndOverlay status={room.status} resolutionMessage={resolutionMessage} finalStats={finalStats} />
 
-        <aside className={styles.sidebarPanel}>
-          <div id={`${sidebarId}-session`} className={styles.sidebarSection} hidden={isSidebarCollapsed}>
-            <div className={styles.sidebarHeadingWrapper}>
-              <h3 className={styles.sidebarHeading}>{t('gameRoom.sessionCode')}</h3>
-              <div className={styles.sessionActions}>
-                <button className={`${styles.sessionActionBtn} ${styles.copyBtn} ${isCopied ? styles.copied : ''}`} onClick={handleCopyCode}>
-                  {isCopied ? '✓' : '⧉'}
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.sessionActionBtn} ${styles.leaveBtn}`}
-                  onClick={() => setShowExitWarning(true)}
-                  title={t('pages.gameRoom.layout.tabs.returnToMenu', 'Exit')}
-                  aria-label={t('pages.gameRoom.layout.tabs.returnToMenu', 'Exit')}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                    <path d="m16 17 5-5-5-5M21 12H9" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-            <div className={styles.inviteCodeDisplay}>{room.invite_code}</div>
-          </div>
+        <RoomSidebar
+          sidebarRef={sidebarRef}
+          room={room}
+          sidebarId={sidebarId}
+          sidebarTab={sidebarTab}
+          isSidebarCollapsed={isSidebarCollapsed}
+          isDragging={drag.isDragging}
+          onSelectTab={selectSidebarTab}
+          onToggleCollapse={() => setSidebarState(state => state === 'collapsed' ? 'expanded' : 'collapsed')}
+          onExit={() => setShowExitWarning(true)}
+          requestTray={{
+            accumulatedEvidences,
+            accumulatedCharacters,
+            trayEvidences: request.trayEvidences,
+            trayCharacters: request.trayCharacters,
+            requestType: request.requestType,
+            setRequestType: request.setRequestType,
+            removeItem: request.removeItem,
+            isSubmitting: request.isSubmitting,
+            submitRequest: request.submitRequest,
+            filedRequests: request.filedRequests,
+          }}
+        />
 
-          <div className={`${styles.sidebarSection} ${styles.sidebarFlexSection}`}>
-            <div className={styles.sidebarToggleHeader}>
-              <button
-                className={`${styles.toggleIconBtn} ${sidebarTab === 'agents' ? styles.activeToggle : ''}`}
-                onClick={() => selectSidebarTab('agents')} title={t('gameRoom.activeAgents')}
-                aria-label={t('gameRoom.activeAgents')} aria-pressed={sidebarTab === 'agents'}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h18" /><path d="M6 12l1.5-6h9l1.5 6" /><path d="M12 12v3" /><circle cx="8.5" cy="16.5" r="2.5" /><circle cx="15.5" cy="16.5" r="2.5" /><path d="M11 16.5h2" /></svg>
-              </button>
-              <button
-                className={`${styles.toggleIconBtn} ${sidebarTab === 'ledger' ? styles.activeToggle : ''}`}
-                onClick={() => selectSidebarTab('ledger')} title={t('components.agentNotepad.fieldLedger', 'Field Ledger')}
-                aria-label={t('components.agentNotepad.fieldLedger', 'Field Ledger')} aria-pressed={sidebarTab === 'ledger'}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20" /></svg>
-              </button>
-              <button
-                className={`${styles.toggleIconBtn} ${sidebarTab === 'procedural' ? styles.activeToggle : ''}`}
-                onClick={() => selectSidebarTab('procedural')} title={t('pages.gameRoom.evidence.board.proceduralTrayTitle', 'Procedural Requests')}
-                aria-label={t('pages.gameRoom.evidence.board.proceduralTrayTitle', 'Procedural Requests')} aria-pressed={sidebarTab === 'procedural'}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
-                  <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
-                  <path d="M7 21h10"/>
-                  <path d="M12 3v18"/>
-                  <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>
-                </svg>
-              </button>
-              <button
-                type="button"
-                className={`${styles.toggleIconBtn} ${sidebarTab === 'settings' ? styles.activeToggle : ''}`}
-                onClick={() => selectSidebarTab('settings')} title={t('gameRoom.settings.title')}
-                aria-label={t('gameRoom.settings.title')} aria-pressed={sidebarTab === 'settings'}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="m9.5 3-.6 2.4-2 .9L4.6 5.6 2 10l1.8 1.7v.6L2 14l2.6 4.4 2.3-.7 2 .9.6 2.4h5l.6-2.4 2-.9 2.3.7L22 14l-1.8-1.7v-.6L22 10l-2.6-4.4-2.3.7-2-.9-.6-2.4Z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                className={`${styles.toggleIconBtn} ${styles.collapseBtn}`}
-                onClick={() => setIsSidebarCollapsed(collapsed => !collapsed)}
-                disabled={activeDragId !== null}
-                aria-expanded={!isSidebarCollapsed}
-                aria-controls={`${sidebarId}-session ${sidebarId}-content`}
-                aria-label={t(isSidebarCollapsed ? 'gameRoom.expandPanel' : 'gameRoom.collapsePanel')}
-                title={t(isSidebarCollapsed ? 'gameRoom.expandPanel' : 'gameRoom.collapsePanel')}
-              >
-                <svg className={styles.collapseIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="3" y="4" width="18" height="16" rx="2" />
-                  <path d="M9 4v16" />
-                  <path d={isSidebarCollapsed ? 'm12 9 3 3-3 3' : 'm15 9-3 3 3 3'} />
-                </svg>
-              </button>
-            </div>
+        <RoomWorkspace
+          roomId={room.id}
+          campaignRoomId={campaignRoomId}
+          currentStrikes={room.strikes || 0}
+          maxStrikes={room.game_case?.max_strikes || 5}
+          navigation={{ activeTab, hasUnreadEvidence, hasUnreadCharacters, onSelectTab: selectWorkspaceTab }}
+          verdict={{
+            guiltyIds: verdict.guiltyIds,
+            isSubmitting: verdict.isSubmitting,
+            feedback: verdict.feedback,
+            submitVerdict: verdict.submitVerdict,
+            clearFeedback: verdict.clearFeedback,
+          }}
+        />
 
-            <div id={`${sidebarId}-content`} className={styles.sidebarToggleContent} hidden={isSidebarCollapsed}>
-              {sidebarTab === 'agents' ? (
-                <ActiveAgents users={room.users} hostUserId={room.host_user_id} />
-              ) : sidebarTab === 'procedural' ? (
-                <ProceduralRequestTray
-                  accumulatedEvidences={accumulatedEvidences}
-                  accumulatedCharacters={accumulatedCharacters}
-                  trayEvidences={trayEvidences}
-                  trayCharacters={trayCharacters}
-                  requestType={requestType}
-                  setRequestType={setRequestType}
-                  removeItem={removeItem}
-                  isSubmitting={isSubmitting}
-                  submitRequest={submitRequest}
-                  filedRequests={filedRequests}
-                />
-              ) : sidebarTab === 'settings' ? (
-                <GameRoomSettings />
-              ) : (
-                <AgentNotepad roomId={room.id} />
-              )}
-            </div>
-          </div>
-        </aside>
-
-        <main className={styles.workspacePanel}>
-          <div className={styles.strikesIndicator}>
-            <div className={styles.strikesTooltip}>{currentStrikes}/{maxStrikes} {t('gameRoom.strikes')}</div>
-            <svg width="50" height="50" viewBox="0 0 50 50" style={{ transform: 'rotate(-90deg)' }}>
-              {[...Array(maxStrikes)].map((_, i) => {
-                const offset = (circumference / maxStrikes) * i;
-                return (
-                  <circle key={i} cx="25" cy="25" r={radius} fill="none"
-                    stroke={i < currentStrikes ? 'var(--accent-crimson, #ff4444)' : 'rgba(255, 255, 255, 0.15)'}
-                    strokeWidth="6" strokeDasharray={`${segmentLength} ${circumference - segmentLength}`} strokeDashoffset={-offset}
-                  />
-                );
-              })}
-            </svg>
-          </div>
-
-          <header className={styles.workspaceHeader}>
-            <nav className={styles.navbar}>
-              <div className={styles.navLinks}>
-                <button className={`${styles.tabBtn} ${activeTab === 'details' ? styles.activeTab : ''}`} onClick={() => setActiveTab('details')}>
-                  {t('pages.gameRoom.layout.tabs.caseDetails')}
-                </button>
-                <button className={`${styles.tabBtn} ${activeTab === 'evidences' ? styles.activeTab : ''}`} onClick={() => setActiveTab('evidences')}>
-                  {t('pages.gameRoom.layout.tabs.evidences')}
-                  {hasUnreadEvidence && <div className={styles.unreadIndicator} title={t('pages.gameRoom.layout.tabs.unreadIntel')}></div>}
-                </button>
-                <button className={`${styles.tabBtn} ${activeTab === 'characters' ? styles.activeTab : ''}`} onClick={() => setActiveTab('characters')}>
-                  {t('pages.gameRoom.layout.tabs.personsOfInterest', 'Persons of Interest')}
-                  {hasUnreadCharacters && <div className={styles.unreadIndicator} title={t('pages.gameRoom.layout.tabs.unreadIntel')}></div>}
-                </button>
-                <button className={`${styles.tabBtn} ${activeTab === 'campaign' ? styles.activeTab : ''}`} onClick={() => {
-                  setCampaignRoomId(room.id);
-                  setActiveTab('campaign');
-                }}>
-                  {t('pages.gameRoom.layout.tabs.campaign')}
-                </button>
-              </div>
-            </nav>
-          </header>
-
-          <div className={styles.tabContentArea}>
-            {activeTab === 'details' && <CaseDetailsTab />}
-            {activeTab === 'evidences' && <EvidenceBoardTab />}
-            {activeTab === 'characters' && (
-              <PersonsOfInterestTab 
-                guiltyIds={guiltyIds}
-                isSubmitting={isCharacterSubmitting}
-                feedback={characterFeedback}
-                submitVerdict={submitVerdict}
-                clearFeedback={clearCharacterFeedback}
-              />
-            )}
-            {(activeTab === 'campaign' || campaignRoomId === room.id) && (
-              <Activity key={room.id} mode={activeTab === 'campaign' ? 'visible' : 'hidden'}>
-                <CampaignTab />
-              </Activity>
-            )}
-          </div>
-        </main>
-
-        <DragOverlay dropAnimation={{
-          sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
-          duration: 250, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)',
-        }}>
-          {activeDragType === 'EVIDENCE' && activeEvidence ? (
-            <EvidenceCardOverlay evidence={activeEvidence} />
-          ) : null}
-          
-          {activeDragType === 'CHARACTER' && activeCharacter ? (
-            <CharacterCardOverlay character={activeCharacter} sourcePool={activeDragSource || 'unassigned'} />
-          ) : null}
-        </DragOverlay>
+        <RoomDragOverlay evidence={drag.activeEvidence} character={drag.activeCharacter} sourcePool={drag.activeDragSource} />
       </div>
     </DndContext>
   );
