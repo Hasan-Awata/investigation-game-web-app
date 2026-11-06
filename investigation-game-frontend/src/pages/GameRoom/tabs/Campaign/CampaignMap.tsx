@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import type { ReactZoomPanPinchContentRef } from 'react-zoom-pan-pinch';
 import type { LevelPresentationType, Zone } from '@/types';
 import ZoneCard from './ZoneCard';
 import { assetUrl } from '@/utils/assetUrl';
@@ -44,6 +45,8 @@ function getFallbackCoordinates(index: number) {
 
 export default function CampaignMap({ zones, unlockedLevelIds, onEnterZone, mapImageUrl }: CampaignMapProps) {
   const [selectedZone, setSelectedZone] = useState<Zone | null>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+  const centeredImageSrc = useRef<string | null>(null);
 
   const visibleZones = zones.flatMap(zone => {
     const discoveredLevels = zone.levels?.filter(level => level.is_initial || unlockedLevelIds.has(level.id));
@@ -58,6 +61,19 @@ export default function CampaignMap({ zones, unlockedLevelIds, onEnterZone, mapI
   });
   const targetPinId = visibleZones.at(-1)?.pinId;
 
+  const centerLoadedMap = ({ zoomToElement, centerView }: ReactZoomPanPinchContentRef) => {
+    const image = imageRef.current;
+    // The image can finish loading while another tab is visible.
+    if (!image?.complete || !image.naturalWidth || !image.getClientRects().length || centeredImageSrc.current === image.src) return;
+
+    centeredImageSrc.current = image.src;
+    if (targetPinId) {
+      zoomToElement(targetPinId, MAP_SCALE, 0);
+    } else {
+      centerView(MAP_SCALE, 0);
+    }
+  };
+
   return (
     <div className={campaignMap['campaign-map-container']}>
       <TransformWrapper
@@ -70,24 +86,20 @@ export default function CampaignMap({ zones, unlockedLevelIds, onEnterZone, mapI
         pinch={{ disabled: true }}
         doubleClick={{ disabled: true }}
         panning={{ velocityDisabled: true }}
+        onInit={centerLoadedMap}
       >
-        {({ zoomToElement, centerView }) => (
+        {controls => (
           <TransformComponent
             wrapperClass={campaignMap['map-transform-wrapper']}
             contentClass={campaignMap['map-transform-content']}
           >
             <div className={campaignMap['custom-map-canvas']}>
               <img
+                ref={imageRef}
                 src={mapImageUrl ? assetUrl(mapImageUrl) : assetUrl('/Maps/tactical-damascus-blueprint.png')}
                 alt="Tactical Region Map"
                 className={campaignMap['custom-map-image']}
-                onLoad={() => {
-                  if (targetPinId) {
-                    zoomToElement(targetPinId, MAP_SCALE, 0);
-                  } else {
-                    centerView(MAP_SCALE, 0);
-                  }
-                }}
+                onLoad={() => centerLoadedMap(controls)}
               />
 
               <div className={campaignMap['map-overlay-grid']}></div>

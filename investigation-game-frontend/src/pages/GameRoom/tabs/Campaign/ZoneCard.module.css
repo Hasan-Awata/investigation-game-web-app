@@ -162,6 +162,12 @@
   color: inherit;
 }
 
+.corruptedTitle {
+  color: var(--text-secondary);
+  font-family: var(--font-terminal);
+  mask-image: linear-gradient(to bottom, #000 37%, transparent 37% 46%, #000 46% 64%, transparent 64% 71%, #000 71%);
+}
+
 .warrantHint {
   display: none;
   max-inline-size: 40%;
@@ -200,60 +206,35 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .dialog[open]::backdrop {
-    animation: backdropFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  .dialog,
+  .dialog::backdrop {
+    opacity: 1;
+    transition: opacity 200ms ease-out;
   }
 
-  .dossier {
-    animation: dossierSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  .dialog[data-closing],
+  .dialog[data-closing]::backdrop {
+    opacity: 0;
+    transition-duration: 160ms;
+    transition-timing-function: ease-in;
   }
 
-  .lead {
-    transition: background-color 0.2s ease, color 0.2s ease;
+  @starting-style {
+    .dialog[open],
+    .dialog[open]::backdrop {
+      opacity: 0;
+    }
   }
 
   .close,
   .travel {
-    --button-transition: 0.2s;
-    transition-property: background-color, border-color, color, transform, translate;
-    transition-duration: var(--button-transition), var(--button-transition), var(--button-transition), var(--button-transition), 0.1s;
-  }
-
-  .travel {
-    --button-transition: 0.25s;
-    transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+    transition: background-color 150ms ease-in-out, border-color 150ms ease-in-out, color 150ms ease-in-out, scale 120ms ease-in-out;
   }
 
   .close:active,
   .travel:active {
-    translate: 0 1px;
-  }
-}
-
-@media (hover: hover) and (prefers-reduced-motion: no-preference) {
-  .close:hover {
-    transform: scale(1.08);
-  }
-
-  .travel:hover {
-    transform: translateY(-2px);
-  }
-}
-
-@keyframes backdropFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes dossierSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.98);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
+    scale: 0.97;
+    transition-duration: 0s;
   }
 }
 

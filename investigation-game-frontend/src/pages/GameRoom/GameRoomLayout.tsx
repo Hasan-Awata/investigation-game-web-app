@@ -1,4 +1,4 @@
-import { useState, useMemo, useId, useRef } from 'react';
+import { Activity, useState, useMemo, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { 
@@ -50,6 +50,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
   const { viewedEvidences, viewedCharacters, globalFeedback, setGlobalFeedback, setGameOverData } = useRoomUI();
 
   const [activeTab, setActiveTab] = useState<Tab>('details');
+  const [campaignRoomId, setCampaignRoomId] = useState<typeof room.id | null>(null);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('agents');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const sidebarId = useId();
@@ -370,7 +371,10 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
                   {t('pages.gameRoom.layout.tabs.personsOfInterest', 'Persons of Interest')}
                   {hasUnreadCharacters && <div className={styles.unreadIndicator} title={t('pages.gameRoom.layout.tabs.unreadIntel')}></div>}
                 </button>
-                <button className={`${styles.tabBtn} ${activeTab === 'campaign' ? styles.activeTab : ''}`} onClick={() => setActiveTab('campaign')}>
+                <button className={`${styles.tabBtn} ${activeTab === 'campaign' ? styles.activeTab : ''}`} onClick={() => {
+                  setCampaignRoomId(room.id);
+                  setActiveTab('campaign');
+                }}>
                   {t('pages.gameRoom.layout.tabs.campaign')}
                 </button>
               </div>
@@ -389,7 +393,11 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
                 clearFeedback={clearCharacterFeedback}
               />
             )}
-            {activeTab === 'campaign' && <CampaignTab />}
+            {(activeTab === 'campaign' || campaignRoomId === room.id) && (
+              <Activity key={room.id} mode={activeTab === 'campaign' ? 'visible' : 'hidden'}>
+                <CampaignTab />
+              </Activity>
+            )}
           </div>
         </main>
 

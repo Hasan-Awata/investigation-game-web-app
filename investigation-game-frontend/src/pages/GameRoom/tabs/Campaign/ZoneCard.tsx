@@ -44,6 +44,7 @@ export default function ZoneCard({ zone, unlockedLevelIds, onClose, onEnter }: Z
   const levels = [...(zone.levels ?? [])].sort((a, b) => a.order_index - b.order_index);
   const closeLabel = t('pages.gameRoom.campaign.map.closeEsc', 'Close (Esc)');
   const warrantLabel = t('pages.gameRoom.campaign.map.warrantRequired', 'Warrant required');
+  const restrictedLabel = t('pages.gameRoom.campaign.map.restricted', 'Restricted access');
 
   useLayoutEffect(() => {
     const dialog = dialogRef.current;
@@ -52,6 +53,24 @@ export default function ZoneCard({ zone, unlockedLevelIds, onClose, onEnter }: Z
     return () => dialog.close();
   }, []);
 
+  function exitZone(action: () => void) {
+    const dialog = dialogRef.current;
+    if (!dialog || dialog.hasAttribute('data-closing')) return;
+
+    dialog.setAttribute('data-closing', '');
+    const animations = dialog.getAnimations?.() ?? [];
+    if (animations.length === 0) {
+      dialog.removeAttribute('data-closing');
+      action();
+      return;
+    }
+
+    // Keep the dialog modal until the fade finishes so focus returns on unmount.
+    void Promise.allSettled(animations.map(animation => animation.finished)).then(() => {
+      if (dialogRef.current === dialog) action();
+    });
+  }
+
   return (
     <dialog
       ref={dialogRef}
@@ -59,20 +78,20 @@ export default function ZoneCard({ zone, unlockedLevelIds, onClose, onEnter }: Z
       aria-labelledby={titleId}
       onCancel={event => {
         event.preventDefault();
-        onClose();
+        exitZone(onClose);
       }}
       onPointerDown={event => {
         pressedBackdrop.current = event.target === event.currentTarget;
       }}
       onClick={event => {
-        if (pressedBackdrop.current && event.target === event.currentTarget) onClose();
+        if (pressedBackdrop.current && event.target === event.currentTarget) exitZone(onClose);
         pressedBackdrop.current = false;
       }}
     >
       <div className={styles.dossier}>
         <header className={styles.header}>
           <h2 id={titleId} className={styles.title}>{zone.title}</h2>
-          <button type="button" className={styles.close} onClick={onClose} aria-label={closeLabel} title={closeLabel}>
+          <button type="button" className={styles.close} onClick={() => exitZone(onClose)} aria-label={closeLabel} title={closeLabel}>
             <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
               <path d="m6 6 12 12M18 6 6 18" />
             </svg>
@@ -98,11 +117,15 @@ export default function ZoneCard({ zone, unlockedLevelIds, onClose, onEnter }: Z
                   <li key={level.id} className={styles.lead} data-state={state}>
                     <LeadIcon
                       type={discovered ? level.presentation_type : 'restricted'}
-                      label={warrantHint}
+                      label={discovered ? warrantHint : restrictedLabel}
                     />
-                    <span className={styles.leadTitle}>
-                      {discovered ? level.title : t('pages.gameRoom.campaign.unknownLead', 'Unknown lead')}
-                    </span>
+                    {discovered ? (
+                      <span className={styles.leadTitle}>{level.title}</span>
+                    ) : (
+                      <bdi className={`${styles.leadTitle} ${styles.corruptedTitle}`} dir="ltr" aria-hidden="true">
+                        ▟╳▒ ▞░┆ ▓╱▚
+                      </bdi>
+                    )}
                     {warrantHint && <span className={styles.warrantHint} aria-hidden="true">{warrantHint}</span>}
                   </li>
                 );
@@ -112,7 +135,7 @@ export default function ZoneCard({ zone, unlockedLevelIds, onClose, onEnter }: Z
         </div>
 
         <footer className={styles.footer}>
-          <button type="button" className={styles.travel} onClick={() => onEnter(zone.id)}>
+          <button type="button" className={styles.travel} onClick={() => exitZone(() => onEnter(zone.id))}>
             {t('pages.gameRoom.campaign.map.travelToZone', 'Travel to Zone')}
           </button>
         </footer>

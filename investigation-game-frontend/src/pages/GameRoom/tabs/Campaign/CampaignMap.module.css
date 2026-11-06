@@ -55,24 +55,12 @@
   align-items: center;
   transform: translate(-50%, -100%);
   z-index: 10;
-  animation: dropPin 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
-}
-
-@keyframes dropPin {
-  0% { transform: translate(-50%, -150%); opacity: 0; }
-  100% { transform: translate(-50%, -100%); opacity: 1; }
 }
 
 .tactical-svg-pin {
   color: var(--accent-cyan);
   filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.5));
-  transition: filter 0.15s ease-out, transform 0.15s ease-out;
   display: block;
-}
-
-.map-pin-wrapper:hover .tactical-svg-pin {
-  filter: drop-shadow(0px 6px 8px var(--accent-cyan)) brightness(1.2);
-  transform: translateY(-3px) scale(1.05);
 }
 
 .pin-tooltip {
@@ -89,13 +77,46 @@
   opacity: 0;
   pointer-events: none;
   box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-  transform: translateY(6px); 
-  transition: opacity 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
   z-index: 20;
   margin-bottom: 8px;
 }
 
-.map-pin-wrapper:hover .pin-tooltip {
-  opacity: 1;
-  transform: translateY(0);
+@media (hover: hover) {
+  .map-pin-wrapper:hover .tactical-svg-pin {
+    filter: drop-shadow(0px 6px 8px var(--accent-cyan)) brightness(1.2);
+  }
+
+  .map-pin-wrapper:hover .pin-tooltip {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .map-pin-wrapper {
+    animation: dropPin 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+  }
+
+  .tactical-svg-pin {
+    transition: filter 0.15s ease-out, transform 0.15s ease-out;
+  }
+
+  .pin-tooltip {
+    transform: translateY(6px);
+    transition: opacity 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .map-pin-wrapper:hover .tactical-svg-pin {
+    transform: translateY(-3px) scale(1.05);
+  }
+
+  .map-pin-wrapper:hover .pin-tooltip {
+    transform: translateY(0);
+  }
+}
+
+@keyframes dropPin {
+  from { transform: translate(-50%, -150%); opacity: 0; }
+  to { transform: translate(-50%, -100%); opacity: 1; }
 }

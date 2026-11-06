@@ -40,8 +40,27 @@ it('copies the case briefing link without exposing the active room invite', asyn
 
   fireEvent.click(screen.getByRole('button', { name: 'Share case' }));
 
-  expect(await screen.findByText('Case link copied')).toBeVisible();
+  expect(await screen.findByRole('status')).toHaveTextContent('Case link copied');
   expect(writeText).toHaveBeenCalledExactlyOnceWith(`${window.location.origin}/?case=7`);
+});
+
+it('keeps the briefing mounted and blocks actions until the exit completes', async () => {
+  const { close } = renderBriefing();
+  const dialog = screen.getByRole('dialog');
+  const backdrop = dialog.parentElement!;
+  let finishExit = () => {};
+  const finished = new Promise<void>(resolve => { finishExit = resolve; });
+  Object.defineProperty(backdrop, 'getAnimations', { value: () => [{ finished }] });
+
+  fireEvent.keyDown(dialog, { key: 'Escape' });
+  fireEvent.click(screen.getByRole('button', { name: 'Close' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Continue Investigation' }));
+  expect(dialog).toHaveFocus();
+  expect(close).not.toHaveBeenCalled();
+  expect(mocks.navigate).not.toHaveBeenCalled();
+
+  await act(async () => finishExit());
+  expect(close).toHaveBeenCalledOnce();
 });
 
 it('retains a favorite when the briefing is reopened and lets the player remove it', () => {

@@ -29,8 +29,10 @@ export default function CaseBriefingModal({ gameCase, userId, onClose }: CaseBri
   const favoriteKey = `case_favorite:${userId ?? 'local'}:${gameCase.id}`;
   const [isFavorite, setIsFavorite] = useState(() => getSafeStorage<boolean>('local', favoriteKey, false) === true);
   const [shareFeedback, setShareFeedback] = useState<'copied' | 'manual' | null>(null);
+  const [showShareFeedback, setShowShareFeedback] = useState(false);
   const shareUrl = new URL('/', window.location.origin);
   shareUrl.searchParams.set('case', String(gameCase.id));
+  const backdropRef = useRef<HTMLDivElement>(null);
   const modalRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
   const confirmationId = useId();
@@ -45,7 +47,7 @@ export default function CaseBriefingModal({ gameCase, userId, onClose }: CaseBri
   };
 
   const shareCase = async () => {
-    setShareFeedback(null);
+    setShowShareFeedback(false);
     if (navigator.share) {
       try {
         await navigator.share({ title: gameCase.title, url: shareUrl.href });
@@ -60,13 +62,14 @@ export default function CaseBriefingModal({ gameCase, userId, onClose }: CaseBri
     } catch {
       setShareFeedback('manual');
     }
+    setShowShareFeedback(true);
   };
 
   useEffect(() => {
-    if (shareFeedback !== 'copied') return;
-    const timeout = window.setTimeout(() => setShareFeedback(null), 3000);
+    if (!showShareFeedback || shareFeedback !== 'copied') return;
+    const timeout = window.setTimeout(() => setShowShareFeedback(false), 3000);
     return () => window.clearTimeout(timeout);
-  }, [shareFeedback]);
+  }, [shareFeedback, showShareFeedback]);
 
   useEffect(() => {
     if (confirmingRestart) cancelButtonRef.current?.focus();
@@ -84,12 +87,29 @@ export default function CaseBriefingModal({ gameCase, userId, onClose }: CaseBri
     };
   }, []);
 
+  const requestClose = () => {
+    const backdrop = backdropRef.current;
+    if (!backdrop || requestPending.current || backdrop.hasAttribute('data-closing')) return;
+
+    backdrop.setAttribute('data-closing', '');
+    const animations = backdrop.getAnimations?.() ?? [];
+    if (!animations.length) {
+      onClose();
+      return;
+    }
+
+    void Promise.allSettled(animations.map(animation => animation.finished)).then(() => {
+      if (backdrop.isConnected) onClose();
+    });
+  };
+
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape' && !isLoading) {
+    if (event.key === 'Escape') {
       event.stopPropagation();
+      if (requestPending.current || backdropRef.current?.hasAttribute('data-closing')) return;
       if (confirmingRestart) {
         if (error) {
-          onClose();
+          requestClose();
           return;
         }
         setConfirmingRestart(false);
@@ -97,13 +117,13 @@ export default function CaseBriefingModal({ gameCase, userId, onClose }: CaseBri
         primaryButtonRef.current?.focus();
         return;
       }
-      onClose();
+      requestClose();
       return;
     }
 
     if (event.key !== 'Tab') return;
 
-    const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), [tabindex="0"]');
+    const focusableElements = modalRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled), [tabindex="0"]:not([inert] *)');
     if (!focusableElements?.length) return;
 
     const first = focusableElements[0];
@@ -179,7 +199,16 @@ export default function CaseBriefingModal({ gameCase, userId, onClose }: CaseBri
     : {};
 
   return (
-    <div className={styles.modalBackdrop} onClick={() => { if (!requestPending.current) onClose(); }}>
+    <div
+      ref={backdropRef}
+      className={styles.modalBackdrop}
+      onClick={requestClose}
+      onClickCapture={event => {
+        if (!event.currentTarget.hasAttribute('data-closing')) return;
+        event.preventDefault();
+        event.stopPropagation();
+      }}
+    >
       <div
         ref={modalRef}
         className={styles.modalContent}
@@ -191,7 +220,7 @@ export default function CaseBriefingModal({ gameCase, userId, onClose }: CaseBri
         onClick={(e) => e.stopPropagation()}
       >
         <div className={styles.heroActions}>
-          <button type="button" className={`${styles.heroButton} ${styles.closeBtn}`} onClick={onClose} disabled={isLoading} title="Close" aria-label="Close">
+          <button type="button" className={`${styles.heroButton} ${styles.closeBtn}`} onClick={requestClose} disabled={isLoading} title="Close" aria-label="Close">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
               <path d="m6 6 12 12M6 18 18 6" />
             </svg>
@@ -203,12 +232,10 @@ export default function CaseBriefingModal({ gameCase, userId, onClose }: CaseBri
                 <circle cx="6" cy="12" r="3" /><circle cx="18" cy="5" r="3" /><circle cx="18" cy="19" r="3" />
               </svg>
             </button>
-            {shareFeedback && (
-              <div className={styles.shareFeedback} role="status">
-                {t(shareFeedback === 'copied' ? 'components.caseBriefing.linkCopied' : 'components.caseBriefing.copyCaseLink')}
-                {shareFeedback === 'manual' && <input readOnly tabIndex={0} aria-label={t('components.caseBriefing.copyCaseLink')} value={shareUrl.href} onFocus={event => event.currentTarget.select()} />}
-              </div>
-            )}
+            <div className={styles.shareFeedback} role="status" inert={!showShareFeedback} aria-hidden={!showShareFeedback} data-copied={(showShareFeedback && shareFeedback === 'copied') || undefined}>
+              {shareFeedback && t(shareFeedback === 'manual' ? 'components.caseBriefing.copyCaseLink' : 'components.caseBriefing.linkCopied')}
+              {shareFeedback === 'manual' && <input readOnly tabIndex={0} aria-label={t('components.caseBriefing.copyCaseLink')} value={shareUrl.href} onFocus={event => event.currentTarget.select()} />}
+            </div>
           </div>
           <button type="button" className={`${styles.heroButton} ${styles.favoriteBtn}`} onClick={toggleFavorite} disabled={isLoading} title={t('components.caseBriefing.favorite')} aria-label={t('components.caseBriefing.favorite')} aria-pressed={isFavorite}>
             <svg viewBox="0 0 24 24" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.75" strokeLinejoin="round" aria-hidden="true">
@@ -266,7 +293,7 @@ export default function CaseBriefingModal({ gameCase, userId, onClose }: CaseBri
           {confirmingRestart && (
             <button ref={cancelButtonRef} type="button" className={styles.btnSecondary} disabled={isLoading} onClick={() => {
               if (error) {
-                onClose();
+                requestClose();
                 return;
               }
               setConfirmingRestart(false);

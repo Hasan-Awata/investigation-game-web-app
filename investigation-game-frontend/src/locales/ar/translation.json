@@ -325,6 +325,7 @@
           "travelToZone": "الذهاب إلى المنطقة",
           "noDescription": "لا يوجد وصف متاح لهذه المنطقة.",
           "closeEsc": "إغلاق ESC",
+          "restricted": "وصول مقيد",
           "warrantRequired": "مطلوب تصريح"
         }
       },

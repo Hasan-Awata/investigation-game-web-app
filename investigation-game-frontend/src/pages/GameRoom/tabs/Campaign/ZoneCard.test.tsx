@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import type { Zone } from '@/types';
 import CampaignMap from './CampaignMap';
@@ -45,7 +45,7 @@ it('sorts lead previews and hides undiscovered titles', () => {
   expect(rows[0]).toHaveTextContent(/^Night guard$/);
   expect(within(rows[1]).getByText('Sealed records')).toBeInTheDocument();
   expect(within(rows[1]).getByRole('img', { name: 'Warrant required' })).toBeInTheDocument();
-  expect(rows[2]).toHaveTextContent(/^Unknown lead$/);
+  expect(within(rows[2]).getByRole('img', { name: 'Restricted access' })).toBeInTheDocument();
   expect(within(dialog).queryByText('Hidden office')).not.toBeInTheDocument();
 });
 
@@ -76,6 +76,22 @@ it('passes the selected zone ID to Travel', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Travel to Zone' }));
   expect(onEnter).toHaveBeenCalledExactlyOnceWith(42);
   expect(onClose).not.toHaveBeenCalled();
+});
+
+it('waits for the exit animation and accepts only the first exit action', async () => {
+  const { dialog, onClose, onEnter } = openZone();
+  let finishExit!: () => void;
+  const finished = new Promise<void>(resolve => { finishExit = resolve; });
+  Object.defineProperty(dialog, 'getAnimations', { value: () => [{ finished }] });
+
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Close (Esc)' }));
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Travel to Zone' }));
+  expect(dialog).toHaveAttribute('open');
+  expect(onClose).not.toHaveBeenCalled();
+  expect(onEnter).not.toHaveBeenCalled();
+
+  finishExit();
+  await waitFor(() => expect(onClose).toHaveBeenCalledTimes(1));
 });
 
 it('opens a discovered zone from the map and omits zones with no discovered leads', () => {
