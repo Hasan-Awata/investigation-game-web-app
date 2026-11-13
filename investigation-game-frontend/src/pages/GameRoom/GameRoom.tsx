@@ -1,7 +1,8 @@
+import { useRoomNotifications } from '@/hooks/useRoomNotifications';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { RoomDataProvider, RoomUIProvider } from '@/context/RoomContext';
-import type { ToastNotification, GlobalFeedback } from '@/context/RoomContext.shared';
+import type { GlobalFeedback } from '@/context/RoomContext.shared';
 import { useGameRoom } from '@/hooks/useGameRoom';
 import { useViewedItems } from '@/hooks/useViewedItems';
 import type { FinalStats } from '@/types';
@@ -32,7 +33,7 @@ export default function GameRoom() {
 
   const [resolution, setResolution] = useState<{ inviteCode: string | undefined; message: string } | null>(null);
   const resolutionMessage = resolution?.inviteCode === inviteCode ? resolution?.message ?? null : null;
-  const [toasts, setToasts] = useState<ToastNotification[]>([]);
+  const { toasts, addGlobalToast, dismiss, onPauseChange } = useRoomNotifications();
   const [globalFeedback, setGlobalFeedback] = useState<GlobalFeedback | null>(null);
 
   const timeoutsRef = useRef(new Set<number>());
@@ -50,12 +51,6 @@ export default function GameRoom() {
     setResolution({ inviteCode, message });
     if (stats) patchRoomData(previous => ({ ...previous, final_stats: stats }));
   }, [inviteCode, patchRoomData]);
-
-  const addGlobalToast = useCallback((toastData: Omit<ToastNotification, 'id'>) => {
-    const newToast: ToastNotification = { ...toastData, id: crypto.randomUUID() };
-    setToasts((prev) => [...prev, newToast]);
-    scheduleTimeout(() => setToasts((prev) => prev.filter((toast) => toast.id !== newToast.id)), 5000);
-  }, [scheduleTimeout]);
 
   useEffect(() => {
     const pendingTimeouts = timeoutsRef.current;
@@ -96,7 +91,7 @@ export default function GameRoom() {
         addGlobalToast={addGlobalToast}
         globalFeedback={globalFeedback} setGlobalFeedback={setGlobalFeedback}
       >
-        <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={room.final_stats ?? null} toasts={toasts} />
+        <GameRoomLayout resolutionMessage={resolutionMessage} finalStats={room.final_stats ?? null} toasts={toasts} onDismissToast={dismiss} onToastPauseChange={onPauseChange} />
       </RoomUIProvider>
     </RoomDataProvider>
   );

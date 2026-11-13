@@ -1,19 +1,18 @@
-import { notificationIcons } from '@/components/notificationIcons';
-import { createPortal } from 'react-dom';
+import { getGameplayIconTone, notificationIcons } from '@/components/notificationIcons';
 import type { ToastNotification } from '@/context/RoomContext.shared';
 import PopupNotice from '@/components/PopupNotice';
-import styles from '@/components/PopupNotice.module.css';
+import NotificationStack from '@/components/NotificationStack';
 
-export default function RoomToasts({ toasts }: { toasts: ToastNotification[] }) {
-  return createPortal(
-    <div className={styles.stack} aria-live="polite" aria-relevant="additions">
-      {toasts.map(toast => (
-        <PopupNotice key={toast.id} icon={notificationIcons[toast.icon]}>
-          <strong>{toast.title}</strong>
-          <p>{toast.message}</p>
-        </PopupNotice>
-      ))}
-    </div>,
-    document.body,
-  );
+const noop = () => {};
+export default function RoomToasts({ toasts, onDismiss, onPauseChange = noop }: {
+  toasts: (ToastNotification & { visible?: boolean })[];
+  onDismiss?: (id: string) => void;
+  onPauseChange?: (paused: boolean) => void;
+}) {
+  return <NotificationStack onPauseChange={onPauseChange} entries={toasts.map(item => ({
+    id: item.id, visible: item.visible !== false,
+    content: <div role="status" aria-live="polite"><PopupNotice icon={notificationIcons[item.icon]} iconTone={getGameplayIconTone(item.icon)} onDismiss={onDismiss ? () => onDismiss(item.id) : undefined}>
+      <strong>{item.title}</strong><p>{item.message}</p>
+    </PopupNotice></div>,
+  }))} />;
 }

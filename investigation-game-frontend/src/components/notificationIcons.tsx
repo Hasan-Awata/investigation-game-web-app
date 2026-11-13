@@ -33,3 +33,18 @@ export const notificationIcons = Object.fromEntries(
 export const defaultNotificationIcons = {
   evidence: 'evidenceRecovered', level: 'phaseUnlocked', character: 'personOfInterest', system: 'information',
 } as const satisfies Record<string, NotificationIconName>;
+
+export type NotificationIconTone = 'intel' | 'success' | 'failure';
+
+const gameplayIconTones: Partial<Record<NotificationIconName, NotificationIconTone>> = {
+  proceduralApproved: 'success',
+  warrantExecuted: 'success',
+  success: 'success',
+  casualtyIdentified: 'failure',
+  validationError: 'failure',
+  error: 'failure',
+};
+
+export function getGameplayIconTone(icon: NotificationIconName): NotificationIconTone {
+  return gameplayIconTones[icon] ?? 'intel';
+}

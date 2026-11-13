@@ -23,10 +23,12 @@ import styles from './GameRoomLayout.module.css';
 interface GameRoomLayoutProps {
   resolutionMessage: string | null;
   finalStats: FinalStats | null;
-  toasts: ToastNotification[];
+  toasts: (ToastNotification & { visible?: boolean })[];
+  onDismissToast?: (id: string) => void;
+  onToastPauseChange?: (paused: boolean) => void;
 }
 
-export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }: GameRoomLayoutProps) {
+export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, onDismissToast, onToastPauseChange }: GameRoomLayoutProps) {
   const { t } = useTranslation();
   const { room, accumulatedEvidences, accumulatedCharacters, refreshRoomData } = useRoomData();
   const { viewedEvidences, viewedCharacters, globalFeedback, setGlobalFeedback, setGameOverData } = useRoomUI();
@@ -104,7 +106,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
           />
         )}
 
-        <RoomToasts toasts={toasts} />
+        <RoomToasts toasts={toasts} onDismiss={onDismissToast} onPauseChange={onToastPauseChange} />
         <GameEndOverlay status={room.status} resolutionMessage={resolutionMessage} finalStats={finalStats} />
 
         <RoomSidebar

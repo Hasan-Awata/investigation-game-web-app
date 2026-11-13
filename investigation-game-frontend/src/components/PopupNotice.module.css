@@ -3,10 +3,12 @@
   inset-block-end: max(1rem, env(safe-area-inset-bottom));
   inset-inline-end: 1rem;
   inline-size: min(25rem, calc(100% - 2rem));
-  display: grid;
-  gap: .75rem;
+
   z-index: 99999;
   pointer-events: none;
+  max-block-size: calc(100dvh - 2rem);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .notice {
@@ -29,6 +31,9 @@
   align-items: center;
   color: var(--accent-amber);
 }
+
+.icon[data-icon-tone='success'] { color: var(--accent-success); }
+.icon[data-icon-tone='failure'] { color: var(--accent-crimson); }
 
 .icon svg {
   inline-size: 24px;
@@ -56,4 +61,20 @@
 
 .notice[data-tone='success'] {
   border-color: var(--accent-success);
+}
+
+.position { position: absolute; inset-block-end: 0; inline-size: 100%; transition: transform var(--notice-stack) ease-out; }
+.motion { pointer-events: auto; animation: noticeArrival var(--notice-arrival) ease-out; }
+.motion[data-visible='false'] { pointer-events: none; animation: noticeExit var(--notice-exit) ease-out forwards; }
+.content { flex: 1; }
+.dismiss { flex: none; align-self: flex-start; display: grid; place-items: center; inline-size: 44px; block-size: 44px; padding: 0; border: 0; border-radius: var(--radius-lg); background: transparent; color: var(--accent-crimson); cursor: pointer; }
+.dismiss svg { inline-size: 14px; block-size: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; }
+.dismiss:hover { color: var(--accent-crimson); }
+.dismiss:focus-visible { outline: 2px solid var(--accent-crimson); outline-offset: 3px; }
+@keyframes noticeArrival { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes noticeExit { from { opacity: 1; } to { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .position { transition: none; }
+  .motion { animation: none; }
+  .motion[data-visible='false'] { animation: none; opacity: 0; }
 }

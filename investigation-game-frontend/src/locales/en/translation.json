@@ -27,6 +27,9 @@
       "startFailed": "Unable to prepare the investigation. Please try again.",
       "restartFailed": "Unable to confirm the restart. Retry to open the same new investigation if it was already created.",
       "backToCases": "Back to Case List"
+    },
+    "notifications": {
+      "dismiss": "Dismiss notification"
     }
   },
   "system": {
