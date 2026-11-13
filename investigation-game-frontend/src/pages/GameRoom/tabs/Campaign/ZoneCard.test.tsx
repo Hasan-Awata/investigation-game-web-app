@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { beforeEach, expect, it, vi } from 'vitest';
+import { expect, it, vi } from 'vitest';
 import type { Zone } from '@/types';
 import CampaignMap from './CampaignMap';
 import ZoneCard from './ZoneCard';
@@ -9,14 +9,6 @@ vi.mock('react-i18next', () => ({
     t: (_key: string, fallback: string) => fallback,
   }),
 }));
-
-beforeEach(() => {
-  // jsdom has a dialog element but does not implement its modal lifecycle.
-  Object.defineProperties(HTMLDialogElement.prototype, {
-    showModal: { configurable: true, value(this: HTMLDialogElement) { this.setAttribute('open', ''); } },
-    close: { configurable: true, value(this: HTMLDialogElement) { this.removeAttribute('open'); } },
-  });
-});
 
 const zone: Zone = {
   id: 42,

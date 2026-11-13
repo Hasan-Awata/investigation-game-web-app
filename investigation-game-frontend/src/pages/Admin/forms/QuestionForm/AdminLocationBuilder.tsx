@@ -1,3 +1,4 @@
+import { notificationIcons } from '@/components/notificationIcons';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useCoordinateMapper } from '@/pages/Admin/hooks/useCoordinateMapper';
@@ -29,7 +30,7 @@ export default function AdminLocationBuilder() {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (state.choices.some(c => !c.text.trim())) {
-      toast.error(t.mappingError);
+      toast.error(t.mappingError, { icon: notificationIcons.validationError });
       return;
     }
     actions.handleSubmit(e, { image });

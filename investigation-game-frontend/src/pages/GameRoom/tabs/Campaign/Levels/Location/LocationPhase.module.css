@@ -42,7 +42,7 @@
 .location-fullscreen-overlay {
   position: fixed;
   inset: 0;
-  background: #000;
+  background: var(--bg-dark);
   z-index: 9999;
   display: flex;
   justify-content: center;
@@ -52,14 +52,14 @@
 
 .location-close-button {
   position: absolute;
-  top: 24px;
+  inset-block-start: max(1.5rem, env(safe-area-inset-top));
   inset-inline-end: 24px;
   width: 48px;
   height: 48px;
-  border-radius: 50%;
+  border-radius: var(--radius-md);
   background: rgba(20, 21, 24, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #fff;
+  color: var(--text-primary);
   font-size: 1.5rem;
   display: flex;
   align-items: center;
@@ -73,8 +73,8 @@
 .location-close-button:hover {
   background: var(--accent-cyan);
   border-color: var(--accent-cyan);
-  color: #000;
-  transform: scale(1.05);
+  color: var(--text-third);
+  transform: scale(.97);
 }
 
 .location-image-container {
@@ -124,14 +124,13 @@
 .loc-crosshair {
   width: 8px;
   height: 8px;
-  background: rgba(0, 229, 255, 0.3);
+  background: rgba(var(--accent-cyan-rgb), .3);
   border-radius: 50%;
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.2s ease-out;
 }
 
 .loc-hover-zone:hover .loc-crosshair {
   background: var(--accent-cyan);
-  box-shadow: 0 0 10px 2px rgba(0, 229, 255, 0.4);
   transform: scale(1.2);
 }
 
@@ -146,11 +145,11 @@
   font-size: 0.85rem;
   border: 1px solid var(--accent-cyan);
   border-radius: 4px;
-  white-space: nowrap;
+  white-space: normal; max-inline-size: min(18rem, 80vw); overflow-wrap: anywhere;
   pointer-events: none;
   opacity: 0;
   transform: translateY(10px);
-  transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: all 0.2s ease-out;
   box-shadow: 0 4px 12px rgba(0,0,0,0.5);
   z-index: 20;
 }
@@ -161,31 +160,18 @@
 }
 
 /* --- SELECTED STATE (Pre-Submit) --- */
-.loc-hover-zone.selected {
-  background: transparent;
-  border: 1px solid transparent;
-}
-
 .loc-hover-zone.selected .loc-crosshair {
   background: var(--accent-cyan);
   transform: scale(1.2);
-  box-shadow: 0 0 8px 1px rgba(0, 229, 255, 0.3);
 }
 
 /* --- INVESTIGATED STATE (Post-Submit / Completed Phase) --- */
 .loc-hover-zone.investigated {
-  background: transparent;
-  border: 1px solid transparent;
   cursor: pointer;
 }
 
 .loc-hover-zone.investigated .loc-crosshair {
   background: var(--text-secondary);
-  box-shadow: none;
-}
-
-.loc-hover-zone.investigated:hover {
-  background: transparent;
 }
 
 .loc-hover-zone.investigated .loc-tooltip {
@@ -213,7 +199,7 @@
   box-shadow: 0 10px 30px rgba(0,0,0,0.8);
   z-index: 50;
   pointer-events: none;
-  animation: popInBubble 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  animation: popInBubble 0.2s ease-out forwards;
   backdrop-filter: blur(8px);
   white-space: pre-wrap;
 }
@@ -230,10 +216,10 @@
 }
 
 .loc-info-bubble.success {
-  border-color: var(--accent-cyan);
+  border-color: var(--accent-success);
 }
 .loc-info-bubble.success::after {
-  border-top-color: var(--accent-cyan);
+  border-top-color: var(--accent-success);
 }
 
 .loc-info-bubble.error {
@@ -246,4 +232,8 @@
 @keyframes popInBubble {
   0% { opacity: 0; transform: translate(-50%, 15px) scale(0.9); }
   100% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+}
+.location-close-button:focus-visible { outline: 2px solid var(--accent-cyan); outline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) {
+  .location-fullscreen-overlay, .location-close-button, .loc-crosshair, .loc-tooltip, .loc-info-bubble { animation: none; transition: none; }
 }

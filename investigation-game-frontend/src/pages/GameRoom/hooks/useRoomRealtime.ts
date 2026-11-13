@@ -212,7 +212,7 @@ export function useRoomRealtime({
                 type: 'character',
                 title: tRef.current('pages.gameRoom.hooks.phase.personOfInterest'),
                 message: tRef.current('pages.gameRoom.hooks.phase.personOfInterestMsg'),
-                icon: 'https://api.iconify.design/ph:user-focus-duotone.svg?color=%23a33232'
+                icon: 'personOfInterest'
               });
             }
             if (update.status === 'deceased') {
@@ -220,7 +220,7 @@ export function useRoomRealtime({
                 type: 'system',
                 title: tRef.current('pages.gameRoom.hooks.phase.casualtyIdentified', 'Critical Update'),
                 message: tRef.current('pages.gameRoom.hooks.phase.casualtyIdentifiedMsg', 'A person of interest has been confirmed deceased.'),
-                icon: 'https://api.iconify.design/ph:skull-duotone.svg?color=%238a8d91'
+                icon: 'casualtyIdentified'
               });
             }
           });
@@ -231,7 +231,7 @@ export function useRoomRealtime({
             type: 'evidence',
             title: tRef.current('pages.gameRoom.hooks.phase.evidenceRecovered'),
             message: tRef.current('pages.gameRoom.hooks.phase.evidenceRecoveredMsg', { count: e.unlocked_evidences.length }),
-            icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36'
+            icon: 'evidenceRecovered'
           });
         }
 
@@ -240,7 +240,7 @@ export function useRoomRealtime({
             type: 'level',
             title: tRef.current('pages.gameRoom.hooks.phase.phaseUnlocked'),
             message: tRef.current('pages.gameRoom.hooks.phase.phaseUnlockedMsg'),
-            icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e'
+            icon: 'phaseUnlocked'
           });
         }
 

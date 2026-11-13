@@ -1,3 +1,4 @@
+import AdminToasts from './components/AdminToasts';
 import { useState } from 'react';
 import { AdminProvider } from '@/pages/Admin/context/AdminContext';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
@@ -132,6 +133,7 @@ function AdminDashboardContent() {
 export default function AdminDashboard() {
   return (
     <ConfirmProvider>
+      <AdminToasts />
       <AdminProvider>
         <AdminDashboardContent />
       </AdminProvider>

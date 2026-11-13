@@ -1,3 +1,4 @@
+import { notificationIcons } from '@/components/notificationIcons';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAdminCases } from '@/pages/Admin/hooks/useAdminData';
@@ -82,7 +83,7 @@ export default function CaseForm() {
       return;
     }
     downloadBlob(result.value, `${slugifyFilename(c.title)}-case-bundle.zip`);
-    toast.success(`Exported "${c.title}".`);
+    toast.success(`Exported "${c.title}".`, { icon: notificationIcons.exported });
   };
 
   const submitLabel = {

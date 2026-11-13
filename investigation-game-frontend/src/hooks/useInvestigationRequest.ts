@@ -21,7 +21,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
   const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
   const [trayCharacters, setTrayCharacters] = useState<number[]>([]);
   const [requestType, setRequestType] = useState<string>('');
-  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'error'; message: string } | null>(null);
 
   // Derived directly from the authoritative room payload
   const filedRequests: FiledRequest[] = room.filed_requests || [];
@@ -32,7 +32,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
     RequestRollback
   >({
     mutationFn: () => submitInvestigationRequest(room.id, { evidenceIds: trayEvidences, characterIds: trayCharacters }),
-    // GameRoomLayout renders the request verdict in its own modal.
+    // Request rejections use their own feedback dialog.
     dispatchErrorFeedback: false,
     onMutate: async () => {
       await queryClient.cancelQueries({ queryKey: ['gameRoom', room.invite_code] });
@@ -63,7 +63,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
       setTrayCharacters([]);
     },
     onSuccess: (data) => {
-      setFeedback({ type: 'success', message: data.message });
+      setFeedback(null);
       setTrayEvidences([]);
       setTrayCharacters([]);
       setRequestType('');
@@ -76,7 +76,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
             type: 'evidence',
             title: t('pages.gameRoom.hooks.request.proceduralApproved'),
             message: t('pages.gameRoom.hooks.request.proceduralApprovedMsg'),
-            icon: 'https://api.iconify.design/ph:file-magnifying-glass-duotone.svg?color=%23c48b36'
+            icon: 'proceduralApproved'
           });
         }
 
@@ -85,7 +85,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
             type: 'level',
             title: t('pages.gameRoom.hooks.request.warrantExecuted'),
             message: t('pages.gameRoom.hooks.request.warrantExecutedMsg'),
-            icon: 'https://api.iconify.design/ph:git-merge-duotone.svg?color=%235a8a9e'
+            icon: 'warrantExecuted'
           });
         }
       }, 500);

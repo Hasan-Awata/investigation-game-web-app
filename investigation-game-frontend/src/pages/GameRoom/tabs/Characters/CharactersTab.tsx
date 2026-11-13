@@ -1,3 +1,4 @@
+import RoomFeedbackDialog from '../../components/RoomDialogs/RoomFeedbackDialog';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDroppable } from '@dnd-kit/core';
@@ -42,13 +43,8 @@ const CharactersTab = React.memo(({ guiltyIds, isSubmitting, feedback, submitVer
   return (
     <div className={styles.tabContainer}>
       {feedback && (
-        <div className="feedback-modal-overlay">
-          <div className={`feedback-modal-content ${feedback.type}`}>
-            <h3 className="feedback-title">{t('pages.gameRoom.suspects.tab.indictmentRejected')}</h3>
-            <p className="feedback-message">{feedback.message}</p>
-            <button className="btn-secondary mt-1" onClick={clearFeedback}>{t('pages.gameRoom.suspects.tab.reassessEvidence')}</button>
-          </div>
-        </div>
+        <RoomFeedbackDialog type={feedback.type} title={t('pages.gameRoom.suspects.tab.indictmentRejected')}
+          message={feedback.message} acknowledgeLabel={t('pages.gameRoom.suspects.tab.reassessEvidence')} onAcknowledge={clearFeedback} />
       )}
 
       <div className={styles.verdictZones}>

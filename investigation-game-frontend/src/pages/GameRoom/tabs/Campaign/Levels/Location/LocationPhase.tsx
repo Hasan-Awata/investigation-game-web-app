@@ -185,6 +185,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
         className={locationPhase['location-close-button']} 
         onClick={closeViewer}
         title={t('pages.gameRoom.campaign.levels.location.closeViewer')}
+        aria-label={t('pages.gameRoom.campaign.levels.location.closeViewer')}
       >
         ✕
       </button>

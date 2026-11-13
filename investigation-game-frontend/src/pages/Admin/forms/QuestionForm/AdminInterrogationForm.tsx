@@ -1,3 +1,4 @@
+import { notificationIcons } from '@/components/notificationIcons';
 import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useAdminMutations } from '@/pages/Admin/hooks/useAdminMutations';
@@ -50,11 +51,11 @@ export default function AdminInterrogationForm({
 
   const handleSave = () => {
     if (!text.trim()) {
-      toast.error(t.emptyDialogueError);
+      toast.error(t.emptyDialogueError, { icon: notificationIcons.validationError });
       return;
     }
     if (choicesState.some(c => !c.text.trim())) {
-      toast.error(t.emptyBranchError);
+      toast.error(t.emptyBranchError, { icon: notificationIcons.validationError });
       return;
     }
 

@@ -1,3 +1,4 @@
+import { notificationIcons } from '@/components/notificationIcons';
 import toast from 'react-hot-toast';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import * as adminApi from '@/services/adminApi';
@@ -40,8 +41,8 @@ export function useAdminMutations(entityType: AdminEntityType) {
 
   const methods = apiMap[entityType];
 
-  const handleSuccess = (action: string) => {
-    toast.success(`${methods.name} successfully ${action}.`);
+  const handleSuccess = (action: 'created' | 'updated' | 'deleted' | 'imported') => {
+    toast.success(`${methods.name} successfully ${action === 'imported' ? 'imported successfully' : action}.`, { icon: notificationIcons[action] });
     
     // Always refresh the master case list (handles base stats, character arrays, etc.)
     queryClient.invalidateQueries({ queryKey: ['adminCases'] });
@@ -94,7 +95,7 @@ export function useAdminMutations(entityType: AdminEntityType) {
       if (!result.isSuccess) throw Object.assign(new Error(result.errorMessage), { errors: result.errors });
       return result.value;
     },
-    onSuccess: () => handleSuccess('imported successfully'),
+    onSuccess: () => handleSuccess('imported'),
     onError: handleError,
   });
 

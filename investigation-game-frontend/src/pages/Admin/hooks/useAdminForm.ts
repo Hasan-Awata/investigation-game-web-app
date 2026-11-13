@@ -1,3 +1,4 @@
+import { notificationIcons } from '@/components/notificationIcons';
 import React, { useState, useRef } from 'react';
 import { useAdminMutations, type AdminEntityType } from '@/pages/Admin/hooks/useAdminMutations';
 import { useAdminContext } from '@/pages/Admin/context/AdminContext.shared';
@@ -51,7 +52,7 @@ export function useAdminForm<T extends Record<string, unknown>>({
     if (validator) {
       const error = validator(formData);
       if (error) {
-        toast.error(error);
+        toast.error(error, { icon: notificationIcons.validationError });
         return;
       }
     }

@@ -1,3 +1,4 @@
+import type { NotificationIconName } from '@/components/notificationIcons';
 import { createContext, useContext } from 'react';
 import type { GameRoom, Evidence, Character } from '../types';
 
@@ -6,7 +7,7 @@ export interface ToastNotification {
   type: 'evidence' | 'level' | 'character' | 'system';
   title: string;
   message: string;
-  icon: string;
+  icon: NotificationIconName;
 }
 
 export interface GlobalFeedback {

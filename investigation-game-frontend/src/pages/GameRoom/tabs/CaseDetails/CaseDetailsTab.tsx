@@ -2,7 +2,6 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoomData } from '@/context/RoomContext.shared';
 import type { GameCase } from '@/types';
-import '../SharedOverlay.css';
 import caseDetailsTab from './CaseDetailsTab.module.css';
 
 const CaseDetailsTab = () => {

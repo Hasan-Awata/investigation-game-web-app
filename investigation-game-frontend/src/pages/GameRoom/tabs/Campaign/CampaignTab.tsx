@@ -7,7 +7,6 @@ import CampaignMap from './CampaignMap';
 import LevelCard from './LevelCard';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
 import LocationPhase from './Levels/Location/LocationPhase';
-import '../SharedOverlay.css';
 import campaignTab from './CampaignTab.module.css';
 import levelCard from './LevelCard.module.css';
 

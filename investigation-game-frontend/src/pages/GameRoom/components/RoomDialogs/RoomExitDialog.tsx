@@ -1,3 +1,5 @@
+import PopupAction from '@/components/PopupAction';
+import PopupDialog from '@/components/PopupDialog';
 import { useTranslation } from 'react-i18next';
 
 interface RoomExitDialogProps {
@@ -10,17 +12,14 @@ export default function RoomExitDialog({ isLeaving, onCancel, onLeave }: RoomExi
   const { t } = useTranslation();
 
   return (
-    <div className="feedback-modal-overlay" style={{ zIndex: 9999 }}>
-      <div className="feedback-modal-content error">
-        <h3 className="feedback-title">{t('pages.gameRoom.layout.exitWarningTitle', 'Abandon Investigation?')}</h3>
-        <p className="feedback-message">{t('pages.gameRoom.layout.exitWarningDesc')}</p>
-        <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-          <button className="btn-secondary" onClick={onCancel}>{t('pages.gameRoom.layout.stay', 'Maintain Connection')}</button>
-          <button className="btn-primary" style={{ background: 'var(--accent-crimson)', borderColor: 'var(--accent-crimson)', color: 'var(--bg-dark)' }} onClick={onLeave} disabled={isLeaving}>
-            {isLeaving ? t('pages.gameRoom.layout.leaving', 'Severing...') : t('pages.gameRoom.layout.leave', 'Sever Connection')}
-          </button>
-        </div>
-      </div>
-    </div>
+    <PopupDialog title={t('pages.gameRoom.layout.exitWarningTitle', 'Abandon Investigation?')} tone="error" safeFocus
+      actions={<>
+        <PopupAction onClick={onCancel}>{t('pages.gameRoom.layout.stay', 'Maintain Connection')}</PopupAction>
+        <PopupAction danger onClick={onLeave} disabled={isLeaving}>
+          {isLeaving ? t('pages.gameRoom.layout.leaving', 'Severing...') : t('pages.gameRoom.layout.leave', 'Sever Connection')}
+        </PopupAction>
+      </>}>
+      <p>{t('pages.gameRoom.layout.exitWarningDesc', 'Leaving will disconnect you from this session. If you are the host, hosting will transfer to another player.')}</p>
+    </PopupDialog>
   );
 }

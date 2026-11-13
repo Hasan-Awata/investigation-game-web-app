@@ -1,4 +1,6 @@
+import PopupAction from '@/components/PopupAction';
 import type { GlobalFeedback } from '@/context/RoomContext.shared';
+import PopupDialog from '@/components/PopupDialog';
 
 interface RoomFeedbackDialogProps extends GlobalFeedback {
   acknowledgeLabel: string;
@@ -6,15 +8,7 @@ interface RoomFeedbackDialogProps extends GlobalFeedback {
 }
 
 export default function RoomFeedbackDialog({ type, title, message, acknowledgeLabel, onAcknowledge }: RoomFeedbackDialogProps) {
-  return (
-    <div className="feedback-modal-overlay" style={{ zIndex: 9999 }}>
-      <div className={`feedback-modal-content ${type}`}>
-        <h3 className="feedback-title">{title}</h3>
-        <p className="feedback-message">{message}</p>
-        <button className="btn-secondary mt-1" onClick={onAcknowledge}>
-          {acknowledgeLabel}
-        </button>
-      </div>
-    </div>
-  );
+  return <PopupDialog title={title} tone={type} actions={<PopupAction onClick={onAcknowledge}>{acknowledgeLabel}</PopupAction>}>
+    <p>{message}</p>
+  </PopupDialog>;
 }

@@ -1,3 +1,4 @@
+import { notificationIcons } from '@/components/notificationIcons';
 import { useState, useCallback } from 'react';
 import { DndContext } from '@dnd-kit/core';
 import { BuilderShell } from '@/pages/Admin/components/BlockBuilder/BuilderShell';
@@ -78,7 +79,7 @@ export function DocBuilder({ doc, onChange, caseId, storeLocally, evidenceId }: 
       const result = await uploadAdminBlockImage(formData);
       if (result.isSuccess) {
         updateBlock(blockId, { props: { ...doc.blocks.find(b => b.id === blockId)!.props, url: result.value.url } });
-        toast.success(t.uploadSuccess);
+        toast.success(t.uploadSuccess, { icon: notificationIcons.uploaded });
       } else {
         toast.error(result.errorMessage || t.uploadError);
       }

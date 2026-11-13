@@ -8,7 +8,7 @@ export default function RoomStrikeIndicator({ currentStrikes, maxStrikes }: { cu
   const segmentLength = Math.max(0, (circumference / maxStrikes) - 3.5);
 
   return (
-    <div className={styles.strikesIndicator}>
+    <div className={styles.strikesIndicator} tabIndex={0} role="img" aria-label={`${currentStrikes}/${maxStrikes} ${t('gameRoom.strikes')}`}>
       <div className={styles.strikesTooltip}>{currentStrikes}/{maxStrikes} {t('gameRoom.strikes')}</div>
       <svg width="50" height="50" viewBox="0 0 50 50" style={{ transform: 'rotate(-90deg)' }}>
         {[...Array(maxStrikes)].map((_, i) => {

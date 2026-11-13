@@ -1,3 +1,4 @@
+import { notificationIcons } from '@/components/notificationIcons';
 import { forwardRef } from 'react';
 import toast from 'react-hot-toast';
 import { AdminFileInput } from './AdminUI';
@@ -26,7 +27,7 @@ const MediaUploader = forwardRef<HTMLInputElement, MediaUploaderProps>(({
     if (!error) {
       onChange(file);
     } else {
-      toast.error(error);
+      toast.error(error, { icon: notificationIcons.validationError });
       onChange(null);
       e.target.value = ''; 
     }

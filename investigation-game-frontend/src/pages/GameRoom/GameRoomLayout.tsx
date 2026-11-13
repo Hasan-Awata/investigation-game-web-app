@@ -89,9 +89,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts }
         {request.feedback && (
           <RoomFeedbackDialog
             type={request.feedback.type}
-            title={request.feedback.type === 'success'
-              ? t('pages.gameRoom.evidence.board.requestApproved')
-              : t('pages.gameRoom.evidence.board.requestDenied')}
+            title={t('pages.gameRoom.evidence.board.requestDenied')}
             message={request.feedback.message}
             acknowledgeLabel={t('pages.gameRoom.evidence.board.acknowledge')}
             onAcknowledge={request.clearFeedback}

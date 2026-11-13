@@ -1,3 +1,4 @@
+import { defaultNotificationIcons, type NotificationIconName } from '@/components/notificationIcons';
 import { useMutation, type UseMutationResult } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useRoomUI } from '@/context/RoomContext.shared';
@@ -49,7 +50,7 @@ export interface GameMutationConfig<TData, TVars, TContext = unknown> {
   /** Route the success notice to a toast instead of the global feedback modal. */
   successToast?: FeedbackToastType;
   /** Icon for `successToast`. */
-  successIcon?: string;
+  successIcon?: NotificationIconName;
 
   /** Translation key (or literal text) used as the error feedback title. */
   errorTitle?: string;
@@ -161,7 +162,7 @@ export function useGameMutation<TData, TVars = void, TContext = unknown>(
             type: successToast,
             title: resolvedTitle,
             message: resolvedMessage,
-            icon: successIcon ?? '',
+            icon: successIcon ?? defaultNotificationIcons[successToast],
           });
         } else {
           setGlobalFeedback({ type: 'success', title: resolvedTitle, message: resolvedMessage });

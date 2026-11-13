@@ -1,0 +1,78 @@
+.dialog {
+  inline-size: min(36rem, calc(100% - 2rem));
+  max-block-size: calc(100dvh - 2rem);
+  margin: auto;
+  padding: 0;
+  overflow: auto;
+  border: var(--border-thin);
+  border-radius: var(--radius-xl);
+  background: var(--bg-panel);
+  color: var(--text-primary);
+  font-family: var(--font-primary), sans-serif;
+  text-align: start;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+}
+.dialog::backdrop {
+  background: rgba(var(--bg-dark-rgb), .85);
+}
+.dialog header, .body, .dialog footer {
+  padding: 1.5rem;
+}
+.dialog header {
+  padding-block-end: .75rem;
+}
+.dialog h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: normal;
+  text-transform: none;
+  overflow-wrap: anywhere;
+}
+.dialog[data-tone='error'] header {
+  border-block-start: 2px solid var(--accent-crimson);
+}
+.dialog[data-tone='success'] header {
+  border-block-start: 2px solid var(--accent-success);
+}
+.body {
+  padding-block-start: 0;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+  user-select: text;
+}
+.body > p {
+  margin: 0;
+}
+.body > p + * {
+  margin-block-start: 1.5rem;
+}
+.dialog footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .75rem;
+  border-block-start: var(--border-thin);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .dialog, .dialog::backdrop {
+    transition: opacity 160ms ease-in, display 160ms allow-discrete, overlay 160ms allow-discrete;
+    opacity: 0;
+  }
+  .dialog[open], .dialog[open]::backdrop {
+    opacity: 1;
+    transition-duration: 200ms;
+    transition-timing-function: ease-out;
+  }
+  @starting-style {
+    .dialog[open], .dialog[open]::backdrop {
+      opacity: 0;
+    }
+  }
+}
+@media (max-width: 28rem) {
+  .dialog footer {
+    flex-direction: column;
+  }
+}
