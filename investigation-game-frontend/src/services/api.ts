@@ -1,5 +1,5 @@
 import { type Result, success } from '../utils/Result';
-import type { GameCase, GameRoom, User, FinalStats, RoomInspection, VoteResponse, EncounterGroup, Evidence, Level } from '../types';
+import type { GameCase, GameRoom, User, FinalStats, RoomInspection, VoteResponse, EncounterGroup, Evidence, Level, InvestigationRequestType } from '../types';
 import { request, getToken } from './request';
 import { ENV } from '@/config/env';
 
@@ -112,12 +112,12 @@ export const submitSuspectVerdict = async (
 
 export const submitInvestigationRequest = async (
   roomId: number,
-  payload: { evidenceIds?: number[]; characterIds?: number[] }
+  payload: { requestType: InvestigationRequestType; evidenceIds?: number[]; characterIds?: number[] }
 ): Promise<Result<InvestigationRequestResponse>> => {
   const result = await request<InvestigationRequestResponse>(`/rooms/${roomId}/investigate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ evidence_ids: payload.evidenceIds ?? [], character_ids: payload.characterIds ?? [] })
+    body: JSON.stringify({ request_type: payload.requestType, evidence_ids: payload.evidenceIds ?? [], character_ids: payload.characterIds ?? [] })
   });
   return result;
 };

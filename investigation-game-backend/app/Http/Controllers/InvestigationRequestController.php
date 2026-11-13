@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\InvestigationRequestType;
+use Illuminate\Validation\Rule;
 use App\Models\GameRoom;
 use App\Models\InvestigationRequest;
 use App\Services\InvestigationRequestService;
@@ -18,6 +20,7 @@ class InvestigationRequestController extends Controller
     {
         // 1. Strict HTTP Validation
         $validated = $request->validate([
+            'request_type' => ['required', Rule::enum(InvestigationRequestType::class)],
             'evidence_ids' => 'nullable|array|min:0',
             'evidence_ids.*' => 'integer|exists:evidences,id',
             'character_ids' => 'nullable|array|min:0',
@@ -35,7 +38,7 @@ class InvestigationRequestController extends Controller
         }
 
         // 2. Execute Domain Logic
-        $result = $this->requestService->processRequest($room, $evidenceIds, $characterIds);
+        $result = $this->requestService->processRequest($room, InvestigationRequestType::from($validated['request_type']), $evidenceIds, $characterIds);
 
         // 3. Handle the Result
         if ($result->isFailure()) {

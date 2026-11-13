@@ -10,8 +10,8 @@ interface ProceduralRequestTrayProps {
   accumulatedCharacters: Character[];
   trayEvidences: number[];
   trayCharacters: number[];
-  requestType: string;
-  setRequestType: (type: string) => void;
+  requestType: InvestigationRequestType | '';
+  setRequestType: (type: InvestigationRequestType | '') => void;
   removeItem: (id: number, type: 'evidence' | 'character') => void;
   isSubmitting: boolean;
   submitRequest: () => void;
@@ -86,7 +86,7 @@ export default function ProceduralRequestTray({
         <select
           className={styles.traySelect}
           value={requestType}
-          onChange={(e) => setRequestType(e.target.value)}
+          onChange={(e) => setRequestType(e.target.value as InvestigationRequestType)}
         >
           <option value="" disabled>{t('pages.gameRoom.evidence.board.selectRequestType')}</option>
           {Object.values(InvestigationRequestType).map(type => (

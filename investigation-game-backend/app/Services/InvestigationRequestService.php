@@ -7,6 +7,7 @@ use App\Models\InvestigationRequest;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Facades\DB;
 use App\Enums\RoomStatus;
+use App\Enums\InvestigationRequestType;
 use App\Support\Result;
 use App\Support\Concerns\BroadcastsAfterCommit;
 use App\Events\ItemsUnlocked;
@@ -15,9 +16,9 @@ use App\Events\RequestFiled;
 class InvestigationRequestService
 {
     use BroadcastsAfterCommit;
-    public function processRequest(GameRoom $room, array $submittedEvidenceIds = [], array $submittedCharacterIds = []): Result
+    public function processRequest(GameRoom $room, InvestigationRequestType $requestType, array $submittedEvidenceIds = [], array $submittedCharacterIds = []): Result
     {
-        return DB::transaction(function () use ($room, $submittedEvidenceIds, $submittedCharacterIds) {
+        return DB::transaction(function () use ($room, $requestType, $submittedEvidenceIds, $submittedCharacterIds) {
             $room = GameRoom::where('id', $room->id)->lockForUpdate()->firstOrFail();
 
             if ($room->status !== RoomStatus::Active) {
@@ -31,7 +32,8 @@ class InvestigationRequestService
             return Result::failure(InvestigationRequest::MIN_ITEMS_MESSAGE);
         }
 
-        $signature = $this->computeSignature($submittedEvidenceIds, $submittedCharacterIds);
+        $legacySignature = $this->computeSignature($submittedEvidenceIds, $submittedCharacterIds);
+        $signature = hash('sha256', $requestType->value . '|' . $legacySignature);
 
         // Evidence possession: single source of truth is the room's runtime pivot state.
         $possessedEvidences = $room->getPossessedEvidenceIds();
@@ -49,6 +51,7 @@ class InvestigationRequestService
 
         $availableRequests = InvestigationRequest::with(['requiredEvidences', 'requiredCharacters'])
             ->where('case_id', $room->case_id)
+            ->where('request_type', $requestType->value)
             ->get();
 
         $matchingRequests = $availableRequests->filter(function (InvestigationRequest $request) use ($submittedEvidenceIds, $submittedCharacterIds) {
@@ -89,6 +92,10 @@ class InvestigationRequestService
             return Result::failure("The DA rejected your request. The provided items do not establish sufficient grounds.");
         }
 
+        if ($actionableRequests->count() > 1) {
+            return Result::failure('This request cannot be processed because its authored requirements are ambiguous. Please contact the case author.');
+        }
+
         $request = $actionableRequests->first();
 
         // A submitted combination that simply re-files a request the room has
@@ -98,7 +105,8 @@ class InvestigationRequestService
             return Result::failure("This {$request->request_type->label()} has already been executed.");
         }
 
-        if ($room->filedRequests()->where('signature', $signature)->exists()) {
+        if ($room->filedRequests()->where('request_type', $requestType->value)
+            ->whereIn('signature', [$signature, $legacySignature])->exists()) {
             return Result::failure('This exact combination has already been filed by your team.');
         }
 

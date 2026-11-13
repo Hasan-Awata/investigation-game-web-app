@@ -170,7 +170,7 @@ class GlasshousePlayabilityTest extends TestCase
         $request = $this->manifest['investigation_requests'][$index];
         $evidence = collect($this->manifest['evidences'])->whereIn('ref_id', $request['required_evidence_refs'])->pluck('title');
         $characters = collect($this->manifest['characters'])->whereIn('ref_id', $request['required_character_refs'])->pluck('name');
-        $result = app(InvestigationRequestService::class)->processRequest($room,
+        $result = app(InvestigationRequestService::class)->processRequest($room, \App\Enums\InvestigationRequestType::from($request['request_type']),
             $this->case->evidences()->whereIn('title', $evidence)->pluck('id')->all(),
             $this->case->characters()->whereIn('name', $characters)->pluck('id')->all());
         $this->assertFalse($result->isFailure(), $result->errorMessage ?? '');

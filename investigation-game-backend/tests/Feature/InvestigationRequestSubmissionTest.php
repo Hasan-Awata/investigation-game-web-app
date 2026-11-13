@@ -117,7 +117,7 @@ class InvestigationRequestSubmissionTest extends TestCase
 
     private function submit(array $payload)
     {
-        return $this->postJson("/api/rooms/{$this->room->id}/investigate", $payload);
+        return $this->postJson("/api/rooms/{$this->room->id}/investigate", ['request_type' => 'search_warrant', ...$payload]);
     }
 
     public function test_correct_evidence_and_character_combination_unlocks_and_logs_history(): void
@@ -240,6 +240,7 @@ class InvestigationRequestSubmissionTest extends TestCase
         $response = $this->submit([
             'evidence_ids' => [$this->initialEvidenceA->id],
             'character_ids' => [$this->lockedCharacter->id],
+            'request_type' => 'phone_records',
         ]);
 
         $response->assertOk()->assertJsonPath('status', 'success');
@@ -264,6 +265,7 @@ class InvestigationRequestSubmissionTest extends TestCase
         ]);
 
         $this->submit([
+            'request_type' => 'financial_records',
             'evidence_ids' => [$this->initialEvidenceB->id, $this->initialEvidenceA->id],
             'character_ids' => [],
         ])->assertOk()->assertJsonPath('status', 'success');
@@ -279,6 +281,7 @@ class InvestigationRequestSubmissionTest extends TestCase
         $deadEndRequest->requiredCharacters()->sync([$this->initialCharacter->id]);
 
         $this->submit([
+            'request_type' => 'dna_test',
             'evidence_ids' => [$this->initialEvidenceB->id],
             'character_ids' => [$this->initialCharacter->id],
         ])->assertStatus(422)
@@ -294,4 +297,93 @@ class InvestigationRequestSubmissionTest extends TestCase
             'character_ids' => [999999],
         ])->assertStatus(422)->assertJsonValidationErrors('character_ids.0');
     }
+    public function test_selected_type_must_match_before_any_side_effects(): void
+    {
+        $this->mixedRequest->update(['request_type' => 'phone_records']);
+        \Illuminate\Support\Facades\Event::fake([\App\Events\ItemsUnlocked::class, \App\Events\RequestFiled::class]);
+        $payload = ['evidence_ids' => [$this->initialEvidenceA->id], 'character_ids' => [$this->initialCharacter->id]];
+        $this->submit($payload)->assertStatus(422)->assertJsonFragment([
+            'message' => 'The DA rejected your request. The provided items do not establish sufficient grounds.',
+        ]);
+        $this->assertDatabaseCount('room_filed_requests', 0);
+        $this->assertFalse($this->room->completedRequests()->exists());
+        $this->assertDatabaseMissing('room_evidences', ['room_id' => $this->room->id, 'evidence_id' => $this->rewardEvidence->id]);
+        \Illuminate\Support\Facades\Event::assertNothingDispatched();
+        $this->submit(['request_type' => 'phone_records', ...$payload])->assertOk()
+            ->assertJsonPath('unlocked_evidence.0.id', $this->rewardEvidence->id);
+    }
+
+    public function test_two_evidences_do_not_bypass_selected_type(): void
+    {
+        $this->mixedRequest->update(['request_type' => 'phone_records']);
+        $this->mixedRequest->requiredCharacters()->detach();
+        $this->mixedRequest->requiredEvidences()->sync([$this->initialEvidenceA->id, $this->initialEvidenceB->id]);
+        $payload = ['evidence_ids' => [$this->initialEvidenceA->id, $this->initialEvidenceB->id]];
+        $this->submit($payload)->assertStatus(422);
+        $this->assertDatabaseCount('room_filed_requests', 0);
+        $this->submit(['request_type' => 'phone_records', ...$payload])->assertOk();
+    }
+
+    public function test_type_is_required_and_must_be_supported(): void
+    {
+        foreach ([null, '', 'invalid'] as $type) {
+            $this->postJson("/api/rooms/{$this->room->id}/investigate", [
+                'request_type' => $type,
+                'evidence_ids' => [$this->initialEvidenceA->id, $this->initialEvidenceB->id],
+            ])->assertStatus(422)->assertJsonValidationErrors('request_type');
+        }
+        $this->postJson("/api/rooms/{$this->room->id}/investigate", [
+            'evidence_ids' => [$this->initialEvidenceA->id, $this->initialEvidenceB->id],
+        ])->assertStatus(422)->assertJsonValidationErrors('request_type');
+        $this->assertDatabaseCount('room_filed_requests', 0);
+    }
+
+    private function secondRequest(string $type): InvestigationRequest
+    {
+        $request = InvestigationRequest::create([
+            'case_id' => $this->case->id, 'request_type' => $type, 'unlocks_level_id' => $this->rewardLevel->id,
+        ]);
+        $request->requiredEvidences()->sync([$this->initialEvidenceA->id]);
+        $request->requiredCharacters()->sync([$this->initialCharacter->id]);
+        return $request;
+    }
+
+    public function test_same_items_with_distinct_types_can_be_executed_independently(): void
+    {
+        $this->secondRequest('phone_records');
+        $payload = ['evidence_ids' => [$this->initialEvidenceA->id], 'character_ids' => [$this->initialCharacter->id]];
+        $this->submit($payload)->assertOk();
+        $this->submit(['request_type' => 'phone_records', ...$payload])->assertOk();
+        $this->assertDatabaseCount('room_filed_requests', 2);
+        $this->assertSame(2, $this->room->completedRequests()->count());
+        $this->assertSame(2, $this->room->filedRequests()->distinct()->count('signature'));
+    }
+
+    public function test_ambiguous_definitions_do_not_unlock_or_record_anything(): void
+    {
+        $this->secondRequest('search_warrant');
+        \Illuminate\Support\Facades\Event::fake([\App\Events\ItemsUnlocked::class, \App\Events\RequestFiled::class]);
+        $this->submit(['evidence_ids' => [$this->initialEvidenceA->id], 'character_ids' => [$this->initialCharacter->id]])
+            ->assertStatus(422)->assertJsonFragment(['message' => 'This request cannot be processed because its authored requirements are ambiguous. Please contact the case author.']);
+        $this->assertDatabaseCount('room_filed_requests', 0);
+        $this->assertFalse($this->room->completedRequests()->exists());
+        $this->assertFalse($this->room->unlockedLevels()->exists());
+        $this->assertDatabaseMissing('room_evidences', ['room_id' => $this->room->id, 'evidence_id' => $this->rewardEvidence->id]);
+        \Illuminate\Support\Facades\Event::assertNothingDispatched();
+    }
+
+    public function test_legacy_history_blocks_only_the_same_type(): void
+    {
+        $legacySignature = hash('sha256', 'E:' . $this->initialEvidenceA->id . '|C:' . $this->initialCharacter->id);
+        $this->room->filedRequests()->create([
+            'request_type' => 'search_warrant', 'signature' => $legacySignature,
+            'evidence_ids' => [$this->initialEvidenceA->id], 'character_ids' => [$this->initialCharacter->id],
+        ]);
+        $payload = ['evidence_ids' => [$this->initialEvidenceA->id], 'character_ids' => [$this->initialCharacter->id]];
+        $this->submit($payload)->assertStatus(422)->assertJsonFragment(['message' => 'This exact combination has already been filed by your team.']);
+        $this->secondRequest('phone_records');
+        $this->submit(['request_type' => 'phone_records', ...$payload])->assertOk();
+        $this->assertDatabaseCount('room_filed_requests', 2);
+    }
+
 }

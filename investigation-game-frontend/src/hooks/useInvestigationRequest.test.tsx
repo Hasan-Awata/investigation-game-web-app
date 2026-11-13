@@ -33,9 +33,10 @@ it.each([
     unlocked_levels: level ? [{ id: 8 } as Level] : [],
   }));
   const hook = setup();
-  act(() => { hook.result.current.addEvidenceToTray(7); hook.result.current.setRequestType('search'); });
+  act(() => { hook.result.current.addEvidenceToTray(7); hook.result.current.setRequestType('search_warrant'); });
   act(() => hook.result.current.submitRequest());
   await waitFor(() => expect(hook.refresh).toHaveBeenCalledOnce());
+  expect(submitInvestigationRequest).toHaveBeenCalledWith(room.id, { requestType: 'search_warrant', evidenceIds: [7], characterIds: [] });
   expect(hook.result.current.feedback).toBeNull();
   expect(hook.result.current.trayEvidences).toEqual([]);
   expect(hook.result.current.requestType).toBe('');
@@ -50,6 +51,7 @@ it.each([
 it('retains rejection feedback, acknowledgement, and optimistic rollback without adding a toast', async () => {
   vi.mocked(submitInvestigationRequest).mockResolvedValue(failure('Request denied'));
   const hook = setup();
+  act(() => hook.result.current.setRequestType('search_warrant'));
   act(() => hook.result.current.submitRequest());
   await waitFor(() => expect(hook.result.current.feedback).toEqual({ type: 'error', message: 'Request denied' }));
   expect(hook.client.getQueryData(['gameRoom', room.invite_code])).toEqual(room);

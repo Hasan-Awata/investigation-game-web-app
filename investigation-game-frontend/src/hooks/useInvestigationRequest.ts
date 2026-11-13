@@ -4,8 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { submitInvestigationRequest, type InvestigationRequestResponse } from '@/services/api';
 import { useGameMutation } from './useGameMutation';
 import { useSafeTimeout } from './useSafeTimeout';
-import type { GameRoom } from '@/types';
-import type { FiledRequest } from '@/types';
+import type { FiledRequest, GameRoom, InvestigationRequestType } from '@/types';
 import { useRoomUI } from '@/context/RoomContext.shared';
 
 interface RequestRollback {
@@ -20,7 +19,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
   
   const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
   const [trayCharacters, setTrayCharacters] = useState<number[]>([]);
-  const [requestType, setRequestType] = useState<string>('');
+  const [requestType, setRequestType] = useState<InvestigationRequestType | ''>('');
   const [feedback, setFeedback] = useState<{ type: 'error'; message: string } | null>(null);
 
   // Derived directly from the authoritative room payload
@@ -31,7 +30,10 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
     void,
     RequestRollback
   >({
-    mutationFn: () => submitInvestigationRequest(room.id, { evidenceIds: trayEvidences, characterIds: trayCharacters }),
+    mutationFn: () => {
+      if (!requestType) throw new Error(t('pages.gameRoom.evidence.board.selectRequestType'));
+      return submitInvestigationRequest(room.id, { requestType, evidenceIds: trayEvidences, characterIds: trayCharacters });
+    },
     // Request rejections use their own feedback dialog.
     dispatchErrorFeedback: false,
     onMutate: async () => {

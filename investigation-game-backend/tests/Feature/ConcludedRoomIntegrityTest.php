@@ -123,7 +123,7 @@ class ConcludedRoomIntegrityTest extends TestCase
         $this->assertTrue($encounters->join($room, $group, $user)->isFailure());
         $this->assertTrue($encounters->vote($room, $question, $answer->id, $user)->isFailure());
         $this->assertTrue($encounters->clearVote($room, $question, $user)->isFailure());
-        $this->assertTrue(app(InvestigationRequestService::class)->processRequest($room)->isFailure());
+        $this->assertTrue(app(InvestigationRequestService::class)->processRequest($room, \App\Enums\InvestigationRequestType::SearchWarrant)->isFailure());
         $this->assertTrue(app(AssessmentService::class)->evaluateFinalVerdict($room, [])->isFailure());
         app(AssessmentService::class)->failFromEncounterStrikes($room);
         $job = new FinalizeEncounterQuestion($group->id, $question->id, $deadline);
