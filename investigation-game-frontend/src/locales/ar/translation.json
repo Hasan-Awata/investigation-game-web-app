@@ -259,6 +259,12 @@
         }
       },
       "campaign": {
+        "completed": "مكتمل",
+        "showLevelInfo": "عرض التفاصيل",
+        "showGameplay": "عرض مساحة العمل",
+        "joiningEncounter": "جارٍ الانضمام…",
+        "joinEncounter": "الانضمام إلى الاستجواب",
+        "activeEncounterLocked": "أكمل الاستجواب النشط قبل دخول خيط آخر.",
         "unknownZone": "منطقة غير معروفة",
         "unknownLead": "خيط غير مكتشف",
         "noLeads": "لا توجد خيوط متاحة حالياً في هذه المنطقة.",
@@ -269,7 +275,7 @@
         "awaitingHost": "في انتظار تفويض المضيف لبدء مسار التحقيق هذا.",
         "lockingCoordinator": "جاري قفل المنسق...",
         "commenceInvestigation": "بدء التحقيق",
-        "warrantRequired": "مطلوب تصريح / مذكرة",
+        "warrantRequired": "تحتاج مذكرة تفتيش",
         "gatedDesc": "هذا الموقع أو الهدف مقيد حالياً. يجب عليك تقديم الطلب الإجرائي الصحيح إلى المدعي العام للمتابعة.",
         "lead": "الخيط {{id}}",
         "types": {
@@ -329,7 +335,7 @@
           "noDescription": "لا يوجد وصف متاح لهذه المنطقة.",
           "closeEsc": "إغلاق ESC",
           "restricted": "وصول مقيد",
-          "warrantRequired": "مطلوب تصريح"
+          "warrantRequired": "تحتاج مذكرة تفتيش"
         }
       },
       "hooks": {

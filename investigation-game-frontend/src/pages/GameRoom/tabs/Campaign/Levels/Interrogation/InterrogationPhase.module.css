@@ -8,7 +8,7 @@
   width: 100%;
   max-width: 56rem;
   margin-inline: auto;
-  padding: 6rem 2rem 2.5rem;
+  padding: 0;
   color: var(--text-primary);
   text-align: start;
 }
@@ -70,7 +70,7 @@
 .agent-bubble .speaker-label { color: var(--interview-accent); }
 
 .current-question {
-  scroll-margin-block-start: 6rem;
+  scroll-margin-block-start: 0.5rem;
   border-color: rgba(var(--border-light-rgb), 0.45);
   background: var(--bg-panel);
 }
@@ -255,10 +255,10 @@
 .member-name { flex: 0 1 10rem; color: var(--text-primary); overflow-wrap: anywhere; }
 .member-status { flex: 1 1 15rem; min-width: 0; overflow-wrap: anywhere; }
 
-.empty-state { padding: 6rem 2rem 2rem; color: var(--text-primary); line-height: 1.8; }
+.empty-state { padding: 0; color: var(--text-primary); line-height: 1.8; }
 
 @media (max-width: 600px) {
-  .interrogation-log { padding: 6rem 1rem 1.5rem; gap: 1.5rem; }
+  .interrogation-log { gap: 1.5rem; }
   .conversation { gap: 1.5rem; }
   .chat-bubble { max-width: 94%; padding: 0.875rem 1rem; }
   .response-choice { padding: 0.75rem; gap: 0.625rem; }

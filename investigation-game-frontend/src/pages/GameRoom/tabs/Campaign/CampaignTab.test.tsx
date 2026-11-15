@@ -29,6 +29,7 @@ describe('shared level preview', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.phase.activeGroup = null;
+    mocks.phase.isInitiating = false;
     mocks.room = { id: 1, case_id: 1, host_user_id: 1, invite_code: 'TEST', status: 'active', strikes: 0,
       game_case: { id: 1, title: 'Case', story: '', min_player_XP: 0, XP_on_solve: 10, max_strikes: 3,
         zones: [{ id: 1, case_id: 1, title: 'District', order_index: 1, levels: [level('location')] }] } };
@@ -79,6 +80,30 @@ describe('shared level preview', () => {
     expect(screen.queryByRole('button', { name: 'Start interrogation' })).not.toBeInTheDocument();
   });
 
+  it('exposes the play action and blocks repeated activation while starting', () => {
+    mocks.room.game_case!.zones![0].levels = [level('interrogation')];
+    mocks.phase.initiatePhase.mockImplementation(() => undefined);
+    const content = (room: GameRoom) => <RoomDataProvider room={room} accumulatedEvidences={[]} accumulatedCharacters={[]} refreshRoomData={vi.fn()}><CampaignTab /></RoomDataProvider>;
+    const view = render(content(mocks.room));
+    openZone();
+    const start = screen.getByRole('button', { name: 'Start interrogation' });
+    expect(start).toHaveAttribute('title', 'Start interrogation');
+    expect(start).toHaveAttribute('aria-busy', 'false');
+    expect(start.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(start.textContent).toBe('');
+    fireEvent.click(start);
+    expect(mocks.phase.initiatePhase).toHaveBeenCalledTimes(1);
+    expect(mocks.phase.initiatePhase).toHaveBeenCalledWith(1, expect.any(Function));
+    mocks.phase.isInitiating = true;
+    view.rerender(content({ ...mocks.room }));
+    const pending = screen.getByRole('button', { name: 'Starting…' });
+    expect(pending).toBeDisabled();
+    expect(pending).toHaveAttribute('aria-busy', 'true');
+    expect(pending).toHaveAttribute('title', 'Starting…');
+    fireEvent.click(pending);
+    expect(mocks.phase.initiatePhase).toHaveBeenCalledTimes(1);
+  });
+
   it('keeps the preview sharp when starting fails', () => {
     mocks.room.game_case!.zones![0].levels = [level('interrogation')];
     mocks.phase.initiatePhase.mockImplementation(() => undefined);
@@ -107,6 +132,12 @@ describe('shared level preview', () => {
     expect(background(container)?.className).not.toContain('blurred');
     expect(screen.queryByRole('button', { name: 'Show workspace' })).not.toBeInTheDocument();
     expect(screen.queryByText('Location content')).not.toBeInTheDocument();
+    expect(background(container)?.className).toContain('gated-image');
+    expect(screen.getByText('Warrant required')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Warrant required' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Start interrogation' })).not.toBeInTheDocument();
+    expect(mocks.phase.initiatePhase).not.toHaveBeenCalled();
+    expect(mocks.phase.joinGroup).not.toHaveBeenCalled();
   });
 
   it('uses authoritative completed request IDs to open an approved procedural gate', () => {
@@ -115,6 +146,7 @@ describe('shared level preview', () => {
     render(<CampaignTab />);
     openZone();
     expect(screen.getByRole('button', { name: 'Start interrogation' })).toBeEnabled();
+    expect(screen.queryByText('Warrant required')).not.toBeInTheDocument();
   });
 
   it('does not infer request completion from a similarly filed combination', () => {
@@ -145,5 +177,42 @@ describe('shared level preview', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show workspace' }));
     expect(screen.getByText('Interrogation content')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Start interrogation' })).not.toBeInTheDocument();
+  });
+});
+
+describe('lead navigation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.phase.activeGroup = null;
+    mocks.phase.isInitiating = false;
+    mocks.room = { id: 1, case_id: 1, host_user_id: 1, invite_code: 'TEST', status: 'active', strikes: 0,
+      game_case: { id: 1, title: 'Case', story: '', min_player_XP: 0, XP_on_solve: 10, max_strikes: 3,
+        zones: [{ id: 1, case_id: 1, title: 'District', order_index: 1, levels: [level('location'), { ...level('location'), id: 2, title: 'Second lead', details: 'Second details', order_index: 2 }] }] } };
+  });
+  it('switches leads, resets workspace, and returns to the map', () => {
+    render(<CampaignTab />);
+    openZone();
+    fireEvent.click(screen.getByRole('button', { name: 'Show workspace' }));
+    fireEvent.click(screen.getByRole('button', { name: /Second lead/ }));
+    expect(screen.getByText('Second details')).toBeInTheDocument();
+    expect(screen.queryByText('Location content')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Second lead/ })).toHaveAttribute('aria-pressed', 'true');
+    fireEvent.click(screen.getByRole('button', { name: /backToMap/ }));
+    expect(screen.getByRole('button', { name: 'Enter zone' })).toBeInTheDocument();
+  });
+  it('disables lead selection and map return during an active encounter', () => {
+    mocks.phase.activeGroup = group;
+    render(<CampaignTab />);
+    expect(screen.getByRole('button', { name: /Second lead/ })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /backToMap/ })).toBeDisabled();
+    expect(screen.getByText('Lead details')).toBeInTheDocument();
+  });
+  it('shows an empty zone with a working return action', () => {
+    mocks.room.game_case!.zones![0].levels = [];
+    render(<CampaignTab />);
+    openZone();
+    expect(screen.getByText('No leads are currently available in this zone.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /backToMap/ }));
+    expect(screen.getByRole('button', { name: 'Enter zone' })).toBeInTheDocument();
   });
 });

@@ -146,6 +146,26 @@
         }
       },
       "campaign": {
+        "completed": "Completed",
+        "unknownZone": "Unknown district",
+        "unknownLead": "Unknown lead",
+        "noLeads": "No leads are currently available in this zone.",
+        "warrantRequired": "Warrant required",
+        "gatedDesc": "A required request has not been completed.",
+        "showLevelInfo": "Show details",
+        "showGameplay": "Show workspace",
+        "joiningEncounter": "Joining…",
+        "joinEncounter": "Join encounter",
+        "lockingCoordinator": "Starting…",
+        "commenceInvestigation": "Start interrogation",
+        "activeEncounterLocked": "Finish your active interrogation before entering another level.",
+        "types": {
+          "interrogation": "Interrogation",
+          "location": "Location survey"
+        },
+        "map": {
+          "backToMap": "Back to map"
+        },
         "levels": {
           "interrogation": {
             "awaitingConfirmation": "Submitted votes are saved. Waiting for the server to confirm the outcome.",
