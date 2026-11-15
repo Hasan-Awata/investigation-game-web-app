@@ -45,12 +45,14 @@ export default function LevelCard({
   disabled = false
 }: LevelCardProps) {
   const { t } = useTranslation();
+  const phaseLabel = t(`pages.gameRoom.campaign.types.${level.presentation_type || 'interrogation'}`);
 
   return (
     <button
       type="button"
       className={`${levelCard['level-list-item']} ${levelCard[status] || ''} ${isSelected ? levelCard['selected'] : ''}`}
       aria-pressed={isSelected}
+      aria-label={status === 'completed' ? `${displayTitle}, ${phaseLabel}, ${t('pages.gameRoom.campaign.completed', 'Completed')}` : undefined}
       disabled={disabled || status === 'undiscovered'}
       onClick={onSelect}
     >
@@ -61,9 +63,8 @@ export default function LevelCard({
         <span className={levelCard['list-item-title-area']}>
           <span className={levelCard['list-item-title']}>{displayTitle}</span>
           <span className={levelCard['node-phase']}>
-            {t(`pages.gameRoom.campaign.types.${level.presentation_type || 'interrogation'}`)}
+            {phaseLabel}
           </span>
-          {status === 'completed' && <span className={levelCard['node-phase']}>{t('pages.gameRoom.campaign.completed', 'Completed')}</span>}
         </span>
       </span>
     </button>

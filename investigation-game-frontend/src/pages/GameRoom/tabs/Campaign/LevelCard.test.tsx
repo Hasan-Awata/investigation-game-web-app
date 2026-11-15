@@ -32,8 +32,10 @@ describe('LevelCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /Lead/ }));
     expect(onSelect).toHaveBeenCalledOnce();
   });
-  it('labels completed leads without disabling their history', () => {
-    render(<LevelCard level={level} status="completed" isSelected={false} displayTitle="Lead" onSelect={vi.fn()} />);
+  it.each([false, true])('announces completion without visible status text when selected is %s', isSelected => {
+    render(<LevelCard level={level} status="completed" isSelected={isSelected} displayTitle="Lead" onSelect={vi.fn()} />);
     expect(screen.getByRole('button', { name: /Completed/ })).toBeEnabled();
+    expect(screen.queryByText('Completed')).not.toBeInTheDocument();
+    expect(screen.getByRole('button')).toHaveAttribute('aria-pressed', String(isSelected));
   });
 });

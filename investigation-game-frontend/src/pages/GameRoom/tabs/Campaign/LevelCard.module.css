@@ -113,6 +113,16 @@
   color: var(--accent-cyan);
 }
 
+.level-list-item.completed,
+.level-list-item.completed:hover:not(:disabled) {
+  border-color: var(--accent-success);
+}
+
+.completed .level-icon-container {
+  background: rgba(var(--accent-success-rgb), 0.15);
+  color: var(--accent-success);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .level-list-item {
     transition: none;
