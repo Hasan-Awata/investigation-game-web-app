@@ -1,52 +1,13 @@
-/* ==============================================================
-   VIEWERS CONTAINER (Clean & Fixed Positioning)
-   ============================================================== */
-.viewers-container-wrapper {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border-radius: 4px;
-  isolation: isolate; 
-}
-
-.viewers-content-area {
-  width: 100%;
-  box-sizing: border-box;
-}
-
-/* ==============================================================
-   FULLSCREEN MODAL OVERLAY MODE
-   ============================================================== */
-.viewers-container-wrapper.fullscreen-mode {
-  background: rgba(10, 10, 10, 0.95);
-  margin: 0;
-  padding: 0;
-}
-
-/* Captures wheel & mouse events during Fullscreen */
-.viewers-zoom-overlay.zoom-enabled {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  overflow: hidden; /* Prevent native scrollbars when zooming */
-}
-
-/* Allows normal native scrolling in Standard Mode */
-.viewers-zoom-overlay.native-scroll {
-  width: 100%;
-  height: 100%;
-  overflow: auto;
-}
-
-/* The wrapper that holds the document and applies the math */
-.viewers-content-area.fullscreen-scaled {
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  width: auto;
-  height: auto;
-  transform-origin: center center;
-  will-change: transform;
-}
+.viewers-container-wrapper { position: relative; width: 100%; height: 100%; min-height: 0; flex: 1; isolation: isolate; }
+.viewers-zoom-overlay { width: 100%; height: 100%; }
+.native-scroll { overflow-y: auto; overflow-x: hidden; scrollbar-color: var(--accent-cyan) var(--bg-dark); scrollbar-width: thin; }
+.viewers-stage { position: relative; width: 100%; }
+/* Keep the unscaled layout bounds from adding blank scroll space below the fitted sheet. */
+.native-scroll .viewers-stage { overflow: clip; }
+.native-scroll .viewers-content-area { transform-origin: top left; position: absolute; top: 0; left: 0; }
+.viewers-content-area { width: 100%; box-sizing: border-box; }
+.fullscreen-mode { background: var(--bg-dark); }
+.zoom-enabled { overflow-anchor: none; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.zoom-enabled .viewers-stage { width: 100%; display: flex; justify-content: center; align-items: center; }
+.fullscreen-scaled { flex-shrink: 0; display: inline-flex; justify-content: center; align-items: center; width: 100%; height: auto; transform-origin: center; touch-action: none; }
+@media (prefers-reduced-motion: reduce) { .fullscreen-scaled { transition: none !important; } }

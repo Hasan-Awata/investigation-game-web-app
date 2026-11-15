@@ -185,6 +185,7 @@
         }
       },
       "evidence": {
+        "modal": {"title": "الدليل", "close": "إغلاق", "fullscreen": "ملء الشاشة", "minimize": "تصغير", "types": {"document": "مستند", "forensic": "دليل جنائي", "digital": "دليل رقمي", "testimony": "شهادة", "image": "صورة", "audio": "تسجيل صوتي"}},
         "board": {
           "exactCombinationHint": "تتطلب المذكرات مجموعة الأدلة والشخصيات المرتبطة مباشرة بالطلب. اترك العناصر غير ذات الصلة خارج الطلب.",
           "title": "لوحة الأدلة",
