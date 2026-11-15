@@ -272,6 +272,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
             if (!shouldRender) return null;
             return (
               <button type="button" aria-label={title} aria-expanded={isBubbleActive}
+                data-discovered={isDiscovered}
                 data-edge={Number(x) < 25 ? 'left' : Number(x) > 75 ? 'right' : undefined} data-top={Number(y) < 25}
                 disabled={inspectMutation.isPending && !isDiscovered} aria-busy={inspectMutation.isPending && !isDiscovered}
                 key={choice.id}

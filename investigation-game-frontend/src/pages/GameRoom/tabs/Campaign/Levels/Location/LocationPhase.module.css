@@ -162,6 +162,8 @@
 }
 
 .loc-crosshair {
+  position: relative;
+  z-index: 1;
   inline-size: 8px;
   block-size: 8px;
   border-radius: 50%;
@@ -174,6 +176,23 @@
 
 .loc-hover-zone.investigated .loc-crosshair {
   background: var(--text-secondary);
+}
+
+/* Decorative only: the hit target stays 44px across, including while zoomed. */
+.loc-hover-zone[data-discovered="true"]::before {
+  --discovered-color-rgb: var(--accent-cyan-rgb);
+  content: '';
+  position: absolute;
+  inline-size: calc(44px / var(--image-scale, 1));
+  block-size: calc(44px / var(--image-scale, 1));
+  border-radius: 50%;
+  border: 2px dashed rgba(var(--discovered-color-rgb), .85);
+  background: rgba(var(--discovered-color-rgb), .2);
+  pointer-events: none;
+}
+
+.loc-hover-zone.investigated[data-discovered="true"]::before {
+  --discovered-color-rgb: var(--border-light-rgb);
 }
 
 .loc-tooltip, .loc-info-bubble {
@@ -200,10 +219,22 @@
 
 .loc-tooltip {
   opacity: 0;
+  translate: 0 4px;
+  transition: opacity 160ms ease-out, translate 160ms ease-out;
 }
 
 .loc-hover-zone:is(:hover,:focus-visible) .loc-tooltip {
   opacity: 1;
+  translate: 0 0;
+}
+
+.loc-info-bubble {
+  animation: location-feedback-in 180ms ease-out both;
+}
+
+@keyframes location-feedback-in {
+  from { opacity: 0; translate: 0 4px; }
+  to { opacity: 1; translate: 0 0; }
 }
 
 .loc-info-bubble.success {
@@ -249,6 +280,11 @@
 }
 
 @media (prefers-reduced-motion:reduce) {
+  .loc-tooltip, .loc-info-bubble {
+    animation: none;
+    transition: none;
+    translate: none;
+  }
   .viewer-control,.location-thumbnail {
     transition: none;
   }

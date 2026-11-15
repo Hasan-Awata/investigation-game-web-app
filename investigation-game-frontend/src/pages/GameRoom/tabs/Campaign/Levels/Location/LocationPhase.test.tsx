@@ -141,6 +141,7 @@ describe('location workspace controls', () => {
     fireEvent.click(point);
     await waitFor(() => expect(point).toBeDisabled());
     expect(point).toHaveAttribute('aria-busy', 'true');
+    expect(point).toHaveAttribute('data-discovered', 'false');
     fireEvent.click(point);
     expect(inspectLocationMock).toHaveBeenCalledTimes(1);
   });
@@ -153,6 +154,7 @@ describe('location workspace controls', () => {
     expect(within(point).getByRole('status')).toHaveTextContent(i18n.t('pages.gameRoom.campaign.levels.location.' + (deadEnd ? 'nothingFound' : 'foundUseful')));
     fireEvent.click(point);
     expect(point).toHaveAttribute('aria-expanded', 'false');
+    expect(point).toHaveAttribute('data-discovered', 'true');
     expect(inspectLocationMock).not.toHaveBeenCalled();
   });
 
