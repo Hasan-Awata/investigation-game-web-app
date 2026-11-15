@@ -128,7 +128,7 @@
 }
 
 .admin-tab-btn:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--accent-cyan-rgb), 0.1);
   color: var(--text-primary);
 }
 

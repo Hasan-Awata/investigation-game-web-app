@@ -66,7 +66,7 @@
 }
 
 .return-map-card:hover:not(:disabled) {
-  background: var(--bg-panel);
+  background: rgba(var(--accent-crimson-rgb), 0.1);
 }
 
 .return-map-card:disabled {
@@ -197,7 +197,7 @@
 }
 
 .swap-view-btn:hover:not(:disabled), .swap-view-btn[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--accent-cyan) 85%, var(--text-primary));
+  background: color-mix(in srgb, var(--accent-cyan) 90%, var(--bg-dark));
   color: var(--bg-dark);
   border-color: var(--accent-cyan);
 }
@@ -225,8 +225,8 @@
 }
 
 .primary-action:hover:not(:disabled) {
-  background: var(--bg-dark);
-  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent-cyan) 90%, var(--bg-dark));
+  color: var(--bg-dark);
 }
 
 .primary-action:disabled {

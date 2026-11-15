@@ -39,9 +39,9 @@
 }
 
 .paletteItem:hover {
-  background: var(--accent-cyan);
+  background: rgba(var(--accent-cyan-rgb), 0.1);
   border-color: var(--accent-cyan);
-  color: var(--bg-dark);
+  color: var(--text-primary);
 }
 
 .paletteLabel {

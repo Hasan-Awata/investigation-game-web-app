@@ -157,9 +157,9 @@
 
 .submitBtnCrimson:hover:not(:disabled) {
   transform: translateY(-2px);
-  background: var(--bg-dark, #0a0a0c);
-  color: var(--accent-crimson, #ff4444);
-  box-shadow: 0 8px 28px rgba(var(--accent-crimson-rgb, 255, 68, 68), 0.5);
+  background: color-mix(in srgb, var(--accent-crimson) 90%, var(--bg-dark));
+  color: var(--bg-dark);
+  box-shadow: none;
 }
 
 .submitBtnNeutral {
@@ -169,7 +169,7 @@
 }
 
 .submitBtnNeutral:hover:not(:disabled) {
-  background: rgba(var(--border-light-rgb, 255, 255, 255), 0.15);
+  background: rgba(var(--accent-cyan-rgb), 0.1);
   color: var(--text-primary, #ffffff);
   border-color: var(--text-primary, #ffffff);
   transform: translateY(-2px);

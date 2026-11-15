@@ -155,3 +155,7 @@
 .requirements-panel h6 {
   color: var(--accent-amber);
 }
+.delete-btn {
+  --button-accent: var(--accent-crimson);
+  --button-accent-rgb: var(--accent-crimson-rgb);
+}

@@ -55,6 +55,6 @@
 }
 
 .clearBtn:hover {
-  background: var(--accent-crimson);
-  color: var(--bg-dark);
+  background: rgba(var(--accent-crimson-rgb), 0.1);
+  color: var(--text-primary);
 }

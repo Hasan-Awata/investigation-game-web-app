@@ -13,7 +13,7 @@
 }
 
 .action:hover:not(:disabled) {
-  background: rgba(var(--border-light-rgb), .12);
+  background: rgba(var(--action-accent-rgb, var(--accent-cyan-rgb)), .1);
 }
 
 .action[data-primary='true'] {
@@ -24,13 +24,18 @@
 }
 
 .action[data-primary='true']:hover:not(:disabled) {
-  background: var(--accent-cyan);
+  background: color-mix(in srgb, var(--accent-cyan) 90%, var(--bg-dark));
 }
 
 .action[data-danger='true'] {
+  --action-accent-rgb: var(--accent-crimson-rgb);
   background: var(--bg-dark);
   border-color: var(--accent-crimson);
   color: var(--text-primary);
+}
+
+.action[data-danger='true']:hover:not(:disabled) {
+  background: rgba(var(--accent-crimson-rgb), .1);
 }
 
 .action:disabled {

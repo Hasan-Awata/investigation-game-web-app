@@ -195,13 +195,13 @@
   }
 
   .close:hover {
-    background-color: var(--accent-crimson);
+    background: rgba(var(--accent-crimson-rgb), 0.1);
     border-color: var(--accent-crimson);
   }
 
   .travel:hover {
-    background-color: var(--bg-dark);
-    color: var(--accent-cyan);
+    background: color-mix(in srgb, var(--accent-cyan) 90%, var(--bg-dark));
+    color: var(--bg-dark);
   }
 }
 

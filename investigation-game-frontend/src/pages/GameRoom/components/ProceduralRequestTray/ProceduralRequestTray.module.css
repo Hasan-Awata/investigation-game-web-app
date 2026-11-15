@@ -108,7 +108,7 @@
 }
 
 .trayItemRemove:hover {
-  background: rgba(255, 68, 68, 0.15);
+  background: rgba(var(--accent-crimson-rgb), 0.1);
   color: var(--accent-crimson, #ff4444);
 }
 

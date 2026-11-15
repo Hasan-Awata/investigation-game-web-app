@@ -52,7 +52,7 @@
   cursor: pointer;
   transition: background 150ms ease-out, color 150ms ease-out, transform 150ms ease-out;
 }
-.modalFullscreenBtn:hover { background: rgba(var(--text-primary-rgb), 0.08); color: var(--accent-cyan); }
+.modalFullscreenBtn:hover { background: rgba(var(--accent-cyan-rgb), 0.1); color: var(--accent-cyan); }
 .modalCloseBtn { color: var(--accent-crimson); border-color: rgba(var(--accent-crimson-rgb), 0.4); background: rgba(var(--accent-crimson-rgb), 0.1); }
 .modalCloseBtn:hover { color: var(--accent-crimson); border-color: var(--accent-crimson); background: rgba(var(--accent-crimson-rgb), 0.2); }
 .modalFullscreenBtn[aria-pressed="true"] { background: rgba(var(--accent-cyan-rgb), 0.15); color: var(--accent-cyan); }

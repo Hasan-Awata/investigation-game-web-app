@@ -148,8 +148,8 @@
 .loc-hover-zone {
   position: absolute;
   transform: translate(-50%,-50%);
-  inline-size: 90px;
-  block-size: 90px;
+  inline-size: calc(44px / var(--image-scale, 1));
+  block-size: calc(44px / var(--image-scale, 1));
   padding: 0;
   border: 1px solid transparent;
   border-radius: 50%;

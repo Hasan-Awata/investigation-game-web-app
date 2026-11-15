@@ -133,10 +133,10 @@
 }
 
 .intelToggleBtn:hover {
-  background: var(--accent-cyan, #00ffff);
-  color: var(--bg-dark, #0a0a0c);
+  background: rgba(var(--accent-cyan-rgb), 0.1);
+  color: var(--text-primary);
   border-color: var(--accent-cyan, #00ffff);
-  box-shadow: 0 0 10px rgba(var(--accent-cyan-rgb, 0, 255, 255), 0.4);
+  box-shadow: none;
   transform: scale(1.1);
 }
 

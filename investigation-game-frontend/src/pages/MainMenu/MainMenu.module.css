@@ -105,9 +105,9 @@
 }
 
 .actionBlockBtn:hover {
-  background: var(--accent-crimson);
+  background: rgba(var(--accent-crimson-rgb), 0.1);
   border-color: var(--accent-crimson);
-  color: var(--bg-dark);
+  color: var(--text-primary);
 }
 
 /* 2. Roster Section & Grid */

@@ -69,7 +69,7 @@
 
 .sessionActionBtn {
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--accent-cyan-rgb), 0.1);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--text-secondary, #a1a1aa);
   border-radius: var(--radius-sm, 4px);
@@ -86,10 +86,10 @@
 }
 
 .copyBtn:hover {
-  background: rgba(0, 229, 255, 0.1);
+  background: rgba(var(--accent-cyan-rgb), 0.1);
   color: var(--accent-cyan, #00ffff);
   border-color: var(--accent-cyan, #00ffff);
-  box-shadow: inset 0 0 5px rgba(0, 229, 255, 0.2);
+  box-shadow: inset 0 0 5px rgba(var(--accent-cyan-rgb), 0.2);
 }
 
 .leaveBtn:hover {
@@ -275,15 +275,15 @@
 }
 
 .toggleIconBtn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--accent-cyan-rgb), 0.1);
   color: var(--text-primary, #ffffff);
 }
 
 .toggleIconBtn.activeToggle {
-  background: rgba(0, 229, 255, 0.1);
+  background: rgba(var(--accent-cyan-rgb), 0.1);
   color: var(--accent-cyan, #00ffff);
   border-color: var(--accent-cyan, #00ffff);
-  box-shadow: inset 0 0 5px rgba(0, 229, 255, 0.2);
+  box-shadow: inset 0 0 5px rgba(var(--accent-cyan-rgb), 0.2);
 }
 
 .sidebarToggleContent {
@@ -385,7 +385,7 @@
 
 .tabBtn:hover:not(.activeTab) {
   color: var(--text-primary, #ffffff);
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--accent-cyan-rgb), 0.1);
 }
 
 .activeTab,
