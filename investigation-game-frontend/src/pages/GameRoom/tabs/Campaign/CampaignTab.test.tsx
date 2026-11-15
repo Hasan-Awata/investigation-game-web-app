@@ -169,6 +169,24 @@ describe('shared level preview', () => {
     expect(mocks.phase.initiatePhase).not.toHaveBeenCalled();
   });
 
+  it('updates location card completion from inspections including dead ends in every open scene', () => {
+    const location: Level = { ...level('location'), questions: [
+      { id: 10, level_id: 1, text: 'First scene', choices: [{ id: 101, question_id: 10, text: '10,20 | Point' }] },
+      { id: 20, level_id: 1, text: 'Second scene', choices: [{ id: 201, question_id: 20, text: '10,20 | Point' }] },
+    ] };
+    mocks.room.game_case!.zones![0].levels = [location];
+    mocks.room.completed_levels = [location];
+    mocks.room.inspections = [{ room_id: 1, choice_id: 101, is_dead_end: false }];
+    const content = (room: GameRoom) => <RoomDataProvider room={room} accumulatedEvidences={[]} accumulatedCharacters={[]} refreshRoomData={vi.fn()}><CampaignTab /></RoomDataProvider>;
+    const view = render(content(mocks.room));
+    openZone();
+    expect(screen.queryByRole('button', { name: /The lead.*Completed/ })).not.toBeInTheDocument();
+    view.rerender(content({ ...mocks.room, inspections: [...mocks.room.inspections, { room_id: 1, choice_id: 201, is_dead_end: true }] }));
+    expect(screen.getByRole('button', { name: /The lead.*Completed/ })).toBeEnabled();
+    fireEvent.click(screen.getByRole('button', { name: 'Show workspace' }));
+    expect(screen.getByText('Location content')).toBeInTheDocument();
+  });
+
   it('opens completed interrogation history through swap', () => {
     mocks.room.game_case!.zones![0].levels = [level('interrogation')];
     mocks.room.completed_levels = [level('interrogation')];

@@ -5,6 +5,7 @@ import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Zone, Level } from '@/types';
 import CampaignMap from './CampaignMap';
 import LevelCard from './LevelCard';
+import { isLocationLevelInspected } from '@/utils/locationProgress';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
 import LocationPhase from './Levels/Location/LocationPhase';
 import campaignTab from './CampaignTab.module.css';
@@ -59,7 +60,9 @@ const CampaignTab = () => {
             {levels.length === 0 && <p className={campaignTab['phase-sidebar-desc']}>{t('pages.gameRoom.campaign.noLeads', 'No leads are currently available in this zone.')}</p>}
             {levels.map((level: Level) => {
               const isDiscovered = level.is_initial || unlockedIds.has(level.id);
-              const isCompleted = completedIds.has(level.id);
+              const isCompleted = level.presentation_type === 'location'
+                ? isLocationLevelInspected(level, room.inspections ?? [])
+                : completedIds.has(level.id);
               const isGated = isDiscovered && !!level.required_request_id && !completedRequestIds.has(level.required_request_id);
               const status: 'undiscovered' | 'gated' | 'actionable' | 'completed' = !isDiscovered ? 'undiscovered' : isGated ? 'gated' : isCompleted ? 'completed' : 'actionable';
               return <LevelCard key={level.id} level={level} status={status} disabled={!isFree} isSelected={previewLevel?.id === level.id} displayTitle={isDiscovered ? level.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')} onSelect={() => { if (isFree && isDiscovered) { setSelectedLevelId(level.id); setContentLevelId(null); } }} />;

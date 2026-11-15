@@ -7,9 +7,10 @@ import { useGameMutation } from '@/hooks/useGameMutation';
 import { useRoomData } from '@/context/RoomContext.shared';
 import { getSafeStorage, setSafeStorage, getLocationStateKey, pruneStaleLocationState } from '@/utils/storage';
 import type { Level, Choice, RoomInspection, GameRoom } from '@/types';
-import * as api from '@/services/api'; 
+import * as api from '@/services/api';
 import { checkIsLockedByNarrative } from '@/utils/narrativeLocks';
 import locationPhase from './LocationPhase.module.css';
+import { getOpenLocationQuestions } from '@/utils/locationProgress';
 
 interface LocationPhaseProps { level: Level; }
 
@@ -25,8 +26,24 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const [lastMouse, setLastMouse] = useState({ x: 0, y: 0 });
-  
+
   const wrapperRef = useRef<HTMLDivElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const keyPrefix = 'pages.gameRoom.campaign.levels.location.';
+
+  useEffect(() => {
+    if (inspectingQuestionId === null) return;
+    const previous = document.activeElement;
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    closeRef.current?.focus();
+    return () => {
+      document.body.style.overflow = overflow;
+      if (previous instanceof HTMLElement && previous.isConnected) previous.focus();
+    };
+  }, [inspectingQuestionId]);
 
   // Bounded cleanup: sweep keys written under older location-state schemas
   // once per mount so per-level keys never accumulate across sessions.
@@ -66,39 +83,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
     }
   });
 
-  if (!level.questions) return null;
-
-  const visibleQuestionIds = new Set<number>();
-
-  const lockedBehindChoiceIds = new Set<number>();
-  level.questions.forEach(q => {
-    q.choices?.forEach(c => {
-      const nextId = c.next_question_id ?? c.outcomes?.next_question_id;
-      if (nextId) {
-        lockedBehindChoiceIds.add(Number(nextId));
-      }
-    });
-  });
-
-  level.questions.forEach(q => {
-    if (!lockedBehindChoiceIds.has(q.id)) {
-      visibleQuestionIds.add(q.id);
-    }
-  });
-
-  level.questions.forEach(q => {
-    q.choices?.forEach(c => {
-      const isInspected = room.inspections?.some(inspection => inspection.choice_id === c.id && !inspection.is_dead_end);
-      if (isInspected) {
-        const nextId = c.next_question_id ?? c.outcomes?.next_question_id;
-        if (nextId) {
-          visibleQuestionIds.add(Number(nextId));
-        }
-      }
-    });
-  });
-
-  const displayQuestions = level.questions.filter(q => visibleQuestionIds.has(q.id));
+  const displayQuestions = getOpenLocationQuestions(level.questions ?? [], room.inspections ?? []);
 
   const handlePointClick = (e: React.MouseEvent, choice: Choice) => {
     e.stopPropagation();
@@ -114,7 +99,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
         else next.add(choice.id);
         return next;
       });
-      return; 
+      return;
     }
 
     if (inspectMutation.isPending) return;
@@ -131,9 +116,9 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
     if (!wrapperRef.current) return { x: targetX, y: targetY };
 
     const { clientWidth, clientHeight } = wrapperRef.current;
-    
-    const maxX = Math.max(0, (clientWidth * currentScale - window.innerWidth) / 2);
-    const maxY = Math.max(0, (clientHeight * currentScale - window.innerHeight) / 2);
+
+    const maxX = Math.max(0, (clientWidth * currentScale - (stageRef.current?.clientWidth ?? clientWidth)) / 2);
+    const maxY = Math.max(0, (clientHeight * currentScale - (stageRef.current?.clientHeight ?? clientHeight)) / 2);
 
     return {
       x: Math.min(Math.max(targetX, -maxX), maxX),
@@ -145,7 +130,7 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
     const zoomSensitivity = 0.005;
     const delta = e.deltaY * -zoomSensitivity;
     const newScale = Math.min(Math.max(1, scale + delta), 5);
-    
+
     setScale(newScale);
 
     if (newScale === 1) {
@@ -155,18 +140,19 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
     }
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (scale > 1) {
+  const handleMouseDown = (e: React.PointerEvent) => {
+    if (scale > 1 && e.button === 0) {
+      e.currentTarget.setPointerCapture(e.pointerId);
       setIsDragging(true);
       setLastMouse({ x: e.clientX, y: e.clientY });
     }
   };
 
-  const handleMouseMove = (e: React.MouseEvent) => {
+  const handleMouseMove = (e: React.PointerEvent) => {
     if (isDragging && scale > 1) {
       const deltaX = e.clientX - lastMouse.x;
       const deltaY = e.clientY - lastMouse.y;
-      
+
       const newX = position.x + deltaX;
       const newY = position.y + deltaY;
 
@@ -177,35 +163,73 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
 
   const handleMouseUp = () => setIsDragging(false);
 
+  const updateScale = (value: number) => {
+    const next = Math.min(5, Math.max(1, value));
+    setScale(next);
+    setPosition(previous => next === 1 ? { x: 0, y: 0 } : clampPosition(previous.x, previous.y, next));
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') { event.stopPropagation(); closeViewer(); return; }
+    if (event.key === 'Tab') {
+      const controls = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>('button:not(:disabled)') ?? []);
+      const first = controls[0];
+      const last = controls[controls.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }
+    if (scale <= 1 || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    setPosition(previous => clampPosition(
+      previous.x + (event.key === 'ArrowLeft' ? 40 : event.key === 'ArrowRight' ? -40 : 0),
+      previous.y + (event.key === 'ArrowUp' ? 40 : event.key === 'ArrowDown' ? -40 : 0), scale));
+  };
+
   const activeQuestion = displayQuestions.find(q => q.id === inspectingQuestionId);
 
   const fullScreenViewer = activeQuestion ? createPortal(
-    <div className={locationPhase['location-fullscreen-overlay']}>
-      <button 
-        className={locationPhase['location-close-button']} 
+    <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={t(keyPrefix + 'inspectLocation')}
+      className={locationPhase['location-fullscreen-overlay']} onKeyDown={handleKeyDown}>
+      <header className={locationPhase.toolbar}>
+        <div className={locationPhase['zoom-controls']}>
+          {(['zoomOut', 'zoomIn', 'resetZoom'] as const).map(action => (
+            <button key={action} type="button" className={locationPhase['viewer-control']}
+              aria-label={t(keyPrefix + action)} title={t(keyPrefix + action)}
+              disabled={action === 'zoomIn' ? scale >= 5 : scale <= 1}
+              onClick={() => updateScale(action === 'resetZoom' ? 1 : scale + (action === 'zoomIn' ? 0.5 : -0.5))}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                {action === 'resetZoom' ? <path d="M4 10a8 8 0 1 1 1 8M4 4v6h6"/> : <><path d="M5 12h14"/>{action === 'zoomIn' && <path d="M12 5v14"/>}</>}
+              </svg>
+            </button>
+          ))}
+          <output className={locationPhase['zoom-value']}>{Math.round(scale * 100)}%</output>
+        </div>
+      <button
+        ref={closeRef} type="button" className={`${locationPhase['viewer-control']} ${locationPhase['exit-control']}`}
         onClick={closeViewer}
         title={t('pages.gameRoom.campaign.levels.location.closeViewer')}
         aria-label={t('pages.gameRoom.campaign.levels.location.closeViewer')}
       >
-        ✕
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg>
       </button>
+      </header>
 
-      <div 
+      <div ref={stageRef}
         className={locationPhase['location-image-container']}
         onWheel={handleWheel}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+        onPointerDown={handleMouseDown}
+        onPointerMove={handleMouseMove}
+        onPointerUp={handleMouseUp}
+        onPointerCancel={handleMouseUp}
         style={{ cursor: isDragging ? 'grabbing' : (scale > 1 ? 'grab' : 'auto') }}
       >
-        <div 
+        <div
           ref={wrapperRef}
           className={locationPhase['location-image-wrapper']}
           style={{
             transform: `translate(${position.x}px, ${position.y}px) scale(${scale})`,
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
-          }}
+            '--image-scale': scale
+          } as React.CSSProperties}
         >
           <img src={activeQuestion.img_url || '/placeholder-crime-scene.jpg'} alt={t('pages.gameRoom.campaign.levels.location.crimeSceneAlt')} className={locationPhase['location-image-full']} draggable="false" />
 
@@ -225,58 +249,61 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
             const correctFind = !!inspection && !inspection.is_dead_end;
             const isSelected = !!inspection;
             const isDeadEndClicked = clickedDeadEnds.has(choice.id);
-            
+
             // STRICT FILTER CHECK
             const ownVotes = room.votes?.filter(vote => vote.user_id === getLocalUser()?.id) ?? [];
             const isNarrativeLocked = checkIsLockedByNarrative(choice, accumulatedEvidences, ownVotes);
             const isDiscovered = isSelected || isDeadEndClicked;
 
             let zoneClass = locationPhase['loc-hover-zone'];
-            if (isSelected) {
+            if (correctFind) {
               zoneClass += ` ${locationPhase['selected']}`;
             } else if (isDeadEndClicked || isNarrativeLocked) {
               zoneClass += ` ${locationPhase['investigated']}`;
             }
 
             const isBubbleActive = isDiscovered && activeBubbles.has(choice.id);
-            
+
             // If the element does not meet evidence prerequisites, it completely vanishes
             const isInteractable = !isNarrativeLocked || isDiscovered;
             const isAvailable = room.available_location_point_ids?.includes(choice.id) ?? true;
             const shouldRender = isAvailable && (!isNarrativeLocked || isDiscovered);
 
+            if (!shouldRender) return null;
             return (
-              <div
+              <button type="button" aria-label={title} aria-expanded={isBubbleActive}
+                data-edge={Number(x) < 25 ? 'left' : Number(x) > 75 ? 'right' : undefined} data-top={Number(y) < 25}
+                disabled={inspectMutation.isPending && !isDiscovered} aria-busy={inspectMutation.isPending && !isDiscovered}
                 key={choice.id}
                 className={zoneClass}
-                style={{ 
-                  top: `${y}%`, 
-                  left: `${x}%`, 
+                style={{
+                  top: `${y}%`,
+                  left: `${x}%`,
                   cursor: isNarrativeLocked ? 'not-allowed' : (isInteractable ? 'pointer' : 'default'),
                   pointerEvents: shouldRender ? 'auto' : 'none',
                   display: shouldRender ? 'flex' : 'none'
                 }}
-                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => {
                   if (!isInteractable) return;
                   handlePointClick(e, choice);
                 }}
               >
-                <div className={locationPhase['loc-crosshair']}></div>
-                
+                <span aria-hidden="true" className={locationPhase['loc-crosshair']}></span>
+
                 {!isBubbleActive && (
-                  <div className={locationPhase['loc-tooltip']}>
+                  <span className={locationPhase['loc-tooltip']}>
                     {isNarrativeLocked ? t('pages.gameRoom.campaign.levels.location.requiresIntel') : title}
-                  </div>
+                  </span>
                 )}
 
 {isBubbleActive && (
-                  <div 
+                  <span role="status"
                     className={`${locationPhase['loc-info-bubble']} ${correctFind ? locationPhase['success'] : locationPhase['error']}`}>
                     {correctFind ? t('pages.gameRoom.campaign.levels.location.foundUseful') : t('pages.gameRoom.campaign.levels.location.nothingFound')}
-                  </div>
+                  </span>
                 )}
-              </div>
+              </button>
             );
           })}
         </div>
@@ -286,21 +313,22 @@ export default function LocationPhase({ level }: LocationPhaseProps) {
   ) : null;
 
   return (
-    <div className="location-phase-wrapper" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+    <div className={locationPhase['location-phase-wrapper']}>
+      {displayQuestions.length === 0 && <p className={locationPhase['location-hint']}>{t(keyPrefix + 'emptyScenes')}</p>}
       {displayQuestions.map(q => (
         <div key={q.id} className={locationPhase['location-thumbnail-container']}>
-          <div className={locationPhase['location-thumbnail']} style={{ backgroundImage: `url(${q.img_url || '/placeholder-crime-scene.jpg'})` }}>
-            <div className={locationPhase['thumbnail-overlay']}>
-              <button
-                className="btn-primary"
-                onClick={() => setInspectingQuestionId(q.id)}
-                style={{ flex: 'none', width: 'auto', padding: '0.75rem 2rem', borderRadius: '50px', boxShadow: '0 4px 15px rgba(0,0,0,0.5)' }}
-              >
-                <span style={{ marginInlineEnd: '0.5rem'}}>👁️</span> {t('pages.gameRoom.campaign.levels.location.inspectLocation')}
-              </button>
-            </div>
-          </div>
-          <p className={locationPhase['location-hint']}>{q.text || t('pages.gameRoom.campaign.levels.location.enterViewerHint')}</p>
+          <button type="button" className={locationPhase['location-thumbnail']}
+            aria-describedby={`scene-hint-${level.id}-${q.id}`}
+            style={{ backgroundImage: `url(${q.img_url || '/placeholder-crime-scene.jpg'})` }}
+            onClick={() => setInspectingQuestionId(q.id)}>
+            <span className={locationPhase['thumbnail-overlay']}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true">
+                <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              {t(keyPrefix + 'inspectLocation')}
+            </span>
+          </button>
+          <p id={`scene-hint-${level.id}-${q.id}`} className={locationPhase['location-hint']}>{q.text || t(keyPrefix + 'enterViewerHint')}</p>
         </div>
       ))}
 
