@@ -37,7 +37,7 @@ export default function CharacterCard({ character, sourcePool, isDraggable, isNe
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`${styles.characterCard} ${isDragging ? styles.isDragging : ''} ${isDeceased ? styles.isDeceased : ''} ${sourcePool === 'guilty' ? styles.inGuiltyZone : ''}`}
+      className={`${styles.characterCard} ${isDragging ? styles.isDragging : ''} ${isDeceased ? styles.isDeceased : ''}`}
       onMouseEnter={() => onInteract(character.id)}
       style={{ opacity: isDragging ? 0.4 : 1, touchAction: 'none' }}
     >
@@ -79,12 +79,12 @@ export default function CharacterCard({ character, sourcePool, isDraggable, isNe
   );
 }
 
-export function CharacterCardOverlay({ character, sourcePool }: { character: Character, sourcePool: 'unassigned' | 'guilty' }) {
+export function CharacterCardOverlay({ character }: { character: Character, sourcePool: 'unassigned' | 'guilty' }) {
   const { t } = useTranslation();
   const isDeceased = character.current_status === 'deceased';
 
   return (
-    <div className={`${styles.characterCard} ${isDeceased ? styles.isDeceased : ''} ${sourcePool === 'guilty' ? styles.inGuiltyZone : ''}`}>
+    <div className={`${styles.characterCard} ${isDeceased ? styles.isDeceased : ''}`}>
       {isDeceased && (
         <div className={styles.deceasedOverlay}>
           <span className={styles.deceasedStamp}>{t('pages.gameRoom.characters.deceased', 'DECEASED')}</span>

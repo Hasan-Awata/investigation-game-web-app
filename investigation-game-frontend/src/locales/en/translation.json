@@ -68,6 +68,24 @@
       "toggleToLogin": "Already have access? Sign in."
     },
     "gameRoom": {
+      "characterFolio": {
+        "title": "Character dossier",
+        "intro": "Review the people connected to this case. Assemble your accusation when the evidence is ready.",
+        "guilty": "Guilty",
+        "unassigned": "Innocent",
+        "guiltyHint": "Your accusation includes everyone placed here, in the order you selected them.",
+        "allSelected": "All known characters are currently included in your accusation. Return a character here to exclude them.",
+        "empty": "No persons of interest identified yet.",
+        "dropHint": "Drag a character here to include them in your accusation.",
+        "filing": "File your verdict",
+        "progress": "Initial interrogations completed: {{count}} / {{total}}",
+        "locked": "Finish all required interrogations to propose a verdict.",
+        "noFoulPlayHint": "No suspects selected. Filing this verdict will rule that there was no foul play.",
+        "ready": "Review your selected suspects before filing your accusation.",
+        "filingPending": "Filing verdict…",
+        "noFoulPlay": "Rule no foul play",
+        "submit": "Close case"
+      },
       "syncDelayed": "Unable to refresh progress. Showing the last saved state; retrying automatically.",
       "retry": "Retry",
       "returnToMenu": "Return to menu",

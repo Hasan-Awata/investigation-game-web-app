@@ -133,7 +133,7 @@ it('opens the procedural tray during a drag and sends evidence and characters to
   expect(button('gameRoom.collapsePanel')).toBeEnabled();
 
   fireEvent.click(button('pages.gameRoom.layout.tabs.personsOfInterest'));
-  const characterCard = screen.getByText(character.name);
+  const characterCard = screen.getByRole('heading', { name: character.name });
   const startCharacterDrag = () => startDrag(characterCard, 'character-9', {
     type: 'CHARACTER', characterId: character.id, sourcePool: 'unassigned',
   });
@@ -165,7 +165,7 @@ it('reveals the collapsed top sidebar only for the touch that is dragging', () =
   fireEvent.click(button('gameRoom.collapsePanel'));
   vi.spyOn(screen.getByRole('complementary'), 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 390, 56));
 
-  const source = screen.getByText(character.name);
+  const source = screen.getByRole('heading', { name: character.name });
   const start = () => startDrag(source, 'character-9', { type: 'CHARACTER', characterId: character.id },
     touchEvent('touchstart', 1, 200, 200));
   const canceled = start();

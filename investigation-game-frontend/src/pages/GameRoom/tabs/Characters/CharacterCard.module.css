@@ -14,7 +14,6 @@
   flex-direction: column;
   min-height: 220px;
   position: relative;
-  /* Changed from hidden to visible so the push-pin isn't cut off */
   overflow: visible; 
   transform: translateZ(0);
 }
@@ -186,22 +185,6 @@
   line-height: 1.6;
   white-space: pre-wrap;
   text-align: start;
-}
-
-/* --- BOARD PUSH PINS (Only when in guilty zone) --- */
-.inGuiltyZone::before {
-  content: '';
-  position: absolute;
-  top: -8px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #ff5252, #8a0000);
-  box-shadow: -2px 4px 6px rgba(0, 0, 0, 0.6), inset -2px -2px 4px rgba(0,0,0,0.4);
-  z-index: 20;
-  pointer-events: none;
 }
 
 /* --- UNREAD SHINE MECHANIC --- */
