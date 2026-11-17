@@ -2,14 +2,16 @@
 
 namespace App\Models;
 
+use App\Enums\InvestigationRequestType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use App\Enums\InvestigationRequestType;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class InvestigationRequest extends Model
 {
     public const MIN_REQUIRED_ITEMS = 2;
+
     public const MIN_ITEMS_MESSAGE = 'A procedural request requires at least two items.';
 
     /**
@@ -27,7 +29,7 @@ class InvestigationRequest extends Model
         'case_id',
         'request_type',
         'unlocks_evidence_id',
-        'unlocks_level_id'
+        'unlocks_level_id',
     ];
 
     protected function casts(): array
@@ -40,9 +42,9 @@ class InvestigationRequest extends Model
     public function requiredEvidences(): BelongsToMany
     {
         return $this->belongsToMany(
-            Evidence::class, 
-            'investigation_request_items', 
-            'request_id', 
+            Evidence::class,
+            'investigation_request_items',
+            'request_id',
             'evidence_id',
         );
     }
@@ -65,5 +67,10 @@ class InvestigationRequest extends Model
     public function unlockedLevel(): BelongsTo
     {
         return $this->belongsTo(Level::class, 'unlocks_level_id');
+    }
+
+    public function gatedLevels(): HasMany
+    {
+        return $this->hasMany(Level::class, 'required_request_id');
     }
 }

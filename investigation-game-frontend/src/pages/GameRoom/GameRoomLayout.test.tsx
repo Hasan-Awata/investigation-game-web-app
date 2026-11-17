@@ -11,6 +11,7 @@ const handlers = vi.hoisted(() => ({
   addEvidenceToTray: vi.fn(),
   addCharacterToTray: vi.fn(),
   handleCharacterDrop: vi.fn(),
+  selectRequest: vi.fn(),
 }));
 let dnd: DndContextProps;
 
@@ -29,18 +30,20 @@ vi.mock('@/hooks/useRoomPageHide', () => ({ useRoomPageHide: vi.fn() }));
 vi.mock('@/hooks/useLeaveRoom', () => ({ useLeaveRoom: () => ({ isPending: false }) }));
 vi.mock('@/hooks/useInvestigationRequest', () => ({
   useInvestigationRequest: () => ({
-    trayEvidences: [], trayCharacters: [], filedRequests: [], requestType: '',
+    trayEvidences: [], trayCharacters: [], proceduralRequests: [], completedRequestIds: [], selectedRequestId: null,
     addEvidenceToTray: handlers.addEvidenceToTray,
     addCharacterToTray: handlers.addCharacterToTray,
+    selectRequest: handlers.selectRequest,
   }),
 }));
 vi.mock('@/hooks/useSuspectVerdict', () => ({
   useSuspectVerdict: () => ({ guiltyIds: [], handleCharacterDrop: handlers.handleCharacterDrop }),
 }));
 vi.mock('./tabs/Campaign/CampaignTab', () => ({
-  default: function CampaignFixture() {
+  default: function CampaignFixture({ onOpenRequiredRequest }: { onOpenRequiredRequest: (id: number) => void }) {
     const [visits, setVisits] = useState(0);
-    return <button onClick={() => setVisits(visits + 1)}>Lead visits: {visits}</button>;
+    return <><button onClick={() => setVisits(visits + 1)}>Lead visits: {visits}</button>
+      <button onClick={() => onOpenRequiredRequest(20)}>Open required request</button></>;
   },
 }));
 
@@ -93,6 +96,16 @@ function dropOn(event: DragEndEvent, id: string) {
 
 const button = (name: string) => screen.getByRole('button', { name });
 const trayButton = () => button('pages.gameRoom.evidence.board.proceduralTrayTitle');
+
+it('expands the sidebar and opens the tray with the required request selected from the map', () => {
+  renderLayout();
+  fireEvent.click(button('pages.gameRoom.layout.tabs.campaign'));
+  fireEvent.click(button('gameRoom.collapsePanel'));
+  fireEvent.click(button('Open required request'));
+  expect(button('gameRoom.collapsePanel')).toHaveAttribute('aria-expanded', 'true');
+  expect(trayButton()).toHaveAttribute('aria-pressed', 'true');
+  expect(handlers.selectRequest).toHaveBeenCalledWith(20);
+});
 
 function movePointer(x: number, y: number, pointerId = 1) {
   fireEvent(document, new PointerEvent('pointermove', { clientX: x, clientY: y, pointerId }));

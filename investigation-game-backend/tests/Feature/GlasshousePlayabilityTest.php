@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Choice;
 use App\Models\GameCase;
 use App\Models\GameRoom;
+use App\Models\Question;
 use App\Models\User;
 use App\Services\AssessmentService;
 use App\Services\EncounterGroupService;
@@ -15,6 +16,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
+use Symfony\Component\Process\Process;
 use Tests\Feature\Admin\Concerns\ImportsCaseBundles;
 use Tests\TestCase;
 
@@ -24,7 +26,9 @@ class GlasshousePlayabilityTest extends TestCase
     use RefreshDatabase;
 
     private array $manifest;
+
     private GameCase $case;
+
     private User $player;
 
     protected function setUp(): void
@@ -34,7 +38,7 @@ class GlasshousePlayabilityTest extends TestCase
         $this->manifest = json_decode(file_get_contents(database_path('release-content/glasshouse-files/case.json')), true, flags: JSON_THROW_ON_ERROR);
         $bundle = tempnam(sys_get_temp_dir(), 'glasshouse-release-');
         unlink($bundle);
-        $process = new \Symfony\Component\Process\Process([
+        $process = new Process([
             PHP_BINARY, base_path('scripts/release-content/build-glasshouse-release.php'),
             dirname(base_path()).'/cases/the-glasshouse-files.zip', $bundle, '--authoring',
         ]);
@@ -84,6 +88,7 @@ class GlasshousePlayabilityTest extends TestCase
             $this->assertSame(0, $this->player->fresh()->XP);
             $this->assertDatabaseHas('case_user', ['user_id' => $this->player->id, 'status' => 'failed_strikes']);
             $this->start(app(GameRoomService::class)->createRoom($this->case, $this->player)->value, 'lvl_34');
+
             return;
         }
         if ($ending === 'partial') {
@@ -138,7 +143,7 @@ class GlasshousePlayabilityTest extends TestCase
         $this->start($room, $level);
         foreach ($choices as $ref) {
             $group = $room->encounterGroups()->where('status', 'active')->firstOrFail();
-            $question = \App\Models\Question::findOrFail($group->current_question_id);
+            $question = Question::findOrFail($group->current_question_id);
             $choice = $question->choices()->where('text', $this->choiceText($ref))->firstOrFail();
             $result = app(EncounterGroupService::class)->vote($room, $question, $choice->id, $this->player);
             $this->assertFalse($result->isFailure(), $result->errorMessage ?? '');
@@ -159,8 +164,16 @@ class GlasshousePlayabilityTest extends TestCase
 
     private function choiceText(string $ref): string
     {
-        foreach ($this->manifest['zones'] as $zone) foreach ($zone['levels'] as $level) foreach ($level['nodes'] as $node) foreach ($node['choices'] as $choice) {
-            if ($choice['ref_id'] === $ref) return $choice['text'];
+        foreach ($this->manifest['zones'] as $zone) {
+            foreach ($zone['levels'] as $level) {
+                foreach ($level['nodes'] as $node) {
+                    foreach ($node['choices'] as $choice) {
+                        if ($choice['ref_id'] === $ref) {
+                            return $choice['text'];
+                        }
+                    }
+                }
+            }
         }
         throw new \LogicException('Unknown authored choice '.$ref);
     }
@@ -170,7 +183,8 @@ class GlasshousePlayabilityTest extends TestCase
         $request = $this->manifest['investigation_requests'][$index];
         $evidence = collect($this->manifest['evidences'])->whereIn('ref_id', $request['required_evidence_refs'])->pluck('title');
         $characters = collect($this->manifest['characters'])->whereIn('ref_id', $request['required_character_refs'])->pluck('name');
-        $result = app(InvestigationRequestService::class)->processRequest($room, \App\Enums\InvestigationRequestType::from($request['request_type']),
+        $requestId = $this->case->investigationRequests()->orderBy('id')->get()[$index]->id;
+        $result = app(InvestigationRequestService::class)->processRequest($room, $requestId,
             $this->case->evidences()->whereIn('title', $evidence)->pluck('id')->all(),
             $this->case->characters()->whereIn('name', $characters)->pluck('id')->all());
         $this->assertFalse($result->isFailure(), $result->errorMessage ?? '');

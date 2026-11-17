@@ -59,6 +59,7 @@ interface LocationInspectedPayload {
 }
 
 interface RequestFiledPayload {
+  request_id: number;
   filed_request: FiledRequest;
 }
 
@@ -174,7 +175,7 @@ export function useRoomRealtime({
     });
 
     channel.listen('ItemsUnlocked', (e: ItemsUnlockedPayload) => {
-      let requiresRefresh = false;
+      let requiresRefresh = !!e.unlocked_levels?.length;
 
       patchRoomData((oldRoom: GameRoom) => {
         const updatedCharacters = [...(oldRoom.accumulated_characters || [])];
@@ -276,15 +277,15 @@ export function useRoomRealtime({
 
     channel.listen('RequestFiled', (e: RequestFiledPayload) => {
       patchRoomData((oldRoom: GameRoom) => {
-        // Drop the caller's optimistic `temp-*` placeholder (and any stale copy)
-        // before prepending the authoritative server record.
+        // Events may be delivered more than once or race the response/snapshot.
         const existing = (oldRoom.filed_requests || []).filter(
-          (req) =>
-            !String(req.id).startsWith('temp-') &&
-            Number(req.id) !== Number(e.filed_request.id)
+          (req) => Number(req.id) !== Number(e.filed_request.id)
         );
 
-        return { ...oldRoom, filed_requests: [e.filed_request, ...existing] };
+        return {
+          ...oldRoom, filed_requests: [e.filed_request, ...existing],
+          completed_requests: patchArray(oldRoom.completed_requests, [{ id: e.request_id }]),
+        };
       });
     });
 

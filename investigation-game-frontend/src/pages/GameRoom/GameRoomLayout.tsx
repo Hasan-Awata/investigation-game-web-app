@@ -124,16 +124,23 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
             accumulatedCharacters,
             trayEvidences: request.trayEvidences,
             trayCharacters: request.trayCharacters,
-            requestType: request.requestType,
-            setRequestType: request.setRequestType,
+            selectedRequestId: request.selectedRequestId,
+            selectRequest: request.selectRequest,
+            proceduralRequests: request.proceduralRequests,
+            completedRequestIds: request.completedRequestIds,
+            isRoomActive: room.status === 'active',
             removeItem: request.removeItem,
             isSubmitting: request.isSubmitting,
             submitRequest: request.submitRequest,
-            filedRequests: request.filedRequests,
           }}
         />
 
         <RoomWorkspace
+          onOpenRequiredRequest={requestId => {
+            setSidebarState('expanded');
+            setSidebarTab('procedural');
+            request.selectRequest(requestId);
+          }}
           roomId={room.id}
           campaignRoomId={campaignRoomId}
           currentStrikes={room.strikes || 0}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoomData } from '@/context/RoomContext.shared';
 import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
@@ -6,14 +6,16 @@ import type { Zone, Level } from '@/types';
 import CampaignMap from './CampaignMap';
 import LevelCard from './LevelCard';
 import { isLocationLevelInspected } from '@/utils/locationProgress';
+import PopupAction from '@/components/PopupAction';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
 import LocationPhase from './Levels/Location/LocationPhase';
 import campaignTab from './CampaignTab.module.css';
 import levelCard from './LevelCard.module.css';
 
-const CampaignTab = () => {
+const CampaignTab = ({ onOpenRequiredRequest }: { onOpenRequiredRequest: (requestId: number) => void }) => {
   const { t } = useTranslation();
   const { room } = useRoomData();
+  const requiredRequestLabelId = useId();
   const { activeGroup, isInitiating, isJoining, initiatePhase, joinGroup } = useInvestigationPhase();
   const zones = useMemo<Zone[]>(() => room.game_case?.zones ?? [], [room.game_case?.zones]);
   const sortedZones = useMemo(() => [...zones].sort((a, b) => a.order_index - b.order_index), [zones]);
@@ -35,6 +37,7 @@ const CampaignTab = () => {
   const isMapMode = isFree && selectedZoneId === null;
   const discovered = !!previewLevel && (previewLevel.is_initial || unlockedIds.has(previewLevel.id));
   const gated = !!previewLevel?.required_request_id && !completedRequestIds.has(previewLevel.required_request_id);
+  const requiredRequest = room.procedural_requests?.find(request => request.id === previewLevel?.required_request_id);
   const completed = !!previewLevel && completedIds.has(previewLevel.id);
   const isLocation = previewLevel?.presentation_type === 'location';
   const available = discovered && !gated && !completed && room.status === 'active';
@@ -119,8 +122,20 @@ const CampaignTab = () => {
             </div>
             <div className={campaignTab['preview-content-layer']} data-workspace={showContent}>
               {discovered && gated && !showContent && (
-                <div className={campaignTab['warrant-stamp-area']}>
-                  <p className={campaignTab['warrant-stamp']}>{t('pages.gameRoom.campaign.warrantRequired', 'Warrant required')}</p>
+                <div className={campaignTab['request-lock-area']}>
+                  <PopupAction danger className={campaignTab['request-lock']}
+                    aria-label={t('pages.gameRoom.campaign.openRequiredRequest', 'Open required request')}
+                    aria-describedby={requiredRequest ? requiredRequestLabelId : undefined}
+                    title={t('pages.gameRoom.campaign.openRequiredRequest', 'Open required request')}
+                    onClick={() => onOpenRequiredRequest(previewLevel.required_request_id!)}>
+                    <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="5" y="10" width="14" height="11" rx="2" />
+                      <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
+                    </svg>
+                  </PopupAction>
+                  {requiredRequest && <span id={requiredRequestLabelId} className={campaignTab['request-lock-label']}>
+                    {t(`pages.gameRoom.evidence.board.requestTypes.${requiredRequest.request_type}`)}
+                  </span>}
                 </div>
               )}
               {!showContent ? <div className={campaignTab['info-view']}><div className={campaignTab['preview-content-box']}><h3 className={campaignTab['preview-title']}>{discovered ? previewLevel.title : t('pages.gameRoom.campaign.unknownLead', 'UNKNOWN LEAD')}</h3><p className={campaignTab['preview-desc']}>{gated ? t('pages.gameRoom.campaign.gatedDesc', 'A required request has not been completed.') : previewLevel.details}</p></div></div> : (

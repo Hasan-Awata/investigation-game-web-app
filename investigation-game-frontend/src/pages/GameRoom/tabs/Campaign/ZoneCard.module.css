@@ -145,8 +145,7 @@
   color: var(--accent-cyan);
 }
 
-.leadTitle,
-.warrantHint {
+.leadTitle {
   min-inline-size: 0;
   overflow-wrap: anywhere;
   font-weight: 600;
@@ -169,8 +168,8 @@
 }
 
 .warrantHint {
-  display: none;
-  max-inline-size: 40%;
+  display: inline-flex;
+  flex: none;
   margin-inline-start: auto;
 }
 
@@ -190,10 +189,6 @@
 }
 
 @media (hover: hover) {
-  .lead:hover .warrantHint {
-    display: block;
-  }
-
   .close:hover {
     background: rgba(var(--accent-crimson-rgb), 0.1);
     border-color: var(--accent-crimson);

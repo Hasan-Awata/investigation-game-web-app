@@ -1,133 +1,140 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { submitInvestigationRequest, type InvestigationRequestResponse } from '@/services/api';
 import { useGameMutation } from './useGameMutation';
 import { useSafeTimeout } from './useSafeTimeout';
-import type { FiledRequest, GameRoom, InvestigationRequestType } from '@/types';
+import type { GameRoom } from '@/types';
 import { useRoomUI } from '@/context/RoomContext.shared';
+import { patchArray } from '@/utils/parsers';
 
-interface RequestRollback {
-  previousRoom: unknown;
+interface RequestScope { roomId: number; inviteCode: string }
+interface TrayState {
+  scope: RequestScope;
+  selectedRequestId: number | null;
+  trayEvidences: number[];
+  trayCharacters: number[];
+  feedback: { type: 'error'; message: string } | null;
+  isSubmitting: boolean;
+}
+interface RequestSubmission {
+  scope: RequestScope;
+  requestId: number;
+  evidenceIds: number[];
+  characterIds: number[];
 }
 
-export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => void) {
+const createState = (room: GameRoom): TrayState => ({
+  scope: { roomId: room.id, inviteCode: room.invite_code },
+  selectedRequestId: null, trayEvidences: [], trayCharacters: [], feedback: null, isSubmitting: false,
+});
+
+export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => void | Promise<void>) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { addGlobalToast } = useRoomUI();
   const safeTimeout = useSafeTimeout();
-  
-  const [trayEvidences, setTrayEvidences] = useState<number[]>([]);
-  const [trayCharacters, setTrayCharacters] = useState<number[]>([]);
-  const [requestType, setRequestType] = useState<InvestigationRequestType | ''>('');
-  const [feedback, setFeedback] = useState<{ type: 'error'; message: string } | null>(null);
+  const [state, setState] = useState(() => createState(room));
+  const proceduralRequests = room.procedural_requests ?? [];
+  const completedRequestIds = room.completed_requests?.map(request => request.id) ?? [];
+  const selectedRequest = proceduralRequests.find(request => request.id === state.selectedRequestId
+    && !completedRequestIds.includes(request.id));
 
-  // Derived directly from the authoritative room payload
-  const filedRequests: FiledRequest[] = room.filed_requests || [];
+  // Reset before committing children, including when a teammate approves our target.
+  if (state.scope.roomId !== room.id || state.scope.inviteCode !== room.invite_code) {
+    setState(createState(room));
+  } else if (state.selectedRequestId !== null && !selectedRequest) {
+    setState({ ...state, selectedRequestId: null });
+  }
 
-  const requestMutation = useGameMutation<
-    InvestigationRequestResponse,
-    void,
-    RequestRollback
-  >({
-    mutationFn: () => {
-      if (!requestType) throw new Error(t('pages.gameRoom.evidence.board.selectRequestType'));
-      return submitInvestigationRequest(room.id, { requestType, evidenceIds: trayEvidences, characterIds: trayCharacters });
-    },
-    // Request rejections use their own feedback dialog.
+  const { scope } = state;
+  const activeScope = useRef<RequestScope | null>(null);
+  const pendingSubmission = useRef<RequestSubmission | null>(null);
+  useLayoutEffect(() => {
+    activeScope.current = scope;
+    return () => { activeScope.current = null; };
+  }, [scope]);
+
+  const refresh = () => {
+    void Promise.resolve().then(refreshRoomData).catch((error: unknown) => {
+      console.warn('Failed to refresh room after procedural request.', error);
+    });
+  };
+
+  const requestMutation = useGameMutation<InvestigationRequestResponse, RequestSubmission>({
+    mutationFn: ({ scope: requestScope, ...payload }) => submitInvestigationRequest(requestScope.roomId, payload),
     dispatchErrorFeedback: false,
-    onMutate: async () => {
-      await queryClient.cancelQueries({ queryKey: ['gameRoom', room.invite_code] });
-      const previousRoom = queryClient.getQueryData(['gameRoom', room.invite_code]);
-
-      const optimisticRequest: FiledRequest = {
-        id: `temp-${Date.now()}`,
-        request_type: requestType,
-        created_at: new Date().toISOString(),
-        evidence_ids: [...trayEvidences],
-        character_ids: [...trayCharacters]
-      };
-
-      queryClient.setQueryData(['gameRoom', room.invite_code], (old: GameRoom | undefined) => {
-        if (!old) return old;
-        return {
-          ...old,
-          filed_requests: [optimisticRequest, ...(old.filed_requests || [])]
-        };
-      });
-
-      return { previousRoom };
+    onMutate: async submission => {
+      await queryClient.cancelQueries({ queryKey: ['gameRoom', submission.scope.inviteCode] });
     },
-    onError: (error, _variables, context) => {
-      queryClient.setQueryData(['gameRoom', room.invite_code], context?.previousRoom);
-      setFeedback({ type: 'error', message: error.message });
-      setTrayEvidences([]);
-      setTrayCharacters([]);
+    onError: (error, submission) => {
+      if (activeScope.current !== submission.scope) return;
+      setState(previous => ({ ...previous, feedback: { type: 'error', message: error.message } }));
+      refresh();
     },
-    onSuccess: (data) => {
-      setFeedback(null);
-      setTrayEvidences([]);
-      setTrayCharacters([]);
-      setRequestType('');
-      refreshRoomData();
-
-      // Trigger respective toast notifications based on what the DA unlocked
+    onSuccess: (data, submission) => {
+      if (activeScope.current !== submission.scope) return;
+      queryClient.setQueryData<GameRoom>(['gameRoom', submission.scope.inviteCode], old => old && ({
+        ...old,
+        completed_requests: patchArray(old.completed_requests, [{ id: data.request_id }]),
+      }));
+      setState(previous => ({ ...previous, selectedRequestId: null, trayEvidences: [], trayCharacters: [], feedback: null }));
+      refresh();
       safeTimeout(() => {
-        if (data.unlocked_evidence && data.unlocked_evidence.length > 0) {
+        if (activeScope.current !== submission.scope) return;
+        if (data.unlocked_evidence.length > 0) {
           addGlobalToast({
-            type: 'evidence',
-            title: t('pages.gameRoom.hooks.request.proceduralApproved'),
-            message: t('pages.gameRoom.hooks.request.proceduralApprovedMsg'),
-            icon: 'proceduralApproved'
+            type: 'evidence', title: t('pages.gameRoom.hooks.request.proceduralApproved'),
+            message: t('pages.gameRoom.hooks.request.proceduralApprovedMsg'), icon: 'proceduralApproved',
           });
         }
-
-        if (data.unlocked_levels && data.unlocked_levels.length > 0) {
+        if (data.unlocked_levels.length > 0) {
           addGlobalToast({
-            type: 'level',
-            title: t('pages.gameRoom.hooks.request.warrantExecuted'),
-            message: t('pages.gameRoom.hooks.request.warrantExecutedMsg'),
-            icon: 'warrantExecuted'
+            type: 'level', title: t('pages.gameRoom.hooks.request.warrantExecuted'),
+            message: t('pages.gameRoom.hooks.request.warrantExecutedMsg'), icon: 'warrantExecuted',
           });
         }
       }, 500);
-    }
+    },
+    onSettled: (_data, _error, submission) => {
+      if (pendingSubmission.current === submission) pendingSubmission.current = null;
+      if (activeScope.current === submission.scope) setState(previous => ({ ...previous, isSubmitting: false }));
+    },
   });
 
-  const addEvidenceToTray = (evidenceId: number) => {
-    if (!trayEvidences.includes(evidenceId)) {
-      setTrayEvidences([...trayEvidences, evidenceId]);
-    }
+  const canEdit = () => activeScope.current === scope && room.status === 'active'
+    && pendingSubmission.current?.scope !== scope;
+  const selectRequest = (requestId: number) => {
+    if (!canEdit() || completedRequestIds.includes(requestId) || !proceduralRequests.some(request => request.id === requestId)) return;
+    setState(previous => ({ ...previous, selectedRequestId: requestId }));
   };
-
-  const addCharacterToTray = (characterId: number) => {
-    if (!trayCharacters.includes(characterId)) {
-      setTrayCharacters([...trayCharacters, characterId]);
-    }
+  const addEvidenceToTray = (id: number) => {
+    if (canEdit()) setState(previous => previous.trayEvidences.includes(id) ? previous
+      : { ...previous, trayEvidences: [...previous.trayEvidences, id] });
   };
-
+  const addCharacterToTray = (id: number) => {
+    if (canEdit()) setState(previous => previous.trayCharacters.includes(id) ? previous
+      : { ...previous, trayCharacters: [...previous.trayCharacters, id] });
+  };
   const removeItem = (id: number, type: 'evidence' | 'character') => {
-    if (type === 'evidence') {
-      setTrayEvidences(prev => prev.filter(itemId => itemId !== id));
-    } else {
-      setTrayCharacters(prev => prev.filter(itemId => itemId !== id));
-    }
+    if (!canEdit()) return;
+    setState(previous => type === 'evidence'
+      ? { ...previous, trayEvidences: previous.trayEvidences.filter(item => item !== id) }
+      : { ...previous, trayCharacters: previous.trayCharacters.filter(item => item !== id) });
   };
-
-  const clearFeedback = () => setFeedback(null);
+  const submitRequest = () => {
+    if (!canEdit() || !selectedRequest || state.trayEvidences.length + state.trayCharacters.length < 2) return;
+    const submission = { scope, requestId: selectedRequest.id, evidenceIds: [...state.trayEvidences], characterIds: [...state.trayCharacters] };
+    pendingSubmission.current = submission;
+    setState(previous => ({ ...previous, isSubmitting: true, feedback: null }));
+    requestMutation.mutate(submission);
+  };
 
   return {
-    trayEvidences,
-    trayCharacters,
-    requestType,
-    setRequestType,
-    addEvidenceToTray,
-    addCharacterToTray,
-    removeItem,
-    isSubmitting: requestMutation.isPending,
-    feedback,
-    clearFeedback,
-    submitRequest: requestMutation.mutate,
-    filedRequests
+    trayEvidences: state.trayEvidences, trayCharacters: state.trayCharacters,
+    selectedRequestId: selectedRequest?.id ?? null, proceduralRequests, completedRequestIds, selectRequest,
+    addEvidenceToTray, addCharacterToTray, removeItem, submitRequest,
+    isSubmitting: state.isSubmitting, feedback: state.feedback,
+    clearFeedback: () => setState(previous => ({ ...previous, feedback: null })),
   };
 }

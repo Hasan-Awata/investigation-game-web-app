@@ -110,6 +110,13 @@ export interface FiledRequest {
   character_ids?: number[];
 }
 
+/** Player-facing metadata; analysis requirements stay on the server. */
+export interface ProceduralRequest {
+  id: number;
+  request_type: InvestigationRequestType;
+  title: string;
+}
+
 export interface GameRoom {
   id: number;
   invite_code: string;
@@ -131,6 +138,7 @@ export interface GameRoom {
   available_location_point_ids?: number[];
   inspections?: RoomInspection[];
   filed_requests?: FiledRequest[];
+  procedural_requests?: ProceduralRequest[];
   accumulated_evidences?: Evidence[];
   accumulated_characters?: Character[];
 }

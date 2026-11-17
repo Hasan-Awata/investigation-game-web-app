@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\InvestigationRequestType;
-use Illuminate\Validation\Rule;
 use App\Models\GameRoom;
 use App\Models\InvestigationRequest;
 use App\Services\InvestigationRequestService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class InvestigationRequestController extends Controller
 {
@@ -20,39 +18,40 @@ class InvestigationRequestController extends Controller
     {
         // 1. Strict HTTP Validation
         $validated = $request->validate([
-            'request_type' => ['required', Rule::enum(InvestigationRequestType::class)],
+            'request_id' => ['required', 'integer'],
             'evidence_ids' => 'nullable|array|min:0',
-            'evidence_ids.*' => 'integer|exists:evidences,id',
+            'evidence_ids.*' => 'integer|distinct|exists:evidences,id',
             'character_ids' => 'nullable|array|min:0',
-            'character_ids.*' => 'integer|exists:characters,id',
+            'character_ids.*' => 'integer|distinct|exists:characters,id',
         ]);
 
         $evidenceIds = $validated['evidence_ids'] ?? [];
         $characterIds = $validated['character_ids'] ?? [];
 
-        if (!InvestigationRequest::hasMinimumItems(count($evidenceIds), count($characterIds))) {
+        if (! InvestigationRequest::hasMinimumItems(count($evidenceIds), count($characterIds))) {
             return response()->json([
                 'error' => 'Request Denied',
-                'message' => InvestigationRequest::MIN_ITEMS_MESSAGE
+                'message' => InvestigationRequest::MIN_ITEMS_MESSAGE,
             ], 422);
         }
 
         // 2. Execute Domain Logic
-        $result = $this->requestService->processRequest($room, InvestigationRequestType::from($validated['request_type']), $evidenceIds, $characterIds);
+        $result = $this->requestService->processRequest($room, (int) $validated['request_id'], $evidenceIds, $characterIds);
 
         // 3. Handle the Result
         if ($result->isFailure()) {
             return response()->json([
                 'error' => 'Request Denied',
-                'message' => $result->errorMessage
+                'message' => $result->errorMessage,
             ], 422);
         }
 
         return response()->json([
             'status' => 'success',
             'message' => $result->value['message'],
+            'request_id' => $result->value['request_id'],
             'unlocked_evidence' => $result->value['unlocked_evidence'],
-            'unlocked_levels' => $result->value['unlocked_levels'] 
+            'unlocked_levels' => $result->value['unlocked_levels'],
         ], 200);
     }
 }

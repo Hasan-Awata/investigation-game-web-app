@@ -2,6 +2,7 @@ import { render, act } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import GameRoom from './GameRoom';
 import type { ConnectionStatus } from 'laravel-echo';
+import type { GameRoom as GameRoomState } from '@/types';
 
 const mocks = vi.hoisted(() => ({ refresh: vi.fn(), patch: vi.fn() }));
 vi.mock('react-router-dom', () => ({ useParams: () => ({ inviteCode: 'ABC123' }) }));
@@ -40,4 +41,23 @@ it('refreshes once per visible socket reconnection and removes connection and ro
   expect(unsubscribe).toHaveBeenCalledTimes(1);
   expect(leave).toHaveBeenCalledWith('room.1');
   expect(channel.stopListening).toHaveBeenCalledTimes(7);
+});
+
+it('merges request approvals idempotently and refreshes request availability when a level is discovered', () => {
+  const events = new Map<string, (event: unknown) => void>();
+  const channel = { listen: vi.fn((name: string, callback: (event: unknown) => void) => { events.set(name, callback); }), stopListening: vi.fn() };
+  vi.stubGlobal('Echo', {
+    connectionStatus: () => 'connected', connector: { onConnectionChange: () => vi.fn() },
+    private: () => channel, leave: vi.fn(),
+  });
+  let state: GameRoomState = { id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', strikes: 0 };
+  mocks.patch.mockImplementation((update: (room: GameRoomState) => GameRoomState) => { state = update(state); });
+  render(<GameRoom />);
+  const approval = { request_id: 10, filed_request: { id: 4, request_type: 'search_warrant', evidence_ids: [1, 2], character_ids: [], created_at: new Date().toISOString() } };
+  act(() => { events.get('RequestFiled')?.(approval); events.get('RequestFiled')?.(approval); });
+  expect(state.completed_requests).toEqual([{ id: 10 }]);
+  expect(state.filed_requests).toHaveLength(1);
+  act(() => events.get('ItemsUnlocked')?.({ unlocked_levels: [{ id: 5 }] }));
+  expect(state.unlocked_levels?.map(level => level.id)).toEqual([5]);
+  expect(mocks.refresh).toHaveBeenCalledOnce();
 });

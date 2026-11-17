@@ -36,7 +36,10 @@ it('sorts lead previews and hides undiscovered titles', () => {
 
   expect(rows[0]).toHaveTextContent(/^Night guard$/);
   expect(within(rows[1]).getByText('Sealed records')).toBeInTheDocument();
-  expect(within(rows[1]).getByRole('img', { name: 'Warrant required' })).toBeInTheDocument();
+  const lock = within(rows[1]).getByRole('img', { name: 'Warrant required' });
+  expect(lock).toBeVisible();
+  expect(lock.querySelector('rect')).toBeInTheDocument();
+  expect(within(rows[1]).queryByText('Warrant required')).not.toBeInTheDocument();
   expect(within(rows[2]).getByRole('img', { name: 'Restricted access' })).toBeInTheDocument();
   expect(within(dialog).queryByText('Hidden office')).not.toBeInTheDocument();
 });

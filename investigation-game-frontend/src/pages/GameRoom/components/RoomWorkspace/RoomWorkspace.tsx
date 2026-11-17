@@ -11,6 +11,7 @@ import RoomStrikeIndicator from './RoomStrikeIndicator';
 import styles from '../../GameRoomLayout.module.css';
 
 interface RoomWorkspaceProps {
+  onOpenRequiredRequest: (requestId: number) => void;
   roomId: GameRoom['id'];
   campaignRoomId: GameRoom['id'] | null;
   currentStrikes: number;
@@ -19,7 +20,7 @@ interface RoomWorkspaceProps {
   verdict: ComponentProps<typeof PersonsOfInterestTab>;
 }
 
-export default function RoomWorkspace({ roomId, campaignRoomId, currentStrikes, maxStrikes, navigation, verdict }: RoomWorkspaceProps) {
+export default function RoomWorkspace({ roomId, campaignRoomId, currentStrikes, maxStrikes, navigation, verdict, onOpenRequiredRequest }: RoomWorkspaceProps) {
   const { activeTab } = navigation;
 
   return (
@@ -35,7 +36,7 @@ export default function RoomWorkspace({ roomId, campaignRoomId, currentStrikes, 
         )}
         {(activeTab === 'campaign' || campaignRoomId === roomId) && (
           <Activity key={roomId} mode={activeTab === 'campaign' ? 'visible' : 'hidden'}>
-            <CampaignTab />
+            <CampaignTab onOpenRequiredRequest={onOpenRequiredRequest} />
           </Activity>
         )}
       </div>

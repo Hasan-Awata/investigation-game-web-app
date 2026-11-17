@@ -15,6 +15,7 @@
 /* --- Left Sidebar --- */
 .sidebarPanel {
   min-inline-size: 0;
+  min-block-size: 0;
   border-inline-end: 1px solid rgba(255, 255, 255, 0.05);
   background: var(--bg-dark);
   backdrop-filter: blur(10px);
@@ -513,6 +514,7 @@
   }
 
   .sidebarPanel {
+    min-block-size: auto;
     border-inline-end: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     padding: 1rem;

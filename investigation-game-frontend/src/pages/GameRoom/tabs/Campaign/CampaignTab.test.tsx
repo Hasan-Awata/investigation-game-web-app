@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EncounterGroup, GameRoom, Level } from '@/types';
-import CampaignTab from './CampaignTab';
+import CampaignPreview from './CampaignTab';
 import { RoomDataProvider } from '@/context/RoomContext';
 
 const mocks = vi.hoisted(() => ({ room: {} as GameRoom, phase: {
@@ -24,6 +24,8 @@ const level = (type: 'location' | 'interrogation'): Level => ({ id: 1, zone_id: 
 const group: EncounterGroup = { id: 1, room_id: 1, level_id: 1, creator_user_id: 1, status: 'active', current_question_id: 1, finalizes_at: null };
 const background = (container: HTMLElement) => container.querySelector('[style*="background-image"]');
 const openZone = () => fireEvent.click(screen.getByRole('button', { name: 'Enter zone' }));
+const openRequiredRequest = vi.fn();
+const CampaignTab = () => <CampaignPreview onOpenRequiredRequest={openRequiredRequest} />;
 
 describe('shared level preview', () => {
   beforeEach(() => {
@@ -127,14 +129,20 @@ describe('shared level preview', () => {
 
   it('keeps gated previews sharp without exposing content', () => {
     mocks.room.game_case!.zones![0].levels = [{ ...level('location'), required_request_id: 20 }];
+    mocks.room.procedural_requests = [{ id: 20, request_type: 'financial_records', title: 'The lead' }];
     const { container } = render(<CampaignTab />);
     openZone();
     expect(background(container)?.className).not.toContain('blurred');
     expect(screen.queryByRole('button', { name: 'Show workspace' })).not.toBeInTheDocument();
     expect(screen.queryByText('Location content')).not.toBeInTheDocument();
     expect(background(container)?.className).toContain('gated-image');
-    expect(screen.getByText('Warrant required')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Warrant required' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Warrant required')).not.toBeInTheDocument();
+    const lock = screen.getByRole('button', { name: 'Open required request' });
+    expect(lock.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
+    expect(lock.querySelector('svg')).toHaveAttribute('width', '42');
+    expect(lock).toHaveAccessibleDescription('pages.gameRoom.evidence.board.requestTypes.financial_records');
+    fireEvent.click(lock);
+    expect(openRequiredRequest).toHaveBeenCalledWith(20);
     expect(screen.queryByRole('button', { name: 'Start interrogation' })).not.toBeInTheDocument();
     expect(mocks.phase.initiatePhase).not.toHaveBeenCalled();
     expect(mocks.phase.joinGroup).not.toHaveBeenCalled();
@@ -147,6 +155,7 @@ describe('shared level preview', () => {
     openZone();
     expect(screen.getByRole('button', { name: 'Start interrogation' })).toBeEnabled();
     expect(screen.queryByText('Warrant required')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Open required request' })).not.toBeInTheDocument();
   });
 
   it('does not infer request completion from a similarly filed combination', () => {

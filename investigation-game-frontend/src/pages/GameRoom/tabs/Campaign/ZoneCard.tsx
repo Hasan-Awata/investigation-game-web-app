@@ -117,7 +117,7 @@ export default function ZoneCard({ zone, unlockedLevelIds, onClose, onEnter }: Z
                   <li key={level.id} className={styles.lead} data-state={state}>
                     <LeadIcon
                       type={discovered ? level.presentation_type : 'restricted'}
-                      label={discovered ? warrantHint : restrictedLabel}
+                      label={discovered ? undefined : restrictedLabel}
                     />
                     {discovered ? (
                       <span className={styles.leadTitle}>{level.title}</span>
@@ -126,7 +126,9 @@ export default function ZoneCard({ zone, unlockedLevelIds, onClose, onEnter }: Z
                         ▟╳▒ ▞░┆ ▓╱▚
                       </bdi>
                     )}
-                    {warrantHint && <span className={styles.warrantHint} aria-hidden="true">{warrantHint}</span>}
+                    {warrantHint && <span className={styles.warrantHint}>
+                      <LeadIcon type="restricted" label={warrantHint} />
+                    </span>}
                   </li>
                 );
               })}
