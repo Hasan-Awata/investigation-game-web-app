@@ -101,6 +101,7 @@
     },
     "gameRoom": {
       "characterFolio": {
+        "unreadIntel": "معلومات جديدة",
         "guilty": "مذنب",
         "unassigned": "بريء",
         "allSelected": "جميع الشخصيات المعروفة ضمن اتهامك حالياً. أعد شخصية إلى هنا لاستبعادها.",

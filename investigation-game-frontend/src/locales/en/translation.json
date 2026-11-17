@@ -69,6 +69,7 @@
     },
     "gameRoom": {
       "characterFolio": {
+        "unreadIntel": "New intel",
         "guilty": "Guilty",
         "unassigned": "Innocent",
         "allSelected": "All known characters are currently included in your accusation. Return a character here to exclude them.",
@@ -77,6 +78,17 @@
         "locked": "Finish all required interrogations to propose a verdict.",
         "filingPending": "Filing verdict…",
         "submit": "Close case"
+      },
+      "characters": {
+        "deceased": "Deceased"
+      },
+      "suspects": {
+        "card": {
+          "viewIntel": "View background intel",
+          "closeIntel": "Close background intel",
+          "backgroundIntel": "Background intel",
+          "noBackground": "No background intel on file."
+        }
       },
       "syncDelayed": "Unable to refresh progress. Showing the last saved state; retrying automatically.",
       "retry": "Retry",

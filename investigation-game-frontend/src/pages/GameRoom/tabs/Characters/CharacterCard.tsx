@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useDraggable } from '@dnd-kit/core';
 import type { Character } from '@/types';
@@ -10,90 +10,125 @@ interface CharacterCardProps {
   onInteract: (characterId: number) => void;
 }
 
-export default function CharacterCard({ character, isNew, onInteract }: CharacterCardProps) {
-  const { t } = useTranslation();
-  const [showIntel, setShowIntel] = useState(false);
-  const isDeceased = character.current_status === 'deceased';
-
-  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `character-${character.id}`,
-    disabled: showIntel,
-    data: { 
-      type: 'CHARACTER', // Critical for the router
-      characterId: character.id
-    }
-  });
-
-  const toggleIntel = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowIntel(!showIntel);
-  };
+function CharacterPortrait({ src }: { src?: string | null }) {
+  const [failed, setFailed] = useState(false);
 
   return (
-    <div
-      ref={setNodeRef}
-      {...listeners}
-      {...attributes}
-      className={`${styles.characterCard} ${isDeceased ? styles.isDeceased : ''}`}
-      onMouseEnter={() => onInteract(character.id)}
-      style={{ opacity: isDragging ? 0.4 : 1, touchAction: 'none' }}
-    >
-      {isDeceased && (
-        <div className={styles.deceasedOverlay}>
-          {!showIntel && (
-            <span className={styles.deceasedStamp}>{t('pages.gameRoom.characters.deceased', 'DECEASED')}</span>
-          )}
-        </div>
-      )}
-
-      <button
-        className={styles.intelToggleBtn}
-        onPointerDownCapture={toggleIntel}
-        title={showIntel ? t('pages.gameRoom.suspects.card.closeIntel') : t('pages.gameRoom.suspects.card.viewIntel')}
-      >
-        {showIntel ? '✕' : 'ℹ'}
-      </button>
-
-      {isNew && <div className={styles.unreadIndicator} title="Unread Intel"></div>}
-
-      {showIntel ? (
-        <div className={styles.intelOverlay} onPointerDownCapture={(e) => e.stopPropagation()}>
-          <h5 className={styles.intelHeader}>{t('pages.gameRoom.suspects.card.backgroundIntel')}</h5>
-          <p className={styles.intelText}>{character.background || t('pages.gameRoom.suspects.card.noBackground')}</p>
-        </div>
+    <div className={styles.portrait} aria-hidden="true">
+      {src && !failed ? (
+        <img src={src} alt="" draggable={false} onError={() => setFailed(true)} />
       ) : (
-        <>
-          <div
-            className={styles.characterMugshot}
-            style={{ backgroundImage: `url(${character.img_url || '/placeholder-mugshot.jpg'})` }}
-          />
-          <div className={styles.characterInfo}>
-            <h4 className={styles.characterName} title={character.name}>{character.name}</h4>
-          </div>
-        </>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" focusable="false">
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M4 21v-2a7 7 0 0 1 7-7h2a7 7 0 0 1 7 7v2Z" />
+        </svg>
       )}
     </div>
   );
 }
 
-export function CharacterCardOverlay({ character }: { character: Character }) {
+function CharacterFace({ character }: { character: Character }) {
   const { t } = useTranslation();
-  const isDeceased = character.current_status === 'deceased';
 
   return (
-    <div className={`${styles.characterCard} ${isDeceased ? styles.isDeceased : ''}`}>
-      {isDeceased && (
-        <div className={styles.deceasedOverlay}>
-          <span className={styles.deceasedStamp}>{t('pages.gameRoom.characters.deceased', 'DECEASED')}</span>
-        </div>
-      )}
-      <div
-        className={styles.characterMugshot}
-        style={{ backgroundImage: `url(${character.img_url || '/placeholder-mugshot.jpg'})` }}
-      />
-      <div className={styles.characterInfo}>
-        <h4 className={styles.characterName} title={character.name}>{character.name}</h4>
+    <>
+      <CharacterPortrait key={character.img_url} src={character.img_url} />
+      <div className={styles.identity}>
+        <h4 className={styles.characterName} dir="auto">{character.name}</h4>
+        {character.current_status === 'deceased' && (
+          <span className={styles.deceasedStamp}>{t('pages.gameRoom.characters.deceased')}</span>
+        )}
       </div>
+    </>
+  );
+}
+
+export default function CharacterCard({ character, isNew, onInteract }: CharacterCardProps) {
+  const { t } = useTranslation();
+  const [showIntel, setShowIntel] = useState(false);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const intelId = useId();
+  const intelHeadingId = useId();
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `character-${character.id}`,
+    disabled: showIntel,
+    data: { type: 'CHARACTER', characterId: character.id },
+  });
+
+  const closeIntel = () => {
+    setShowIntel(false);
+    toggleRef.current?.focus();
+  };
+
+  const toggleLabel = t(showIntel ? 'pages.gameRoom.suspects.card.closeIntel' : 'pages.gameRoom.suspects.card.viewIntel');
+
+  return (
+    <div
+      className={styles.characterCard}
+      data-dragging={isDragging}
+      onMouseEnter={() => { if (isNew) onInteract(character.id); }}
+      onKeyDown={(event) => {
+        if (!showIntel || event.key !== 'Escape') return;
+        event.preventDefault();
+        event.stopPropagation();
+        closeIntel();
+      }}
+    >
+      <div
+        ref={setNodeRef}
+        {...(showIntel ? undefined : listeners)}
+        role={showIntel ? undefined : 'group'}
+        aria-roledescription={showIntel ? undefined : attributes['aria-roledescription']}
+        className={styles.face}
+        data-draggable={!showIntel}
+      >
+        <CharacterFace character={character} />
+      </div>
+
+      <button
+        ref={toggleRef}
+        type="button"
+        className={styles.intelToggle}
+        aria-label={toggleLabel}
+        aria-expanded={showIntel}
+        aria-controls={intelId}
+        title={toggleLabel}
+        onClick={() => {
+          if (showIntel) {
+            closeIntel();
+            return;
+          }
+          setShowIntel(true);
+          if (isNew) onInteract(character.id);
+        }}
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          {showIntel ? <path d="m6 6 12 12M18 6 6 18" /> : (
+            <><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z" /><path d="M7 12h10m-10 3h6" /></>
+          )}
+        </svg>
+      </button>
+
+      {isNew && !showIntel && <span className={styles.unreadTab}>{t('pages.gameRoom.characterFolio.unreadIntel')}</span>}
+
+      <div id={intelId} className={styles.intelPanel} hidden={!showIntel}>
+        <h5 id={intelHeadingId} className={styles.intelHeading}>{t('pages.gameRoom.suspects.card.backgroundIntel')}</h5>
+        <section
+          className={styles.intelReader}
+          aria-labelledby={intelHeadingId}
+          tabIndex={showIntel ? 0 : undefined}
+        >
+          <p>{character.background?.trim() ? character.background : t('pages.gameRoom.suspects.card.noBackground')}</p>
+        </section>
+      </div>
+    </div>
+  );
+}
+
+export function CharacterCardOverlay({ character }: { character: Character }) {
+  return (
+    <div className={styles.characterCard} aria-hidden="true">
+      <CharacterFace character={character} />
     </div>
   );
 }
