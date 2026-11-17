@@ -135,7 +135,7 @@ it('opens the procedural tray during a drag and sends evidence and characters to
   fireEvent.click(button('pages.gameRoom.layout.tabs.personsOfInterest'));
   const characterCard = screen.getByRole('heading', { name: character.name });
   const startCharacterDrag = () => startDrag(characterCard, 'character-9', {
-    type: 'CHARACTER', characterId: character.id, sourcePool: 'unassigned',
+    type: 'CHARACTER', characterId: character.id,
   });
 
   fireEvent.click(button('gameRoom.activeAgents'));

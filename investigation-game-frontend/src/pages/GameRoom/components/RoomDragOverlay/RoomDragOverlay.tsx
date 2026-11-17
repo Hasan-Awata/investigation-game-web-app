@@ -1,16 +1,14 @@
 import { DragOverlay, defaultDropAnimationSideEffects } from '@dnd-kit/core';
 import type { Character, Evidence } from '@/types';
-import type { CharacterSourcePool } from '../../hooks/useRoomDragAndDrop';
 import { CharacterCardOverlay } from '../../tabs/Characters/CharacterCard';
 import { EvidenceCardOverlay } from '../../tabs/EvidenceBoard/EvidenceCard';
 
 interface RoomDragOverlayProps {
   evidence: Evidence | null | undefined;
   character: Character | null | undefined;
-  sourcePool: CharacterSourcePool | null;
 }
 
-export default function RoomDragOverlay({ evidence, character, sourcePool }: RoomDragOverlayProps) {
+export default function RoomDragOverlay({ evidence, character }: RoomDragOverlayProps) {
   return (
     <DragOverlay dropAnimation={{
       sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: '0.4' } } }),
@@ -21,7 +19,7 @@ export default function RoomDragOverlay({ evidence, character, sourcePool }: Roo
       ) : null}
 
       {character ? (
-        <CharacterCardOverlay character={character} sourcePool={sourcePool || 'unassigned'} />
+        <CharacterCardOverlay character={character} />
       ) : null}
     </DragOverlay>
   );

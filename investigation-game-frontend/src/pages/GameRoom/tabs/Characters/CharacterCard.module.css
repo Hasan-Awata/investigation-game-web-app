@@ -25,10 +25,6 @@
   z-index: 50;
 }
 
-.isDragging {
-  opacity: 0.2;
-}
-
 /* --- DECEASED VISUAL OVERLAY (Frosted Glass Style) --- */
 .isDeceased .characterMugshot {
   filter: grayscale(100%) brightness(0.7);

@@ -3,11 +3,11 @@ import type { PointerEvent as ReactPointerEvent, RefObject } from 'react';
 import { getClientRect, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import type { ClientRect, DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import type { Character, Evidence } from '@/types';
+import type { CharacterPoolId } from '@/utils/characterVerdict';
 
-export type CharacterSourcePool = 'unassigned' | 'guilty';
 type RoomDragData =
-  | { type: 'EVIDENCE'; sourcePool?: never }
-  | { type: 'CHARACTER'; characterId: number; sourcePool?: CharacterSourcePool };
+  | { type: 'EVIDENCE' }
+  | { type: 'CHARACTER'; characterId: number };
 
 interface RoomDragAndDropOptions {
   accumulatedEvidences: Evidence[];
@@ -17,7 +17,7 @@ interface RoomDragAndDropOptions {
   showProceduralTray: () => void;
   addEvidenceToTray: (id: number) => void;
   addCharacterToTray: (id: number) => void;
-  handleCharacterDrop: (id: number, pool: CharacterSourcePool) => void;
+  handleCharacterDrop: (id: number, pool: CharacterPoolId) => void;
 }
 
 export function useRoomDragAndDrop({
@@ -36,7 +36,6 @@ export function useRoomDragAndDrop({
   const pendingPointerMove = useRef<PointerEvent | null>(null);
   const [activeDragId, setActiveDragId] = useState<number | null>(null);
   const [activeDragType, setActiveDragType] = useState<RoomDragData['type'] | null>(null);
-  const [activeDragSource, setActiveDragSource] = useState<CharacterSourcePool | null>(null);
 
   useEffect(() => () => {
     sidebarWatch.current?.abort();
@@ -60,7 +59,6 @@ export function useRoomDragAndDrop({
     dragSourceRect.current = null;
     setActiveDragId(null);
     setActiveDragType(null);
-    setActiveDragSource(null);
   };
 
   const trackPendingPointer = (event: ReactPointerEvent) => {
@@ -91,7 +89,6 @@ export function useRoomDragAndDrop({
 
     setActiveDragType(data?.type || 'EVIDENCE');
     setActiveDragId(data?.type === 'CHARACTER' ? data.characterId : (event.active.id as number));
-    setActiveDragSource(data?.sourcePool || null);
 
     const sidebar = sidebarRef.current;
     if (!sidebar || isTrayVisible || (data?.type !== 'EVIDENCE' && data?.type !== 'CHARACTER')) return;
@@ -163,7 +160,6 @@ export function useRoomDragAndDrop({
     isDragging: activeDragId !== null,
     activeEvidence,
     activeCharacter,
-    activeDragSource,
     contextProps: {
       sensors,
       measuring: { draggable: { measure: measureDraggable } },

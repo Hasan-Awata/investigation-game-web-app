@@ -10,7 +10,7 @@ interface RoomResponse {
 
 type LockVoteResponse = VoteResponse;
 
-interface SubmitSuspectVerdictResponse {
+export interface SubmitSuspectVerdictResponse {
   status: string;
   message: string;
   room?: GameRoom;

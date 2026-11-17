@@ -6,24 +6,21 @@ import styles from './CharacterCard.module.css';
 
 interface CharacterCardProps {
   character: Character;
-  sourcePool: 'unassigned' | 'guilty';
-  isDraggable: boolean;
   isNew: boolean;
   onInteract: (characterId: number) => void;
 }
 
-export default function CharacterCard({ character, sourcePool, isDraggable, isNew, onInteract }: CharacterCardProps) {
+export default function CharacterCard({ character, isNew, onInteract }: CharacterCardProps) {
   const { t } = useTranslation();
   const [showIntel, setShowIntel] = useState(false);
   const isDeceased = character.current_status === 'deceased';
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `character-${character.id}`,
-    disabled: !isDraggable || showIntel,
+    disabled: showIntel,
     data: { 
       type: 'CHARACTER', // Critical for the router
-      characterId: character.id,
-      sourcePool 
+      characterId: character.id
     }
   });
 
@@ -37,7 +34,7 @@ export default function CharacterCard({ character, sourcePool, isDraggable, isNe
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`${styles.characterCard} ${isDragging ? styles.isDragging : ''} ${isDeceased ? styles.isDeceased : ''}`}
+      className={`${styles.characterCard} ${isDeceased ? styles.isDeceased : ''}`}
       onMouseEnter={() => onInteract(character.id)}
       style={{ opacity: isDragging ? 0.4 : 1, touchAction: 'none' }}
     >
@@ -51,7 +48,7 @@ export default function CharacterCard({ character, sourcePool, isDraggable, isNe
 
       <button
         className={styles.intelToggleBtn}
-        onPointerDownCapture={(e) => { e.stopPropagation(); toggleIntel(e); }}
+        onPointerDownCapture={toggleIntel}
         title={showIntel ? t('pages.gameRoom.suspects.card.closeIntel') : t('pages.gameRoom.suspects.card.viewIntel')}
       >
         {showIntel ? '✕' : 'ℹ'}
@@ -79,7 +76,7 @@ export default function CharacterCard({ character, sourcePool, isDraggable, isNe
   );
 }
 
-export function CharacterCardOverlay({ character }: { character: Character, sourcePool: 'unassigned' | 'guilty' }) {
+export function CharacterCardOverlay({ character }: { character: Character }) {
   const { t } = useTranslation();
   const isDeceased = character.current_status === 'deceased';
 

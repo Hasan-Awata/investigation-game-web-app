@@ -148,7 +148,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
           }}
         />
 
-        <RoomDragOverlay evidence={drag.activeEvidence} character={drag.activeCharacter} sourcePool={drag.activeDragSource} />
+        <RoomDragOverlay evidence={drag.activeEvidence} character={drag.activeCharacter} />
       </div>
     </DndContext>
   );

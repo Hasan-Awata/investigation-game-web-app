@@ -14,7 +14,7 @@ vi.mock('@/context/RoomContext.shared', () => ({
 vi.mock('./CharacterCard', () => ({ default: ({ character }: { character: Character }) => <article>{character.name}</article> }));
 vi.mock('../../components/RoomDialogs/RoomFeedbackDialog', () => ({ default: ({ message, onAcknowledge }: { message: string; onAcknowledge: () => void }) => <button onClick={onAcknowledge}>{message}</button> }));
 vi.mock('@dnd-kit/core', () => ({ useDroppable: () => ({ isOver: false, setNodeRef: vi.fn() }) }));
-vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string, options?: Record<string, unknown>) => key + (options?.total !== undefined ? ` ${options.count}/${options.total}` : '') }) }));
+vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 const key = (name: string) => `pages.gameRoom.characterFolio.${name}`;
 
 beforeEach(() => {
