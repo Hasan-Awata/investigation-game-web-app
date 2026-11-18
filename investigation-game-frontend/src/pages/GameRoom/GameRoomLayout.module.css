@@ -330,7 +330,8 @@
 }
 
 .workspaceHeader {
-  --trust-ring-size: 75px;
+  --trust-meter-scale: 0.9;
+  --trust-ring-size: calc(4.6875rem * var(--trust-meter-scale));
   --trust-ring-inset: 1.5rem;
   --trust-ring-gap: 0.875rem;
 
@@ -741,13 +742,30 @@
   inset-inline-end: var(--trust-ring-inset);
   display: grid;
   place-items: center;
-  color: var(--accent-crimson);
+  border-radius: 50%;
+  background: var(--bg-dark);
   pointer-events: auto;
   cursor: default;
 }
 
+.managementTrust[data-trust-band='success'] {
+  color: color-mix(in srgb, var(--accent-success) 90%, var(--text-primary));
+}
+
+.managementTrust[data-trust-band='olive'] {
+  color: var(--accent-olive);
+}
+
+.managementTrust[data-trust-band='amber'] {
+  color: var(--accent-amber);
+}
+
+.managementTrust[data-trust-band='crimson'] {
+  color: color-mix(in srgb, var(--accent-crimson) 70%, var(--text-primary));
+}
+
 .managementTrust:focus-visible {
-  outline: 2px solid currentColor;
+  outline: 2px solid var(--text-primary);
   outline-offset: 2px;
 }
 
@@ -762,7 +780,7 @@
 }
 
 .managementTrustPercentage {
-  font-size: 1rem;
+  font-size: calc(1rem * var(--trust-meter-scale));
   line-height: 1;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
@@ -770,19 +788,19 @@
 
 .managementTrustTooltip {
   position: absolute;
-  inset-inline-end: calc(100% + 0.75rem);
+  inset-inline-end: calc(100% + 0.75rem * var(--trust-meter-scale));
   font-family: var(--font-mono, monospace);
-  font-size: 0.85rem;
+  font-size: calc(0.85rem * var(--trust-meter-scale));
   font-weight: 700;
-  background: color-mix(in srgb, var(--bg-dark) 92%, currentColor);
-  border: 1px solid currentColor;
-  padding: 0.4rem 0.85rem;
+  color: var(--text-primary);
+  background: var(--bg-dark);
+  border: var(--border-thin);
+  padding: calc(0.4rem * var(--trust-meter-scale)) calc(0.85rem * var(--trust-meter-scale));
   border-radius: 4px;
-  backdrop-filter: blur(8px);
   opacity: 0;
   pointer-events: none;
   inline-size: max-content;
-  max-inline-size: 12rem;
+  max-inline-size: calc(12rem * var(--trust-meter-scale));
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 

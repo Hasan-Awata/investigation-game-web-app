@@ -31,4 +31,4 @@
 .advisory { font-weight: 700; }
 .advisory,
 .penalty { color: var(--accent-crimson); }
-.price { color: #7d9b6a; }
+.price { color: var(--accent-olive); }

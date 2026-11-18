@@ -104,6 +104,8 @@ it('fills the trust ring in proportion to the current room value', () => {
   const arc = () => meter().querySelector('circle[pathLength]');
 
   expect(meter()).toHaveAttribute('aria-valuetext', '100%');
+  expect(meter()).toHaveAttribute('data-trust-band', 'success');
+  expect(meter()).toHaveTextContent(/^100%gameRoom\.managementTrust$/);
   expect(arc()).toBeInTheDocument();
   expect(arc()).not.toHaveAttribute('stroke-dasharray');
 
@@ -114,7 +116,22 @@ it('fills the trust ring in proportion to the current room value', () => {
 
   view.rerender(roomLayout({ ...room, management_trust: 0 }));
   expect(meter()).toHaveAttribute('aria-valuetext', '0%');
+  expect(meter()).toHaveAttribute('data-trust-band', 'crimson');
   expect(arc()).not.toBeInTheDocument();
+});
+
+it.each([
+  [76, 'success'],
+  [75, 'olive'],
+  [51, 'olive'],
+  [50, 'amber'],
+  [26, 'amber'],
+  [25, 'crimson'],
+])('uses the expected color band at %i%% trust', (trust, band) => {
+  render(roomLayout({ ...room, management_trust: trust }));
+
+  expect(screen.getByRole('meter', { name: 'gameRoom.managementTrust' }))
+    .toHaveAttribute('data-trust-band', band);
 });
 
 function startDrag(source: HTMLElement, id: number | string, data: Record<string, unknown>,

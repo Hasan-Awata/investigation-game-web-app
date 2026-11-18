@@ -13,6 +13,7 @@
   --accent-amber: #c48b36;    /* Aged manila folder yellow */
   --accent-crimson: #a33232;  /* Dried blood/stamped red */
   --accent-success: #4a7c59;  /* Muted military green */
+  --accent-olive: #7d9b6a;    /* Pricing and mid-range Management Trust */
 
   /* Update RGB bases to match the hex codes above */
   --bg-dark-rgb: 10, 11, 13;
