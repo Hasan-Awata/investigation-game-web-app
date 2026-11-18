@@ -24,15 +24,17 @@ const unread = 'pages.gameRoom.characterFolio.unreadIntel';
 beforeEach(() => vi.clearAllMocks());
 
 it('opens intel, clears unread through the parent and restores focus on Escape', () => {
-  const onInteract = vi.fn();
-  const view = render(<CharacterCard character={character} isNew onInteract={onInteract} />);
+  const onReadIntel = vi.fn();
+  const view = render(<CharacterCard character={character} isUnread onReadIntel={onReadIntel} />);
   const toggle = screen.getByRole('button', { name: intel('viewIntel') });
   expect(toggle).toHaveAttribute('aria-expanded', 'false');
-  expect(screen.getByText(unread)).toBeVisible();
+  expect(toggle).toHaveAccessibleDescription(unread);
+  expect(view.container.querySelector('[data-unread]')).toBeInTheDocument();
   fireEvent.click(toggle);
-  expect(onInteract).toHaveBeenCalledExactlyOnceWith(character.id);
-  view.rerender(<CharacterCard character={character} isNew={false} onInteract={onInteract} />);
-  expect(screen.queryByText(unread)).not.toBeInTheDocument();
+  expect(onReadIntel).toHaveBeenCalledExactlyOnceWith(character.id);
+  view.rerender(<CharacterCard character={character} isUnread={false} onReadIntel={onReadIntel} />);
+  expect(toggle).not.toHaveAttribute('aria-describedby');
+  expect(view.container.querySelector('[data-unread]')).not.toBeInTheDocument();
   expect(toggle).toHaveAccessibleName(intel('closeIntel'));
   expect(toggle).toHaveAttribute('aria-expanded', 'true');
   const reader = screen.getByRole('region', { name: intel('backgroundIntel') });
@@ -45,7 +47,7 @@ it('opens intel, clears unread through the parent and restores focus on Escape',
 });
 
 it('isolates the toggle and reader from pointer and touch drag activation', () => {
-  render(<CharacterCard character={character} isNew={false} onInteract={vi.fn()} />);
+  render(<CharacterCard character={character} isUnread={false} onReadIntel={vi.fn()} />);
   const name = screen.getByRole('heading', { name: character.name });
   const toggle = screen.getByRole('button', { name: intel('viewIntel') });
   fireEvent.pointerDown(toggle);
@@ -68,13 +70,19 @@ it('isolates the toggle and reader from pointer and touch drag activation', () =
   expect(drag.register).toHaveBeenLastCalledWith(expect.objectContaining({ disabled: false }));
 });
 
-it('keeps hover-to-mark-read and renders readable empty intel and deceased status', () => {
-  const onInteract = vi.fn();
-  render(<CharacterCard character={{ ...character, background: ' ', current_status: 'deceased' }} isNew onInteract={onInteract} />);
+it('keeps intel unread through hover, focus and drag initiation', () => {
+  const onReadIntel = vi.fn();
+  render(<CharacterCard character={{ ...character, background: ' ', current_status: 'deceased' }} isUnread onReadIntel={onReadIntel} />);
   expect(screen.getByText('pages.gameRoom.characters.deceased')).toBeVisible();
-  fireEvent.mouseEnter(screen.getByRole('heading', { name: character.name }));
-  expect(onInteract).toHaveBeenCalledExactlyOnceWith(character.id);
-  fireEvent.click(screen.getByRole('button', { name: intel('viewIntel') }));
+  const name = screen.getByRole('heading', { name: character.name });
+  const toggle = screen.getByRole('button', { name: intel('viewIntel') });
+  fireEvent.mouseEnter(name);
+  fireEvent.pointerDown(name);
+  toggle.focus();
+  expect(onReadIntel).not.toHaveBeenCalled();
+  expect(toggle).toHaveAccessibleDescription(unread);
+  fireEvent.click(toggle);
+  expect(onReadIntel).toHaveBeenCalledExactlyOnceWith(character.id);
   expect(screen.getByText(intel('noBackground'))).toBeVisible();
 });
 
@@ -87,12 +95,12 @@ it('keeps the drag preview visual only', () => {
 });
 
 it('falls back from a broken portrait and retries when the portrait URL changes', () => {
-  const onInteract = vi.fn();
-  const view = render(<CharacterCard character={{ ...character, img_url: '/missing.jpg' }} isNew={false} onInteract={onInteract} />);
+  const onReadIntel = vi.fn();
+  const view = render(<CharacterCard character={{ ...character, img_url: '/missing.jpg' }} isUnread={false} onReadIntel={onReadIntel} />);
   const portrait = screen.getByAltText('');
   fireEvent.error(portrait);
   expect(portrait).not.toBeInTheDocument();
   expect(screen.getByRole('heading', { name: character.name })).toBeVisible();
-  view.rerender(<CharacterCard character={{ ...character, img_url: '/replacement.jpg' }} isNew={false} onInteract={onInteract} />);
+  view.rerender(<CharacterCard character={{ ...character, img_url: '/replacement.jpg' }} isUnread={false} onReadIntel={onReadIntel} />);
   expect(screen.getByAltText('')).toHaveAttribute('src', '/replacement.jpg');
 });

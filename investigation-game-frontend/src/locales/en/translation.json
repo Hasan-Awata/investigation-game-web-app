@@ -42,13 +42,15 @@
   },
   "gameRoom": {
     "sessionCode": "Session Code",
+    "copySessionCode": "Copy session code",
     "activeAgents": "Active Agents",
     "strikes": "STRIKES",
     "expandPanel": "Expand side panel",
     "collapsePanel": "Collapse side panel",
     "settings": {
       "title": "Settings",
-      "language": "Language"
+      "language": "Language",
+      "close": "Close"
     }
   },
   "pages": {
@@ -116,6 +118,7 @@
           "dragAndDrop": "Drag evidence and characters here",
           "unknownFile": "Unknown file",
           "removeItem": "Remove {{title}} from tray",
+          "trayItemType": { "evidence": "Evidence", "character": "Person" },
           "apply": "Apply",
           "filing": "Reviewing analysis…",
           "availableRequests": "Requests",
@@ -184,6 +187,12 @@
         "unknownLead": "Unknown lead",
         "noLeads": "No leads are currently available in this zone.",
         "openRequiredRequest": "Open required request",
+        "needsRequest": {
+          "search_warrant": "Needs a search warrant",
+          "financial_records": "Needs financial records",
+          "dna_test": "Needs a DNA test",
+          "phone_records": "Needs phone records"
+        },
         "gatedDesc": "A required request has not been completed.",
         "showLevelInfo": "Show details",
         "showGameplay": "Show workspace",

@@ -1,0 +1,14 @@
+.languageRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.languageRow button:focus-visible {
+  outline: 2px solid var(--accent-cyan, #00e5ff);
+  outline-offset: 2px;
+}

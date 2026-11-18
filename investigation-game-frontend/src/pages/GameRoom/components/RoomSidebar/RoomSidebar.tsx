@@ -3,12 +3,11 @@ import { useTranslation } from 'react-i18next';
 import type { GameRoom } from '@/types';
 import ActiveAgents from '../ActiveAgents/ActiveAgents';
 import AgentNotepad from '../AgentNotepad/AgentNotepad';
-import GameRoomSettings from '../GameRoomSettings/GameRoomSettings';
 import ProceduralRequestTray from '../ProceduralRequestTray/ProceduralRequestTray';
 import RoomSessionControls from './RoomSessionControls';
 import styles from '../../GameRoomLayout.module.css';
 
-export type SidebarTab = 'ledger' | 'agents' | 'procedural' | 'settings';
+export type SidebarTab = 'ledger' | 'agents' | 'procedural';
 
 interface RoomSidebarProps {
   sidebarRef: Ref<HTMLElement>;
@@ -16,24 +15,21 @@ interface RoomSidebarProps {
   sidebarId: string;
   sidebarTab: SidebarTab;
   isSidebarCollapsed: boolean;
-  isDragging: boolean;
   requestTray: ComponentProps<typeof ProceduralRequestTray>;
   onSelectTab: (tab: SidebarTab) => void;
-  onToggleCollapse: () => void;
   onExit: () => void;
 }
 
 export default function RoomSidebar({
-  sidebarRef, room, sidebarId, sidebarTab, isSidebarCollapsed, isDragging, requestTray, onSelectTab, onToggleCollapse, onExit,
+  sidebarRef, room, sidebarId, sidebarTab, isSidebarCollapsed, requestTray, onSelectTab, onExit,
 }: RoomSidebarProps) {
   const { t } = useTranslation();
 
   return (
-    <aside ref={sidebarRef} className={styles.sidebarPanel}>
+    <aside ref={sidebarRef} id={sidebarId} className={styles.sidebarPanel}
+      inert={isSidebarCollapsed} aria-hidden={isSidebarCollapsed || undefined}>
       <RoomSessionControls
         inviteCode={room.invite_code}
-        sidebarId={sidebarId}
-        isSidebarCollapsed={isSidebarCollapsed}
         onExit={onExit}
       />
 
@@ -66,42 +62,13 @@ export default function RoomSidebar({
               <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/>
             </svg>
           </button>
-          <button
-            type="button"
-            className={`${styles.toggleIconBtn} ${sidebarTab === 'settings' ? styles.activeToggle : ''}`}
-            onClick={() => onSelectTab('settings')} title={t('gameRoom.settings.title')}
-            aria-label={t('gameRoom.settings.title')} aria-pressed={sidebarTab === 'settings'}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="m9.5 3-.6 2.4-2 .9L4.6 5.6 2 10l1.8 1.7v.6L2 14l2.6 4.4 2.3-.7 2 .9.6 2.4h5l.6-2.4 2-.9 2.3.7L22 14l-1.8-1.7v-.6L22 10l-2.6-4.4-2.3.7-2-.9-.6-2.4Z" />
-              <circle cx="12" cy="12" r="3" />
-            </svg>
-          </button>
-          <button
-            type="button"
-            className={`${styles.toggleIconBtn} ${styles.collapseBtn}`}
-            onClick={onToggleCollapse}
-            disabled={isDragging}
-            aria-expanded={!isSidebarCollapsed}
-            aria-controls={`${sidebarId}-session ${sidebarId}-content`}
-            aria-label={t(isSidebarCollapsed ? 'gameRoom.expandPanel' : 'gameRoom.collapsePanel')}
-            title={t(isSidebarCollapsed ? 'gameRoom.expandPanel' : 'gameRoom.collapsePanel')}
-          >
-            <svg className={styles.collapseIcon} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="16" rx="2" />
-              <path d="M9 4v16" />
-              <path d={isSidebarCollapsed ? 'm12 9 3 3-3 3' : 'm15 9-3 3 3 3'} />
-            </svg>
-          </button>
         </div>
 
-        <div id={`${sidebarId}-content`} className={styles.sidebarToggleContent} hidden={isSidebarCollapsed}>
+        <div className={styles.sidebarToggleContent}>
           {sidebarTab === 'agents' ? (
             <ActiveAgents users={room.users} hostUserId={room.host_user_id} />
           ) : sidebarTab === 'procedural' ? (
             <ProceduralRequestTray {...requestTray} />
-          ) : sidebarTab === 'settings' ? (
-            <GameRoomSettings />
           ) : (
             <AgentNotepad roomId={room.id} />
           )}

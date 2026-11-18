@@ -138,9 +138,10 @@ describe('shared level preview', () => {
     expect(background(container)?.className).toContain('gated-image');
     expect(screen.queryByText('Warrant required')).not.toBeInTheDocument();
     const lock = screen.getByRole('button', { name: 'Open required request' });
+    expect(lock).not.toHaveAttribute('title');
     expect(lock.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
     expect(lock.querySelector('svg')).toHaveAttribute('width', '42');
-    expect(lock).toHaveAccessibleDescription('pages.gameRoom.evidence.board.requestTypes.financial_records');
+    expect(lock).toHaveAccessibleDescription('pages.gameRoom.campaign.needsRequest.financial_records');
     fireEvent.click(lock);
     expect(openRequiredRequest).toHaveBeenCalledWith(20);
     expect(screen.queryByRole('button', { name: 'Start interrogation' })).not.toBeInTheDocument();

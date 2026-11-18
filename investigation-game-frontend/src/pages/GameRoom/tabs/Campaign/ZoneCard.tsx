@@ -1,6 +1,7 @@
 import { useId, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Level, Zone } from '@/types';
+import UndiscoveredLevelIcon from './UndiscoveredLevelIcon';
 import styles from './ZoneCard.module.css';
 
 interface ZoneCardProps {
@@ -115,10 +116,9 @@ export default function ZoneCard({ zone, unlockedLevelIds, onClose, onEnter }: Z
 
                 return (
                   <li key={level.id} className={styles.lead} data-state={state}>
-                    <LeadIcon
-                      type={discovered ? level.presentation_type : 'restricted'}
-                      label={discovered ? undefined : restrictedLabel}
-                    />
+                    {discovered ? <LeadIcon type={level.presentation_type} /> : (
+                      <UndiscoveredLevelIcon label={restrictedLabel} />
+                    )}
                     {discovered ? (
                       <span className={styles.leadTitle}>{level.title}</span>
                     ) : (

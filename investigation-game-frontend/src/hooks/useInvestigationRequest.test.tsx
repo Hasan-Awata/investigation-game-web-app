@@ -37,6 +37,17 @@ function prepare(hook: ReturnType<typeof setup>) {
   });
 }
 
+it('clears the selected request without discarding tray items', () => {
+  const hook = setup();
+  prepare(hook);
+  act(() => hook.result.current.clearSelection());
+  expect(hook.result.current.selectedRequestId).toBeNull();
+  expect(hook.result.current.trayEvidences).toEqual([7]);
+  expect(hook.result.current.trayCharacters).toEqual([9]);
+  act(() => hook.result.current.submitRequest());
+  expect(submitInvestigationRequest).not.toHaveBeenCalled();
+});
+
 it.each([
   { evidence: true, level: false, icons: ['proceduralApproved'] },
   { evidence: false, level: true, icons: ['warrantExecuted'] },

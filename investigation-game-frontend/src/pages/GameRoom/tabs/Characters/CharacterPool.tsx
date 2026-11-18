@@ -11,16 +11,16 @@ interface CharacterPoolProps {
   emptyMessage: string;
   characters: readonly Character[];
   viewedCharacters: ReadonlySet<number>;
-  onInteract: (id: number) => void;
+  onReadIntel: (id: number) => void;
 }
 
 // Keep list work separate from the droppable's drag-context subscription.
 const CharacterList = memo(function CharacterList({
-  characters, viewedCharacters, onInteract, emptyMessage,
+  characters, viewedCharacters, onReadIntel, emptyMessage,
 }: Omit<CharacterPoolProps, 'title' | 'pool'>) {
   return <div className={styles.cards}>
     {characters.map(character => <CharacterCard key={character.id} character={character}
-      isNew={!viewedCharacters.has(character.id)} onInteract={onInteract} />)}
+      isUnread={!viewedCharacters.has(character.id)} onReadIntel={onReadIntel} />)}
     {!characters.length && <p className={styles.placeholder}>{emptyMessage}</p>}
   </div>;
 });

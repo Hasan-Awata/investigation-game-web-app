@@ -6,8 +6,8 @@ import styles from './CharacterCard.module.css';
 
 interface CharacterCardProps {
   character: Character;
-  isNew: boolean;
-  onInteract: (characterId: number) => void;
+  isUnread: boolean;
+  onReadIntel: (characterId: number) => void;
 }
 
 function CharacterPortrait({ src }: { src?: string | null }) {
@@ -43,12 +43,13 @@ function CharacterFace({ character }: { character: Character }) {
   );
 }
 
-export default function CharacterCard({ character, isNew, onInteract }: CharacterCardProps) {
+export default function CharacterCard({ character, isUnread, onReadIntel }: CharacterCardProps) {
   const { t } = useTranslation();
   const [showIntel, setShowIntel] = useState(false);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const intelId = useId();
   const intelHeadingId = useId();
+  const unreadId = useId();
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `character-${character.id}`,
     disabled: showIntel,
@@ -66,7 +67,7 @@ export default function CharacterCard({ character, isNew, onInteract }: Characte
     <div
       className={styles.characterCard}
       data-dragging={isDragging}
-      onMouseEnter={() => { if (isNew) onInteract(character.id); }}
+      data-unread={isUnread || undefined}
       onKeyDown={(event) => {
         if (!showIntel || event.key !== 'Escape') return;
         event.preventDefault();
@@ -92,6 +93,7 @@ export default function CharacterCard({ character, isNew, onInteract }: Characte
         aria-label={toggleLabel}
         aria-expanded={showIntel}
         aria-controls={intelId}
+        aria-describedby={isUnread ? unreadId : undefined}
         title={toggleLabel}
         onClick={() => {
           if (showIntel) {
@@ -99,7 +101,7 @@ export default function CharacterCard({ character, isNew, onInteract }: Characte
             return;
           }
           setShowIntel(true);
-          if (isNew) onInteract(character.id);
+          if (isUnread) onReadIntel(character.id);
         }}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -109,7 +111,7 @@ export default function CharacterCard({ character, isNew, onInteract }: Characte
         </svg>
       </button>
 
-      {isNew && !showIntel && <span className={styles.unreadTab}>{t('pages.gameRoom.characterFolio.unreadIntel')}</span>}
+      {isUnread && <span id={unreadId} hidden>{t('pages.gameRoom.characterFolio.unreadIntel')}</span>}
 
       <div id={intelId} className={styles.intelPanel} hidden={!showIntel}>
         <h5 id={intelHeadingId} className={styles.intelHeading}>{t('pages.gameRoom.suspects.card.backgroundIntel')}</h5>

@@ -1,17 +1,19 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { submitSuspectVerdict, type SubmitSuspectVerdictResponse } from '@/services/api';
 import { getSafeStorage, setSafeStorage, clearRoomSessionData } from '@/utils/storage';
-import { isVerdictReady, moveCharacter, normalizeGuiltyIds, type CharacterPoolId } from '@/utils/characterVerdict';
+import { isVerdictReady, moveCharacter, normalizeCharacterIds, type CharacterPoolId, type CharacterPoolOrder } from '@/utils/characterVerdict';
 import { useGameMutation } from './useGameMutation';
 import type { GameRoom } from '@/types';
 
 interface VerdictScope {
   roomId: number;
   inviteCode: string;
-  storageKey: string;
+  storageKeys: Record<CharacterPoolId, string>;
 }
 
-interface VerdictState extends VerdictSubmission {
+interface VerdictState {
+  scope: VerdictScope;
+  characterOrder: CharacterPoolOrder;
   feedback: { type: 'success' | 'error'; message: string } | null;
   isSubmitting: boolean;
 }
@@ -22,10 +24,16 @@ interface VerdictSubmission {
 }
 
 function createState(room: GameRoom): VerdictState {
-  const storageKey = `room_${room.invite_code}_guilty_characters`;
+  const storageKeys = {
+    guilty: `room_${room.invite_code}_guilty_characters`,
+    unassigned: `room_${room.invite_code}_unassigned_characters`,
+  };
   return {
-    scope: { roomId: room.id, inviteCode: room.invite_code, storageKey },
-    guiltyIds: normalizeGuiltyIds(getSafeStorage<unknown[]>('session', storageKey, [])),
+    scope: { roomId: room.id, inviteCode: room.invite_code, storageKeys },
+    characterOrder: {
+      guilty: normalizeCharacterIds(getSafeStorage<unknown[]>('session', storageKeys.guilty, [])),
+      unassigned: normalizeCharacterIds(getSafeStorage<unknown[]>('session', storageKeys.unassigned, [])),
+    },
     feedback: null,
     isSubmitting: false,
   };
@@ -41,11 +49,11 @@ export function useSuspectVerdict(
   if (state.scope.roomId !== room.id || state.scope.inviteCode !== room.invite_code) {
     setState(createState(room));
   }
-  const { scope, guiltyIds, feedback, isSubmitting } = state;
+  const { scope, characterOrder, feedback, isSubmitting } = state;
   const activeScope = useRef<VerdictScope | null>(null);
   const finalizedScope = useRef<VerdictScope | null>(null);
   const pendingSubmission = useRef<VerdictSubmission | null>(null);
-  const latestSelection = useRef<VerdictSubmission | null>(null);
+  const latestOrder = useRef<Pick<VerdictState, 'scope' | 'characterOrder'> | null>(null);
 
   useLayoutEffect(() => {
     activeScope.current = scope;
@@ -53,8 +61,10 @@ export function useSuspectVerdict(
   }, [scope]);
 
   useEffect(() => {
-    if (finalizedScope.current !== scope) setSafeStorage('session', scope.storageKey, guiltyIds);
-  }, [scope, guiltyIds]);
+    if (finalizedScope.current === scope) return;
+    setSafeStorage('session', scope.storageKeys.guilty, characterOrder.guilty);
+    setSafeStorage('session', scope.storageKeys.unassigned, characterOrder.unassigned);
+  }, [scope, characterOrder]);
 
   const refresh = useCallback(() => {
     // A refresh failure must never turn an accepted verdict into a rejection.
@@ -90,17 +100,18 @@ export function useSuspectVerdict(
 
   const handleCharacterDrop = useCallback((characterId: number, targetPool: CharacterPoolId) => {
     if (activeScope.current !== scope || finalizedScope.current === scope) return;
-    const current = latestSelection.current?.scope === scope ? latestSelection.current.guiltyIds : guiltyIds;
+    const current = latestOrder.current?.scope === scope ? latestOrder.current.characterOrder : characterOrder;
     const next = moveCharacter(current, characterId, targetPool);
+    if (next === current) return;
     // Event-time snapshot also handles multiple drops followed by submission in one tick.
-    latestSelection.current = { scope, guiltyIds: next };
-    setState(previous => ({ ...previous, guiltyIds: next }));
-  }, [scope, guiltyIds]);
+    latestOrder.current = { scope, characterOrder: next };
+    setState(previous => ({ ...previous, characterOrder: next }));
+  }, [scope, characterOrder]);
 
   const submitVerdict = () => {
     if (activeScope.current !== scope || finalizedScope.current === scope || !isVerdictReady(room) || pendingSubmission.current?.scope === scope) return;
-    const selected = latestSelection.current?.scope === scope ? latestSelection.current.guiltyIds : guiltyIds;
-    const request = { scope, guiltyIds: [...selected] };
+    const order = latestOrder.current?.scope === scope ? latestOrder.current.characterOrder : characterOrder;
+    const request = { scope, guiltyIds: [...order.guilty] };
     pendingSubmission.current = request;
     setState(previous => ({ ...previous, isSubmitting: true }));
     verdictMutation.mutate(request);
@@ -112,5 +123,5 @@ export function useSuspectVerdict(
     refresh();
   };
 
-  return { guiltyIds, feedback, isSubmitting, handleCharacterDrop, submitVerdict, clearFeedback };
+  return { characterOrder, feedback, isSubmitting, handleCharacterDrop, submitVerdict, clearFeedback };
 }

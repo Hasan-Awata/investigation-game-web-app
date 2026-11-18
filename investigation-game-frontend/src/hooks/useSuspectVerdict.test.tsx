@@ -16,6 +16,7 @@ vi.mock('@/context/RoomContext.shared', () => ({
 const firstRoom: GameRoom = { id: 1, invite_code: 'FIRST', case_id: 1, host_user_id: 1, status: 'active', strikes: 0 };
 const secondRoom = { ...firstRoom, id: 2, invite_code: 'SECOND' };
 const storageKey = (room = firstRoom) => `room_${room.invite_code}_guilty_characters`;
+const unassignedStorageKey = (room = firstRoom) => `room_${room.invite_code}_unassigned_characters`;
 
 beforeEach(() => {
   sessionStorage.clear();
@@ -42,27 +43,31 @@ function pendingResponse() {
 it('validates persisted IDs and retains IDs absent from the current character payload', () => {
   sessionStorage.setItem(storageKey(), JSON.stringify([8, '9', null, -1, 8, 99, 1.2]));
   const hook = setup();
-  expect(hook.result.current.guiltyIds).toEqual([8, 99]);
+  expect(hook.result.current.characterOrder.guilty).toEqual([8, 99]);
   expect(JSON.parse(sessionStorage.getItem(storageKey())!)).toEqual([8, 99]);
 });
 
 it.each(['{broken', '{"id":3}'])('recovers from corrupt or incompatible storage: %s', stored => {
   const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
   sessionStorage.setItem(storageKey(), stored);
-  expect(setup().result.current.guiltyIds).toEqual([]);
+  expect(setup().result.current.characterOrder.guilty).toEqual([]);
   expect(warning).toHaveBeenCalled();
 });
 
-it('keeps rapid drops and persists their final order', () => {
+it('keeps rapid drops and restores both zone orders after remounting', () => {
   const hook = setup();
   act(() => {
     hook.result.current.handleCharacterDrop(1, 'guilty');
     hook.result.current.handleCharacterDrop(2, 'guilty');
     hook.result.current.handleCharacterDrop(1, 'guilty');
+    hook.result.current.handleCharacterDrop(3, 'unassigned');
     hook.result.current.handleCharacterDrop(2, 'unassigned');
+    hook.result.current.handleCharacterDrop(3, 'unassigned');
   });
-  expect(hook.result.current.guiltyIds).toEqual([1]);
-  expect(JSON.parse(sessionStorage.getItem(storageKey())!)).toEqual([1]);
+  const finalOrder = { guilty: [1], unassigned: [2, 3] };
+  expect(hook.result.current.characterOrder).toEqual(finalOrder);
+  hook.unmount();
+  expect(setup().result.current.characterOrder).toEqual(finalOrder);
 });
 
 it('keeps selection usable if persistence fails', () => {
@@ -70,7 +75,7 @@ it('keeps selection usable if persistence fails', () => {
   vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('Quota'); });
   const hook = setup();
   act(() => hook.result.current.handleCharacterDrop(1, 'guilty'));
-  expect(hook.result.current.guiltyIds).toEqual([1]);
+  expect(hook.result.current.characterOrder.guilty).toEqual([1]);
   expect(warning).toHaveBeenCalled();
 });
 
@@ -96,7 +101,7 @@ it('locks duplicate submission synchronously and snapshots same-tick selections'
     hook.result.current.handleCharacterDrop(1, 'unassigned');
   });
   await waitFor(() => expect(submitSuspectVerdict).toHaveBeenCalledExactlyOnceWith(1, [1, 2]));
-  expect(hook.result.current.guiltyIds).toEqual([2]);
+  expect(hook.result.current.characterOrder.guilty).toEqual([2]);
   expect(hook.result.current.isSubmitting).toBe(true);
   await act(async () => response.resolve(failure('Offline')));
   expect(hook.result.current.isSubmitting).toBe(false);
@@ -110,7 +115,7 @@ it.each(['transport', 'assessment'])('retains selection after %s failure and per
   await waitFor(() => expect(hook.result.current.feedback?.message).toBe('Rejected'));
   expect(hook.result.current.isSubmitting).toBe(false);
   expect(hook.gameOver).not.toHaveBeenCalled();
-  expect(hook.result.current.guiltyIds).toEqual([3]);
+  expect(hook.result.current.characterOrder.guilty).toEqual([3]);
   act(() => hook.result.current.clearFeedback());
   expect(hook.result.current.feedback).toBeNull();
   await waitFor(() => expect(hook.refresh).toHaveBeenCalled());
@@ -120,11 +125,14 @@ it.each(['transport', 'assessment'])('retains selection after %s failure and per
 
 it('cleans only the originating room on success without repersisting cleared IDs', async () => {
   sessionStorage.setItem(storageKey(secondRoom), '[9]');
+  sessionStorage.setItem(unassignedStorageKey(secondRoom), '[10]');
   const hook = setup();
   act(() => { hook.result.current.handleCharacterDrop(3, 'guilty'); hook.result.current.submitVerdict(); });
   await waitFor(() => expect(hook.gameOver).toHaveBeenCalledOnce());
   expect(sessionStorage.getItem(storageKey())).toBeNull();
+  expect(sessionStorage.getItem(unassignedStorageKey())).toBeNull();
   expect(sessionStorage.getItem(storageKey(secondRoom))).toBe('[9]');
+  expect(sessionStorage.getItem(unassignedStorageKey(secondRoom))).toBe('[10]');
   expect(hook.result.current.isSubmitting).toBe(false);
   act(() => hook.result.current.submitVerdict());
   expect(submitSuspectVerdict).toHaveBeenCalledOnce();
@@ -149,7 +157,7 @@ it.each(['success', 'failure'])('ignores a late %s after switching rooms while t
   act(() => { hook.result.current.handleCharacterDrop(3, 'guilty'); hook.result.current.submitVerdict(); });
   await waitFor(() => expect(submitSuspectVerdict).toHaveBeenCalledWith(1, [3]));
   hook.rerender({ room: secondRoom });
-  expect(hook.result.current.guiltyIds).toEqual([9]);
+  expect(hook.result.current.characterOrder.guilty).toEqual([9]);
   expect(hook.result.current.isSubmitting).toBe(false);
   expect(hook.result.current.feedback).toBeNull();
   act(() => hook.result.current.submitVerdict());

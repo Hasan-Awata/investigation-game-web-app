@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useId, useLayoutEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DndContext } from '@dnd-kit/core';
 import { useRoomData, useRoomUI } from '@/context/RoomContext.shared';
@@ -36,10 +36,17 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('details');
   const [campaignRoomId, setCampaignRoomId] = useState<typeof room.id | null>(null);
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('agents');
-  const [sidebarState, setSidebarState] = useState<'initial' | 'expanded' | 'collapsed'>('initial');
-  const isSidebarCollapsed = sidebarState === 'collapsed';
+  const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [requestDisclosure, setRequestDisclosure] = useState({ roomId: room.id, expanded: false });
+  if (requestDisclosure.roomId !== room.id) {
+    setRequestDisclosure({ roomId: room.id, expanded: false });
+  }
+  const setRequestListExpanded = (expanded: boolean) => setRequestDisclosure({ roomId: room.id, expanded });
   const sidebarId = useId();
+  const sidebarFrameRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
+  const collapsedDragEdgeRef = useRef<HTMLDivElement>(null);
+  const sidebarHandleLabel = t(isSidebarCollapsed ? 'gameRoom.expandPanel' : 'gameRoom.collapsePanel');
   const [showExitWarning, setShowExitWarning] = useState(false);
   const closeExitWarning = () => setShowExitWarning(false);
   const departure = useLeaveRoom(room, closeExitWarning);
@@ -47,11 +54,23 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
   const request = useInvestigationRequest(room, refreshRoomData);
   const verdict = useSuspectVerdict(room, refreshRoomData, setGameOverData);
 
+  useLayoutEffect(() => {
+    const frame = sidebarFrameRef.current;
+    const panel = sidebarRef.current;
+    if (!frame || !panel) return;
+    const updateHeight = () => frame.style.setProperty('--sidebar-panel-height', `${panel.getBoundingClientRect().height}px`);
+    updateHeight();
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(panel, { box: 'border-box' });
+    return () => observer.disconnect();
+  }, []);
+
   useRoomPageHide(room.id);
 
   const selectSidebarTab = (tab: SidebarTab) => {
     setSidebarTab(tab);
-    setSidebarState(state => state === 'collapsed' ? 'expanded' : state);
+    setSidebarCollapsed(false);
   };
 
   const selectWorkspaceTab = (tab: WorkspaceTab) => {
@@ -62,7 +81,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
   const drag = useRoomDragAndDrop({
     accumulatedEvidences,
     accumulatedCharacters,
-    sidebarRef,
+    sidebarRef: isSidebarCollapsed ? collapsedDragEdgeRef : sidebarRef,
     isTrayVisible: !isSidebarCollapsed && sidebarTab === 'procedural',
     showProceduralTray: () => selectSidebarTab('procedural'),
     addEvidenceToTray: request.addEvidenceToTray,
@@ -77,7 +96,9 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
     <DndContext {...drag.contextProps}>
       <div
         className={`${styles.layoutContainer} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''}`}
-        data-sidebar-motion={sidebarState}
+        data-sidebar-dragging={drag.isDragging}
+        data-sidebar-drop-available={isSidebarCollapsed && Boolean(drag.activeEvidence || drag.activeCharacter)
+          && room.status === 'active' && !request.isSubmitting}
         onPointerDownCapture={drag.trackPendingPointer}
       >
         {globalFeedback && (
@@ -109,36 +130,61 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
         <RoomToasts toasts={toasts} onDismiss={onDismissToast} onPauseChange={onToastPauseChange} />
         <GameEndOverlay status={room.status} resolutionMessage={resolutionMessage} finalStats={finalStats} />
 
-        <RoomSidebar
-          sidebarRef={sidebarRef}
-          room={room}
-          sidebarId={sidebarId}
-          sidebarTab={sidebarTab}
-          isSidebarCollapsed={isSidebarCollapsed}
-          isDragging={drag.isDragging}
-          onSelectTab={selectSidebarTab}
-          onToggleCollapse={() => setSidebarState(state => state === 'collapsed' ? 'expanded' : 'collapsed')}
-          onExit={() => setShowExitWarning(true)}
-          requestTray={{
-            accumulatedEvidences,
-            accumulatedCharacters,
-            trayEvidences: request.trayEvidences,
-            trayCharacters: request.trayCharacters,
-            selectedRequestId: request.selectedRequestId,
-            selectRequest: request.selectRequest,
-            proceduralRequests: request.proceduralRequests,
-            completedRequestIds: request.completedRequestIds,
-            isRoomActive: room.status === 'active',
-            removeItem: request.removeItem,
-            isSubmitting: request.isSubmitting,
-            submitRequest: request.submitRequest,
-          }}
-        />
+        <div ref={sidebarFrameRef} className={styles.sidebarFrame}>
+          <button
+            type="button"
+            className={styles.sidebarHandle}
+            onClick={() => setSidebarCollapsed(collapsed => !collapsed)}
+            disabled={drag.isDragging}
+            aria-expanded={!isSidebarCollapsed}
+            aria-controls={sidebarId}
+            aria-label={sidebarHandleLabel}
+            title={sidebarHandleLabel}
+          >
+            <span className={styles.sidebarGrip} aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+          </button>
+          {isSidebarCollapsed && <div ref={collapsedDragEdgeRef} className={styles.sidebarDragEdge} aria-hidden="true" />}
+          <div className={styles.sidebarClip}>
+            <RoomSidebar
+              sidebarRef={sidebarRef}
+              room={room}
+              sidebarId={sidebarId}
+              sidebarTab={sidebarTab}
+              isSidebarCollapsed={isSidebarCollapsed}
+              onSelectTab={selectSidebarTab}
+              onExit={() => setShowExitWarning(true)}
+              requestTray={{
+                accumulatedEvidences,
+                accumulatedCharacters,
+                trayEvidences: request.trayEvidences,
+                trayCharacters: request.trayCharacters,
+                selectedRequestId: request.selectedRequestId,
+                selectRequest: request.selectRequest,
+                proceduralRequests: request.proceduralRequests,
+                completedRequestIds: request.completedRequestIds,
+                isRequestListExpanded: requestDisclosure.expanded,
+                onRequestListExpandedChange: expanded => {
+                  if (!expanded) request.clearSelection();
+                  setRequestListExpanded(expanded);
+                },
+                isRoomActive: room.status === 'active',
+                removeItem: request.removeItem,
+                isSubmitting: request.isSubmitting,
+                submitRequest: request.submitRequest,
+              }}
+            />
+          </div>
+        </div>
 
         <RoomWorkspace
           onOpenRequiredRequest={requestId => {
-            setSidebarState('expanded');
+            setSidebarCollapsed(false);
             setSidebarTab('procedural');
+            setRequestListExpanded(true);
             request.selectRequest(requestId);
           }}
           roomId={room.id}
@@ -147,7 +193,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
           maxStrikes={room.game_case?.max_strikes || 5}
           navigation={{ activeTab, hasUnreadEvidence, hasUnreadCharacters, onSelectTab: selectWorkspaceTab }}
           verdict={{
-            guiltyIds: verdict.guiltyIds,
+            characterOrder: verdict.characterOrder,
             isSubmitting: verdict.isSubmitting,
             feedback: verdict.feedback,
             submitVerdict: verdict.submitVerdict,

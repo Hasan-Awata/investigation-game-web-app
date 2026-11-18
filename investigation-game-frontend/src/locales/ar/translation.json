@@ -12,9 +12,11 @@
     "collapsePanel": "طي اللوحة الجانبية",
     "settings": {
       "title": "الإعدادات",
-      "language": "اللغة"
+      "language": "اللغة",
+      "close": "إغلاق"
     },
     "sessionCode": "رمز الجلسة",
+    "copySessionCode": "نسخ رمز الجلسة",
     "activeAgents": "العملاء النشطون",
     "strikes": "الإنذارات"
   },
@@ -199,6 +201,7 @@
         "modal": {"title": "الدليل", "close": "إغلاق", "fullscreen": "ملء الشاشة", "minimize": "تصغير", "types": {"document": "مستند", "forensic": "دليل جنائي", "digital": "دليل رقمي", "testimony": "شهادة", "image": "صورة", "audio": "تسجيل صوتي"}},
         "board": {
           "removeItem": "إزالة {{title}} من الدرج",
+          "trayItemType": { "evidence": "دليل", "character": "شخص" },
           "apply": "الحصول على تصريح",
           "availableRequests": "الطلبات",
           "noAvailableRequests": "لا توجد طلبات متاحة حالياً. تابع التحقيق لاكتشاف خيوط جديدة.",
@@ -283,6 +286,12 @@
         "lockingCoordinator": "جاري قفل المنسق...",
         "commenceInvestigation": "بدء التحقيق",
         "openRequiredRequest": "فتح الطلب المطلوب",
+        "needsRequest": {
+          "search_warrant": "تحتاج إلى مذكرة تفتيش",
+          "financial_records": "تحتاج إلى سجلات مالية",
+          "dna_test": "تحتاج إلى تحليل الحمض النووي",
+          "phone_records": "تحتاج إلى سجلات الهاتف"
+        },
         "gatedDesc": "هذا الموقع أو الهدف مقيد حالياً. يجب عليك تقديم الطلب الإجرائي الصحيح إلى المدعي العام للمتابعة.",
         "lead": "الخيط {{id}}",
         "types": {

@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { Level } from '@/types';
+import UndiscoveredLevelIcon from './UndiscoveredLevelIcon';
 import levelCard from './LevelCard.module.css';
 
 interface LevelCardProps {
@@ -14,7 +15,7 @@ interface LevelCardProps {
 const getLevelIcon = (type?: string) => {
   switch (type) {
     case 'undiscovered':
-      return <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M9 9a3 3 0 0 1 6 0c0 2-3 2-3 5M12 17h.01" /></svg>;
+      return <UndiscoveredLevelIcon />;
     case 'interrogation':
       return (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true" strokeLinecap="round" strokeLinejoin="round">

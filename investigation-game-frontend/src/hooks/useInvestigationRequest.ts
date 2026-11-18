@@ -108,6 +108,9 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
     if (!canEdit() || completedRequestIds.includes(requestId) || !proceduralRequests.some(request => request.id === requestId)) return;
     setState(previous => ({ ...previous, selectedRequestId: requestId }));
   };
+  const clearSelection = () => {
+    setState(previous => previous.selectedRequestId === null ? previous : { ...previous, selectedRequestId: null });
+  };
   const addEvidenceToTray = (id: number) => {
     if (canEdit()) setState(previous => previous.trayEvidences.includes(id) ? previous
       : { ...previous, trayEvidences: [...previous.trayEvidences, id] });
@@ -132,7 +135,7 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
 
   return {
     trayEvidences: state.trayEvidences, trayCharacters: state.trayCharacters,
-    selectedRequestId: selectedRequest?.id ?? null, proceduralRequests, completedRequestIds, selectRequest,
+    selectedRequestId: selectedRequest?.id ?? null, proceduralRequests, completedRequestIds, selectRequest, clearSelection,
     addEvidenceToTray, addCharacterToTray, removeItem, submitRequest,
     isSubmitting: state.isSubmitting, feedback: state.feedback,
     clearFeedback: () => setState(previous => ({ ...previous, feedback: null })),

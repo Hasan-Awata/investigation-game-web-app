@@ -118,7 +118,7 @@
   transition: filter 250ms ease-out, transform 250ms ease-out;
 }
 
-/* Keep the canvas-colored fades outside the photograph's grayscale and brightness filters. */
+/* Keep the canvas-colored fades outside the photograph's filters. */
 .preview-column::before {
   content: '';
   position: absolute;
@@ -142,7 +142,7 @@
 }
 
 .preview-bg-layer.gated-image {
-  filter: grayscale(1) brightness(0.38);
+  filter: brightness(0.38);
 }
 
 .request-lock-area {
@@ -154,7 +154,8 @@
   gap: .5rem;
 }
 
-.request-lock[data-danger='true'] {
+.request-lock[data-danger='false'] {
+  --lock-open-transform: rotate(21deg);
   display: grid;
   place-items: center;
   min-inline-size: 66px;
@@ -166,20 +167,43 @@
   color: var(--accent-crimson);
 }
 
+.request-lock[data-danger='false']:hover:not(:disabled) {
+  background: transparent;
+}
+
+.request-lock [data-lock-shackle] {
+  transform-box: view-box;
+  transform-origin: 16.5px 9px;
+  transform: var(--lock-shackle-transform, none);
+}
+
+.request-lock:focus-visible {
+  --lock-shackle-transform: var(--lock-open-transform);
+}
+
+@media (hover: hover) {
+  .request-lock:hover {
+    --lock-shackle-transform: var(--lock-open-transform);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .request-lock > svg,
+  .request-lock [data-lock-shackle] {
+    transition: transform 180ms ease-out;
+  }
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .request-lock:hover > svg {
+    transform: translateY(-3px) scale(1.08);
+  }
+}
+
 .request-lock-label {
   color: var(--text-primary);
   text-align: center;
   overflow-wrap: anywhere;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .request-lock > svg {
-    transition: transform 180ms cubic-bezier(.16, 1, .3, 1);
-  }
-
-  .request-lock:is(:hover, :focus-visible) > svg {
-    transform: translateY(-4px) scale(1.12);
-  }
 }
 
 .top-right-actions {

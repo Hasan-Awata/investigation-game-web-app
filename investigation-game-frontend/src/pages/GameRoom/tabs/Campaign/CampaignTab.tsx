@@ -5,6 +5,7 @@ import { useInvestigationPhase } from '@/hooks/useInvestigationPhase';
 import type { Zone, Level } from '@/types';
 import CampaignMap from './CampaignMap';
 import LevelCard from './LevelCard';
+import SquareLock01Icon from './SquareLock01Icon';
 import { isLocationLevelInspected } from '@/utils/locationProgress';
 import PopupAction from '@/components/PopupAction';
 import InterrogationPhase from './Levels/Interrogation/InterrogationPhase';
@@ -123,18 +124,14 @@ const CampaignTab = ({ onOpenRequiredRequest }: { onOpenRequiredRequest: (reques
             <div className={campaignTab['preview-content-layer']} data-workspace={showContent}>
               {discovered && gated && !showContent && (
                 <div className={campaignTab['request-lock-area']}>
-                  <PopupAction danger className={campaignTab['request-lock']}
+                  <PopupAction className={campaignTab['request-lock']}
                     aria-label={t('pages.gameRoom.campaign.openRequiredRequest', 'Open required request')}
                     aria-describedby={requiredRequest ? requiredRequestLabelId : undefined}
-                    title={t('pages.gameRoom.campaign.openRequiredRequest', 'Open required request')}
                     onClick={() => onOpenRequiredRequest(previewLevel.required_request_id!)}>
-                    <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                      <rect x="5" y="10" width="14" height="11" rx="2" />
-                      <path d="M8 10V7a4 4 0 0 1 8 0v3M12 14v3" />
-                    </svg>
+                    <SquareLock01Icon size={42} />
                   </PopupAction>
                   {requiredRequest && <span id={requiredRequestLabelId} className={campaignTab['request-lock-label']}>
-                    {t(`pages.gameRoom.evidence.board.requestTypes.${requiredRequest.request_type}`)}
+                    {t(`pages.gameRoom.campaign.needsRequest.${requiredRequest.request_type}`)}
                   </span>}
                 </div>
               )}

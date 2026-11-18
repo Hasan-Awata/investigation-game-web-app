@@ -17,7 +17,7 @@ it('updates drag highlighting without rebuilding an unchanged card list', () => 
   const props = {
     pool: 'guilty' as const, title: 'Guilty', emptyMessage: 'Drop here',
     characters: [{ id: 1, name: 'Avery' }] as Character[],
-    viewedCharacters: new Set<number>(), onInteract: vi.fn(),
+    viewedCharacters: new Set<number>(), onReadIntel: vi.fn(),
   };
   const view = render(<CharacterPool {...props} />);
   expect(drag.cardRender).toHaveBeenCalledOnce();
@@ -29,7 +29,7 @@ it('updates drag highlighting without rebuilding an unchanged card list', () => 
 
 it('keeps a labeled empty drop target with the existing placeholder', () => {
   render(<CharacterPool pool="unassigned" title="بريء" emptyMessage="Empty"
-    characters={[]} viewedCharacters={new Set()} onInteract={vi.fn()} />);
+    characters={[]} viewedCharacters={new Set()} onReadIntel={vi.fn()} />);
   expect(screen.getByRole('region', { name: 'بريء' })).not.toHaveClass(styles.suspects);
   expect(screen.getByText('Empty')).toBeVisible();
 });

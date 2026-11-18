@@ -25,8 +25,8 @@ beforeEach(() => {
     { id: 2, is_initial: true, presentation_type: 'interrogation' },
   ] as Level[] }] }, completed_levels: [] } as unknown as GameRoom;
 });
-function tab(guiltyIds: number[] = [], isSubmitting = false, feedback: { type: 'error'; message: string } | null = null) {
-  return <CharactersTab guiltyIds={guiltyIds} isSubmitting={isSubmitting} feedback={feedback} submitVerdict={submit} clearFeedback={acknowledge} />;
+function tab(guilty: number[] = [], isSubmitting = false, feedback: { type: 'error'; message: string } | null = null, unassigned: number[] = []) {
+  return <CharactersTab characterOrder={{ guilty, unassigned }} isSubmitting={isSubmitting} feedback={feedback} submitVerdict={submit} clearFeedback={acknowledge} />;
 }
 it('keeps an unfinished initial interrogation required', () => {
   render(tab());
@@ -43,11 +43,13 @@ it('allows a case with only locations to use the normal assessment rules', () =>
   render(tab());
   expect(screen.getByRole('button', { name: key('submit') })).toBeEnabled();
 });
-it('preserves selected order and the shared filing action with suspects', () => {
-  characters = [{ id: 1, name: 'A' }, { id: 2, name: 'B' }] as Character[];
-  render(tab([2, 1]));
-  const pool = screen.getByRole('region', { name: key('guilty') });
-  expect(within(pool).getAllByRole('article').map(node => node.textContent)).toEqual(['B', 'A']);
+it('renders both pools in drop order alongside the shared filing action', () => {
+  characters = [1, 2, 3, 4].map(id => ({ id, name: String(id) } as Character));
+  render(tab([2, 1], false, null, [4, 3]));
+  const suspects = screen.getByRole('region', { name: key('guilty') });
+  const innocent = screen.getByRole('region', { name: key('unassigned') });
+  expect(within(suspects).getAllByRole('article').map(node => node.textContent)).toEqual(['2', '1']);
+  expect(within(innocent).getAllByRole('article').map(node => node.textContent)).toEqual(['4', '3']);
   expect(screen.getByRole('button', { name: key('submit') })).toBeInTheDocument();
 });
 it('shows busy feedback and blocks duplicate submission', () => {
