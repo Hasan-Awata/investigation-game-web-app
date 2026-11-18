@@ -289,6 +289,8 @@ export function useRoomRealtime({
       });
     });
 
+    channel.listen('RoomParticipantRemoved', () => { void refreshRoomData(); });
+
     channel.listen('HostMigrated', (e: HostMigratedPayload) => {
       setGlobalFeedback({
         type: 'success',
@@ -327,6 +329,7 @@ export function useRoomRealtime({
       channel.stopListening('LocationInspected');
       channel.stopListening('RequestFiled');
       channel.stopListening('HostMigrated');
+      channel.stopListening('RoomParticipantRemoved');
 
       echo.leave(`room.${roomId}`);
     };

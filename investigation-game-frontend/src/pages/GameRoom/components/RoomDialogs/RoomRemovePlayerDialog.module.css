@@ -1,0 +1,24 @@
+.pending {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.progress {
+  inline-size: 1rem;
+  block-size: 1rem;
+  flex: none;
+  border: 2px solid rgba(var(--accent-crimson-rgb), 0.35);
+  border-block-start-color: var(--accent-crimson);
+  border-radius: 50%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .progress {
+    animation: spin 700ms linear infinite;
+  }
+}
+
+@keyframes spin {
+  to { transform: rotate(1turn); }
+}

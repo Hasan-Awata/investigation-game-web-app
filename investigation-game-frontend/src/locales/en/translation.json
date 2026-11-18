@@ -43,14 +43,24 @@
   "gameRoom": {
     "sessionCode": "Session Code",
     "copySessionCode": "Copy session code",
-    "activeAgents": "Active Agents",
+    "sessionCodeCopied": "Session code copied.",
+    "sessionCodeCopyFailed": "Could not copy the session code.",
+    "removePlayer": {
+      "button": "Remove {{name}} from the session",
+      "title": "Remove player?",
+      "description": "Remove {{name}} from this session?",
+      "cancel": "Cancel",
+      "confirm": "Remove player",
+      "pending": "Removing…",
+      "failed": "Could not remove the player. Try again."
+    },
+    "activeAgents": "Active Players",
     "strikes": "STRIKES",
     "expandPanel": "Expand side panel",
     "collapsePanel": "Collapse side panel",
     "settings": {
       "title": "Settings",
-      "language": "Language",
-      "close": "Close"
+      "language": "Language"
     }
   },
   "pages": {

@@ -140,6 +140,9 @@ export const leaveRoom = async (roomId: number): Promise<Result<LeaveRoomRespons
   return result;
 };
 
+export const removeRoomParticipant = (roomId: number, membershipId: number): Promise<Result<{ message: string }>> =>
+  request<{ message: string }>(`/rooms/${roomId}/members/${membershipId}`, { method: 'DELETE' });
+
 /**
  * Browser departure preserves lone-host sessions and migrates multiplayer hosts.
  *

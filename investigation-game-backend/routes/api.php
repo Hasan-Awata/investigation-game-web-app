@@ -47,6 +47,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Room-scoped gameplay routes: participant-only (IDOR guard)
     Route::middleware([EnsureRoomParticipant::class])->group(function () {
         Route::post('/rooms/{room}/leave', [GameRoomController::class, 'leave']);
+        Route::delete('/rooms/{room}/members/{membership}', [GameRoomController::class, 'removeParticipant'])
+            ->whereNumber('membership');
         Route::get('/rooms/{room}', [GameRoomController::class, 'show']);
 
         // Core Gameplay Loop

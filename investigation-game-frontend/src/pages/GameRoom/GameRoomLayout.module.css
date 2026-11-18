@@ -157,106 +157,20 @@
   padding: 2rem 1.5rem;
   display: flex;
   flex-direction: column;
-  gap: 2.5rem;
 }
 
 .sidebarSection {
+  flex: 1;
+  min-block-size: 0;
+  min-inline-size: 0;
   display: flex;
   flex-direction: column;
 }
 
-.sidebarFlexSection {
-  flex: 1;
-  min-height: 0; /* Prevents nested flex children from overflowing */
-}
-
-.sidebarHeading {
-  font-family: var(--font-mono, monospace);
-  font-size: 0.85rem;
-  color: var(--text-secondary, #a1a1aa);
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin: 0 0 1rem 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 0.5rem;
-}
-
-.sidebarHeadingWrapper {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 0.5rem;
-}
-
-.sidebarHeadingWrapper .sidebarHeading {
-  margin-bottom: 0;
-  border-bottom: none;
-  padding-bottom: 0;
-}
-
-.sessionActions {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-inline-start: auto;
-}
-
-.sessionActionBtn {
-  flex-shrink: 0;
-  background: rgba(var(--accent-cyan-rgb), 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-secondary, #a1a1aa);
-  border-radius: var(--radius-sm, 4px);
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  font-size: 1.1rem;
-  transition: all 0.2s ease;
-  line-height: 1;
-  padding: 0;
-}
-
-.sessionActionBtn:hover {
-  background: rgba(var(--accent-cyan-rgb), 0.1);
-  color: var(--accent-cyan, #00ffff);
-  border-color: var(--accent-cyan, #00ffff);
-  box-shadow: inset 0 0 5px rgba(var(--accent-cyan-rgb), 0.2);
-}
-
-.leaveBtn:hover {
-  background: rgba(var(--accent-crimson-rgb), 0.1);
-  color: var(--accent-crimson);
-  border-color: var(--accent-crimson);
-  box-shadow: inset 0 0 5px rgba(var(--accent-crimson-rgb), 0.2);
-}
-
-.sessionActionBtn:focus-visible {
-  outline: 2px solid var(--accent-cyan);
-  outline-offset: 3px;
-}
-
-.leaveBtn:focus-visible {
-  outline-color: var(--accent-crimson);
-}
-
-.sessionActionBtn.copied {
-  background: rgba(0, 255, 128, 0.1);
-  color: #00FF80;
-  border-color: #00FF80;
-}
-
-/* --- Toggled Ledger / Agents Header --- */
 .sidebarToggleHeader {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: clamp(0.375rem, 2vw, 0.75rem);
   margin-bottom: 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding-bottom: 0.5rem;
@@ -289,6 +203,13 @@
   height: 18px;
 }
 
+.sidebarAnimatedIcon {
+  display: grid;
+  place-items: center;
+  inline-size: 100%;
+  block-size: 100%;
+}
+
 .toggleIconBtn:hover {
   background: rgba(var(--accent-cyan-rgb), 0.1);
   color: var(--text-primary, #ffffff);
@@ -301,6 +222,29 @@
   box-shadow: inset 0 0 5px rgba(var(--accent-cyan-rgb), 0.2);
 }
 
+.toggleIconBtn.leaveBtn {
+  margin-inline-start: auto;
+  color: var(--accent-crimson);
+}
+
+.toggleIconBtn.leaveBtn:hover {
+  background: rgba(var(--accent-crimson-rgb), 0.1);
+  border-color: var(--accent-crimson);
+}
+
+.toggleIconBtn.leaveBtn:focus-visible {
+  outline-color: var(--accent-crimson);
+}
+
+.toggleIconBtn[data-copied='true'] {
+  color: var(--accent-success);
+}
+
+.toggleIconBtn[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .sidebarToggleContent {
   min-block-size: 0;
   flex: 1;
@@ -309,7 +253,58 @@
   overflow: hidden;
 }
 
+.sessionCode {
+  flex-shrink: 0;
+}
+
+.sidebarContentHeading {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.sessionCodeHeader,
+.settingsRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.sessionCodeHeader {
+  justify-content: space-between;
+  margin-block-end: 0.5rem;
+}
+
+.settingsRow {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.sidebarAgentsList {
+  --divider-spacing: 2rem;
+  margin-block-start: var(--divider-spacing);
+  border-block-start: var(--border-thin);
+  padding-block-start: var(--divider-spacing);
+  min-block-size: 0;
+  overflow-y: auto;
+}
+
+.sessionCopyStatus {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.sessionCopyError {
+  display: block;
+  margin-block-start: 0.5rem;
+  font-size: 0.85rem;
+}
+
 .inviteCodeDisplay {
+  overflow-wrap: anywhere;
   font-family: var(--font-mono, monospace);
   font-size: 2rem;
   font-weight: 700;
@@ -587,15 +582,6 @@
     border-inline-end: none;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
     padding: 1rem;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: 1rem;
-  }
-
-  .sidebarSection {
-    flex: 1 1 auto;
-    min-width: 140px;
   }
 
   .workspacePanel {

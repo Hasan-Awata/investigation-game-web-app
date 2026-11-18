@@ -37,10 +37,12 @@ it('refreshes once per visible socket reconnection and removes connection and ro
   expect(mocks.refresh).toHaveBeenCalledTimes(2);
   act(() => events.get('EncounterGroupUpdated')?.({ room_id: 1, status: 'completed', members: [], required_voter_ids: [] }));
   expect(mocks.refresh).toHaveBeenCalledTimes(3);
+  act(() => events.get('RoomParticipantRemoved')?.({ room_id: 1 }));
+  expect(mocks.refresh).toHaveBeenCalledTimes(4);
   view.unmount();
   expect(unsubscribe).toHaveBeenCalledTimes(1);
   expect(leave).toHaveBeenCalledWith('room.1');
-  expect(channel.stopListening).toHaveBeenCalledTimes(7);
+  expect(new Set(channel.stopListening.mock.calls.map(([event]) => event))).toEqual(new Set(events.keys()));
 });
 
 it('merges request approvals idempotently and refreshes request availability when a level is discovered', () => {

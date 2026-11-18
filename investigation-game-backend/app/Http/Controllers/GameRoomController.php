@@ -91,6 +91,20 @@ class GameRoomController extends Controller
         return response()->json(['message' => $result->value['message']], 200);
     }
 
+    public function removeParticipant(Request $request, GameRoom $room, string $membership): JsonResponse
+    {
+        $membershipId = filter_var($membership, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+        if ($membershipId === false) {
+            return response()->json(['message' => 'Player membership not found.'], 404);
+        }
+
+        if (!$this->roomService->removeParticipant($room, $request->user(), $membershipId)) {
+            return response()->json(['message' => 'Unable to remove this player from the session.'], 403);
+        }
+
+        return response()->json(['message' => 'Player removed from the session.']);
+    }
+
     public function startLevel(Request $request, GameRoom $room, Level $level): JsonResponse
     {
         $result = $this->encounterGroups->start($room, $level, $request->user());

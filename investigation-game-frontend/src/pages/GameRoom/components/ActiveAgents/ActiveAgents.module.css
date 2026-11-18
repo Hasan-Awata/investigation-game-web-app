@@ -16,18 +16,31 @@
   color: var(--text-primary, #ffffff);
 }
 
-.agentRole {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--text-secondary, #a1a1aa);
+.playerIcon {
+  flex: none;
+  inline-size: 16px;
+  block-size: 16px;
+  color: var(--accent-success);
 }
 
-.hostRole {
-  background: var(--accent-amber, #ffb800);
-  box-shadow: 0 0 8px rgba(255, 179, 0, 0.5);
+.playerName {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
 }
 
-.participantRole {
-  background: var(--accent-cyan, #00ffff);
+.removePlayer[aria-haspopup='dialog'] {
+  inline-size: 44px;
+  block-size: 44px;
+  margin-inline-start: auto;
+  color: var(--accent-crimson);
+}
+
+.removePlayer[aria-haspopup='dialog']:hover {
+  color: var(--accent-crimson);
+  background: rgba(var(--accent-crimson-rgb), 0.1);
+}
+
+.removePlayer[aria-haspopup='dialog']:focus-visible {
+  outline-color: var(--accent-crimson);
+  outline-offset: -2px;
 }

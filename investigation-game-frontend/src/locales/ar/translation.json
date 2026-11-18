@@ -12,12 +12,22 @@
     "collapsePanel": "طي اللوحة الجانبية",
     "settings": {
       "title": "الإعدادات",
-      "language": "اللغة",
-      "close": "إغلاق"
+      "language": "اللغة"
     },
     "sessionCode": "رمز الجلسة",
     "copySessionCode": "نسخ رمز الجلسة",
-    "activeAgents": "العملاء النشطون",
+    "sessionCodeCopied": "تم نسخ رمز الجلسة.",
+    "sessionCodeCopyFailed": "تعذّر نسخ رمز الجلسة.",
+    "removePlayer": {
+      "button": "إزالة {{name}} من الجلسة",
+      "title": "إزالة اللاعب؟",
+      "description": "هل تريد إزالة {{name}} من هذه الجلسة؟",
+      "cancel": "إلغاء",
+      "confirm": "إزالة اللاعب",
+      "pending": "جارٍ الإزالة…",
+      "failed": "تعذّرت إزالة اللاعب. حاول مرة أخرى."
+    },
+    "activeAgents": "اللاعبون النشطون",
     "strikes": "الإنذارات"
   },
   "components": {
@@ -120,7 +130,7 @@
       "synchronizing": "جاري مزامنة بيانات الجلسة...",
       "noInviteCode": "لم يتم توفير رمز دعوة.",
       "sessionCode": "رمز الجلسة",
-      "activeAgents": "العملاء النشطون",
+      "activeAgents": "اللاعبون النشطون",
       "strikes": "الإنذارات",
       "sessionNotFound": "الجلسة غير موجودة.",
       "departmentUpdate": "تحديث الإدارة",

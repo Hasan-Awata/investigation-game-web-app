@@ -18,6 +18,7 @@ use App\Enums\RoomLeaveReason;
 use App\Support\Result;
 use App\Support\Concerns\BroadcastsAfterCommit;
 use App\Events\HostMigrated;
+use App\Events\RoomParticipantRemoved;
 
 class GameRoomService
 {
@@ -184,37 +185,7 @@ class GameRoomService
                 return Result::success(['message' => 'Session preserved for resumption.']);
             }
 
-            // 1. Remove the departing player
-            $roomUser->delete();
-
-            $membership = EncounterGroupMember::query()
-                ->where('user_id', $player->id)
-                ->whereHas('group', fn ($query) => $query->where('room_id', $room->id))
-                ->whereNull('left_at')
-                ->lockForUpdate()
-                ->first();
-            if ($membership) {
-                $membership->update(['left_at' => now(), 'active_user_id' => null]);
-                $group = EncounterGroup::query()->whereKey($membership->encounter_group_id)->lockForUpdate()->first();
-                if ($group) {
-                    DB::table('encounter_question_voters')
-                        ->where('encounter_group_id', $group->id)
-                        ->where('question_id', $group->current_question_id)
-                        ->where('user_id', $player->id)
-                        ->whereNull('left_at')
-                        ->update(['left_at' => now(), 'updated_at' => now()]);
-                    \App\Models\RoomVote::query()
-                        ->where('encounter_group_id', $group->id)
-                        ->where('question_id', $group->current_question_id)
-                        ->where('user_id', $player->id)
-                        ->delete();
-                    $group->update(['finalizes_at' => null]);
-                    if (!$group->members()->whereNull('left_at')->exists()) {
-                        $group->update(['status' => 'abandoned', 'active_room_id' => null, 'active_level_id' => null, 'abandoned_at' => now()]);
-                    }
-                    app(EncounterGroupService::class)->membershipDeparted($group);
-                }
-            }
+            $this->removeMembership($room, $roomUser);
 
             // 2. Handle Host Migration
             if ($wasHost) {
@@ -237,6 +208,70 @@ class GameRoomService
 
             return Result::success(['message' => 'Successfully disconnected from the session.']);
         });
+    }
+
+    public function removeParticipant(GameRoom $room, User $host, int $membershipId): bool
+    {
+        // Resolve the target in this room so departure takes locks in the usual user-then-room order.
+        $userId = $room->users()->whereKey($membershipId)->value('user_id');
+        if ($userId === null || (int) $userId === $host->id) {
+            return false;
+        }
+
+        return DB::transaction(function () use ($room, $host, $membershipId, $userId): bool {
+            if (!User::query()->whereKey($userId)->lockForUpdate()->first()) {
+                return false;
+            }
+
+            $room = GameRoom::query()->whereKey($room->id)->lockForUpdate()->firstOrFail();
+            if ($room->status !== RoomStatus::Active || (int) $room->host_user_id !== $host->id) {
+                return false;
+            }
+
+            $member = $room->users()->whereKey($membershipId)->lockForUpdate()->first();
+            if (!$member) {
+                return false;
+            }
+
+            $this->removeMembership($room, $member);
+            $this->broadcastAfterCommit(new RoomParticipantRemoved($room->id));
+
+            return true;
+        });
+    }
+
+    private function removeMembership(GameRoom $room, RoomUser $roomUser): void
+    {
+        $roomUser->delete();
+
+        $membership = EncounterGroupMember::query()
+            ->where('user_id', $roomUser->user_id)
+            ->whereHas('group', fn ($query) => $query->where('room_id', $room->id))
+            ->whereNull('left_at')
+            ->lockForUpdate()
+            ->first();
+        if ($membership) {
+            $membership->update(['left_at' => now(), 'active_user_id' => null]);
+            $group = EncounterGroup::query()->whereKey($membership->encounter_group_id)->lockForUpdate()->first();
+            if ($group) {
+                DB::table('encounter_question_voters')
+                    ->where('encounter_group_id', $group->id)
+                    ->where('question_id', $group->current_question_id)
+                    ->where('user_id', $roomUser->user_id)
+                    ->whereNull('left_at')
+                    ->update(['left_at' => now(), 'updated_at' => now()]);
+                \App\Models\RoomVote::query()
+                    ->where('encounter_group_id', $group->id)
+                    ->where('question_id', $group->current_question_id)
+                    ->where('user_id', $roomUser->user_id)
+                    ->delete();
+                $group->update(['finalizes_at' => null]);
+                if (!$group->members()->whereNull('left_at')->exists()) {
+                    $group->update(['status' => 'abandoned', 'active_room_id' => null, 'active_level_id' => null, 'abandoned_at' => now()]);
+                }
+                app(EncounterGroupService::class)->membershipDeparted($group);
+            }
+        }
     }
 
     /**

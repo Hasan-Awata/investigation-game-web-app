@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import type { DndContextProps, DragEndEvent } from '@dnd-kit/core';
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { RoomDataProvider, RoomUIProvider } from '@/context/RoomContext';
 import type { Character, Evidence, GameRoom } from '@/types';
+import { failure, success } from '@/utils/Result';
 import GameRoomLayout from './GameRoomLayout';
 import styles from './GameRoomLayout.module.css';
 
@@ -14,6 +16,8 @@ const handlers = vi.hoisted(() => ({
   handleCharacterDrop: vi.fn(),
   selectRequest: vi.fn(),
   changeLanguage: vi.fn(),
+  getLocalUser: vi.fn(),
+  removeRoomParticipant: vi.fn(),
 }));
 let dnd: DndContextProps;
 
@@ -30,6 +34,11 @@ vi.mock('react-i18next', async (importOriginal) => ({
 }));
 vi.mock('@/hooks/useRoomPageHide', () => ({ useRoomPageHide: vi.fn() }));
 vi.mock('@/hooks/useLeaveRoom', () => ({ useLeaveRoom: () => ({ isPending: false }) }));
+vi.mock('@/utils/userState', () => ({ getLocalUser: handlers.getLocalUser }));
+vi.mock('@/services/api', async importOriginal => ({
+  ...await importOriginal<typeof import('@/services/api')>(),
+  removeRoomParticipant: handlers.removeRoomParticipant,
+}));
 vi.mock('@/hooks/useInvestigationRequest', () => ({
   useInvestigationRequest: () => {
     const [selectedRequestId, setSelectedRequestId] = useState<number | null>(null);
@@ -64,10 +73,11 @@ const evidence: Evidence = {
 const character: Character = { id: 9, case_id: 1, name: 'Avery', is_initial: true, default_status: 'alive' };
 const noop = () => undefined;
 
-function roomLayout(currentRoom: GameRoom) {
+function roomLayout(currentRoom: GameRoom, refreshRoomData = async () => {}) {
   return (
     <MemoryRouter>
-      <RoomDataProvider room={currentRoom} accumulatedEvidences={[evidence]} accumulatedCharacters={[character]} refreshRoomData={async () => {}}>
+      <QueryClientProvider client={new QueryClient()}>
+      <RoomDataProvider room={currentRoom} accumulatedEvidences={[evidence]} accumulatedCharacters={[character]} refreshRoomData={refreshRoomData}>
         <RoomUIProvider
           viewedEvidences={new Set()}
           viewedCharacters={new Set()}
@@ -81,6 +91,7 @@ function roomLayout(currentRoom: GameRoom) {
           <GameRoomLayout resolutionMessage={null} finalStats={null} toasts={[]} />
         </RoomUIProvider>
       </RoomDataProvider>
+      </QueryClientProvider>
     </MemoryRouter>
   );
 }
@@ -112,35 +123,96 @@ const requestDisclosure = () => button('pages.gameRoom.evidence.board.availableR
 const collapsedDragEdge = () => button('gameRoom.expandPanel').parentElement!
   .querySelector(`.${styles.sidebarDragEdge}`)!;
 
-it('opens settings between the session actions without replacing the active sidebar tab', () => {
+it('shows the session code and copy action above the agents list', async () => {
+  const writeText = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error('Clipboard denied'));
+  const originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+  Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+  try {
+    renderLayout();
+    const sidebar = screen.getByRole('complementary');
+    const code = within(sidebar).getByText('ABC123');
+    const agents = within(sidebar).getByRole('list');
+    expect(code.compareDocumentPosition(agents) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const copy = button('gameRoom.copySessionCode');
+    const codeHeading = within(sidebar).getByRole('heading', { name: 'gameRoom.sessionCode' });
+    expect(copy.parentElement).toBe(codeHeading.parentElement);
+    expect(agents).toHaveAccessibleName('gameRoom.activeAgents');
+    expect(within(sidebar).queryByRole('heading', { name: 'gameRoom.activeAgents' })).not.toBeInTheDocument();
+    fireEvent.click(copy);
+    expect(writeText).toHaveBeenCalledWith('ABC123');
+    expect(await within(sidebar).findByText('gameRoom.sessionCodeCopied')).toBeInTheDocument();
+    expect(copy).toHaveAttribute('data-copied', 'true');
+    fireEvent.click(copy);
+    expect(await within(sidebar).findByText('gameRoom.sessionCodeCopyFailed')).toBeVisible();
+  } finally {
+    if (originalClipboard) Object.defineProperty(navigator, 'clipboard', originalClipboard);
+    else Reflect.deleteProperty(navigator, 'clipboard');
+  }
+});
+
+it('lets only the host confirm removal of a member and retry a failed removal', async () => {
+  const multiplayerRoom: GameRoom = { ...room, users: [
+    { id: 10, room_id: room.id, user_id: 1, role: 'host' },
+    { id: 11, room_id: room.id, user_id: 2, role: 'participant' },
+  ] };
+  const removeButton = 'gameRoom.removePlayer.button';
+  handlers.getLocalUser.mockReturnValue({ id: 2 });
+  const memberView = render(roomLayout(multiplayerRoom));
+  expect(screen.queryByRole('button', { name: removeButton })).not.toBeInTheDocument();
+  memberView.unmount();
+
+  handlers.getLocalUser.mockReturnValue({ id: 1 });
+  handlers.removeRoomParticipant.mockResolvedValueOnce(failure('Denied')).mockResolvedValueOnce(success({ message: 'Removed' }));
+  const refresh = vi.fn<() => Promise<void>>().mockResolvedValue(undefined);
+  try {
+    render(roomLayout(multiplayerRoom, refresh));
+    const remove = button(removeButton);
+    fireEvent.click(remove);
+    const dialog = screen.getByRole('dialog', { name: 'gameRoom.removePlayer.title' });
+    expect(button('gameRoom.removePlayer.cancel')).toHaveFocus();
+    expect(handlers.removeRoomParticipant).not.toHaveBeenCalled();
+    fireEvent.click(button('gameRoom.removePlayer.confirm'));
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent('gameRoom.removePlayer.failed');
+    expect(handlers.removeRoomParticipant).toHaveBeenCalledWith(room.id, 11);
+    fireEvent.click(button('gameRoom.removePlayer.confirm'));
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    expect(refresh).toHaveBeenCalledOnce();
+  } finally {
+    handlers.getLocalUser.mockReset();
+    handlers.removeRoomParticipant.mockReset();
+  }
+});
+
+it('opens Settings inline and remembers the request disclosure when switching back', () => {
   renderLayout();
-  const copy = button('gameRoom.copySessionCode');
+  const sidebar = screen.getByRole('complementary');
   const settings = button('gameRoom.settings.title');
   const leave = button('pages.gameRoom.layout.tabs.returnToMenu');
-  expect(Array.from(settings.parentElement!.children)).toEqual([copy, settings, leave]);
-  expect(screen.getAllByRole('button', { name: 'gameRoom.settings.title' })).toHaveLength(1);
-  expect(settings).toHaveAttribute('aria-haspopup', 'dialog');
-  expect(settings).not.toHaveAttribute('aria-pressed');
+  expect(settings.nextElementSibling).toBe(leave);
+  expect(leave).not.toHaveAttribute('aria-pressed');
+  expect(leave).toHaveClass(styles.leaveBtn);
 
   fireEvent.click(trayButton());
   fireEvent.click(requestDisclosure());
   fireEvent.click(settings);
-  const dialog = screen.getByRole('dialog', { name: 'gameRoom.settings.title' });
-  expect(within(dialog).getByText('gameRoom.settings.language')).toBeVisible();
-  const close = within(dialog).getByRole('button', { name: 'gameRoom.settings.close' });
-  expect(close).toHaveFocus();
-  fireEvent.click(within(dialog).getByRole('button', { name: 'التبديل إلى العربية' }));
-  expect(handlers.changeLanguage).toHaveBeenCalledWith('ar');
-  fireEvent.click(close);
-  expect(dialog).not.toBeInTheDocument();
-  expect(settings).toHaveFocus();
-  expect(trayButton()).toHaveAttribute('aria-pressed', 'true');
-  expect(requestDisclosure()).toHaveAttribute('aria-expanded', 'true');
-
-  fireEvent.click(settings);
-  fireEvent(screen.getByRole('dialog'), new Event('cancel', { cancelable: true }));
+  expect(settings).toHaveAttribute('aria-pressed', 'true');
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-  expect(settings).toHaveFocus();
+  expect(within(sidebar).getByText('gameRoom.settings.language')).toBeVisible();
+  expect(screen.queryByRole('button', { name: 'gameRoom.copySessionCode' })).not.toBeInTheDocument();
+  fireEvent.click(within(sidebar).getByRole('button', { name: 'التبديل إلى العربية' }));
+  expect(handlers.changeLanguage).toHaveBeenCalledWith('ar');
+  fireEvent.click(trayButton());
+  expect(requestDisclosure()).toHaveAttribute('aria-expanded', 'true');
+});
+
+it('opens the leave confirmation and returns focus to the exit button on cancel', () => {
+  renderLayout();
+  const leave = button('pages.gameRoom.layout.tabs.returnToMenu');
+  fireEvent.click(leave);
+  const confirmation = screen.getByRole('dialog', { name: 'pages.gameRoom.layout.exitWarningTitle' });
+  fireEvent.click(within(confirmation).getByRole('button', { name: 'pages.gameRoom.layout.stay' }));
+  expect(confirmation).not.toBeInTheDocument();
+  expect(leave).toHaveFocus();
 });
 
 it('remembers both disclosure states while visiting a room and starts collapsed on a fresh visit', () => {
