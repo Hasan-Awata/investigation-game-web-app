@@ -79,14 +79,14 @@ class GlasshousePlayabilityTest extends TestCase
         $vital = $this->case->evidences()->where('is_vital_for_conviction', true)->pluck('id')->all();
         $this->assertCount(3, $vital);
         if ($ending === 'strikes') {
-            for ($strike = 1; $strike <= 3; $strike++) {
+            for ($strike = 1; $strike <= 4; $strike++) {
                 $result = app(AssessmentService::class)->evaluateFinalVerdict($room, array_slice($guilty, 1), $vital);
                 $this->assertFalse($result->isFailure());
-                $this->assertSame($strike, $room->fresh()->strikes);
-                $this->assertSame($strike < 3 ? 'active' : 'failed', $room->fresh()->status->value);
+                $this->assertSame(100 - $strike * 25, $room->fresh()->management_trust);
+                $this->assertSame($strike < 4 ? 'active' : 'failed', $room->fresh()->status->value);
             }
             $this->assertSame(0, $this->player->fresh()->XP);
-            $this->assertDatabaseHas('case_user', ['user_id' => $this->player->id, 'status' => 'failed_strikes']);
+            $this->assertDatabaseHas('case_user', ['user_id' => $this->player->id, 'status' => 'failed_trust']);
             $this->start(app(GameRoomService::class)->createRoom($this->case, $this->player)->value, 'lvl_34');
 
             return;

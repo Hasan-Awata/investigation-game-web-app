@@ -13,7 +13,7 @@ class CaseController extends Controller
         $userId = $request->user()->id;
 
         $cases = GameCase::select(
-        'id', 'title', 'story', 'map_url', 'min_player_XP', 'XP_on_solve', 'img_url', 'max_strikes',
+        'id', 'title', 'story', 'map_url', 'min_player_XP', 'XP_on_solve', 'img_url',
         'rating_stars', 'age_rating', 'estimated_playtime', 'difficulty', 'tags', 'author_name'
         )
             ->where('is_published', true) 

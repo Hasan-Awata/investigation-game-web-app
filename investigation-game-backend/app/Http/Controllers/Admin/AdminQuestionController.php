@@ -106,10 +106,14 @@ class AdminQuestionController extends Controller
 
         foreach ($choices as $choiceData) {
             $id = isset($choiceData['id']) ? (int) $choiceData['id'] : null;
+            $outcomes = $choiceData['outcomes'] ?? [];
+            if (isset($outcomes['trust_loss'])) {
+                $outcomes['trust_loss'] = (int) $outcomes['trust_loss'];
+            }
 
             $attributes = [
                 'text' => $choiceData['text'],
-                'outcomes' => ! empty($choiceData['outcomes']) ? $choiceData['outcomes'] : null,
+                'outcomes' => $outcomes ?: null,
                 'requirements' => ! empty($choiceData['requirements']) ? $choiceData['requirements'] : null,
             ];
 

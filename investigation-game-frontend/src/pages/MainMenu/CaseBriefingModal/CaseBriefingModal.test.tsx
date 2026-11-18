@@ -14,7 +14,7 @@ vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.navigate }));
 
 const gameCase: GameCase = {
   id: 7, title: 'Glasshouse', story: 'Investigate the case.', min_player_XP: 0,
-  XP_on_solve: 100, max_strikes: 3, active_room_invite_code: 'OLD123',
+  XP_on_solve: 100, active_room_invite_code: 'OLD123',
 };
 const replacement = { id: 12, invite_code: 'NEW123' } as GameRoom;
 
@@ -156,7 +156,7 @@ it('shows the confirmation and cancellation in Arabic', async () => {
 
 
 it.each([
-  undefined, 'solved_perfect', 'solved_partial', 'failed_no_proof', 'failed_incomplete', 'failed_strikes',
+  undefined, 'solved_perfect', 'solved_partial', 'failed_no_proof', 'failed_incomplete', 'failed_trust',
 ] as const)('shows only server completion XP and free price for %s without gateway XP', status => {
   renderBriefing({ ...gameCase, min_player_XP: 9876, user_status: status });
   const rewardValue = screen.getByText('100');

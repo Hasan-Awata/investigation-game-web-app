@@ -183,7 +183,7 @@ class EncounterGroupLifecycleTest extends TestCase
     public function test_maximum_strikes_fail_parallel_groups_and_stale_jobs_cannot_finalize(): void
     {
         Queue::fake();
-        $fixture = $this->parallelEncounterFixture(maxStrikes: 1, firstChoiceOutcomes: ['gives_strike' => true]);
+        $fixture = $this->parallelEncounterFixture(firstChoiceOutcomes: ['trust_loss' => 100]);
         $service = app(EncounterGroupService::class);
         $firstGroup = $service->start($fixture['room'], $fixture['levels'][0], $fixture['players'][0])->value;
         $parallelGroup = $service->start($fixture['room'], $fixture['levels'][1], $fixture['players'][1])->value;
@@ -206,14 +206,13 @@ class EncounterGroupLifecycleTest extends TestCase
     }
 
     /** @return array{room: GameRoom, players: array<int, User>, levels: array<int, Level>, questions: array<int, \App\Models\Question>, choices: array<int, Choice>} */
-    private function parallelEncounterFixture(int $maxStrikes = 3, array $firstChoiceOutcomes = []): array
+    private function parallelEncounterFixture(array $firstChoiceOutcomes = []): array
     {
         $players = [User::factory()->create(['username' => fake()->unique()->userName()]), User::factory()->create(['username' => fake()->unique()->userName()])];
         $case = GameCase::create([
             'title' => 'Finalization Case',
             'story' => 'Story',
             'XP_on_solve' => 10,
-            'max_strikes' => $maxStrikes,
         ]);
         $zone = Zone::create(['case_id' => $case->id, 'title' => 'Zone', 'order_index' => 1]);
         $levels = [];

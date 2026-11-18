@@ -25,7 +25,7 @@ vi.mock('./GameRoomLayout', async () => {
   } };
 });
 
-const active: Room = { id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', strikes: 0 };
+const active: Room = { id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', management_trust: 100 };
 const stats: FinalStats = {
   time_taken: '12 minutes', xp_gained: 900, max_xp: 900,
   suspects_caught: 6, total_guilty: 6, innocents_accused: 0, xp_awards: { 1: 900, 2: 0 },
@@ -125,11 +125,10 @@ it('reconciles realtime terminal statistics with the authoritative HTTP snapshot
 });
 
 it.each([
-  ['absent', {}, 2],
-  ['null', { strikes: null }, 2],
-  ['zero', { strikes: 0 }, 0],
-  ['positive', { strikes: 3 }, 3],
-] as const)('applies %s strike fields without corrupting the cached room', async (_label, patch, expected) => {
+  ['delayed higher value', { management_trust: 95 }, 90],
+  ['zero', { management_trust: 0 }, 0],
+  ['lower value', { management_trust: 85 }, 85],
+] as const)('applies %s trust updates without raising the cached value', async (_label, patch, expected) => {
   const handlers = new Map<string, (event: unknown) => void>();
   vi.stubGlobal('Echo', {
     connectionStatus: () => 'connected',
@@ -140,14 +139,14 @@ it.each([
     }),
     leave: vi.fn(),
   });
-  vi.mocked(fetchRoomState).mockResolvedValue(success({ ...active, strikes: 2 }));
+  vi.mocked(fetchRoomState).mockResolvedValue(success({ ...active, management_trust: 90 }));
   const view = setup();
   await screen.findByText('Room 1: active');
-  await waitFor(() => expect(handlers.has('ItemsUnlocked')).toBe(true));
+  await waitFor(() => expect(handlers.has('ManagementTrustChanged')).toBe(true));
 
-  const event = { unlocked_evidences: [], unlocked_levels: [], character_updates: [], ...patch };
-  await act(async () => { handlers.get('ItemsUnlocked')!(event); handlers.get('ItemsUnlocked')!(event); });
+  const event = { reason: 'request', trust_loss: 5, ...patch };
+  await act(async () => { handlers.get('ManagementTrustChanged')!(event); handlers.get('ManagementTrustChanged')!(event); });
 
-  expect(view.client.getQueryData<Room>(['gameRoom', 'ABC123'])?.strikes).toBe(expected);
+  expect(view.client.getQueryData<Room>(['gameRoom', 'ABC123'])?.management_trust).toBe(expected);
   view.unmount();
 });

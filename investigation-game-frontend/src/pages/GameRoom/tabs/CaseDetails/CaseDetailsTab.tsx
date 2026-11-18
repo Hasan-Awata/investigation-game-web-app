@@ -14,7 +14,6 @@ const CaseDetailsTab = () => {
     story: t('pages.gameRoom.caseDetails.missingDataDesc'),
     min_player_XP: 0,
     XP_on_solve: 0,
-    max_strikes: 3,
     img_url: undefined,
     tags: []
   };

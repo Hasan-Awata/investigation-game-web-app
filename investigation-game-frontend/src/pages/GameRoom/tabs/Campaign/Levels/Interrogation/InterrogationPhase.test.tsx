@@ -39,7 +39,7 @@ const renderPhase = (roomOverrides: Partial<GameRoom> = {}, displayedLevel = lev
     case_id: 2,
     host_user_id: 11,
     status: 'active',
-    strikes: 0,
+    management_trust: 100,
     accumulated_evidences: [],
     ...roomOverrides,
   };

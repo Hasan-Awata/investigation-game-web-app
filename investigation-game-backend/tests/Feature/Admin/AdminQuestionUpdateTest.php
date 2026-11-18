@@ -93,7 +93,7 @@ class AdminQuestionUpdateTest extends TestCase
             'store_locally' => false,
             'choices' => [
                 ['text' => 'Yes'],
-                ['text' => 'No', 'outcomes' => ['feedback' => 'Denied', 'gives_strike' => true]],
+                ['text' => 'No', 'outcomes' => ['feedback' => 'Denied', 'trust_loss' => 100]],
             ],
         ])->assertStatus(201);
 
@@ -104,7 +104,7 @@ class AdminQuestionUpdateTest extends TestCase
 
         $no = Choice::where('question_id', $questionId)->where('text', 'No')->firstOrFail();
         $this->assertSame('Denied', $no->outcomes['feedback']);
-        $this->assertTrue($no->outcomes['gives_strike']);
+        $this->assertSame(100, $no->outcomes['trust_loss']);
     }
 
     public function test_location_point_unlocks_survive_question_creation_and_unrelated_edits(): void

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { submitSuspectVerdict, type SubmitSuspectVerdictResponse } from '@/services/api';
 import { getSafeStorage, setSafeStorage, clearRoomSessionData } from '@/utils/storage';
 import { isVerdictReady, moveCharacter, normalizeCharacterIds, type CharacterPoolId, type CharacterPoolOrder } from '@/utils/characterVerdict';
@@ -44,6 +46,8 @@ export function useSuspectVerdict(
   refreshRoomData: () => void | Promise<void>,
   setGameOverData: (message: string, stats?: unknown) => void,
 ) {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const [state, setState] = useState(() => createState(room));
   // Reset before committing children when the same layout receives another room.
   if (state.scope.roomId !== room.id || state.scope.inviteCode !== room.invite_code) {
@@ -78,8 +82,17 @@ export function useSuspectVerdict(
     dispatchErrorFeedback: false,
     onSuccess: (data, request) => {
       if (activeScope.current !== request.scope) return;
+      const remaining = data.management_trust;
+      if (remaining !== undefined) {
+        queryClient.setQueryData<GameRoom>(['gameRoom', request.scope.inviteCode], old => old && ({
+          ...old,
+          management_trust: Math.min(old.management_trust ?? 100, remaining),
+          ...(remaining === 0 ? { status: 'failed', final_stats: data.stats } : {}),
+        }));
+      }
       if (data.status === 'failed') {
-        setState(previous => ({ ...previous, feedback: { type: 'error', message: data.message } }));
+        const loss = remaining === undefined ? '' : ' ' + t('gameRoom.trustLoss.verdict', { loss: data.trust_loss, remaining });
+        setState(previous => ({ ...previous, feedback: { type: 'error', message: data.message + loss } }));
       } else {
         finalizedScope.current = request.scope;
         clearRoomSessionData(request.scope.roomId, request.scope.inviteCode);

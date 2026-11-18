@@ -13,7 +13,7 @@ vi.mock('@/context/RoomContext.shared', () => ({
   useRoomUI: () => ({ setGlobalFeedback: vi.fn(), addGlobalToast: vi.fn() }),
 }));
 
-const firstRoom: GameRoom = { id: 1, invite_code: 'FIRST', case_id: 1, host_user_id: 1, status: 'active', strikes: 0 };
+const firstRoom: GameRoom = { id: 1, invite_code: 'FIRST', case_id: 1, host_user_id: 1, status: 'active', management_trust: 100 };
 const secondRoom = { ...firstRoom, id: 2, invite_code: 'SECOND' };
 const storageKey = (room = firstRoom) => `room_${room.invite_code}_guilty_characters`;
 const unassignedStorageKey = (room = firstRoom) => `room_${room.invite_code}_unassigned_characters`;

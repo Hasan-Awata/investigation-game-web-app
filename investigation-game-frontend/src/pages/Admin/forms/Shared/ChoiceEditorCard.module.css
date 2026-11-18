@@ -48,7 +48,7 @@
   border-radius: var(--radius-md);
 }
 
-.badge-strike {
+.badge-penalty {
   font-size: 0.7rem;
   padding: 0.1rem 0.4rem;
   background: rgba(var(--accent-crimson-rgb), 0.2);
@@ -123,17 +123,7 @@
   margin-bottom: 1rem;
 }
 
-.strike-penalty-row input[type="checkbox"] {
-  transform: scale(1.3);
-  accent-color: var(--accent-crimson);
-}
 
-.strike-penalty-row label {
-  color: var(--accent-crimson);
-  font-family: var(--font-mono);
-  font-size: 0.85rem;
-  cursor: pointer;
-}
 
 .outcomes-panel textarea {
   min-height: 60px;

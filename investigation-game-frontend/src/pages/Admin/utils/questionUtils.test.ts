@@ -7,7 +7,7 @@ it('preserves every supported outcome when an existing choice is saved', () => {
     choices: [{
       id: 7, text: 'Answer',
       outcomes: {
-        feedback: ' Follow this lead ', next_question_id: 9, gives_strike: true,
+        feedback: ' Follow this lead ', next_question_id: 9, trust_loss: 5,
         unlock_evidence: [11], unlock_levels: [12], unlock_location_points: [42],
         character_updates: [{ id: 13, is_unlocked: true, status: 'deceased' }],
       },
@@ -20,7 +20,7 @@ it('preserves every supported outcome when an existing choice is saved', () => {
     'choices[0][id]': '7', 'choices[0][text]': 'Answer',
     'choices[0][outcomes][feedback]': 'Follow this lead',
     'choices[0][outcomes][next_question_id]': '9',
-    'choices[0][outcomes][gives_strike]': '1',
+    'choices[0][outcomes][trust_loss]': '5',
     'choices[0][outcomes][unlock_evidence][0]': '11',
     'choices[0][outcomes][unlock_levels][0]': '12',
     'choices[0][outcomes][unlock_location_points][0]': '42',
@@ -38,7 +38,7 @@ it('omits draft identities and empty outcomes while encoding a coordinate choice
     choices: [{
       id: 'unsaved-choice', text: 'Old label',
       coordinate: { x: '10', y: '20', label: 'Desk' },
-      outcomes: { unlock_location_points: [], gives_strike: false, feedback: ' ' },
+      outcomes: { unlock_location_points: [], trust_loss: 0, feedback: ' ' },
       requirements: { required_evidence: [], required_choices: [] },
     }],
   });

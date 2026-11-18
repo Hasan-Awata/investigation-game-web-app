@@ -20,6 +20,7 @@ interface ChoiceEditorCardProps {
   updateChoice: (updated: DraftChoice) => void;
   removeChoice: () => void;
   isTargeting?: boolean;
+  isLocationPoint?: boolean;
   onToggleTarget?: () => void;
 }
 
@@ -29,7 +30,8 @@ export default function ChoiceEditorCard({
   updateChoice,
   removeChoice,
   isTargeting: propIsTargeting,
-  onToggleTarget
+  onToggleTarget,
+  isLocationPoint = false,
 }: ChoiceEditorCardProps) {
   const [isExpanded, setIsExpanded] = useState<boolean>(
     typeof choice.id === 'string' || choice.id === undefined
@@ -103,8 +105,8 @@ export default function ChoiceEditorCard({
             <span className={choiceEditorCardStyles['badge-coord']}>📍 {coordPreview}%</span>
           )}
 
-          {choice.outcomes?.gives_strike && (
-            <span className={choiceEditorCardStyles['badge-strike']}>{t.strikePenaltyBadge}</span>
+          {!isLocationPoint && !!choice.outcomes?.trust_loss && (
+            <span className={choiceEditorCardStyles['badge-penalty']}>{t.trustLossLabel} {choice.outcomes.trust_loss}</span>
           )}
         </div>
 
@@ -147,14 +149,20 @@ export default function ChoiceEditorCard({
           <div className={choiceEditorCardStyles['outcomes-panel']}>
             <h6>{t.narrativeOutcomesTitle}</h6>
 
-            <div className={`${choiceEditorCardStyles['checkbox-row']} ${choiceEditorCardStyles['strike-penalty-row']}`}>
-              <input
-                type="checkbox"
-                checked={!!choice.outcomes?.gives_strike}
-                onChange={(e) => updateOutcomes('gives_strike', e.target.checked)}
-              />
-              <label><strong>{t.penaltyStrikeLabel}</strong> {t.penaltyStrikeDesc}</label>
-            </div>
+            {!isLocationPoint && (
+              <label className={adminDashboard['form-group']}>
+                <span>{t.trustLossLabel}</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  className={adminDashboard['admin-input']}
+                  value={choice.outcomes?.trust_loss ?? 0}
+                  onChange={event => updateOutcomes('trust_loss', Number(event.target.value))}
+                />
+              </label>
+            )}
 
             <div className={adminDashboard['form-group']}>
               <label>{t.feedbackLabel}</label>

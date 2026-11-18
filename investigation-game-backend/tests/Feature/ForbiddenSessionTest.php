@@ -18,12 +18,12 @@ class ForbiddenSessionTest extends TestCase
         $user = User::factory()->create(['username' => 'returning-player', 'password' => \Illuminate\Support\Facades\Hash::make('password123')]);
         $case = GameCase::create(['title' => 'Recovery', 'story' => 'Story', 'is_published' => true, 'XP_on_solve' => 10]);
         $room = app(GameRoomService::class)->createRoom($case, $user)->value;
-        $room->update(['strikes' => 1]);
+        $room->update(['management_trust' => 95]);
         $this->withToken('expired-token')->getJson('/api/user')->assertUnauthorized();
         $response = $this->postJson('/api/login', ['email' => $user->email, 'password' => 'password123'])->assertOk();
         $this->withToken($response->json('token'))->getJson('/api/cases')->assertOk()->assertJsonPath('cases.0.active_room_invite_code', $room->invite_code);
-        $this->postJson('/api/rooms/join', ['invite_code' => $room->invite_code])->assertOk()->assertJsonPath('room.strikes', 1);
-        $this->getJson("/api/rooms/{$room->id}")->assertOk()->assertJsonPath('room.status', 'active')->assertJsonPath('room.strikes', 1);
+        $this->postJson('/api/rooms/join', ['invite_code' => $room->invite_code])->assertOk()->assertJsonPath('room.management_trust', 95);
+        $this->getJson("/api/rooms/{$room->id}")->assertOk()->assertJsonPath('room.status', 'active')->assertJsonPath('room.management_trust', 95);
     }
 
     public function test_forbidden_actions_preserve_authentication_and_permitted_play(): void

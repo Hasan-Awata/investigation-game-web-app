@@ -13,12 +13,14 @@ class GameRoom extends Model
 {
     use MassPrunable;
 
+    protected $attributes = ['management_trust' => 100];
+
     protected $fillable = [
         'case_id',
         'host_user_id',
         'invite_code',
         'status',
-        'strikes',
+        'management_trust',
         'final_stats',
     ];
 
@@ -26,6 +28,7 @@ class GameRoom extends Model
     {
         return [
             'status' => RoomStatus::class,
+            'management_trust' => 'integer',
             'final_stats' => 'array',
         ];
     }

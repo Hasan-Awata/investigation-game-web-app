@@ -20,7 +20,7 @@ export default function CaseCard({ gameCase, imageUrl, userXp = 0 }: CaseCardPro
 
   const isFailed = gameCase.user_status === CaseUserStatus.FailedNoProof ||
                    gameCase.user_status === CaseUserStatus.FailedIncomplete ||
-                   gameCase.user_status === CaseUserStatus.FailedStrikes;
+                   gameCase.user_status === CaseUserStatus.FailedTrust;
 
   const needsMoreXp = userXp < (gameCase.min_player_XP || 0);
 

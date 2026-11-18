@@ -11,19 +11,33 @@ interface RoomResponse {
 type LockVoteResponse = VoteResponse;
 
 export interface SubmitSuspectVerdictResponse {
-  status: string;
+  status: 'success' | 'failed' | 'failed_final';
   message: string;
+  management_trust?: number;
+  trust_loss?: number;
   room?: GameRoom;
   stats?: FinalStats;
 }
 
-export interface InvestigationRequestResponse {
-  status: string;
+interface InvestigationRequestApproved {
+  status: 'success';
   message: string;
   request_id: number;
   unlocked_evidence: Evidence[];
   unlocked_levels: Level[];
+  management_trust?: number;
 }
+
+interface InvestigationRequestRejected {
+  status: 'rejected' | 'failed_final';
+  message: string;
+  reason: 'extras' | 'mismatch';
+  management_trust: number;
+  trust_loss: number;
+  stats?: FinalStats;
+}
+
+export type InvestigationRequestResponse = InvestigationRequestApproved | InvestigationRequestRejected;
 
 interface InspectLocationResponse {
   inspection: RoomInspection;
@@ -99,28 +113,36 @@ export const clearVote = async (roomId: number, questionId: number): Promise<Res
   return request<{ group: EncounterGroup }>(`/rooms/${roomId}/questions/${questionId}/vote`, { method: 'DELETE' });
 };
 
+async function submitRoomAttempt<T>(path: string, payload: object): Promise<Result<T>> {
+  const body = JSON.stringify({ ...payload, attempt_id: crypto.randomUUID() });
+  const send = () => request<T>(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body,
+    signal: AbortSignal.timeout(15_000),
+  });
+  const result = await send();
+  return !result.isSuccess && result.status === undefined ? send() : result;
+}
+
 export const submitSuspectVerdict = async (
   roomId: number,
   guiltyCharacterIds: number[]
 ): Promise<Result<SubmitSuspectVerdictResponse>> => {
-  const result = await request<SubmitSuspectVerdictResponse>(`/rooms/${roomId}/suspects/submit`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ guilty_character_ids: guiltyCharacterIds })
+  return submitRoomAttempt<SubmitSuspectVerdictResponse>(`/rooms/${roomId}/suspects/submit`, {
+    guilty_character_ids: guiltyCharacterIds,
   });
-  return result;
 };
 
 export const submitInvestigationRequest = async (
   roomId: number,
   payload: { requestId: number; evidenceIds?: number[]; characterIds?: number[] }
 ): Promise<Result<InvestigationRequestResponse>> => {
-  const result = await request<InvestigationRequestResponse>(`/rooms/${roomId}/investigate`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ request_id: payload.requestId, evidence_ids: payload.evidenceIds ?? [], character_ids: payload.characterIds ?? [] })
+  return submitRoomAttempt<InvestigationRequestResponse>(`/rooms/${roomId}/investigate`, {
+    request_id: payload.requestId,
+    evidence_ids: payload.evidenceIds ?? [],
+    character_ids: payload.characterIds ?? [],
   });
-  return result;
 };
 
 export const inspectLocation = async (roomId: number, choiceId: number): Promise<Result<InspectLocationResponse>> => {

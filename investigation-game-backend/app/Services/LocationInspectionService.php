@@ -98,7 +98,7 @@ class LocationInspectionService
             }
             $this->broadcastAfterCommit(new LocationInspected($room, $inspection));
             if ($evidence->isNotEmpty() || $levels->isNotEmpty() || $characters || $unlockedLocationPointIds) {
-                $this->broadcastAfterCommit(new ItemsUnlocked($room, $evidence, $levels, $characters, null, $unlockedLocationPointIds));
+                $this->broadcastAfterCommit(new ItemsUnlocked($room, $evidence, $levels, $characters, $unlockedLocationPointIds));
             }
             return Result::success(['inspection' => $inspection, 'duplicate' => false]);
         });

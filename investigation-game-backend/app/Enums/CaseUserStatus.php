@@ -8,5 +8,5 @@ enum CaseUserStatus: string
     case SolvedPartial = 'solved_partial';
     case FailedNoProof = 'failed_no_proof';
     case FailedIncomplete = 'failed_incomplete';
-    case FailedStrikes = 'failed_strikes';
+    case FailedTrust = 'failed_trust';
 }

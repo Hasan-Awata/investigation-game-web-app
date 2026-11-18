@@ -109,7 +109,18 @@ export function useGameRoom(inviteCode: string | undefined) {
       try {
         const stateResult = await fetchRoomState(roomId, controller.signal);
         if (!stateResult.isSuccess) throw new RoomRecoveryError(stateResult.errorMessage, stateResult.status);
-        return stateResult.value;
+        const incoming = stateResult.value;
+        const cached = queryClient.getQueryData<GameRoom>(['gameRoom', joinState.inviteCode]);
+        if (cached?.id === incoming.id && cached.status !== 'active' && incoming.status === 'active') {
+          return cached;
+        }
+        if (cached?.id === incoming.id && cached.management_trust != null && incoming.management_trust != null) {
+          return {
+            ...incoming,
+            management_trust: Math.min(cached.management_trust, incoming.management_trust),
+          };
+        }
+        return incoming;
       } finally {
         window.clearTimeout(timeout);
         signal.removeEventListener('abort', cancel);

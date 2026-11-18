@@ -66,7 +66,7 @@ vi.mock('./tabs/Campaign/CampaignTab', () => ({
   },
 }));
 
-const room: GameRoom = { id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', strikes: 0 };
+const room: GameRoom = { id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', management_trust: 100 };
 const evidence: Evidence = {
   id: 7, case_id: 1, title: 'Recovered recording', evidence_type: 'audio', is_initial: true, is_vital_for_conviction: false,
 };
@@ -97,6 +97,25 @@ function roomLayout(currentRoom: GameRoom, refreshRoomData = async () => {}) {
 }
 
 const renderLayout = () => render(roomLayout(room));
+
+it('fills the trust ring in proportion to the current room value', () => {
+  const view = renderLayout();
+  const meter = () => screen.getByRole('meter', { name: 'gameRoom.managementTrust' });
+  const arc = () => meter().querySelector('circle[pathLength]');
+
+  expect(meter()).toHaveAttribute('aria-valuetext', '100%');
+  expect(arc()).toBeInTheDocument();
+  expect(arc()).not.toHaveAttribute('stroke-dasharray');
+
+  view.rerender(roomLayout({ ...room, management_trust: 35 }));
+  expect(meter()).toHaveAttribute('aria-valuenow', '35');
+  expect(meter()).toHaveAttribute('aria-valuetext', '35%');
+  expect(arc()).toHaveAttribute('stroke-dasharray', '35 100');
+
+  view.rerender(roomLayout({ ...room, management_trust: 0 }));
+  expect(meter()).toHaveAttribute('aria-valuetext', '0%');
+  expect(arc()).not.toBeInTheDocument();
+});
 
 function startDrag(source: HTMLElement, id: number | string, data: Record<string, unknown>,
   activatorEvent: Event = new PointerEvent('pointerdown', { pointerId: 1 })) {

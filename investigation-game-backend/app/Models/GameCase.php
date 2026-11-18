@@ -20,7 +20,6 @@ class GameCase extends Model
         'map_url', 
         'min_player_XP',
         'XP_on_solve',
-        'max_strikes',
         'img_url',
         'rating_stars',
         'age_rating',

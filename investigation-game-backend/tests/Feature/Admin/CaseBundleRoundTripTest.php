@@ -181,7 +181,6 @@ class CaseBundleRoundTripTest extends TestCase
                 'cover' => $normalizeMediaPath($case->getRawOriginal('img_url')),
                 'min_player_XP' => (int) $case->min_player_XP,
                 'XP_on_solve' => (int) $case->XP_on_solve,
-                'max_strikes' => (int) $case->max_strikes,
                 'rating_stars' => (float) $case->rating_stars,
                 'age_rating' => $case->age_rating,
                 'estimated_playtime' => $case->estimated_playtime,
@@ -246,7 +245,7 @@ class CaseBundleRoundTripTest extends TestCase
                                             'text' => $choice->text,
                                             'outcomes' => [
                                                 'feedback' => $outcomes['feedback'] ?? null,
-                                                'gives_strike' => array_key_exists('gives_strike', $outcomes) ? (bool) $outcomes['gives_strike'] : null,
+                                                'trust_loss' => array_key_exists('trust_loss', $outcomes) ? (int) $outcomes['trust_loss'] : null,
                                                 'next_question_index' => isset($outcomes['next_question_id'])
                                                     ? ($indexByQuestionId[$outcomes['next_question_id']] ?? null)
                                                     : null,

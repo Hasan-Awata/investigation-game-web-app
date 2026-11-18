@@ -128,7 +128,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
         )}
 
         <RoomToasts toasts={toasts} onDismiss={onDismissToast} onPauseChange={onToastPauseChange} />
-        <GameEndOverlay status={room.status} resolutionMessage={resolutionMessage} finalStats={finalStats} />
+        <GameEndOverlay status={room.status} resolutionMessage={finalStats?.failure_reason === 'failed_trust' ? t('gameRoom.trustDepleted') : resolutionMessage} finalStats={finalStats} />
 
         <div ref={sidebarFrameRef} className={styles.sidebarFrame}>
           <button
@@ -189,8 +189,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
           }}
           roomId={room.id}
           campaignRoomId={campaignRoomId}
-          currentStrikes={room.strikes || 0}
-          maxStrikes={room.game_case?.max_strikes || 5}
+          managementTrust={room.management_trust}
           navigation={{ activeTab, hasUnreadEvidence, hasUnreadCharacters, onSelectTab: selectWorkspaceTab }}
           verdict={{
             characterOrder: verdict.characterOrder,

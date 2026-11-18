@@ -25,7 +25,7 @@ class ConcludedEncounterTest extends TestCase
     {
         $host = User::factory()->create(['username' => 'host']);
         $case = GameCase::create(['title' => 'Replay', 'story' => 'Story', 'XP_on_solve' => 100]);
-        DB::table('case_user')->insert(['case_id' => $case->id, 'user_id' => $host->id, 'status' => 'failed_strikes', 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('case_user')->insert(['case_id' => $case->id, 'user_id' => $host->id, 'status' => 'failed_trust', 'created_at' => now(), 'updated_at' => now()]);
         $assessment = app(AssessmentService::class);
         $rooms = app(GameRoomService::class);
         $firstWin = $rooms->createRoom($case, $host)->value;
@@ -38,16 +38,38 @@ class ConcludedEncounterTest extends TestCase
         $this->assertSame(0, $response->value['stats']['xp_awards'][$host->id]);
         $this->assertSame(0, $replay->fresh()->final_stats['xp_awards'][$host->id]);
         $this->assertSame(50, $host->fresh()->XP);
-        $assessment->failFromEncounterStrikes($rooms->createRoom($case, $host)->value);
+        $failed = $rooms->createRoom($case, $host)->value;
+        DB::transaction(fn () => $assessment->deductManagementTrust($failed, 100, 'encounter'));
         $this->assertDatabaseHas('case_user', ['user_id' => $host->id, 'case_id' => $case->id, 'status' => 'solved_perfect']);
         $this->assertSame(50, $host->fresh()->XP);
+    }
+
+    public function test_replaying_a_wrong_verdict_does_not_deduct_trust_twice(): void
+    {
+        $host = User::factory()->create(['username' => 'verdict-host']);
+        $case = GameCase::create(['title' => 'Verdict replay', 'story' => 'Story', 'XP_on_solve' => 100]);
+        $innocent = Character::create(['case_id' => $case->id, 'name' => 'Innocent', 'is_initial' => true]);
+        $room = app(GameRoomService::class)->createRoom($case, $host)->value;
+        $payload = [
+            'attempt_id' => '86cbcdcc-11c2-4dfa-92ce-ce9e618b39d8',
+            'guilty_character_ids' => [$innocent->id],
+        ];
+
+        $this->actingAs($host);
+        $path = "/api/rooms/{$room->id}/suspects/submit";
+        $this->postJson($path, $payload)->assertOk()->assertJsonPath('management_trust', 75);
+        $this->postJson($path, $payload)->assertOk()->assertJsonPath('management_trust', 75);
+        $this->assertSame(75, $room->fresh()->management_trust);
+
+        $payload['attempt_id'] = '64dd00a1-5198-49c3-acba-ec04fac45276';
+        $this->postJson($path, $payload)->assertOk()->assertJsonPath('management_trust', 50);
     }
 
     public function test_rejection_preserves_play_and_repair_is_scoped_and_repeatable(): void
     {
         Queue::fake();
         $host = User::factory()->create(['username' => 'host']);
-        $case = GameCase::create(['title' => 'Repair', 'story' => 'Story', 'XP_on_solve' => 100, 'max_strikes' => 3]);
+        $case = GameCase::create(['title' => 'Repair', 'story' => 'Story', 'XP_on_solve' => 100]);
         $guilty = Character::create(['case_id' => $case->id, 'name' => 'Guilty', 'is_initial' => true, 'is_guilty' => true]);
         $room = app(GameRoomService::class)->createRoom($case, $host)->value;
         $zone = Zone::create(['case_id' => $case->id, 'title' => 'Zone', 'order_index' => 1]);
@@ -115,7 +137,7 @@ class ConcludedEncounterTest extends TestCase
         Queue::fake();
         $host = User::factory()->create(['username' => 'host']);
         $other = User::factory()->create(['username' => 'other']);
-        $case = GameCase::create(['title' => 'Verdict', 'story' => 'Story', 'XP_on_solve' => 100, 'max_strikes' => 1]);
+        $case = GameCase::create(['title' => 'Verdict', 'story' => 'Story', 'XP_on_solve' => 100]);
         $guilty = Character::create(['case_id' => $case->id, 'name' => 'Guilty', 'is_initial' => $outcome !== 'incomplete', 'is_guilty' => !in_array($outcome, ['no_crime', 'no_crime_strikes'])]);
         $innocent = Character::create(['case_id' => $case->id, 'name' => 'Innocent', 'is_initial' => true, 'is_guilty' => false]);
         Character::create(['case_id' => $case->id, 'name' => 'Second innocent', 'is_guilty' => false]);
@@ -131,7 +153,7 @@ class ConcludedEncounterTest extends TestCase
         foreach ([$host, $other] as $index => $player) {
             $level = $zone->levels()->create(['title' => 'Interview', 'details' => 'Details', 'order_index' => $index, 'is_initial' => true, 'presentation_type' => 'interrogation']);
             $question = $level->questions()->create(['text' => 'Question', 'order_index' => 1]);
-            $choice = $question->choices()->create(['text' => 'Answer', 'outcomes' => ['gives_strike' => true]]);
+            $choice = $question->choices()->create(['text' => 'Answer', 'outcomes' => ['trust_loss' => 100]]);
             $room->unlockedLevels()->attach($level->id);
             $group = $service->start($room, $level, $player)->value;
             $service->vote($room, $question, $choice->id, $player);
@@ -143,6 +165,9 @@ class ConcludedEncounterTest extends TestCase
         $unrelatedRoom = $rooms->createRoom($case, $unrelatedPlayer)->value;
         $unrelatedGroup = $service->start($unrelatedRoom, $levels[0], $unrelatedPlayer)->value;
         $unrelatedState = $unrelatedGroup->fresh()->getAttributes();
+        if (in_array($outcome, ['strikes', 'no_crime_strikes'], true)) {
+            $room->update(['management_trust' => 25]);
+        }
         if ($outcome === 'encounter_strikes') {
             $this->travel(6)->seconds();
             $jobs[0]->handle($service);
@@ -170,7 +195,6 @@ class ConcludedEncounterTest extends TestCase
         $history = DB::table('case_user')->orderBy('id')->get()->toJson();
         $this->travel(6)->seconds();
         foreach ($jobs as $job) { $job->handle($service); $job->handle($service); }
-        app(AssessmentService::class)->failFromEncounterStrikes($room);
         $this->assertTrue(app(AssessmentService::class)->evaluateFinalVerdict($room, [])->isFailure());
         $this->assertSame(0, $service->closeForConcludedRoom($room));
         $this->assertSame($snapshot, $room->fresh()->getAttributes());

@@ -43,7 +43,6 @@ interface ItemsUnlockedPayload {
   unlocked_evidences?: Evidence[];
   unlocked_levels?: Level[];
   character_updates?: CharacterUpdatePayload[];
-  strikes?: number | null;
   unlocked_location_point_ids?: number[];
 }
 
@@ -106,6 +105,30 @@ export function useRoomRealtime({
     });
     const channel = echo.private(`room.${roomId}`);
 
+    let announcedTrust = 101;
+    channel.listen('ManagementTrustChanged', (event: {
+      management_trust: number;
+      trust_loss: number;
+      reason: 'encounter' | 'request' | 'verdict';
+    }) => {
+      let isStale = false;
+      patchRoomData(oldRoom => {
+        isStale = event.management_trust > (oldRoom.management_trust ?? 100);
+        return isStale ? oldRoom : { ...oldRoom, management_trust: event.management_trust };
+      });
+      if (isStale || event.management_trust >= announcedTrust) return;
+      announcedTrust = event.management_trust;
+      addGlobalToastRef.current({
+        type: 'system',
+        title: tRef.current('gameRoom.managementTrust'),
+        icon: 'error',
+        message: tRef.current('gameRoom.trustLoss.' + event.reason, {
+          loss: event.trust_loss,
+          remaining: event.management_trust,
+        }),
+      });
+    });
+
     channel.listen('LevelTransitioned', (e: LevelTransitionedPayload) => {
       if (e.message) {
         if (e.status === 'active') {
@@ -127,7 +150,8 @@ export function useRoomRealtime({
 
         return {
           ...oldRoom,
-          status: e.room_patch?.status ?? oldRoom.status,
+          status: oldRoom.status === 'active' ? (e.room_patch?.status ?? oldRoom.status) : oldRoom.status,
+          final_stats: e.stats ?? oldRoom.final_stats,
           completed_levels: updatedCompletedLevels
         };
       });
@@ -255,7 +279,6 @@ export function useRoomRealtime({
 
           accumulated_characters: updatedCharacters,
 
-          strikes: e.strikes ?? oldRoom.strikes
         };
       });
 
@@ -322,6 +345,7 @@ export function useRoomRealtime({
 
     return () => {
       unsubscribeConnection();
+      channel.stopListening('ManagementTrustChanged');
       channel.stopListening('LevelTransitioned');
       channel.stopListening('VoteLockedIn');
       channel.stopListening('EncounterGroupUpdated');

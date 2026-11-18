@@ -25,7 +25,7 @@ const room: GameRoom = {
   case_id: 2,
   host_user_id: 11,
   status: 'active',
-  strikes: 0,
+  management_trust: 100,
   available_location_point_ids: [501],
   inspections: [],
   votes: [],

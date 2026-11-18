@@ -13,6 +13,9 @@ trait QuestionRequestTrait
             if (!$level?->zone) return;
             foreach ($this->input('choices', []) as $choiceIndex => $choice) {
                 if (!is_array($choice) || !is_array($choice['outcomes'] ?? null)) continue;
+                if ($level->presentation_type === \App\Enums\LevelPresentationType::Location && !empty($choice['outcomes']['trust_loss'])) {
+                    $validator->errors()->add("choices.{$choiceIndex}.outcomes.trust_loss", 'Only encounter choices can deduct Management Trust.');
+                }
                 foreach ($choice['outcomes']['unlock_location_points'] ?? [] as $targetIndex => $targetId) {
                     $target = \App\Models\Choice::query()->with('question.level.zone')->find($targetId);
                     $targetLevel = $target?->question?->level;
@@ -37,6 +40,7 @@ trait QuestionRequestTrait
             'choices.*.id' => ['nullable', 'integer', 'exists:choices,id'],
             'choices.*.text' => ['required', 'string', 'max:255'],
             'choices.*.outcomes' => ['nullable', 'array'],
+            'choices.*.outcomes.trust_loss' => ['sometimes', 'integer', 'between:0,100'],
             'choices.*.outcomes.unlock_location_points' => ['nullable', 'array'],
             'choices.*.outcomes.unlock_location_points.*' => ['integer', 'exists:choices,id'],
             'choices.*.requirements' => ['nullable', 'array'],

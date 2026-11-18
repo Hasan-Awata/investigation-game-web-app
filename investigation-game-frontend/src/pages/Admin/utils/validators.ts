@@ -1,5 +1,4 @@
-export const validateCaseForm = (data: { max_strikes: string | number; rating_stars: string | number }) => {
-  if (Number(data.max_strikes) < 1) return 'Cases must allow at least 1 strike.';
+export const validateCaseForm = (data: { rating_stars: string | number }) => {
   if (Number(data.rating_stars) > 5 || Number(data.rating_stars) < 0) return 'Rating must be between 0 and 5.0';
   return null;
 };

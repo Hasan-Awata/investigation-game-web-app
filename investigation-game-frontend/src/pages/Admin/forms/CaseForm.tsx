@@ -17,7 +17,7 @@ import adminForms from './Shared/AdminForms.module.css';
 import adminDashboard from '../AdminDashboard.module.css';
 
 const initialFormState = {
-  title: '', story: '', min_player_XP: '0', XP_on_solve: '100', max_strikes: '5', rating_stars: '5.0',
+  title: '', story: '', min_player_XP: '0', XP_on_solve: '100', rating_stars: '5.0',
   age_rating: 'Mature 17+', estimated_playtime: '60 Minutes', difficulty: 'Standard', tags: '',
   author_name: 'System', is_published: false, store_locally: false
 };
@@ -49,7 +49,6 @@ export default function CaseForm() {
       story: caseObj.story || '',
       min_player_XP: String(caseObj.min_player_XP),
       XP_on_solve: String(caseObj.XP_on_solve),
-      max_strikes: String(caseObj.max_strikes),
       rating_stars: String(caseObj.rating_stars ?? '5.0'),
       age_rating: caseObj.age_rating || 'Mature 17+',
       estimated_playtime: caseObj.estimated_playtime || '60 Minutes',
@@ -128,7 +127,6 @@ export default function CaseForm() {
         <AdminRow>
           <AdminInput label={t.minXpLabel} type="number" required value={formData.min_player_XP} onChange={(e) => updateField('min_player_XP', e.target.value)} />
           <AdminInput label={t.rewardXpLabel} type="number" required value={formData.XP_on_solve} onChange={(e) => updateField('XP_on_solve', e.target.value)} />
-          <AdminInput label={t.strikesLabel} type="number" required value={formData.max_strikes} onChange={(e) => updateField('max_strikes', e.target.value)} />
         </AdminRow>
 
         <AdminRow>

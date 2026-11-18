@@ -32,8 +32,8 @@ describe('shared level preview', () => {
     vi.clearAllMocks();
     mocks.phase.activeGroup = null;
     mocks.phase.isInitiating = false;
-    mocks.room = { id: 1, case_id: 1, host_user_id: 1, invite_code: 'TEST', status: 'active', strikes: 0,
-      game_case: { id: 1, title: 'Case', story: '', min_player_XP: 0, XP_on_solve: 10, max_strikes: 3,
+    mocks.room = { id: 1, case_id: 1, host_user_id: 1, invite_code: 'TEST', status: 'active', management_trust: 100,
+      game_case: { id: 1, title: 'Case', story: '', min_player_XP: 0, XP_on_solve: 10,
         zones: [{ id: 1, case_id: 1, title: 'District', order_index: 1, levels: [level('location')] }] } };
   });
 
@@ -213,8 +213,8 @@ describe('lead navigation', () => {
     vi.clearAllMocks();
     mocks.phase.activeGroup = null;
     mocks.phase.isInitiating = false;
-    mocks.room = { id: 1, case_id: 1, host_user_id: 1, invite_code: 'TEST', status: 'active', strikes: 0,
-      game_case: { id: 1, title: 'Case', story: '', min_player_XP: 0, XP_on_solve: 10, max_strikes: 3,
+    mocks.room = { id: 1, case_id: 1, host_user_id: 1, invite_code: 'TEST', status: 'active', management_trust: 100,
+      game_case: { id: 1, title: 'Case', story: '', min_player_XP: 0, XP_on_solve: 10,
         zones: [{ id: 1, case_id: 1, title: 'District', order_index: 1, levels: [level('location'), { ...level('location'), id: 2, title: 'Second lead', details: 'Second details', order_index: 2 }] }] } };
   });
   it('switches leads, resets workspace, and returns to the map', () => {

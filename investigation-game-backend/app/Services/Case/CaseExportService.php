@@ -122,7 +122,7 @@ class CaseExportService
     private function buildManifest(GameCase $case, ZipArchive $archive): array
     {
         $manifest = [
-            'format_version' => 1,
+            'format_version' => 2,
             'case' => [
                 'title' => $case->title,
                 'story' => $case->story,
@@ -130,7 +130,6 @@ class CaseExportService
                 'cover' => $this->addMedia($archive, $case->getRawOriginal('img_url'), 'media/cover', 'case.cover'),
                 'min_player_XP' => (int) $case->min_player_XP,
                 'XP_on_solve' => (int) $case->XP_on_solve,
-                'max_strikes' => (int) $case->max_strikes,
                 'rating_stars' => (float) $case->rating_stars,
                 'age_rating' => $case->age_rating,
                 'estimated_playtime' => $case->estimated_playtime,
@@ -255,8 +254,8 @@ class CaseExportService
         if (array_key_exists('feedback', $outcomes)) {
             $mappedOutcomes['feedback'] = $outcomes['feedback'];
         }
-        if (array_key_exists('gives_strike', $outcomes)) {
-            $mappedOutcomes['gives_strike'] = (bool) $outcomes['gives_strike'];
+        if (array_key_exists('trust_loss', $outcomes)) {
+            $mappedOutcomes['trust_loss'] = (int) $outcomes['trust_loss'];
         }
         if (array_key_exists('next_question_id', $outcomes)) {
             $mappedOutcomes['next_question_index'] = $outcomes['next_question_id'] !== null

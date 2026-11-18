@@ -175,7 +175,7 @@ export default function CaseBriefingModal({ gameCase, userId, onClose }: CaseBri
 
   const userStatus = gameCase.user_status;
   const isSolved = userStatus === CaseUserStatus.SolvedPerfect || userStatus === CaseUserStatus.SolvedPartial;
-  const isFailed = userStatus === CaseUserStatus.FailedNoProof || userStatus === CaseUserStatus.FailedIncomplete || userStatus === CaseUserStatus.FailedStrikes;
+  const isFailed = userStatus === CaseUserStatus.FailedNoProof || userStatus === CaseUserStatus.FailedIncomplete || userStatus === CaseUserStatus.FailedTrust;
   const isFinished = isSolved || isFailed;
 
   const activeInviteCode = gameCase.active_room_invite_code;

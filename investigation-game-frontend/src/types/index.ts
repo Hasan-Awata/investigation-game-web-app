@@ -56,7 +56,7 @@ export const CaseUserStatus = {
   SolvedPartial: 'solved_partial',
   FailedNoProof: 'failed_no_proof',
   FailedIncomplete: 'failed_incomplete',
-  FailedStrikes: 'failed_strikes',
+  FailedTrust: 'failed_trust',
 } as const;
 
 // 2. Extract the values into a TypeScript type of the exact same name
@@ -69,7 +69,6 @@ export interface GameCase {
   map_url?: string;
   min_player_XP: number;
   XP_on_solve: number;
-  max_strikes: number; 
   rating_stars?: number;
   age_rating?: string;
   estimated_playtime?: string;
@@ -123,7 +122,7 @@ export interface GameRoom {
   case_id: number;
   host_user_id: number;
   status: string;
-  strikes: number;
+  management_trust: number | null;
   final_stats?: FinalStats | null; 
   game_case?: GameCase;
   users?: RoomUser[];
@@ -144,6 +143,7 @@ export interface GameRoom {
 }
 
 export interface FinalStats {
+  failure_reason?: 'failed_trust';
   time_taken: string;
   xp_gained: number;
   xp_awards?: Record<number, number>;
@@ -156,7 +156,7 @@ export interface FinalStats {
 export interface ChoiceOutcomes {
   feedback?: string;
   next_question_id?: number | null;
-  gives_strike?: boolean;
+  trust_loss?: number;
   unlock_evidence?: number[];
   unlock_levels?: number[];
   unlock_location_points?: number[];

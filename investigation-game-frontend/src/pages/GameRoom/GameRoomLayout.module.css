@@ -330,6 +330,10 @@
 }
 
 .workspaceHeader {
+  --trust-ring-size: 75px;
+  --trust-ring-inset: 1.5rem;
+  --trust-ring-gap: 0.875rem;
+
   position: absolute;
   inset-block-start: 0;
   inset-inline: 0;
@@ -360,6 +364,12 @@
   max-inline-size: calc(100% - 11rem);
   min-inline-size: 0;
   filter: drop-shadow(0 8px 14px rgba(var(--bg-dark-rgb), 0.7));
+}
+
+@media (min-width: 1001px) {
+  .workspaceHeader:has(.managementTrust) .navbar {
+    max-inline-size: calc(100% - 2 * (var(--trust-ring-size) + var(--trust-ring-inset) + var(--trust-ring-gap)));
+  }
 }
 
 .navbar::before,
@@ -725,50 +735,79 @@
 }
 
 
-/* --- Floating Strikes Indicator (Split Circle) --- */
-.strikesIndicator {
-  pointer-events: none;
+.managementTrust {
   position: absolute;
-  top: 1.25rem; 
-  inset-inline-end: 1.5rem; 
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  z-index: 100;
+  inset-block-start: calc(env(safe-area-inset-top, 0px) + 1.25rem);
+  inset-inline-end: var(--trust-ring-inset);
+  display: grid;
+  place-items: center;
+  color: var(--accent-crimson);
+  pointer-events: auto;
   cursor: default;
 }
 
-.strikesIndicator > svg {
-  pointer-events: auto;
+.managementTrust:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
 }
 
-.strikesTooltip {
+.managementTrust > svg,
+.managementTrustPercentage {
+  grid-area: 1 / 1;
+}
+
+.managementTrust > svg {
+  inline-size: var(--trust-ring-size);
+  block-size: var(--trust-ring-size);
+}
+
+.managementTrustPercentage {
+  font-size: 1rem;
+  line-height: 1;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.managementTrustTooltip {
   position: absolute;
   inset-inline-end: calc(100% + 0.75rem);
   font-family: var(--font-mono, monospace);
   font-size: 0.85rem;
-  color: var(--text-primary);
   font-weight: 700;
-  background: rgba(var(--bg-panel-rgb, 22, 22, 25), 0.85);
-  border: 1px solid rgba(var(--accent-crimson-rgb, 255, 68, 68), 0.3);
+  background: color-mix(in srgb, var(--bg-dark) 92%, currentColor);
+  border: 1px solid currentColor;
   padding: 0.4rem 0.85rem;
   border-radius: 4px;
   backdrop-filter: blur(8px);
   opacity: 0;
   pointer-events: none;
-  white-space: normal; min-inline-size: 7rem;
-  transition: opacity 0.2s ease;
+  inline-size: max-content;
+  max-inline-size: 12rem;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
 }
 
-.strikesIndicator:hover .strikesTooltip,
-.strikesIndicator:focus-visible .strikesTooltip {
+.managementTrust:hover .managementTrustTooltip,
+.managementTrust:focus-visible .managementTrustTooltip {
   opacity: 1;
 }
 
-[dir="rtl"] .strikesIndicator {
-  flex-direction: row; 
+@media (prefers-reduced-motion: no-preference) {
+  .managementTrustTooltip {
+    transition: opacity 0.2s ease;
+  }
 }
-[dir="ltr"] .strikesIndicator {
-  flex-direction: row-reverse;
+
+@media (max-width: 1000px) {
+  .workspaceHeader:has(.managementTrust) {
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+  }
+
+  .managementTrust {
+    position: relative;
+    inset: auto;
+    align-self: end;
+    margin-inline-end: 0.625rem;
+  }
 }

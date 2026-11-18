@@ -7,26 +7,23 @@ import PersonsOfInterestTab from '../../tabs/Characters/CharactersTab';
 import CampaignTab from '../../tabs/Campaign/CampaignTab';
 import RoomNavigation from './RoomNavigation';
 import type { RoomNavigationProps } from './RoomNavigation';
-import RoomStrikeIndicator from './RoomStrikeIndicator';
 import styles from '../../GameRoomLayout.module.css';
 
 interface RoomWorkspaceProps {
   onOpenRequiredRequest: (requestId: number) => void;
   roomId: GameRoom['id'];
   campaignRoomId: GameRoom['id'] | null;
-  currentStrikes: number;
-  maxStrikes: number;
+  managementTrust: GameRoom['management_trust'];
   navigation: RoomNavigationProps;
   verdict: ComponentProps<typeof PersonsOfInterestTab>;
 }
 
-export default function RoomWorkspace({ roomId, campaignRoomId, currentStrikes, maxStrikes, navigation, verdict, onOpenRequiredRequest }: RoomWorkspaceProps) {
+export default function RoomWorkspace({ roomId, campaignRoomId, managementTrust, navigation, verdict, onOpenRequiredRequest }: RoomWorkspaceProps) {
   const { activeTab } = navigation;
 
   return (
     <main className={styles.workspacePanel}>
-      <RoomStrikeIndicator currentStrikes={currentStrikes} maxStrikes={maxStrikes} />
-      <RoomNavigation {...navigation} />
+      <RoomNavigation {...navigation} managementTrust={managementTrust} />
 
       <div className={styles.tabContentArea}>
         {activeTab === 'details' && <CaseDetailsTab />}

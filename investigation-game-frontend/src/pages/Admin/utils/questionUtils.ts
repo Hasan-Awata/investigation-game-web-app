@@ -8,7 +8,7 @@ export type ChoiceRequirements = Required<NonNullable<DraftChoice['requirements'
 export const defaultRequirements = (): ChoiceRequirements => ({ required_evidence: [], required_choices: [] });
 
 export const defaultOutcomes = (): ChoiceOutcomes => ({
-  feedback: '', next_question_id: null, gives_strike: false,
+  feedback: '', next_question_id: null, trust_loss: 0,
   unlock_evidence: [], unlock_levels: [], unlock_location_points: [], character_updates: [],
 });
 
@@ -29,7 +29,7 @@ const normalizeRequirements = (requirements?: DraftChoice['requirements']): Choi
 const normalizeOutcomes = (outcomes?: DraftChoice['outcomes']): ChoiceOutcomesDraft | undefined => {
   if (!outcomes) return undefined;
   const clean: ChoiceOutcomesDraft = {};
-  if (outcomes.gives_strike) clean.gives_strike = true;
+  if (outcomes.trust_loss) clean.trust_loss = outcomes.trust_loss;
   const feedback = outcomes.feedback?.trim();
   if (feedback) clean.feedback = feedback;
   if (outcomes.next_question_id) clean.next_question_id = Number(outcomes.next_question_id);
@@ -46,7 +46,7 @@ const normalizeOutcomes = (outcomes?: DraftChoice['outcomes']): ChoiceOutcomesDr
 /**
  * Prepares choices for the wire: drops empty sub-objects and trims/omits
  * values the backend stores verbatim (an empty `feedback` would shadow the
- * default hint, `gives_strike: false` would arrive as the truthy `'0'`).
+ * default hint, `trust_loss: 0` would arrive as the truthy `'0'`).
  *
  * Client-side identities (`crypto.randomUUID()` on unsaved choices) are
  * stripped: `choices.*.id` must be an integer, and omitting the id is how

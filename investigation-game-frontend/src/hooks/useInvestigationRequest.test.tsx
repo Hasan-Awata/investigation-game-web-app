@@ -13,7 +13,7 @@ vi.mock('@/context/RoomContext.shared', () => ({ useRoomUI: () => ({ addGlobalTo
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 beforeEach(() => vi.clearAllMocks());
 const room: GameRoom = {
-  id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', strikes: 0,
+  id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', management_trust: 100,
   procedural_requests: [
     { id: 10, title: 'Workshop', request_type: 'search_warrant' },
     { id: 11, title: 'Sample report', request_type: 'dna_test' },
@@ -76,13 +76,13 @@ it('keeps target and items after rejection, with no optimistic success or rollba
   vi.mocked(submitInvestigationRequest).mockResolvedValue(failure('Request denied'));
   const hook = setup();
   prepare(hook);
-  hook.client.setQueryData(['gameRoom', room.invite_code], { ...room, strikes: 2 });
+  hook.client.setQueryData(['gameRoom', room.invite_code], { ...room, management_trust: 90 });
   act(() => hook.result.current.submitRequest());
   await waitFor(() => expect(hook.result.current.feedback).toEqual({ type: 'error', message: 'Request denied' }));
   expect(hook.result.current.selectedRequestId).toBe(10);
   expect(hook.result.current.trayEvidences).toEqual([7]);
   expect(hook.result.current.trayCharacters).toEqual([9]);
-  expect(hook.client.getQueryData<GameRoom>(['gameRoom', room.invite_code])?.strikes).toBe(2);
+  expect(hook.client.getQueryData<GameRoom>(['gameRoom', room.invite_code])?.management_trust).toBe(90);
   expect(addGlobalToast).not.toHaveBeenCalled();
   act(() => hook.result.current.clearFeedback());
   expect(hook.result.current.feedback).toBeNull();

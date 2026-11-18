@@ -39,7 +39,7 @@ class CaseManifestValidator
      */
     public function validate(array $manifest, string $extractDir): void
     {
-        Validator::make($manifest, $this->rules(), [
+        Validator::make($manifest, $this->rules((int) ($manifest['format_version'] ?? 0)), [
             'zones.*.levels.*.nodes.*.audio.prohibited' => 'Node audio is not supported. Use audio evidence instead.',
         ])->validate();
 
@@ -90,10 +90,10 @@ class CaseManifestValidator
         return $errors;
     }
 
-    private function rules(): array
+    private function rules(int $version): array
     {
         return [
-            'format_version' => ['required', 'integer', 'in:1'],
+            'format_version' => ['required', 'integer', 'in:1,2'],
 
             'case' => ['required', 'array'],
             'case.title' => ['required', 'string', 'max:255'],
@@ -102,7 +102,7 @@ class CaseManifestValidator
             'case.cover' => ['nullable', 'string'],
             'case.min_player_XP' => ['nullable', 'integer', 'min:0'],
             'case.XP_on_solve' => ['required', 'integer', 'min:0'],
-            'case.max_strikes' => ['nullable', 'integer', 'min:1'],
+            'case.max_strikes' => $version === 1 ? ['nullable', 'integer', 'min:1'] : ['missing'],
             'case.rating_stars' => ['nullable', 'numeric', 'min:0', 'max:5'],
             'case.age_rating' => ['nullable', 'string', 'max:50'],
             'case.estimated_playtime' => ['nullable', 'string', 'max:100'],
@@ -174,7 +174,8 @@ class CaseManifestValidator
             'zones.*.levels.*.nodes.*.choices.*.text' => ['required', 'string', 'max:255'],
             'zones.*.levels.*.nodes.*.choices.*.outcomes' => ['nullable', 'array'],
             'zones.*.levels.*.nodes.*.choices.*.outcomes.feedback' => ['nullable', 'string'],
-            'zones.*.levels.*.nodes.*.choices.*.outcomes.gives_strike' => ['sometimes', 'boolean'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.gives_strike' => $version === 1 ? ['sometimes', 'boolean'] : ['missing'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.trust_loss' => $version === 2 ? ['sometimes', 'integer:strict', 'between:0,100'] : ['missing'],
             'zones.*.levels.*.nodes.*.choices.*.outcomes.next_question_index' => ['nullable', 'integer:strict', 'min:0'],
             'zones.*.levels.*.nodes.*.choices.*.outcomes.unlock_evidence_refs' => ['nullable', 'array', 'list'],
             'zones.*.levels.*.nodes.*.choices.*.outcomes.unlock_evidence_refs.*' => ['required', 'string'],
@@ -347,6 +348,10 @@ class CaseManifestValidator
                     $seen = [];
 
                     foreach ($node['choices'] ?? [] as $c => $choice) {
+                        if ($level['presentation_type'] === 'location' && ! empty($choice['outcomes']['trust_loss'])) {
+                            $errors["zones.{$z}.levels.{$l}.nodes.{$n}.choices.{$c}.outcomes.trust_loss"][] =
+                                'Only encounter choices can deduct Management Trust.';
+                        }
                         $text = is_array($choice) ? ($choice['text'] ?? null) : null;
 
                         if ($text === null) {

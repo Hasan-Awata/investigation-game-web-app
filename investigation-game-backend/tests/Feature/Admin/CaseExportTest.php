@@ -46,7 +46,7 @@ class CaseExportTest extends TestCase
         $this->assertNotFalse($zip->locateName('case.json'));
 
         $manifest = json_decode((string) $zip->getFromName('case.json'), true);
-        $this->assertSame(1, $manifest['format_version']);
+        $this->assertSame(2, $manifest['format_version']);
         $this->assertSame('Minimal Case', $manifest['case']['title']);
         $this->assertNull($manifest['case']['cover']);
 
@@ -83,7 +83,7 @@ class CaseExportTest extends TestCase
         $this->assertSame(7, $zip->numFiles);
 
         $manifest = json_decode((string) $zip->getFromName('case.json'), true);
-        $this->assertSame(1, $manifest['format_version']);
+        $this->assertSame(2, $manifest['format_version']);
 
         $mediaRefs = [];
         $collect = function ($value) use (&$collect, &$mediaRefs) {

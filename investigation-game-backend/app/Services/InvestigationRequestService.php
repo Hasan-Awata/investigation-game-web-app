@@ -103,21 +103,24 @@ class InvestigationRequestService
                 return Result::failure('Unauthorized: You cannot file a request using a character you have not yet discovered.');
             }
 
+            if (! $request->unlocks_evidence_id && ! $request->unlocks_level_id) {
+                return Result::failure('The DA rejected your request. This combination does not lead to any new lead.');
+            }
+
             $requiredEvidenceIds = $this->normalizeIds($request->requiredEvidences->pluck('id')->all());
             $requiredCharacterIds = $this->normalizeIds($request->requiredCharacters->pluck('id')->all());
             if ($requiredEvidenceIds !== $submittedEvidenceIds || $requiredCharacterIds !== $submittedCharacterIds) {
-                $hasUnrelatedExtras = count($requiredEvidenceIds) + count($requiredCharacterIds) < count($submittedEvidenceIds) + count($submittedCharacterIds)
-                    && empty(array_diff($requiredEvidenceIds, $submittedEvidenceIds))
+                $hasUnrelatedExtras = empty(array_diff($requiredEvidenceIds, $submittedEvidenceIds))
                     && empty(array_diff($requiredCharacterIds, $submittedCharacterIds));
-                if ($hasUnrelatedExtras) {
-                    return Result::failure('Your request contains unnecessary items that muddy the warrant. Narrow your selection to only the directly connected evidence and characters.');
-                }
+                $trust = app(AssessmentService::class)->deductManagementTrust($room, 5, 'request');
 
-                return Result::failure('The DA rejected your request. The provided items do not establish sufficient grounds.');
-            }
-
-            if (! $request->unlocks_evidence_id && ! $request->unlocks_level_id) {
-                return Result::failure('The DA rejected your request. This combination does not lead to any new lead.');
+                return Result::success([
+                    'status' => $trust['management_trust'] === 0 ? 'failed_final' : 'rejected',
+                    'reason' => $hasUnrelatedExtras ? 'extras' : 'mismatch',
+                    'message' => $hasUnrelatedExtras
+                        ? 'Your request contains unnecessary items. Narrow your selection to directly connected evidence and characters.'
+                        : 'The DA rejected your request. The provided items do not establish sufficient grounds.',
+                ] + $trust);
             }
 
             $room->completedRequests()->syncWithoutDetaching([$request->id]);
@@ -153,7 +156,7 @@ class InvestigationRequestService
             }
 
             if ($unlockedEvidences->isNotEmpty() || $unlockedLevels->isNotEmpty()) {
-                $this->broadcastAfterCommit(new ItemsUnlocked($room, $unlockedEvidences->isNotEmpty() ? $unlockedEvidences : null, $unlockedLevels->isNotEmpty() ? $unlockedLevels : null, null, null));
+                $this->broadcastAfterCommit(new ItemsUnlocked($room, $unlockedEvidences->isNotEmpty() ? $unlockedEvidences : null, $unlockedLevels->isNotEmpty() ? $unlockedLevels : null));
             }
 
             // LOG THE PERMANENT HISTORY & BROADCAST
@@ -167,6 +170,9 @@ class InvestigationRequestService
 
             return Result::success([
                 'message' => "{$request->request_type->label()} approved by the DA.",
+                'status' => 'success',
+                'management_trust' => $room->management_trust,
+                'trust_loss' => 0,
                 'request_id' => (int) $request->id,
                 'unlocked_evidence' => $unlockedEvidences->toArray(),
                 'unlocked_levels' => $unlockedLevels->toArray(),

@@ -55,7 +55,15 @@
       "failed": "Could not remove the player. Try again."
     },
     "activeAgents": "Active Players",
-    "strikes": "STRIKES",
+    "managementTrust": "Management Trust",
+    "trustDepleted": "Management Trust reached 0%. The investigation has been closed.",
+    "trustLoss": {
+      "request": "Request rejected. −{{loss}} trust points. {{remaining}}% remaining.",
+      "verdict": "Verdict rejected. −{{loss}} trust points. {{remaining}}% remaining.",
+      "encounter": "Encounter outcome. −{{loss}} trust points. {{remaining}}% remaining."
+    },
+    "requestMismatch": "The submitted items do not establish sufficient grounds.",
+    "requestExtras": "Use only directly connected evidence and characters.",
     "expandPanel": "Expand side panel",
     "collapsePanel": "Collapse side panel",
     "settings": {
@@ -80,6 +88,15 @@
       "toggleToLogin": "Already have access? Sign in."
     },
     "gameRoom": {
+      "layout": {
+        "tabs": {
+          "caseDetails": "Case details",
+          "evidences": "Evidence",
+          "personsOfInterest": "Persons of interest",
+          "campaign": "Map",
+          "unreadIntel": "New information"
+        }
+      },
       "characterFolio": {
         "unreadIntel": "New intel",
         "guilty": "Guilty",

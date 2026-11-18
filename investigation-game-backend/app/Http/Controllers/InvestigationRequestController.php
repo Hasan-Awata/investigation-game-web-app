@@ -5,19 +5,21 @@ namespace App\Http\Controllers;
 use App\Models\GameRoom;
 use App\Models\InvestigationRequest;
 use App\Services\InvestigationRequestService;
+use App\Services\RoomSubmissionAttempts;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class InvestigationRequestController extends Controller
 {
     public function __construct(
-        private readonly InvestigationRequestService $requestService
+        private readonly InvestigationRequestService $requestService,
     ) {}
 
-    public function store(Request $request, GameRoom $room): JsonResponse
+    public function store(Request $request, GameRoom $room, RoomSubmissionAttempts $attempts): JsonResponse
     {
         // 1. Strict HTTP Validation
         $validated = $request->validate([
+            'attempt_id' => ['sometimes', 'required', 'uuid'],
             'request_id' => ['required', 'integer'],
             'evidence_ids' => 'nullable|array|min:0',
             'evidence_ids.*' => 'integer|distinct|exists:evidences,id',
@@ -36,7 +38,16 @@ class InvestigationRequestController extends Controller
         }
 
         // 2. Execute Domain Logic
-        $result = $this->requestService->processRequest($room, (int) $validated['request_id'], $evidenceIds, $characterIds);
+        $attemptId = $validated['attempt_id'] ?? null;
+        unset($validated['attempt_id']);
+        $result = $attempts->run(
+            $room,
+            $request->user()->id,
+            'request',
+            $attemptId,
+            $validated,
+            fn () => $this->requestService->processRequest($room, (int) $validated['request_id'], $evidenceIds, $characterIds),
+        );
 
         // 3. Handle the Result
         if ($result->isFailure()) {
@@ -46,12 +57,6 @@ class InvestigationRequestController extends Controller
             ], 422);
         }
 
-        return response()->json([
-            'status' => 'success',
-            'message' => $result->value['message'],
-            'request_id' => $result->value['request_id'],
-            'unlocked_evidence' => $result->value['unlocked_evidence'],
-            'unlocked_levels' => $result->value['unlocked_levels'],
-        ], 200);
+        return response()->json($result->value);
     }
 }

@@ -45,7 +45,7 @@ class ConcludedRoomIntegrityTest extends TestCase
     private function fixture(array $keys): array
     {
         $user = User::factory()->create(['username' => 'integrity-player']);
-        $case = GameCase::create(['title' => 'Integrity', 'story' => 'Story', 'XP_on_solve' => 100, 'max_strikes' => 3]);
+        $case = GameCase::create(['title' => 'Integrity', 'story' => 'Story', 'XP_on_solve' => 100]);
         $zone = Zone::create(['case_id' => $case->id, 'title' => 'Zone', 'order_index' => 1]);
         $location = $zone->levels()->create(['title' => 'Location', 'details' => 'Details', 'order_index' => 1, 'presentation_type' => 'location', 'is_initial' => true]);
         $lead = $zone->levels()->create(['title' => 'Lead', 'details' => 'Details', 'order_index' => 2, 'presentation_type' => 'interrogation', 'is_initial' => false]);
@@ -82,7 +82,7 @@ class ConcludedRoomIntegrityTest extends TestCase
         if ($status === 'solved') {
             app(AssessmentService::class)->evaluateFinalVerdict($room, []);
         } else {
-            app(AssessmentService::class)->failFromEncounterStrikes($room);
+            DB::transaction(fn () => app(AssessmentService::class)->deductManagementTrust($room, 100, 'encounter'));
         }
         $token = $user->createToken('integrity')->plainTextToken;
         $before = $this->snapshot();
@@ -116,7 +116,7 @@ class ConcludedRoomIntegrityTest extends TestCase
         ['user' => $user, 'room' => $room, 'lead' => $lead, 'evidence' => $evidence] = $this->fixture([]);
         $room->unlockedLevels()->attach($lead->id);
         $question = $lead->questions()->create(['text' => 'Question', 'order_index' => 1]);
-        $answer = $question->choices()->create(['text' => 'Answer', 'outcomes' => ['gives_strike' => true, 'unlock_evidence' => [$evidence->id]]]);
+        $answer = $question->choices()->create(['text' => 'Answer', 'outcomes' => ['trust_loss' => 100, 'unlock_evidence' => [$evidence->id]]]);
         $encounters = app(EncounterGroupService::class);
         $group = $encounters->start($room, $lead, $user)->value;
         $encounters->vote($room, $question, $answer->id, $user);
@@ -132,7 +132,6 @@ class ConcludedRoomIntegrityTest extends TestCase
         $this->assertTrue($encounters->clearVote($room, $question, $user)->isFailure());
         $this->assertTrue(app(InvestigationRequestService::class)->processRequest($room, 0)->isFailure());
         $this->assertTrue(app(AssessmentService::class)->evaluateFinalVerdict($room, [])->isFailure());
-        app(AssessmentService::class)->failFromEncounterStrikes($room);
         $job = new FinalizeEncounterQuestion($group->id, $question->id, $deadline);
         $job->handle($encounters);
         $job->handle($encounters);
@@ -150,7 +149,7 @@ class ConcludedRoomIntegrityTest extends TestCase
     public function test_active_inspection_outcomes_and_duplicates(array $keys): void
     {
         ['user' => $user, 'room' => $room, 'lead' => $lead, 'choice' => $choice, 'point' => $point, 'evidence' => $evidence, 'character' => $character] = $this->fixture($keys);
-        $room->update(['strikes' => 2]);
+        $room->update(['management_trust' => 90]);
         Event::fake(self::EVENTS);
         $service = app(LocationInspectionService::class);
         $result = $service->inspect($room, $choice->id, $user);
@@ -169,9 +168,8 @@ class ConcludedRoomIntegrityTest extends TestCase
         if ($keys) {
             Event::assertDispatched(ItemsUnlocked::class, function (ItemsUnlocked $event): bool {
                 $payload = $event->broadcastWith();
-                $this->assertArrayHasKey('strikes', $payload);
-                $this->assertNull($payload['strikes']);
-                $this->assertSame(2, $event->room->strikes);
+                $this->assertArrayNotHasKey('strikes', $payload);
+                $this->assertSame(90, $event->room->management_trust);
 
                 return true;
             });

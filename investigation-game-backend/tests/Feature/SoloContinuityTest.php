@@ -34,11 +34,11 @@ class SoloContinuityTest extends TestCase
     {
         $host = $this->player();
         $room = $this->room($host);
-        $room->update(['strikes' => 1]);
+        $room->update(['management_trust' => 95]);
         $this->actingAs($host)->postJson("/api/rooms/{$room->id}/leave", ['reason' => 'pagehide'])->assertOk();
         $this->getJson('/api/cases')->assertOk()->assertJsonPath('cases.0.active_room_invite_code', $room->invite_code);
         $this->postJson('/api/rooms/join', ['invite_code' => $room->invite_code])->assertOk()->assertJsonPath('room.id', $room->id);
-        $this->getJson("/api/rooms/{$room->id}")->assertOk()->assertJsonPath('room.strikes', 1)->assertJsonPath('room.status', 'active');
+        $this->getJson("/api/rooms/{$room->id}")->assertOk()->assertJsonPath('room.management_trust', 95)->assertJsonPath('room.status', 'active');
         $this->assertSame(1, $room->users()->count());
     }
 

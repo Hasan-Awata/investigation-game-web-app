@@ -295,13 +295,12 @@ class EncounterGroupService
             $characterUpdates[] = $update;
         }
         if ($evidence->isNotEmpty() || $levels->isNotEmpty() || $characterUpdates || $unlockedLocationPointIds) {
-            $this->broadcastAfterCommit(new ItemsUnlocked($room, $evidence, $levels, $characterUpdates, null, $unlockedLocationPointIds));
+            $this->broadcastAfterCommit(new ItemsUnlocked($room, $evidence, $levels, $characterUpdates, $unlockedLocationPointIds));
         }
-        if (filter_var($outcomes['gives_strike'] ?? false, FILTER_VALIDATE_BOOLEAN)) {
-            $room->increment('strikes');
-            $room->refresh();
-            if ($room->strikes >= $room->gameCase->max_strikes) {
-                app(AssessmentService::class)->failFromEncounterStrikes($room);
+        $loss = (int) ($outcomes['trust_loss'] ?? 0);
+        if ($loss > 0) {
+            $trust = app(AssessmentService::class)->deductManagementTrust($room, $loss, 'encounter');
+            if ($trust['management_trust'] === 0) {
                 return;
             }
         }

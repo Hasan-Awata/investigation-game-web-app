@@ -74,6 +74,18 @@ export function useInvestigationRequest(room: GameRoom, refreshRoomData: () => v
     },
     onSuccess: (data, submission) => {
       if (activeScope.current !== submission.scope) return;
+      if (data.status !== 'success') {
+        const detail = t(data.reason === 'extras' ? 'gameRoom.requestExtras' : 'gameRoom.requestMismatch');
+        const loss = t('gameRoom.trustLoss.request', { loss: data.trust_loss, remaining: data.management_trust });
+        setState(previous => ({ ...previous, feedback: { type: 'error', message: detail + ' ' + loss } }));
+        queryClient.setQueryData<GameRoom>(['gameRoom', submission.scope.inviteCode], old => old && ({
+          ...old,
+          management_trust: Math.min(old.management_trust ?? 100, data.management_trust),
+          ...(data.status === 'failed_final' ? { status: 'failed', final_stats: data.stats } : {}),
+        }));
+        refresh();
+        return;
+      }
       queryClient.setQueryData<GameRoom>(['gameRoom', submission.scope.inviteCode], old => old && ({
         ...old,
         completed_requests: patchArray(old.completed_requests, [{ id: data.request_id }]),

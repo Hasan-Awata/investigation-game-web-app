@@ -33,7 +33,7 @@ class RoomRestartTest extends TestCase
         $zone = Zone::create(['case_id' => $case->id, 'title' => 'Zone', 'order_index' => 1]);
         $level = $zone->levels()->create(['title' => 'Interview', 'details' => 'Details', 'order_index' => 1, 'is_initial' => true, 'presentation_type' => 'interrogation']);
         $question = $level->questions()->create(['text' => 'Question', 'order_index' => 1]);
-        $choice = $question->choices()->create(['text' => 'Answer', 'outcomes' => ['gives_strike' => true]]);
+        $choice = $question->choices()->create(['text' => 'Answer', 'outcomes' => ['trust_loss' => 34]]);
         $room = app(GameRoomService::class)->createRoom($case, $host)->value;
         $service = app(EncounterGroupService::class);
         $group = $service->start($room, $level, $host)->value;
@@ -75,7 +75,7 @@ class RoomRestartTest extends TestCase
         $oldJob->handle(app(EncounterGroupService::class));
         $this->assertSame(0, $source->questionResolutions()->count());
         $this->assertSame(0, $replacement->questionResolutions()->count());
-        $this->assertSame(0, $replacement->fresh()->strikes);
+        $this->assertSame(100, $replacement->fresh()->management_trust);
         $this->assertSame(RoomStatus::Active, $replacement->fresh()->status);
         $assessment = app(AssessmentService::class)->evaluateFinalVerdict($replacement, []);
         $this->assertSame(100, $assessment->value['stats']['xp_awards'][$host->id]);
@@ -129,7 +129,8 @@ class RoomRestartTest extends TestCase
         $job->handle($service);
         $job->handle($service);
         $this->assertSame(1, $source->questionResolutions()->count());
-        $this->assertSame(0, GameRoom::findOrFail($replacementId)->strikes);
+        $this->assertSame(66, $source->fresh()->management_trust);
+        $this->assertSame(100, GameRoom::findOrFail($replacementId)->management_trust);
         $this->assertDatabaseCount('case_user', 0);
     }
 

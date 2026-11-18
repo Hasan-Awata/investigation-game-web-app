@@ -28,7 +28,15 @@
       "failed": "تعذّرت إزالة اللاعب. حاول مرة أخرى."
     },
     "activeAgents": "اللاعبون النشطون",
-    "strikes": "الإنذارات"
+    "managementTrust": "ثقة الإدارة",
+    "trustDepleted": "وصلت ثقة الإدارة إلى ٠٪. أُغلق التحقيق.",
+    "trustLoss": {
+      "request": "رُفض الطلب. خُصمت {{loss}} نقاط من الثقة. المتبقي {{remaining}}٪.",
+      "verdict": "رُفض الاتهام. خُصمت {{loss}} نقاط من الثقة. المتبقي {{remaining}}٪.",
+      "encounter": "نتيجة المواجهة. خُصمت {{loss}} نقاط من الثقة. المتبقي {{remaining}}٪."
+    },
+    "requestMismatch": "العناصر المقدّمة لا توفر أساسًا كافيًا للطلب.",
+    "requestExtras": "استخدم الأدلة والشخصيات المرتبطة مباشرةً بالطلب."
   },
   "components": {
     "adminGuard": {
@@ -131,7 +139,6 @@
       "noInviteCode": "لم يتم توفير رمز دعوة.",
       "sessionCode": "رمز الجلسة",
       "activeAgents": "اللاعبون النشطون",
-      "strikes": "الإنذارات",
       "sessionNotFound": "الجلسة غير موجودة.",
       "departmentUpdate": "تحديث الإدارة",
       "audioFeedActive": "البث الصوتي نشط. استمع بعناية.",
@@ -149,6 +156,7 @@
           "evidences": "الأدلة",
           "personsOfInterest": "الأشخاص",
           "campaign": "الخريطة",
+          "unreadIntel": "معلومات جديدة",
           "returnToMenu": "مغادرة الجلسة"
         },
         "notifications": {

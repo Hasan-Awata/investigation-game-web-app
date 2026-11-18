@@ -52,7 +52,7 @@ it('merges request approvals idempotently and refreshes request availability whe
     connectionStatus: () => 'connected', connector: { onConnectionChange: () => vi.fn() },
     private: () => channel, leave: vi.fn(),
   });
-  let state: GameRoomState = { id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', strikes: 0 };
+  let state: GameRoomState = { id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', management_trust: 100 };
   mocks.patch.mockImplementation((update: (room: GameRoomState) => GameRoomState) => { state = update(state); });
   render(<GameRoom />);
   const approval = { request_id: 10, filed_request: { id: 4, request_type: 'search_warrant', evidence_ids: [1, 2], character_ids: [], created_at: new Date().toISOString() } };

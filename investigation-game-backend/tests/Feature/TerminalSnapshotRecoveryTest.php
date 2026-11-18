@@ -32,7 +32,7 @@ final class TerminalSnapshotRecoveryTest extends TestCase
         config(['queue.default' => 'database', 'broadcasting.default' => 'null']);
         $host = User::factory()->create(['username' => 'recovery-host', 'XP' => 0]);
         $viewer = User::factory()->create(['username' => 'recovery-viewer', 'XP' => 900]);
-        $case = GameCase::create(['title' => 'Terminal recovery', 'story' => 'Synthetic', 'XP_on_solve' => 900, 'max_strikes' => 1]);
+        $case = GameCase::create(['title' => 'Terminal recovery', 'story' => 'Synthetic', 'XP_on_solve' => 900]);
         DB::table('case_user')->insert([
             'case_id' => $case->id, 'user_id' => $viewer->id, 'status' => 'solved_perfect',
             'completed_at' => now(), 'created_at' => now(), 'updated_at' => now(),
@@ -47,7 +47,7 @@ final class TerminalSnapshotRecoveryTest extends TestCase
             $zone = Zone::create(['case_id' => $case->id, 'title' => 'Interview', 'order_index' => 1]);
             $level = $zone->levels()->create(['title' => 'Interview', 'details' => 'Synthetic', 'order_index' => 1, 'presentation_type' => 'interrogation']);
             $question = $level->questions()->create(['text' => 'Question', 'order_index' => 1]);
-            $choice = $question->choices()->create(['text' => 'Strike', 'outcomes' => ['gives_strike' => true]]);
+            $choice = $question->choices()->create(['text' => 'Strike', 'outcomes' => ['trust_loss' => 100]]);
             $room->unlockedLevels()->attach($level->id);
             $encounters = app(EncounterGroupService::class);
             $group = $encounters->start($room, $level, $viewer)->value;

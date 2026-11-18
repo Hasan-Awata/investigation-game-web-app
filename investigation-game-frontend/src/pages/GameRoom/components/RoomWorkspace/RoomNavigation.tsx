@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useRoomTabIndicator } from './useRoomTabIndicator';
+import ManagementTrustMeter from './ManagementTrustMeter';
 import styles from '../../GameRoomLayout.module.css';
 
 export type WorkspaceTab = 'details' | 'evidences' | 'campaign' | 'characters';
@@ -11,7 +12,7 @@ export interface RoomNavigationProps {
   onSelectTab: (tab: WorkspaceTab) => void;
 }
 
-export default function RoomNavigation({ activeTab, hasUnreadEvidence, hasUnreadCharacters, onSelectTab }: RoomNavigationProps) {
+export default function RoomNavigation({ activeTab, hasUnreadEvidence, hasUnreadCharacters, onSelectTab, managementTrust }: RoomNavigationProps & { managementTrust: number | null }) {
   const { t } = useTranslation();
   const rowRef = useRoomTabIndicator(activeTab);
   const tabs: { id: WorkspaceTab; label: string; hasUnread?: boolean }[] = [
@@ -41,6 +42,7 @@ export default function RoomNavigation({ activeTab, hasUnreadEvidence, hasUnread
           ))}
         </div>
       </nav>
+      {managementTrust != null && <ManagementTrustMeter trust={managementTrust} />}
     </header>
   );
 }

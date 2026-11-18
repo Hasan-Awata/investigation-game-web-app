@@ -13,7 +13,7 @@ vi.mock('@/pages/Admin/hooks/useAdminForm', () => ({
 }));
 vi.mock('@/pages/Admin/components/EntityDashboard', () => ({
   default: ({ onExport }: { onExport: (gameCase: GameCase) => void }) => (
-    <button onClick={() => onExport({ id: 1, title: 'Case', story: '', min_player_XP: 0, XP_on_solve: 100, max_strikes: 5 })}>Export</button>
+    <button onClick={() => onExport({ id: 1, title: 'Case', story: '', min_player_XP: 0, XP_on_solve: 100 })}>Export</button>
   ),
 }));
 

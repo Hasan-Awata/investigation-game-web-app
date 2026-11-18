@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\Zone;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Str;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
@@ -168,7 +169,7 @@ class InvestigationRequestSubmissionTest extends TestCase
         $this->submit([
             'evidence_ids' => [$this->initialEvidenceA->id, $this->initialEvidenceB->id],
             'character_ids' => [],
-        ])->assertStatus(422)
+        ])->assertOk()->assertJsonPath('status', 'rejected')->assertJsonPath('management_trust', 95)
             ->assertJsonFragment(['message' => 'The DA rejected your request. The provided items do not establish sufficient grounds.']);
 
         $this->assertDatabaseCount('room_filed_requests', 0);
@@ -184,13 +185,39 @@ class InvestigationRequestSubmissionTest extends TestCase
         $this->submit([
             'evidence_ids' => [$this->initialEvidenceA->id, $this->initialEvidenceB->id],
             'character_ids' => [$this->initialCharacter->id],
-        ])->assertStatus(422)
+        ])->assertOk()->assertJsonPath('status', 'rejected')->assertJsonPath('management_trust', 95)
             ->assertJsonFragment([
-                'message' => 'Your request contains unnecessary items that muddy the warrant. Narrow your selection to only the directly connected evidence and characters.',
+                'message' => 'Your request contains unnecessary items. Narrow your selection to directly connected evidence and characters.',
             ]);
 
         $this->assertDatabaseCount('room_filed_requests', 0);
         $this->assertFalse($this->room->completedRequests()->exists());
+    }
+
+    public function test_replaying_a_rejected_attempt_does_not_deduct_trust_twice(): void
+    {
+        $payload = [
+            'attempt_id' => (string) Str::uuid(),
+            'evidence_ids' => [$this->initialEvidenceA->id, $this->initialEvidenceB->id],
+            'character_ids' => [],
+        ];
+
+        $this->submit($payload)->assertOk()->assertJsonPath('trust_loss', 5)->assertJsonPath('management_trust', 95);
+        $this->submit($payload)->assertOk()->assertJsonPath('management_trust', 95);
+        $this->assertSame(95, $this->room->fresh()->management_trust);
+
+        $payload['attempt_id'] = (string) Str::uuid();
+        $this->submit($payload)->assertOk()->assertJsonPath('management_trust', 90);
+
+        $this->room->update(['management_trust' => 3]);
+        $payload['attempt_id'] = (string) Str::uuid();
+        $this->submit($payload)->assertOk()
+            ->assertJsonPath('status', 'failed_final')
+            ->assertJsonPath('trust_loss', 3)
+            ->assertJsonPath('management_trust', 0)
+            ->assertJsonPath('stats.failure_reason', 'failed_trust');
+        $this->submit($payload)->assertOk()->assertJsonPath('status', 'failed_final');
+        $this->assertSame('failed', $this->room->fresh()->status->value);
     }
 
     public function test_submission_with_fewer_than_two_items_is_rejected(): void
@@ -342,7 +369,7 @@ class InvestigationRequestSubmissionTest extends TestCase
     {
         $other = $this->secondRequest('phone_records');
         $other->requiredEvidences()->sync([$this->initialEvidenceB->id]);
-        $this->submit(['request_id' => $other->id, ...$this->matchingPayload()])->assertUnprocessable();
+        $this->submit(['request_id' => $other->id, ...$this->matchingPayload()])->assertOk()->assertJsonPath('status', 'rejected');
         $this->assertFalse($this->room->completedRequests()->exists());
         $this->submit(['request_type' => 'dna_test', ...$this->matchingPayload()])->assertOk()
             ->assertJsonPath('request_id', $this->mixedRequest->id);

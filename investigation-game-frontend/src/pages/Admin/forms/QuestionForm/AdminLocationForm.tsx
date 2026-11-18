@@ -67,7 +67,8 @@ export default function AdminLocationForm({
 
         <div className="qf-choices-list" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1.5rem' }}>
           {state.choices.map((choice, index) => (
-            <ChoiceEditorCard 
+            <ChoiceEditorCard
+              isLocationPoint
               key={choice.id || index} 
               index={index} 
               choice={choice} 

@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 use App\Support\Result;
 use App\Support\Concerns\BroadcastsAfterCommit;
 use App\Events\LevelTransitioned;
-use App\Events\ItemsUnlocked;
+use App\Events\ManagementTrustChanged;
 use App\Enums\RoomStatus;
 use App\Enums\CaseUserStatus;
 
@@ -18,17 +18,47 @@ class AssessmentService
 
     public function __construct(private readonly EncounterGroupService $encounters) {}
 
-    public function failFromEncounterStrikes(GameRoom $room): void
+    /** The caller holds the room lock inside its gameplay transaction. */
+    public function deductManagementTrust(
+        GameRoom $room,
+        int $requestedLoss,
+        string $reason,
+        int $caught = 0,
+        int $innocents = 0,
+    ): array {
+        if ($room->status !== RoomStatus::Active) {
+            throw new \LogicException('Management Trust can only change in an active room.');
+        }
+
+        $loss = min($room->management_trust, max(0, $requestedLoss));
+        $remaining = $room->management_trust - $loss;
+        if ($loss === 0) {
+            return ['trust_loss' => 0, 'management_trust' => $remaining];
+        }
+
+        $room->update(['management_trust' => $remaining]);
+        $this->broadcastAfterCommit(new ManagementTrustChanged($room->id, $remaining, $loss, $reason));
+
+        $result = ['trust_loss' => $loss, 'management_trust' => $remaining];
+        if ($remaining === 0) {
+            $total = Character::query()->where('case_id', $room->case_id)->where('is_guilty', true)->count();
+            $stats = $this->generateFinalStats($room, 0, $caught, $total, $innocents);
+            $stats['failure_reason'] = CaseUserStatus::FailedTrust->value;
+            $result['stats'] = $this->conclude($room, RoomStatus::Failed, $stats, CaseUserStatus::FailedTrust, 0);
+            $this->broadcastAfterCommit(new LevelTransitioned($room, null, $result['stats']));
+        }
+
+        return $result;
+    }
+
+    private function rejectVerdict(GameRoom $room, string $message, int $caught, int $innocents): Result
     {
-        DB::transaction(function () use ($room): void {
-            $room = GameRoom::query()->whereKey($room->id)->lockForUpdate()->firstOrFail();
-            if ($room->status !== RoomStatus::Active) return;
-            $case = $room->gameCase;
-            $totalGuilty = Character::query()->where('case_id', $case->id)->where('is_guilty', true)->count();
-            $stats = $this->generateFinalStats($room, 0, 0, $totalGuilty, 0);
-            $stats = $this->conclude($room, RoomStatus::Failed, $stats, CaseUserStatus::FailedStrikes, 0);
-            $this->broadcastAfterCommit(new LevelTransitioned($room, 'The maximum strike count was reached. The case has failed.', $stats));
-        });
+        $trust = $this->deductManagementTrust($room, 25, 'verdict', $caught, $innocents);
+        if ($trust['management_trust'] === 0) {
+            return Result::success(['status' => 'failed_final', 'message' => $message] + $trust);
+        }
+
+        return Result::success(['status' => 'failed', 'message' => $message] + $trust);
     }
 
     /**
@@ -120,35 +150,14 @@ class AssessmentService
                         'room' => $room,
                         'stats' => $stats
                     ]);
-                } else {
-                    $room->increment('strikes');
-                    $room->refresh();
-                    $this->broadcastAfterCommit(new ItemsUnlocked($room, null, null, null, $room->strikes));
-
-                    $maxStrikes = $case->max_strikes;
-
-                    if ($room->strikes >= $maxStrikes) {
-                        $stats = $this->generateFinalStats($room, 0, 0, 0, count($innocentsSubmitted));
-                        $stats = $this->conclude($room, RoomStatus::Failed, $stats, CaseUserStatus::FailedStrikes, 0);
-
-                        $message = 'DEPARTMENT THRESHOLD EXCEEDED. You accused innocent people of a fabricated crime. The DA has pulled your mandate.' . $innocentMessage;
-                $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
-
-                        return Result::success([
-                            'status' => 'failed_final',
-                            'message' => $message,
-                            'stats' => $stats
-                        ]);
-                    }
-
-                    $message = "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: You are chasing a ghost. Are you certain a murder was even committed?" . $innocentMessage;
-                    $this->broadcastAfterCommit(new LevelTransitioned($room, $message, null));
-
-                    return Result::success([
-                        'status' => 'failed',
-                        'message' => $message
-                    ]);
                 }
+
+                return $this->rejectVerdict(
+                    $room,
+                    'The DA has rejected your indictment. Are you certain a murder was even committed?' . $innocentMessage,
+                    0,
+                    count($innocentsSubmitted),
+                );
             }
 
             if (count($missedGuilty) === 0 && count($innocentsSubmitted) === 0) {
@@ -204,35 +213,14 @@ class AssessmentService
                     'message' => $message,
                     'stats' => $stats
                 ]);
-            } else {
-                $room->increment('strikes');
-                $room->refresh();
-                $this->broadcastAfterCommit(new ItemsUnlocked($room, null, null, null, $room->strikes));
-
-                $maxStrikes = $case->max_strikes;
-
-                if ($room->strikes >= $maxStrikes) {
-                    $stats = $this->generateFinalStats($room, 0, count($correctGuesses), $totalGuiltyCount, count($innocentsSubmitted));
-                    $stats = $this->conclude($room, RoomStatus::Failed, $stats, CaseUserStatus::FailedStrikes, 0);
-
-                    $message = 'DEPARTMENT THRESHOLD EXCEEDED. You failed to indict the correct suspects. The DA has pulled your mandate.' . $innocentMessage;
-                    $this->broadcastAfterCommit(new LevelTransitioned($room, $message, $stats));
-
-                    return Result::success([
-                        'status' => 'failed_final',
-                        'message' => $message,
-                        'stats' => $stats
-                    ]);
-                }
-
-                $message = "The DA has rejected your indictment. STRIKE {$room->strikes}/{$maxStrikes} LOGGED.\n\nPersona Analysis: There are still guilty people on your board that you haven't accused." . $innocentMessage;
-                $this->broadcastAfterCommit(new LevelTransitioned($room, $message, null));
-
-                return Result::success([
-                    'status' => 'failed',
-                    'message' => $message
-                ]);
             }
+
+            return $this->rejectVerdict(
+                $room,
+                'The DA has rejected your indictment. There are still guilty people on your board that you have not accused.' . $innocentMessage,
+                count($correctGuesses),
+                count($innocentsSubmitted),
+            );
         });
     }
 
@@ -288,7 +276,7 @@ class AssessmentService
                 $isNewFail = in_array($finalStatus, [
                     CaseUserStatus::FailedNoProof->value,
                     CaseUserStatus::FailedIncomplete->value,
-                    CaseUserStatus::FailedStrikes->value
+                    CaseUserStatus::FailedTrust->value
                 ]);
 
                 if ($previousStatus === CaseUserStatus::SolvedPerfect->value) {

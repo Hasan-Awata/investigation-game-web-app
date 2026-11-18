@@ -9,7 +9,7 @@ import type { GameRoom } from '@/types';
 
 vi.mock('@/services/api', () => ({ fetchRoomState: vi.fn(), joinRoom: vi.fn() }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-const room: GameRoom = { id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', strikes: 0 };
+const room: GameRoom = { id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', management_trust: 100 };
 beforeEach(() => {
   sessionStorage.clear();
   vi.mocked(joinRoom).mockReset();
@@ -36,9 +36,9 @@ it('hides cached room data and stops recovery after authoritative denial', async
   hook.unmount();
 });
 it('joins and restores authoritative progress without session storage or Echo', async () => {
-  vi.mocked(fetchRoomState).mockResolvedValue(success({ ...room, strikes: 2 }));
+  vi.mocked(fetchRoomState).mockResolvedValue(success({ ...room, management_trust: 90 }));
   const hook = setup();
-  await waitFor(() => expect(hook.result.current.room?.strikes).toBe(2));
+  await waitFor(() => expect(hook.result.current.room?.management_trust).toBe(90));
   expect(joinRoom).toHaveBeenCalledWith('ABC123', expect.any(AbortSignal));
 });
 it('retains cached progress after failure and resynchronizes on visible-tab reconnection', async () => {
@@ -49,9 +49,9 @@ it('retains cached progress after failure and resynchronizes on visible-tab reco
   expect(hook.result.current.error).toBeNull();
   await waitFor(() => expect(hook.result.current.syncError).toBe('offline'));
   expect(hook.result.current.room?.id).toBe(1);
-  vi.mocked(fetchRoomState).mockResolvedValue(success({ ...room, strikes: 1 }));
+  vi.mocked(fetchRoomState).mockResolvedValue(success({ ...room, management_trust: 95 }));
   act(() => window.dispatchEvent(new Event('online')));
-  await waitFor(() => expect(hook.result.current.room?.strikes).toBe(1));
+  await waitFor(() => expect(hook.result.current.room?.management_trust).toBe(95));
   expect(hook.result.current.syncError).toBeNull();
 });
 it('waits for an explicit retry after an initial join failure', async () => {
@@ -150,7 +150,7 @@ it('aborts an in-flight join on departure and ignores its late response', async 
 it('converges after a missed completion event without a socket or browser event', async () => {
   const hook = setup();
   await waitFor(() => expect(hook.result.current.room?.id).toBe(1));
-  vi.mocked(fetchRoomState).mockResolvedValue(success({ ...room, status: 'solved', strikes: 1 }));
+  vi.mocked(fetchRoomState).mockResolvedValue(success({ ...room, status: 'solved', management_trust: 95 }));
   await waitFor(() => expect(hook.result.current.room?.status).toBe('solved'), { timeout: 6500 });
 }, 10000);
 
@@ -185,9 +185,9 @@ it('times out a hung refresh and remains recoverable without losing cached progr
     act(() => { void hook.result.current.refreshRoomData(); });
     await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
     expect(hook.result.current.room?.id).toBe(1);
-    vi.mocked(fetchRoomState).mockResolvedValue(success({ ...room, strikes: 2 }));
+    vi.mocked(fetchRoomState).mockResolvedValue(success({ ...room, management_trust: 90 }));
     await act(async () => { await hook.result.current.refreshRoomData(); await vi.advanceTimersByTimeAsync(1); });
-    expect(hook.result.current.room?.strikes).toBe(2);
+    expect(hook.result.current.room?.management_trust).toBe(90);
     expect(hook.result.current.syncError).toBeNull();
   } finally {
     hook.unmount();

@@ -12,6 +12,7 @@ use App\Models\Question;
 use App\Models\Zone;
 use App\Services\MediaService;
 use App\Support\Case\CaseManifestValidator;
+use App\Support\Case\LegacyStrikePenalty;
 use App\Support\MetadataImageReferences;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -309,7 +310,6 @@ class CaseImportService
             'map_url' => null,
             'min_player_XP' => $caseData['min_player_XP'] ?? 0,
             'XP_on_solve' => $caseData['XP_on_solve'],
-            'max_strikes' => $caseData['max_strikes'] ?? 3,
             'rating_stars' => $caseData['rating_stars'] ?? 5.0,
             'age_rating' => $caseData['age_rating'] ?? 'Unrated',
             'estimated_playtime' => $caseData['estimated_playtime'] ?? null,
@@ -410,7 +410,7 @@ class CaseImportService
 
                 $this->mapRef($maps, 'level', $levelData['ref_id'] ?? null, $level->id);
                 $levelRequiredRefs[$level->id] = $levelData['required_request_ref'] ?? null;
-                $levelNodes[$level->id] = $levelData['nodes'] ?? [];
+                $levelNodes[$level->id] = $levelData;
             }
         }
 
@@ -443,7 +443,8 @@ class CaseImportService
         $pendingRequirements = [];
         $pendingPointUnlocks = [];
 
-        foreach ($levelNodes as $levelId => $nodes) {
+        foreach ($levelNodes as $levelId => $levelData) {
+            $nodes = $levelData['nodes'] ?? [];
             $nodeIndexToQuestion = [];
 
             foreach ($nodes as $index => $nodeData) {
@@ -459,7 +460,15 @@ class CaseImportService
 
             foreach ($nodes as $index => $nodeData) {
                 foreach ($nodeData['choices'] ?? [] as $choiceData) {
-                    $outcomes = $this->mapOutcomes($choiceData['outcomes'] ?? [], $maps, $nodeIndexToQuestion);
+                    $authoredOutcomes = $choiceData['outcomes'] ?? [];
+                    if ((int) $manifest['format_version'] === 1) {
+                        $authoredOutcomes = LegacyStrikePenalty::convert(
+                            $authoredOutcomes,
+                            (int) ($caseData['max_strikes'] ?? 3),
+                            $levelData['presentation_type'] === 'location',
+                        );
+                    }
+                    $outcomes = $this->mapOutcomes($authoredOutcomes, $maps, $nodeIndexToQuestion);
 
                     $choice = Choice::create([
                         'question_id' => $nodeIndexToQuestion[$index],
@@ -514,8 +523,8 @@ class CaseImportService
             $mapped['feedback'] = $outcomes['feedback'];
         }
 
-        if (array_key_exists('gives_strike', $outcomes)) {
-            $mapped['gives_strike'] = (bool) $outcomes['gives_strike'];
+        if (array_key_exists('trust_loss', $outcomes)) {
+            $mapped['trust_loss'] = (int) $outcomes['trust_loss'];
         }
 
         if (array_key_exists('next_question_index', $outcomes)) {

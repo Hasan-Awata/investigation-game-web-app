@@ -15,7 +15,7 @@ vi.mock('@/services/api', () => ({ leaveRoom: vi.fn(), leaveRoomBeacon: vi.fn() 
 vi.mock('@/utils/storage', () => ({ clearRoomSessionData: vi.fn() }));
 vi.mock('@/context/RoomContext.shared', () => ({ useRoomUI: () => ({ setGlobalFeedback: feedback, addGlobalToast: vi.fn() }) }));
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
-const room: GameRoom = { id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', strikes: 0 };
+const room: GameRoom = { id: 1, invite_code: 'ABC123', case_id: 1, host_user_id: 1, status: 'active', management_trust: 100 };
 it('sends departure only for real pagehide and removes its listener on teardown', () => {
   const hook = renderHook(() => useRoomPageHide(1));
   act(() => window.dispatchEvent(new PageTransitionEvent('pagehide', { persisted: true })));
