@@ -749,7 +749,7 @@
 }
 
 .managementTrust[data-trust-band='success'] {
-  color: color-mix(in srgb, var(--accent-success) 90%, var(--text-primary));
+  color: var(--accent-success);
 }
 
 .managementTrust[data-trust-band='olive'] {
@@ -761,7 +761,7 @@
 }
 
 .managementTrust[data-trust-band='crimson'] {
-  color: color-mix(in srgb, var(--accent-crimson) 70%, var(--text-primary));
+  color: var(--accent-crimson);
 }
 
 .managementTrust:focus-visible {
