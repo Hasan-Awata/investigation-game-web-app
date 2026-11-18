@@ -102,8 +102,6 @@ export default function CampaignMap({ zones, unlockedLevelIds, onEnterZone, mapI
                 onLoad={() => centerLoadedMap(controls)}
               />
 
-              <div className={campaignMap['map-overlay-grid']}></div>
-
               {visibleZones.map(({ zone, pinType, pinId }, index) => {
                 const coords = zone.coord_x && zone.coord_y
                   ? { left: `${zone.coord_x}%`, top: `${zone.coord_y}%` }

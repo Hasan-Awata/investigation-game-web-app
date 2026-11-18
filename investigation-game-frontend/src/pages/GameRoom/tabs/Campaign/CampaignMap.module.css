@@ -38,17 +38,6 @@
   pointer-events: none;
 }
 
-.map-overlay-grid {
-  position: absolute;
-  inset: -200px; 
-  background-image: 
-    linear-gradient(rgba(0, 229, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 229, 255, 0.05) 1px, transparent 1px);
-  background-size: 50px 50px;
-  pointer-events: none;
-  z-index: 2;
-}
-
 .map-pin-wrapper {
   position: absolute;
   cursor: pointer;

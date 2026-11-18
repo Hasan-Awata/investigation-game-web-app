@@ -400,30 +400,27 @@
 .navLinks {
   /* Narrow the shoulder by the extra inset to keep the lower bend aligned with the rim. */
   --outline-shoulder: calc(var(--dock-shoulder) - var(--tab-shoulder-inset));
-  --tip-join: calc(var(--outline-shoulder) * 0.22112);
-  --tip-inset: calc(var(--tip-join) + var(--tab-radius) * 0.75);
+  --upper-side: calc(var(--outline-shoulder) * 0.28);
+  --top-corner: calc(var(--upper-side) + var(--tab-radius));
 
   position: relative;
   isolation: isolate;
   min-inline-size: 0;
   border-radius: var(--dock-radius);
-  /* Keep the original lower shoulder and round the join with the top edge. */
+  /* A flat top meets each tapered side through one inset, rounded corner. */
   clip-path: shape(
-    from var(--tip-inset) 0,
-    hline to calc(100% - var(--tip-inset)),
-    curve to calc(100% - var(--tip-join)) 14.24%
-      with calc(100% - var(--tip-join)) 0 /
-           calc(100% - var(--outline-shoulder) * 0.172864) 8.608%,
+    from var(--top-corner) 0,
+    hline to calc(100% - var(--top-corner)),
+    curve to calc(100% - var(--upper-side)) var(--tab-radius)
+      with calc(100% - var(--upper-side)) 0,
     curve to calc(100% - var(--outline-shoulder)) 100%
-      with calc(100% - var(--outline-shoulder) * 0.4624) 42.4% /
+      with calc(100% - var(--upper-side)) 40% /
            calc(100% - var(--outline-shoulder) * 0.536) 100%,
     hline to var(--outline-shoulder),
-    curve to var(--tip-join) 14.24%
+    curve to var(--upper-side) var(--tab-radius)
       with calc(var(--outline-shoulder) * 0.536) 100% /
-           calc(var(--outline-shoulder) * 0.4624) 42.4%,
-    curve to var(--tip-inset) 0
-      with calc(var(--outline-shoulder) * 0.172864) 8.608% /
-           var(--tip-join) 0,
+           var(--upper-side) 40%,
+    curve to var(--top-corner) 0 with var(--upper-side) 0,
     close
   );
   overflow-x: auto;
