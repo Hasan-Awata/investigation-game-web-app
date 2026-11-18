@@ -1,37 +1,48 @@
 import { useTranslation } from 'react-i18next';
+import { CassettePlayer } from '@/components/CassettePlayer';
 import type { Evidence } from '@/types';
-import audioEvidence from './AudioEvidence.module.css';
+import { assetUrl } from '@/utils/assetUrl';
+import '@/components/CassettePlayer.css';
+import styles from './AudioEvidence.module.css';
 
-export default function AudioEvidence({ evidence }: { evidence: Evidence }) {
+interface AudioEvidenceProps {
+  evidence: Evidence;
+  preview?: boolean;
+}
+
+export default function AudioEvidence({ evidence, preview = true }: AudioEvidenceProps) {
   const { t } = useTranslation();
+  const audioLabel = t('pages.gameRoom.evidence.modal.types.audio');
+  const title = evidence.title || audioLabel;
+  const fallbackUrl = evidence.evidence_type === 'audio' ? evidence.metadata?.url : undefined;
+  const src = assetUrl(evidence.audio_url || evidence.img_url || (typeof fallbackUrl === 'string' ? fallbackUrl : ''));
 
-  return (
-    <div className={`audio-variant ${audioEvidence['cassette-tape']}`}>
-      {/* Printed directly on the dark plastic casing */}
-      <div className={audioEvidence['cassette-top-area']}>
-        <div className={audioEvidence['label-header']}>
-          <span className={audioEvidence['audio-icon']}>⏺</span>
-          <span className={audioEvidence['tape-indicator']}>{t('pages.gameRoom.evidence.variants.audio.aSide')}</span>
-        </div>
-      </div>
+  if (!src && !preview) {
+    return <p className={styles.missingAudio} role="status">{t('pages.gameRoom.evidence.viewers.media.noMediaFound')}</p>;
+  }
 
-      {/* The clear plastic window showing the tape reels */}
-      <div className={audioEvidence['cassette-window']}>
-        <div className={`${audioEvidence['reel']} ${audioEvidence['left-reel']}`}></div>
-        <div className={`${audioEvidence['reel']} ${audioEvidence['right-reel']}`}></div>
-      </div>
+  const player = (
+    <CassettePlayer
+      key={src}
+      className={preview ? `${styles.player} ${styles.preview}` : styles.player}
+      dir="ltr"
+      inert={preview || undefined}
+      audioSrc={src}
+      preload={preview ? 'none' : 'metadata'}
+      trackTitle={title}
+      archiveLabel={audioLabel}
+      catalogueNumber=""
+      sideLabel={t('pages.gameRoom.evidence.variants.audio.aSide')}
+      loop={false}
+    />
+  );
 
-      {/* The bottom mechanical casing */}
-      <div className={audioEvidence['cassette-bottom']}>
-        <div className={`${audioEvidence['screw']} ${audioEvidence['left-screw']}`}></div>
-
-        {/* The piece of white tape slapped on the bottom */}
-        <div className={audioEvidence['title-tape']}>
-          <h4 className={audioEvidence['evidence-title']}>{evidence.title}</h4>
-        </div>
-
-        <div className={`${audioEvidence['screw']} ${audioEvidence['right-screw']}`}></div>
+  return preview ? (
+    <div className={styles.previewFrame} data-cassette-player role="img" aria-label={title}>
+      {player}
+      <div className={styles.previewTitle} aria-hidden="true">
+        <span dir="auto">{title}</span>
       </div>
     </div>
-  );
+  ) : player;
 }

@@ -5,6 +5,7 @@ import UniversalDocViewer from './DocViewer/UniversalDocViewer';
 import TerminalViewer from './TerminalViewer/TerminalViewer';
 import TestimonyViewer from './Viewers/TestimonyViewer';
 import MediaViewer from './Viewers/MediaViewer';
+import AudioEvidenceModal from './AudioEvidenceModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { EvidenceContext } from './EvidenceContext';
 import styles from './EvidenceModal.module.css';
@@ -15,6 +16,9 @@ interface EvidenceModalProps {
 }
 
 export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps) {
+  if (evidence?.evidence_type === 'audio') {
+    return <AudioEvidenceModal key={evidence.id} evidence={evidence} onClose={onClose} />;
+  }
   return evidence ? <ActiveEvidenceModal key={evidence.id} evidence={evidence} onClose={onClose} /> : null;
 }
 
@@ -75,7 +79,6 @@ function ActiveEvidenceModal({ evidence, onClose }: { evidence: Evidence; onClos
       digital: TerminalViewer,
       testimony: TestimonyViewer,
       image: MediaViewer,
-      audio: MediaViewer,
     } as const;
 
     const Viewer = ViewerComponents[evidence.evidence_type as keyof typeof ViewerComponents];

@@ -48,6 +48,14 @@ export default function EvidenceCard({ evidence, index, isNew, onInspect }: Evid
       {...attributes}
       className={`${styles.evidenceCardWrapper} ${styles[`item${index % 5}`]} ${isDragging ? styles.isDragging : ''}`}
       onClick={() => onInspect(evidence)}
+      onKeyDown={(event) => {
+        if (evidence.evidence_type === 'audio' && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          if (!event.repeat) onInspect(evidence);
+          return;
+        }
+        listeners?.onKeyDown?.(event);
+      }}
     >
       {isNew && <div className={styles.unreadIndicator} title={t('pages.gameRoom.layout.tabs.unreadIntel')} />}
       {SpecificEvidenceComponent ? (
