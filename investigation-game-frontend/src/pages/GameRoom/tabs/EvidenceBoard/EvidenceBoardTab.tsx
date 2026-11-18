@@ -16,7 +16,7 @@ const EvidenceGrid = memo(function EvidenceGrid({
   onInspect: (evidence: Evidence) => void;
 }) {
   return (
-    <div className={styles.evidenceScatterGrid}>
+    <div className={styles.evidenceGrid}>
       {evidences.map(evidence => (
         <EvidenceCard
           key={evidence.id}

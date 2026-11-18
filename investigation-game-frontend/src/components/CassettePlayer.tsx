@@ -104,6 +104,7 @@ function Reel({ className }: ReelProps) {
     >
       <svg
         aria-hidden="true"
+        data-cassette-reel
         className="absolute inset-0 origin-center rotate-[var(--reel-rotation)] rounded-full will-change-transform motion-reduce:!rotate-0"
         viewBox="0 0 100 100"
       >

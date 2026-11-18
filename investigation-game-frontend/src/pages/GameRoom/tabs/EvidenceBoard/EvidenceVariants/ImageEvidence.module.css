@@ -13,7 +13,6 @@
   /* The classic thick-bottom polaroid border */
   padding: 12px 12px 28px 12px; 
   position: relative;
-  margin-top: 15px; /* Room for the pin */
   
   /* Complex shadow makes the bottom corners look slightly curled off the board */
   box-shadow: 

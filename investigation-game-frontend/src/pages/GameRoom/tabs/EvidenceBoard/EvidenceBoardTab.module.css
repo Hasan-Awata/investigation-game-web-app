@@ -28,14 +28,14 @@
   padding-block: 1rem;
 }
 
-.evidenceScatterGrid { 
-  display: flex; 
-  flex-wrap: wrap; 
-  gap: 2rem; 
-  justify-content: center; 
-  align-content: flex-start; 
-  align-items: center; 
-  min-height: 250px;
+.evidenceGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, min(100%, 250px)));
+  gap: 2rem;
+  justify-content: center;
+  justify-items: start;
+  align-items: start;
+  min-block-size: 250px;
 }
 
 /* Mobile Overrides */

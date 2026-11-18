@@ -6,7 +6,6 @@
   touch-action: none;
   isolation: isolate;
   z-index: 1;
-  transition: transform 200ms ease-out, z-index 0s 200ms;
 }
 
 .evidenceCardWrapper > * {
@@ -23,42 +22,57 @@
 
 .evidenceCardWrapper[data-dragging] { opacity: 0.3; }
 .evidenceCardWrapper[data-unread] {
-  filter: drop-shadow(0 0 5px rgba(var(--accent-amber-rgb), 0.65));
-  animation: evidenceShine 1.5s infinite alternate ease-in-out;
   z-index: 5;
 }
 .evidenceCardWrapper[data-unread]:focus-visible { z-index: 10; }
 
+.evidenceCardWrapper[data-unread]::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--radius-lg);
+  pointer-events: none;
+  box-shadow: 0 0 14px 2px rgba(var(--accent-amber-rgb), 0.9);
+  opacity: 0.55;
+  animation: evidenceShine 1.5s infinite alternate ease-in-out;
+}
+
+.evidenceCardWrapper[data-unread]:has(> :global(.image-variant))::before {
+  border-radius: 0;
+}
+
+.evidenceCardWrapper[data-unread]:has(> [data-cassette-player])::before {
+  border-radius: 18px;
+}
+
 @keyframes evidenceShine {
-  from { filter: drop-shadow(0 0 2px rgba(var(--accent-amber-rgb), 0.3)); }
-  to { filter: drop-shadow(0 0 14px rgba(var(--accent-amber-rgb), 1)); }
+  from { opacity: 0.25; }
+  to { opacity: 1; }
 }
 
-@media (min-width: 601px) {
-  .evidenceCardWrapper:nth-child(5n + 1) { --rotation: -3deg; }
-  .evidenceCardWrapper:nth-child(5n + 2) { --rotation: 2deg; margin-block-start: 2rem; }
-  .evidenceCardWrapper:nth-child(5n + 3) { --rotation: -1deg; }
-  .evidenceCardWrapper:nth-child(5n + 4) { --rotation: 4deg; margin-block-start: 1rem; }
-  .evidenceCardWrapper:nth-child(5n + 5) { --rotation: -2deg; margin-block-start: -1rem; }
-  .evidenceCardWrapper { transform: rotate(var(--rotation)); }
-}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .evidenceCardWrapper > *,
+  .evidenceCardWrapper::before {
+    transition: transform 180ms ease-out;
+  }
 
-@media (min-width: 601px) and (hover: hover) and (pointer: fine) {
-  .evidenceCardWrapper:hover {
-    transform: scale(1.05);
+  .evidenceCardWrapper:hover:not([data-dragging]) {
     z-index: 10;
-    transition-delay: 0s;
+  }
+
+  .evidenceCardWrapper:hover:not([data-dragging]) > *,
+  .evidenceCardWrapper:hover:not([data-dragging])::before {
+    transform: translateY(-4px);
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .evidenceCardWrapper { transition: none; }
-  .evidenceCardWrapper[data-unread] { animation: none; }
+  .evidenceCardWrapper[data-unread]::before { animation: none; }
 }
 
 .overlayClone {
   pointer-events: none;
-  transform: scale(1.05);
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 

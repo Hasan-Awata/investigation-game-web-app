@@ -27,6 +27,20 @@
   user-select: none;
 }
 
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .previewFrame [data-cassette-reel] {
+    animation: cassettePreviewSpin 1.4s linear infinite paused;
+  }
+
+  :hover:not([data-dragging]) > .previewFrame [data-cassette-reel] {
+    animation-play-state: running;
+  }
+}
+
+@keyframes cassettePreviewSpin {
+  to { transform: rotate(1turn); }
+}
+
 /* Keep the cassette shell and its bottom strip, with the title printed in that strip. */
 .preview :global(.dark) > div > button,
 .preview [class~='truncate'],
