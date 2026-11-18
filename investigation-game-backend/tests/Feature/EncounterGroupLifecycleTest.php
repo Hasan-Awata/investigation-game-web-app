@@ -180,7 +180,7 @@ class EncounterGroupLifecycleTest extends TestCase
             ->where('question_id', $nextQuestion->id)->where('user_id', $thirdPlayer->id)->value('left_at'));
     }
 
-    public function test_maximum_strikes_fail_parallel_groups_and_stale_jobs_cannot_finalize(): void
+    public function test_depleted_trust_fails_parallel_groups_and_stale_jobs_cannot_finalize(): void
     {
         Queue::fake();
         $fixture = $this->parallelEncounterFixture(firstChoiceOutcomes: ['trust_loss' => 100]);

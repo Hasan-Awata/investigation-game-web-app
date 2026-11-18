@@ -2,50 +2,97 @@
 
 namespace Tests\Feature;
 
-use App\Models\GameCase;
 use App\Models\User;
-use App\Services\GameRoomService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use LogicException;
 use Tests\TestCase;
 
 class ManagementTrustMigrationTest extends TestCase
 {
-    public function test_activation_preserves_progress_and_converts_legacy_authored_penalties(): void
+    private const CONNECTION = 'trust_migration';
+
+    private const ATTEMPTS_MIGRATION = '2026_11_18_000000_create_room_submission_attempts_table';
+
+    private string $originalConnection;
+
+    protected function setUp(): void
     {
-        $originalConnection = DB::getDefaultConnection();
-        config(['database.connections.trust_migration' => ['driver' => 'sqlite', 'database' => ':memory:', 'foreign_key_constraints' => true]]);
-        DB::setDefaultConnection('trust_migration');
+        parent::setUp();
 
-        try {
-            $migration = database_path('migrations/2026_11_18_000000_replace_strikes_with_management_trust.php');
-            $priorMigrations = array_filter(glob(database_path('migrations/*.php')), fn (string $file) => basename($file) < basename($migration));
-            $this->assertSame(0, Artisan::call('migrate', ['--path' => array_values($priorMigrations), '--realpath' => true]));
+        $this->originalConnection = DB::getDefaultConnection();
+        config(['database.connections.'.self::CONNECTION => ['driver' => 'sqlite', 'database' => ':memory:', 'foreign_key_constraints' => true]]);
+        DB::setDefaultConnection(self::CONNECTION);
+        $this->assertSame(0, Artisan::call('migrate'));
+    }
 
-            $host = User::factory()->create(['username' => 'migration-host']);
-            $caseId = DB::table('cases')->insertGetId(['title' => 'Legacy case', 'story' => 'Story', 'XP_on_solve' => 0, 'max_strikes' => 3]);
-            $activeId = DB::table('game_rooms')->insertGetId(['case_id' => $caseId, 'host_user_id' => $host->id, 'invite_code' => 'ACTIVE', 'status' => 'active', 'strikes' => 2]);
-            $failedId = DB::table('game_rooms')->insertGetId(['case_id' => $caseId, 'host_user_id' => $host->id, 'invite_code' => 'FAILED', 'status' => 'failed', 'strikes' => 3]);
-            $zoneId = DB::table('zones')->insertGetId(['case_id' => $caseId, 'title' => 'Zone', 'order_index' => 1]);
-            $levelId = DB::table('levels')->insertGetId(['zone_id' => $zoneId, 'title' => 'Interview', 'details' => 'Details', 'order_index' => 1, 'presentation_type' => 'interrogation']);
-            $questionId = DB::table('questions')->insertGetId(['level_id' => $levelId, 'text' => 'Question', 'order_index' => 1]);
-            $choiceId = DB::table('choices')->insertGetId(['question_id' => $questionId, 'text' => 'Choice', 'outcomes' => '{"gives_strike":true,"feedback":"Keep this"}']);
-            DB::table('room_users')->insert(['room_id' => $activeId, 'user_id' => $host->id, 'role' => 'host', 'joined_at' => now()]);
-            DB::table('case_user')->insert(['case_id' => $caseId, 'user_id' => $host->id, 'status' => 'failed_strikes']);
+    protected function tearDown(): void
+    {
+        DB::setDefaultConnection($this->originalConnection);
+        DB::purge(self::CONNECTION);
 
-            $this->assertSame(0, Artisan::call('migrate', ['--path' => [$migration], '--realpath' => true]));
-            $this->assertDatabaseHas('game_rooms', ['id' => $activeId, 'status' => 'active', 'management_trust' => 100]);
-            $this->assertDatabaseHas('room_users', ['room_id' => $activeId, 'user_id' => $host->id]);
-            $this->assertDatabaseHas('game_rooms', ['id' => $failedId, 'status' => 'failed', 'management_trust' => null]);
-            $this->assertDatabaseHas('case_user', ['case_id' => $caseId, 'user_id' => $host->id, 'status' => 'failed_trust']);
-            $this->assertSame(['feedback' => 'Keep this', 'trust_loss' => 34], json_decode(DB::table('choices')->where('id', $choiceId)->value('outcomes'), true));
-            $this->assertFalse(Schema::hasColumn('cases', 'max_strikes'));
-            $this->assertFalse(Schema::hasColumn('game_rooms', 'strikes'));
-            $this->assertSame(100, app(GameRoomService::class)->createRoom(GameCase::findOrFail($caseId), $host)->value->management_trust);
-        } finally {
-            DB::setDefaultConnection($originalConnection);
-            DB::purge('trust_migration');
-        }
+        parent::tearDown();
+    }
+
+    public function test_fresh_schema_defaults_to_full_trust(): void
+    {
+        $host = User::factory()->create();
+        $case = DB::table('cases')->insertGetId(['title' => 'Case', 'story' => 'Story', 'XP_on_solve' => 0]);
+        $room = DB::table('game_rooms')->insertGetId(['case_id' => $case, 'host_user_id' => $host->id, 'invite_code' => 'ACTIVE']);
+
+        $this->assertDatabaseHas('game_rooms', ['id' => $room, 'management_trust' => 100]);
+        $this->assertTrue(Schema::hasTable('room_submission_attempts'));
+    }
+
+    public function test_upgraded_schema_preserves_trust_progress_and_attempts(): void
+    {
+        $this->markPriorBaseline();
+        DB::table('migrations')->insert(['migration' => '2026_11_18_000000_prior_trust_upgrade', 'batch' => 2]);
+
+        $host = User::factory()->create();
+        $case = DB::table('cases')->insertGetId(['title' => 'Case', 'story' => 'Story', 'XP_on_solve' => 0]);
+        $active = ['case_id' => $case, 'host_user_id' => $host->id, 'invite_code' => 'ACTIVE', 'status' => 'active', 'management_trust' => 66];
+        $room = DB::table('game_rooms')->insertGetId($active);
+        $membership = ['room_id' => $room, 'user_id' => $host->id, 'role' => 'host'];
+        DB::table('room_users')->insert($membership + ['joined_at' => now()]);
+
+        $terminal = array_replace($active, ['invite_code' => 'FAILED', 'status' => 'failed', 'management_trust' => 0]);
+        $failedRoom = DB::table('game_rooms')->insertGetId($terminal + ['final_stats' => '{"xp_gained":0}']);
+        DB::table('case_user')->insert(['case_id' => $case, 'user_id' => $host->id, 'status' => 'failed_trust']);
+
+        $attempt = [
+            'room_id' => $room,
+            'user_id' => $host->id,
+            'action' => 'evidence_tray',
+            'attempt_id' => '2eee4806-60de-4887-8d06-b49c1c4b9f7e',
+            'payload_hash' => str_repeat('a', 64),
+            'result' => '{"management_trust":66}',
+        ];
+        DB::table('room_submission_attempts')->insert($attempt);
+
+        $this->assertSame(0, Artisan::call('migrate'));
+        $this->assertDatabaseHas('migrations', ['migration' => self::ATTEMPTS_MIGRATION]);
+        $this->assertDatabaseHas('game_rooms', $active);
+        $this->assertDatabaseHas('game_rooms', $terminal);
+        $this->assertDatabaseHas('room_users', $membership);
+        $this->assertDatabaseHas('room_submission_attempts', $attempt);
+        $this->assertSame('{"xp_gained":0}', DB::table('game_rooms')->where('id', $failedRoom)->value('final_stats'));
+        $this->assertDatabaseHas('case_user', ['case_id' => $case, 'user_id' => $host->id, 'status' => 'failed_trust']);
+    }
+
+    public function test_incomplete_prior_upgrade_requires_the_previous_release(): void
+    {
+        $this->markPriorBaseline();
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('Complete the Management Trust migration on the previous release');
+        Artisan::call('migrate');
+    }
+
+    private function markPriorBaseline(): void
+    {
+        DB::table('migrations')->where('migration', self::ATTEMPTS_MIGRATION)->delete();
+        DB::table('migrations')->insert(['migration' => '2026_08_02_065959_prior_baseline', 'batch' => 1]);
     }
 }

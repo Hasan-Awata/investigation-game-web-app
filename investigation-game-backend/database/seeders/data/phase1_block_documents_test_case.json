@@ -4,7 +4,6 @@
     "story": "A synthetic case file whose entire purpose is to exercise every block type in the Phase 1 universal document engine. Twelve documents covering all sixteen block types across all five themes. Safe to delete; contains no real content.",
     "min_player_XP": 0,
     "XP_on_solve": 1000,
-    "max_strikes": 3,
     "rating_stars": 5.0,
     "age_rating": "Unrated",
     "estimated_playtime": "5 Minutes",

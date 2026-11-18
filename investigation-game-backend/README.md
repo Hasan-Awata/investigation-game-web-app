@@ -9,6 +9,12 @@
 
 ## Case bundle setup
 
+### Upgrading to the current schema and bundle format
+
+Fresh databases can run `php artisan migrate` directly. For an existing database that predates Management Trust, back up the database and media, pause application writes and workers, and run `php artisan migrate --force` on the previous Management Trust release (`cc464c2`). Verify that its migration ran using `php artisan migrate:status` before deploying this release and running migrations again. Existing trust balances and investigation progress carry over.
+
+Case imports and exports use bundle format v2. To update a v1 ZIP, import it into an isolated database on the previous Management Trust release and export the resulting case. Keep the original ZIP and upload the new export to this release.
+
 ### Verified local Glasshouse installation
 
 The local milestone uses MySQL, database queue/cache, Reverb and desktop Chromium. Glasshouse is published with zero minimum XP; registration and rewards are unchanged. VPS deployment remains a separate qualification.
@@ -16,7 +22,7 @@ The local milestone uses MySQL, database queue/cache, Reverb and desktop Chromiu
 From this backend directory, build a new output (never overwrite a source):
 
 ```powershell
-php scripts/release-content/build-glasshouse-release.php ../cases/the-glasshouse-files.zip ../cases/glasshouse-local-zero-xp.zip --authoring
+php scripts/release-content/build-glasshouse-release.php ../cases/the-glasshouse-files.zip ../cases/glasshouse-v2-local-zero-xp.zip --authoring
 ```
 
 The adjacent provenance JSON records hashes. The exact reviewed-export input remains supported without `--authoring`. Unknown sources or differing media bytes are rejected.
@@ -25,7 +31,7 @@ Create a dedicated empty local MySQL database, set its name in local `.env`, kee
 
 ```powershell
 php artisan migrate --force
-php artisan case:install-glasshouse ../cases/glasshouse-local-zero-xp.zip --confirm-database=investigation_game_local_release
+php artisan case:install-glasshouse ../cases/glasshouse-v2-local-zero-xp.zip --confirm-database=investigation_game_local_release
 composer run dev
 ```
 

@@ -8,13 +8,14 @@ return new class extends Migration {
     public function up(): void {
         Schema::create('evidences', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('level_id')->constrained('levels')->cascadeOnDelete();
+            $table->foreignId('case_id')->constrained('cases')->cascadeOnDelete();
             $table->string('title');
             $table->text('description')->nullable();
             $table->string('evidence_type');
             $table->string('audio_url')->nullable();
             $table->string('img_url')->nullable();
             $table->text('paragraph')->nullable();
+            $table->boolean('is_initial')->default(false);
             $table->timestamps();
         });
     }

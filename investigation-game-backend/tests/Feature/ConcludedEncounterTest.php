@@ -128,7 +128,7 @@ class ConcludedEncounterTest extends TestCase
 
     public static function outcomes(): array
     {
-        return array_map(fn ($outcome) => [$outcome], ['perfect', 'no_crime', 'partial', 'no_proof', 'incomplete', 'strikes', 'no_crime_strikes', 'encounter_strikes']);
+        return array_map(fn ($outcome) => [$outcome], ['perfect', 'no_crime', 'partial', 'no_proof', 'incomplete', 'verdict_trust_depleted', 'no_crime_trust_depleted', 'encounter_trust_depleted']);
     }
 
     #[DataProvider('outcomes')]
@@ -138,7 +138,7 @@ class ConcludedEncounterTest extends TestCase
         $host = User::factory()->create(['username' => 'host']);
         $other = User::factory()->create(['username' => 'other']);
         $case = GameCase::create(['title' => 'Verdict', 'story' => 'Story', 'XP_on_solve' => 100]);
-        $guilty = Character::create(['case_id' => $case->id, 'name' => 'Guilty', 'is_initial' => $outcome !== 'incomplete', 'is_guilty' => !in_array($outcome, ['no_crime', 'no_crime_strikes'])]);
+        $guilty = Character::create(['case_id' => $case->id, 'name' => 'Guilty', 'is_initial' => $outcome !== 'incomplete', 'is_guilty' => !in_array($outcome, ['no_crime', 'no_crime_trust_depleted'])]);
         $innocent = Character::create(['case_id' => $case->id, 'name' => 'Innocent', 'is_initial' => true, 'is_guilty' => false]);
         Character::create(['case_id' => $case->id, 'name' => 'Second innocent', 'is_guilty' => false]);
         if ($outcome === 'no_proof') Evidence::create(['case_id' => $case->id, 'title' => 'Missing proof', 'evidence_type' => 'document', 'is_vital_for_conviction' => true]);
@@ -165,17 +165,17 @@ class ConcludedEncounterTest extends TestCase
         $unrelatedRoom = $rooms->createRoom($case, $unrelatedPlayer)->value;
         $unrelatedGroup = $service->start($unrelatedRoom, $levels[0], $unrelatedPlayer)->value;
         $unrelatedState = $unrelatedGroup->fresh()->getAttributes();
-        if (in_array($outcome, ['strikes', 'no_crime_strikes'], true)) {
+        if (in_array($outcome, ['verdict_trust_depleted', 'no_crime_trust_depleted'], true)) {
             $room->update(['management_trust' => 25]);
         }
-        if ($outcome === 'encounter_strikes') {
+        if ($outcome === 'encounter_trust_depleted') {
             $this->travel(6)->seconds();
             $jobs[0]->handle($service);
         } else {
             $submitted = match ($outcome) {
                 'perfect' => [$guilty->id],
                 'partial' => [$guilty->id, $innocent->id],
-                'no_crime_strikes' => [$innocent->id],
+                'no_crime_trust_depleted' => [$innocent->id],
                 default => [],
             };
             $this->actingAs($host)->postJson("/api/rooms/{$room->id}/suspects/submit", ['guilty_character_ids' => $submitted])->assertOk();
@@ -201,7 +201,7 @@ class ConcludedEncounterTest extends TestCase
         $this->assertSame($history, DB::table('case_user')->orderBy('id')->get()->toJson());
         $this->assertSame($unrelatedState, $unrelatedGroup->fresh()->getAttributes());
         $this->assertSame(1, $unrelatedGroup->members()->whereNull('left_at')->count());
-        $this->assertSame($outcome === 'encounter_strikes' ? 1 : 0, $room->questionResolutions()->count());
+        $this->assertSame($outcome === 'encounter_trust_depleted' ? 1 : 0, $room->questionResolutions()->count());
         $this->assertSame(0, $room->completedLevels()->count());
         $this->assertSame(0, DB::table('encounter_question_voters')->whereIn('encounter_group_id', collect($groups)->pluck('id'))->whereNull('left_at')->count());
         $newRoom = $rooms->createRoom($case, $host)->value;

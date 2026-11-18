@@ -46,7 +46,7 @@ class CaseBundleFactory
     public static function minimalManifest(array $overrides = []): array
     {
         $manifest = [
-            'format_version' => 1,
+            'format_version' => 2,
             'case' => [
                 'title' => 'Factory Case',
                 'story' => 'A case built by the test factory.',

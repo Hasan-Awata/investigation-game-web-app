@@ -39,7 +39,8 @@ class CaseManifestValidator
      */
     public function validate(array $manifest, string $extractDir): void
     {
-        Validator::make($manifest, $this->rules((int) ($manifest['format_version'] ?? 0)), [
+        Validator::make($manifest, $this->rules(), [
+            'format_version.in' => 'Case bundles must use format version 2. Export the case again from a release that can open your bundle.',
             'zones.*.levels.*.nodes.*.audio.prohibited' => 'Node audio is not supported. Use audio evidence instead.',
         ])->validate();
 
@@ -90,19 +91,18 @@ class CaseManifestValidator
         return $errors;
     }
 
-    private function rules(int $version): array
+    private function rules(): array
     {
         return [
-            'format_version' => ['required', 'integer', 'in:1,2'],
+            'format_version' => ['required', 'integer', 'in:2'],
 
-            'case' => ['required', 'array'],
+            'case' => ['required', 'array:title,story,map,map_url,cover,min_player_XP,XP_on_solve,rating_stars,age_rating,estimated_playtime,difficulty,tags,author_name,is_published'],
             'case.title' => ['required', 'string', 'max:255'],
             'case.story' => ['required', 'string'],
             'case.map' => ['nullable', 'string'],
             'case.cover' => ['nullable', 'string'],
             'case.min_player_XP' => ['nullable', 'integer', 'min:0'],
             'case.XP_on_solve' => ['required', 'integer', 'min:0'],
-            'case.max_strikes' => $version === 1 ? ['nullable', 'integer', 'min:1'] : ['missing'],
             'case.rating_stars' => ['nullable', 'numeric', 'min:0', 'max:5'],
             'case.age_rating' => ['nullable', 'string', 'max:50'],
             'case.estimated_playtime' => ['nullable', 'string', 'max:100'],
@@ -172,10 +172,9 @@ class CaseManifestValidator
             'zones.*.levels.*.nodes.*.choices.*' => ['array'],
             'zones.*.levels.*.nodes.*.choices.*.ref_id' => ['nullable', 'string'],
             'zones.*.levels.*.nodes.*.choices.*.text' => ['required', 'string', 'max:255'],
-            'zones.*.levels.*.nodes.*.choices.*.outcomes' => ['nullable', 'array'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes' => ['nullable', 'array:feedback,trust_loss,next_question_index,unlock_evidence_refs,unlock_levels_refs,unlock_location_point_refs,character_updates'],
             'zones.*.levels.*.nodes.*.choices.*.outcomes.feedback' => ['nullable', 'string'],
-            'zones.*.levels.*.nodes.*.choices.*.outcomes.gives_strike' => $version === 1 ? ['sometimes', 'boolean'] : ['missing'],
-            'zones.*.levels.*.nodes.*.choices.*.outcomes.trust_loss' => $version === 2 ? ['sometimes', 'integer:strict', 'between:0,100'] : ['missing'],
+            'zones.*.levels.*.nodes.*.choices.*.outcomes.trust_loss' => ['sometimes', 'integer:strict', 'between:0,100'],
             'zones.*.levels.*.nodes.*.choices.*.outcomes.next_question_index' => ['nullable', 'integer:strict', 'min:0'],
             'zones.*.levels.*.nodes.*.choices.*.outcomes.unlock_evidence_refs' => ['nullable', 'array', 'list'],
             'zones.*.levels.*.nodes.*.choices.*.outcomes.unlock_evidence_refs.*' => ['required', 'string'],

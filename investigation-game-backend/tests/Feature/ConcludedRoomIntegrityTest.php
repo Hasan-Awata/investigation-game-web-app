@@ -167,8 +167,9 @@ class ConcludedRoomIntegrityTest extends TestCase
         Event::assertDispatchedTimes(ItemsUnlocked::class, $keys ? 1 : 0);
         if ($keys) {
             Event::assertDispatched(ItemsUnlocked::class, function (ItemsUnlocked $event): bool {
-                $payload = $event->broadcastWith();
-                $this->assertArrayNotHasKey('strikes', $payload);
+                $this->assertSame([
+                    'unlocked_evidences', 'unlocked_levels', 'character_updates', 'unlocked_location_point_ids',
+                ], array_keys($event->broadcastWith()));
                 $this->assertSame(90, $event->room->management_trust);
 
                 return true;

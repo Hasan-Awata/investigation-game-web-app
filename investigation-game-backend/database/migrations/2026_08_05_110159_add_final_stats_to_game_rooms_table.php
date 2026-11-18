@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void {
         Schema::table('game_rooms', function (Blueprint $table) {
-            $table->json('final_stats')->nullable()->after('strikes');
+            $table->json('final_stats')->nullable()->after('status');
         });
     }
 

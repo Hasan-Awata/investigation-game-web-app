@@ -12,7 +12,6 @@ use App\Models\Question;
 use App\Models\Zone;
 use App\Services\MediaService;
 use App\Support\Case\CaseManifestValidator;
-use App\Support\Case\LegacyStrikePenalty;
 use App\Support\MetadataImageReferences;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
@@ -460,15 +459,7 @@ class CaseImportService
 
             foreach ($nodes as $index => $nodeData) {
                 foreach ($nodeData['choices'] ?? [] as $choiceData) {
-                    $authoredOutcomes = $choiceData['outcomes'] ?? [];
-                    if ((int) $manifest['format_version'] === 1) {
-                        $authoredOutcomes = LegacyStrikePenalty::convert(
-                            $authoredOutcomes,
-                            (int) ($caseData['max_strikes'] ?? 3),
-                            $levelData['presentation_type'] === 'location',
-                        );
-                    }
-                    $outcomes = $this->mapOutcomes($authoredOutcomes, $maps, $nodeIndexToQuestion);
+                    $outcomes = $this->mapOutcomes($choiceData['outcomes'] ?? [], $maps, $nodeIndexToQuestion);
 
                     $choice = Choice::create([
                         'question_id' => $nodeIndexToQuestion[$index],

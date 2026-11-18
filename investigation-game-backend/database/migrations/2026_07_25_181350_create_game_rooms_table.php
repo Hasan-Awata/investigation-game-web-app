@@ -13,6 +13,7 @@ return new class extends Migration {
             $table->string('invite_code')->unique();
             $table->foreignId('current_level_id')->nullable()->constrained('levels')->nullOnDelete();
             $table->string('status')->default('active'); // e.g., active, failed, solved
+            $table->unsignedTinyInteger('management_trust')->nullable()->default(100);
             $table->timestamps();
         });
     }

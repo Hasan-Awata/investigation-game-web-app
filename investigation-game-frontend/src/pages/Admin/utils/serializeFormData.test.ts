@@ -32,14 +32,14 @@ describe('serializeFormData', () => {
   it('encodes nested objects as bracket paths', () => {
     const fd = serializeFormData({
       choices: [
-        { text: 'A', outcomes: { gives_strike: true, feedback: 'nope' } },
-        { text: 'B', outcomes: { gives_strike: false } },
+        { text: 'A', outcomes: { trust_loss: 34, feedback: 'nope' } },
+        { text: 'B', outcomes: { trust_loss: 0 } },
       ],
     });
     expect(fd.get('choices[0][text]')).toBe('A');
-    expect(fd.get('choices[0][outcomes][gives_strike]')).toBe('1');
+    expect(fd.get('choices[0][outcomes][trust_loss]')).toBe('34');
     expect(fd.get('choices[0][outcomes][feedback]')).toBe('nope');
-    expect(fd.get('choices[1][outcomes][gives_strike]')).toBe('0');
+    expect(fd.get('choices[1][outcomes][trust_loss]')).toBe('0');
   });
 
   it('serializes metadata as a single raw JSON string', () => {

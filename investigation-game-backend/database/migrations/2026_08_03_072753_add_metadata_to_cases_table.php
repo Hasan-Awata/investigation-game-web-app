@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void {
         Schema::table('cases', function (Blueprint $table) {
-            $table->decimal('rating_stars', 3, 1)->default(5.0)->after('max_strikes');
+            $table->decimal('rating_stars', 3, 1)->default(5.0)->after('XP_on_solve');
             $table->string('age_rating')->default('Unrated')->after('rating_stars');
             $table->string('estimated_playtime')->nullable()->after('age_rating');
             $table->string('difficulty')->default('Standard')->after('estimated_playtime');

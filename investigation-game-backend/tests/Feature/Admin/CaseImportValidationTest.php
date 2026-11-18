@@ -62,7 +62,7 @@ class CaseImportValidationTest extends TestCase
     }
 
     #[DataProvider('malformedFields')]
-    public function test_malformed_fields_are_rejected_before_persistence(string $field, mixed $value): void
+    public function test_malformed_fields_are_rejected_before_persistence(string $field, mixed $value, ?string $errorField = null): void
     {
         $manifest = CaseBundleFactory::minimalManifest([
             'evidences' => [['title' => 'Photo', 'evidence_type' => 'image']],
@@ -74,7 +74,7 @@ class CaseImportValidationTest extends TestCase
         $path = CaseBundleFactory::build($manifest);
 
         try {
-            $this->importBundle($path)->assertUnprocessable()->assertJsonValidationErrors($field);
+            $this->importBundle($path)->assertUnprocessable()->assertJsonValidationErrors($errorField ?? $field);
             $this->assertDatabaseCount('cases', 0);
             $this->assertDirectoryDoesNotExist(public_path('assets/cases'));
             $this->assertSame([], Storage::disk('local')->allFiles());
@@ -107,7 +107,7 @@ class CaseImportValidationTest extends TestCase
         }
         foreach (['evidences.0.description', 'characters.0.background', 'zones.0.description',
             'characters.0.is_initial', 'characters.0.is_guilty', 'evidences.0.evidence_type',
-            "{$choice}.text", "{$choice}.outcomes.feedback", "{$choice}.outcomes.gives_strike",
+            "{$choice}.text", "{$choice}.outcomes.feedback", "{$choice}.outcomes.trust_loss",
             "{$choice}.outcomes.character_updates.0.ref_id", "{$choice}.outcomes.character_updates.0.is_unlocked",
             "{$choice}.outcomes.character_updates.0.status", 'investigation_requests.0.required_evidence_refs.0',
             "{$choice}.requirements.required_choice_refs.0"] as $field) {
@@ -115,6 +115,12 @@ class CaseImportValidationTest extends TestCase
         }
         yield 'missing update reference' => ["{$choice}.outcomes.character_updates.0.ref_id", null];
         yield 'invalid update status' => ["{$choice}.outcomes.character_updates.0.status", 'bogus'];
+        yield 'unknown case field' => ['case.unrecognized', true, 'case'];
+        yield 'unknown outcome field' => ["{$choice}.outcomes.unrecognized", true, "{$choice}.outcomes"];
+        foreach ([-1, 101, 2.5, '5', true, null] as $value) {
+            yield 'invalid trust loss '.json_encode($value) => ["{$choice}.outcomes.trust_loss", $value];
+        }
+        yield 'positive trust loss on a location choice' => ["{$choice}.outcomes.trust_loss", 5];
         yield 'node keys must be indexes' => ['zones.0.levels.0.nodes', ['node' => ['text' => 'Hello']]];
         foreach ([-1, 1, 1.5, true, false, 1.0, '0', 'missing', [0]] as $value) {
             yield 'next index '.json_encode($value, JSON_PRESERVE_ZERO_FRACTION) => ["{$choice}.outcomes.next_question_index", $value];
@@ -142,8 +148,22 @@ class CaseImportValidationTest extends TestCase
     {
         return [
             ['{broken', 'file'], ['null', 'file'], ['42', 'file'], ['"text"', 'file'],
-            ['[]', 'case'], ['{"format_version":1}', 'case'],
+            ['[]', 'case'], ['{"format_version":2}', 'case'],
         ];
+    }
+
+    public function test_unsupported_bundle_version_is_rejected_before_persistence(): void
+    {
+        $path = CaseBundleFactory::build(CaseBundleFactory::minimalManifest(['format_version' => 1]));
+        GameCase::creating(fn () => $this->fail('Unsupported bundles must not reach persistence.'));
+
+        try {
+            $this->importBundle($path)->assertUnprocessable()->assertJsonValidationErrors('format_version');
+            $this->assertDatabaseCount('cases', 0);
+            $this->assertSame([], Storage::disk('local')->allFiles());
+        } finally {
+            unlink($path);
+        }
     }
 
     public function test_legacy_node_audio_is_explicitly_rejected(): void

@@ -72,6 +72,8 @@ class CaseBundleRoundTripTest extends TestCase
         $this->assertSame(1, $case->characters()->count());
         $this->assertSame(1, $case->investigationRequests()->count());
         $this->assertSame(2, $case->levels()->count());
+        $this->assertTrue($case->levels()->with('questions.choices')->get()
+            ->flatMap->questions->flatMap->choices->contains(fn ($choice) => ($choice->outcomes['trust_loss'] ?? null) === 34));
 
         $export = $this->get("/api/admin/cases/{$case->id}/export");
         $export->assertOk();

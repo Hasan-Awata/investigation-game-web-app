@@ -78,12 +78,12 @@ class GlasshousePlayabilityTest extends TestCase
         $this->assertSame([], array_values(array_diff($guilty, $room->getUnlockedCharacterIds())));
         $vital = $this->case->evidences()->where('is_vital_for_conviction', true)->pluck('id')->all();
         $this->assertCount(3, $vital);
-        if ($ending === 'strikes') {
-            for ($strike = 1; $strike <= 4; $strike++) {
+        if ($ending === 'trust_depleted') {
+            for ($verdictAttempt = 1; $verdictAttempt <= 4; $verdictAttempt++) {
                 $result = app(AssessmentService::class)->evaluateFinalVerdict($room, array_slice($guilty, 1), $vital);
                 $this->assertFalse($result->isFailure());
-                $this->assertSame(100 - $strike * 25, $room->fresh()->management_trust);
-                $this->assertSame($strike < 4 ? 'active' : 'failed', $room->fresh()->status->value);
+                $this->assertSame(100 - $verdictAttempt * 25, $room->fresh()->management_trust);
+                $this->assertSame($verdictAttempt < 4 ? 'active' : 'failed', $room->fresh()->status->value);
             }
             $this->assertSame(0, $this->player->fresh()->XP);
             $this->assertDatabaseHas('case_user', ['user_id' => $this->player->id, 'status' => 'failed_trust']);
@@ -112,7 +112,7 @@ class GlasshousePlayabilityTest extends TestCase
             'contractor' => [['choice_238', 'choice_241', 'choice_245']],
             'return to ledger' => [['choice_238', 'choice_242', 'choice_244', 'choice_ledger_return', 'choice_245']],
             'partial verdict' => [['choice_238', 'choice_241', 'choice_245'], 'partial'],
-            'verdict strikes' => [['choice_238', 'choice_241', 'choice_245'], 'strikes'],
+            'verdict depletes trust' => [['choice_238', 'choice_241', 'choice_245'], 'trust_depleted'],
         ];
     }
 
