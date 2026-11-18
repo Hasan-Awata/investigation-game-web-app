@@ -46,14 +46,18 @@
   border-radius: 18px;
 }
 
+.evidenceCardWrapper:has(> :global(.folder-root)) {
+  display: grid;
+}
+
 @keyframes evidenceShine {
   from { opacity: 0.25; }
   to { opacity: 1; }
 }
 
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
-  .evidenceCardWrapper > *,
-  .evidenceCardWrapper::before {
+  .evidenceCardWrapper:not(:has(> :global(.folder-root))) > *,
+  .evidenceCardWrapper:not(:has(> :global(.folder-root)))::before {
     transition: transform 180ms ease-out;
   }
 
@@ -61,8 +65,8 @@
     z-index: 10;
   }
 
-  .evidenceCardWrapper:hover:not([data-dragging]) > *,
-  .evidenceCardWrapper:hover:not([data-dragging])::before {
+  .evidenceCardWrapper:hover:not([data-dragging], :has(> :global(.folder-root))) > *,
+  .evidenceCardWrapper:hover:not([data-dragging], :has(> :global(.folder-root)))::before {
     transform: translateY(-4px);
   }
 }
@@ -73,6 +77,9 @@
 
 .overlayClone {
   pointer-events: none;
+}
+
+.overlayClone:not(:has(> :global(.folder-root))) {
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 

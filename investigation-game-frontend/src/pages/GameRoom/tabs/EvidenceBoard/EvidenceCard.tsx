@@ -43,6 +43,12 @@ export default function EvidenceCard({ evidence, isNew, onInspect }: EvidenceCar
     data: { type: 'EVIDENCE' },
   });
   const unreadLabel = isNew ? t('pages.gameRoom.layout.tabs.unreadIntel') : undefined;
+  const description = evidence.evidence_type === 'document' && evidence.description
+    ? [unreadLabel, evidence.description].filter(Boolean).join(' ')
+    : unreadLabel;
+  const inspect = () => {
+    if (!isDragging) onInspect(evidence);
+  };
 
   return (
     <div
@@ -50,20 +56,18 @@ export default function EvidenceCard({ evidence, isNew, onInspect }: EvidenceCar
       {...listeners}
       {...attributes}
       aria-label={evidence.title || t('pages.gameRoom.evidence.modal.title')}
-      aria-description={unreadLabel}
+      aria-description={description}
       data-unread={isNew || undefined}
       data-dragging={isDragging || undefined}
       className={styles.evidenceCardWrapper}
-      onClick={() => {
-        if (!isDragging) onInspect(evidence);
-      }}
+      onClick={inspect}
       onKeyDown={event => {
         if (event.key !== 'Enter' && event.key !== ' ') {
           listeners?.onKeyDown?.(event);
           return;
         }
         event.preventDefault();
-        if (!event.repeat && !isDragging) onInspect(evidence);
+        if (!event.repeat) inspect();
       }}
     >
       <EvidenceCardContent evidence={evidence} />

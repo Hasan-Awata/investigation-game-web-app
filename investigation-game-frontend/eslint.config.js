@@ -19,4 +19,11 @@ export default defineConfig([
       globals: globals.browser,
     },
   },
+  {
+    files: ['src/components/react-bits/Folder.tsx'],
+    rules: {
+      // Keep the React Bits registry source intact.
+      'react-hooks/refs': 'off',
+    },
+  },
 ])

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 import type { DocBlock, DocDocument } from '@/types/evidence/doc';
 import { DEFAULT_PAGE, DOC_OVERLAY_BLOCK_TYPES, ensureBlockIds } from '@/types/evidence/doc';
 import { getBlockComponent } from './blocks';
@@ -10,6 +10,7 @@ import './UniversalDocViewer.css';
 interface DocSheetProps {
   doc: DocDocument;
   evidenceId: number;
+  sheetRef?: Ref<HTMLElement>;
   /**
    * Drops the fixed 800x1131 stage so the sheet can sit in a fluid container.
    * Used by the admin authoring canvas (PlansEvidence.md section 3.3); the game
@@ -50,6 +51,7 @@ const OVERLAY = new Set<string>(DOC_OVERLAY_BLOCK_TYPES);
 export default function DocSheet({
   doc,
   evidenceId,
+  sheetRef,
   fluid = false,
   cellWrapper,
   interactiveOverlay = false,
@@ -80,6 +82,7 @@ export default function DocSheet({
 
   return (
     <article
+      ref={sheetRef}
       className={`doc-sheet${fluid ? ' doc-sheet--fluid' : ''}`}
       data-theme={doc.theme}
       style={sheetStyle}

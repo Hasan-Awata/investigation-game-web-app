@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface Props {
   children: ReactNode;
+  fallback?: ReactNode;
   fallbackMessage?: string;
   isLocal?: boolean;
 }
@@ -38,7 +39,8 @@ export default class ErrorBoundary extends Component<Props, State> {
 
   public render() {
     if (this.state.hasError) {
-      const { isLocal, fallbackMessage } = this.props;
+      const { isLocal, fallback, fallbackMessage } = this.props;
+      if (fallback !== undefined) return fallback;
 
       // Localized Quarantine UI
       if (isLocal) {
