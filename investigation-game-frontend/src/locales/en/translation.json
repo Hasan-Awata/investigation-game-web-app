@@ -195,7 +195,7 @@
             "stenoSignature": "Court Reporter / Recording Officer"
           },
           "media": {
-            "audioNotSupported": "Your browser does not support audio playback.",
+            "imageLoadFailed": "This evidence image could not be loaded.",
             "imageAltFallback": "Evidence photograph",
             "noMediaFound": "No media is attached to this evidence file."
           },

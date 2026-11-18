@@ -134,6 +134,11 @@
 }
 
 .polaroid-style .evidence-desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
   color: #333333;
   font-family: var(--font-primary);
   font-size: 0.9rem;

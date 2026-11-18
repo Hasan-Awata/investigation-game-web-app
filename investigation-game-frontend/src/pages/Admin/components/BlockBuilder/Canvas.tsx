@@ -28,7 +28,6 @@ export function Canvas({ doc, evidenceId, selectedBlockId, onBlockSelect }: Canv
         evidenceId={evidenceId}
         fluid
         cellWrapper={cellWrapper}
-        interactiveOverlay
       />
     </div>
   );

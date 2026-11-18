@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import type { TerminalBlock, TerminalDocument } from '@/types/evidence/terminal';
 import { ensureTerminalBlockIds } from '@/types/evidence/terminal';
-import { getBlockComponent } from './blocks/blocks.registry';
 import TerminalBlockRenderer from './TerminalBlockRenderer';
 import './themes.css';
 import './TerminalViewer.css';
@@ -13,26 +12,16 @@ interface TerminalSheetProps {
   evidenceId: number;
   fluid?: boolean;
   cellWrapper?: (content: ReactNode, block: TerminalBlock) => ReactNode;
-  interactiveOverlay?: boolean;
 }
-
-const OVERLAY = new Set<string>([]);
 
 export default function TerminalSheet({
   doc,
   evidenceId,
   fluid = false,
   cellWrapper,
-  interactiveOverlay = false,
 }: TerminalSheetProps) {
   const { t } = useTranslation();
-  const { overlayBlocks, flowBlocks } = useMemo(() => {
-    const all = ensureTerminalBlockIds(doc.blocks ?? []);
-    return {
-      overlayBlocks: all.filter((b: TerminalBlock) => OVERLAY.has(b.type)),
-      flowBlocks: all.filter((b: TerminalBlock) => !OVERLAY.has(b.type)),
-    };
-  }, [doc.blocks]);
+  const blocks = useMemo(() => ensureTerminalBlockIds(doc.blocks ?? []), [doc.blocks]);
 
   return (
     <article
@@ -49,21 +38,9 @@ export default function TerminalSheet({
       </div>
 
       <div className="terminal-window__body">
-        {overlayBlocks.length > 0 && (
-          <div className="terminal-sheet-overlay" aria-hidden={interactiveOverlay ? undefined : true}>
-            {overlayBlocks.map((b) => {
-              const Comp = b.type === 'unsupported' ? undefined : getBlockComponent(b.type);
-              const content = Comp
-                ? <Comp key={b.id} block={b} ctx={{ evidenceId }} />
-                : <div key={b.id} className="tb-unsupported">[Unsupported block type: {b.type === 'unsupported' ? b.props.originalType : b.type}]</div>;
-              return cellWrapper && interactiveOverlay ? cellWrapper(content, b) : content;
-            })}
-          </div>
-        )}
-
         <div className="terminal-sheet-body">
-          {flowBlocks.length > 0 ? (
-            <TerminalBlockRenderer blocks={flowBlocks} ctx={{ evidenceId }} cellWrapper={cellWrapper} />
+          {blocks.length > 0 ? (
+            <TerminalBlockRenderer blocks={blocks} ctx={{ evidenceId }} cellWrapper={cellWrapper} />
           ) : (
             <p className="terminal-sheet-empty">{t('pages.gameRoom.evidence.viewers.terminal.emptySession')}</p>
           )}

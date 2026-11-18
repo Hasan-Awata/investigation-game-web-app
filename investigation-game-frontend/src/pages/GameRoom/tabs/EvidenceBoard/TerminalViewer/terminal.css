@@ -64,13 +64,6 @@
   max-width: none;
 }
 
-.terminal-sheet-overlay {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 10;
-}
-
 .terminal-sheet-body {
   position: relative;
   z-index: 1;

@@ -541,7 +541,7 @@ export function CassettePlayer({
         }}
         preload={preload}
         ref={audioRef}
-        src={audioSrc}
+        src={audioSrc || undefined}
       >
         {resolvedCaptionTracks.map((captionTrack) => (
           <track

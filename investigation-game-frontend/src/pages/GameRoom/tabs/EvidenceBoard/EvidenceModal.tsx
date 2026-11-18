@@ -1,10 +1,11 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types/evidence';
 import UniversalDocViewer from './DocViewer/UniversalDocViewer';
 import TerminalViewer from './TerminalViewer/TerminalViewer';
 import TestimonyViewer from './Viewers/TestimonyViewer';
 import MediaViewer from './Viewers/MediaViewer';
+import EvidenceDialog from './EvidenceDialog';
 import AudioEvidenceModal from './AudioEvidenceModal';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { EvidenceContext } from './EvidenceContext';
@@ -25,93 +26,50 @@ export default function EvidenceModal({ evidence, onClose }: EvidenceModalProps)
 function ActiveEvidenceModal({ evidence, onClose }: { evidence: Evidence; onClose: () => void }) {
   const { t } = useTranslation();
   const titleId = useId();
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [closing, setClosing] = useState(false);
-
-  useEffect(() => {
-    const previousFocus = document.activeElement;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    dialogRef.current?.focus();
-    return () => {
-      if (closeTimer.current) clearTimeout(closeTimer.current);
-      document.body.style.overflow = previousOverflow;
-      if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
-    };
-  }, []);
-
-  const toggleFullscreen = () => setIsFullscreen(value => !value);
-  const handleClose = () => {
-    if (closing) return;
-    setClosing(true);
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
-      onClose();
-      return;
-    }
-    closeTimer.current = setTimeout(onClose, 160);
-  };
-
-  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
-    if (event.key === 'Escape') {
-      event.stopPropagation();
-      handleClose();
-    }
-    if (event.key !== 'Tab') return;
-    const controls = Array.from(dialogRef.current?.querySelectorAll<HTMLElement>(
-      'button:not(:disabled), a[href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), audio[controls], video[controls], [tabindex="0"]'
-    ) ?? []).filter(element => !element.closest('[hidden], [inert]'));
-    const first = controls[0];
-    const last = controls[controls.length - 1];
-    if (!first) { event.preventDefault(); return; }
-    if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
-      event.preventDefault(); last.focus();
-    } else if (!event.shiftKey && (document.activeElement === last || document.activeElement === dialogRef.current)) {
-      event.preventDefault(); first.focus();
-    }
-  };
+  const title = evidence.title || t('pages.gameRoom.evidence.modal.title');
+  const closeLabel = t('pages.gameRoom.evidence.modal.close');
+  const fullscreenLabel = t(isFullscreen ? 'pages.gameRoom.evidence.modal.minimize' : 'pages.gameRoom.evidence.modal.fullscreen');
 
   const renderEvidenceContent = () => {
-    const ViewerComponents: Record<string, React.ElementType> = {
-      forensic: UniversalDocViewer,
-      document: UniversalDocViewer,
-      digital: TerminalViewer,
-      testimony: TestimonyViewer,
-      image: MediaViewer,
-    } as const;
-
-    const Viewer = ViewerComponents[evidence.evidence_type as keyof typeof ViewerComponents];
-
-    if (Viewer) {
-      return <Viewer evidence={evidence as { id: number; metadata?: unknown }} />;
+    switch (evidence.evidence_type) {
+      case 'document':
+      case 'forensic':
+        return <UniversalDocViewer evidence={evidence} />;
+      case 'digital':
+        return <TerminalViewer evidence={evidence} />;
+      case 'testimony':
+        return <TestimonyViewer evidence={evidence} />;
+      case 'image':
+        return <MediaViewer evidence={evidence} />;
     }
 
     return (
-      <section role="status" style={{ padding: '2rem', color: 'var(--text-primary, #f5f5f5)' }}>
-        <h2>{evidence.title || 'Evidence'}</h2>
-        {evidence.description && <p>{evidence.description}</p>}
+      <section role="status" className={styles.fallback}>
+        <h2 dir="auto">{title}</h2>
+        {evidence.description && <p dir="auto">{evidence.description}</p>}
       </section>
     );
   };
 
   return (
-    <div className={styles.evidenceModalOverlay} data-closing={closing || undefined} onClick={handleClose}>
-      <div 
-        ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} onKeyDown={handleKeyDown}
-        className={`${styles.evidenceModalContent} ${isFullscreen ? styles.fullscreenModal : ''}`}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <EvidenceDialog
+      titleId={titleId}
+      className={isFullscreen ? styles.evidenceModalContent + ' ' + styles.fullscreenModal : styles.evidenceModalContent}
+      animated
+      onClose={onClose}
+    >
+      {dismiss => <>
         <header className={styles.modalHeader}>
-          <h2 id={titleId} className={styles.modalTitle}>{evidence.title || t('pages.gameRoom.evidence.modal.title')}</h2>
+          <h2 id={titleId} className={styles.modalTitle}><bdi>{title}</bdi></h2>
 
           <div className={styles.modalActions}>
             <button
               className={styles.modalFullscreenBtn}
-              onClick={toggleFullscreen}
+              onClick={() => setIsFullscreen(value => !value)}
               type="button" aria-pressed={isFullscreen}
-              aria-label={t(`pages.gameRoom.evidence.modal.${isFullscreen ? 'minimize' : 'fullscreen'}`)}
-              title={t(`pages.gameRoom.evidence.modal.${isFullscreen ? 'minimize' : 'fullscreen'}`)}
+              aria-label={fullscreenLabel}
+              title={fullscreenLabel}
             >
               {isFullscreen ? (
                 // Inward pointing arrows (Minimize)
@@ -129,10 +87,11 @@ function ActiveEvidenceModal({ evidence, onClose }: { evidence: Evidence; onClos
               )}
             </button>
 
-            <button 
-              className={styles.modalCloseBtn} 
-              onClick={handleClose} 
-              type="button" aria-label={t('pages.gameRoom.evidence.modal.close')} title={t('pages.gameRoom.evidence.modal.close')}
+            <button
+              className={styles.modalCloseBtn}
+              onClick={dismiss}
+              data-evidence-close
+              type="button" aria-label={closeLabel} title={closeLabel}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -152,7 +111,7 @@ function ActiveEvidenceModal({ evidence, onClose }: { evidence: Evidence; onClos
             </EvidenceContext.Provider>
           </ErrorBoundary>
         </div>
-      </div>
-    </div>
+      </>}
+    </EvidenceDialog>
   );
 }

@@ -1,6 +1,13 @@
 .dialog {
-  width: min(554px, calc(100% - 1rem));
-  max-height: calc(100dvh - 1rem);
+  --top-inset: max(0.5rem, env(safe-area-inset-top));
+  --bottom-inset: max(0.5rem, env(safe-area-inset-bottom));
+  --left-inset: max(0.5rem, env(safe-area-inset-left));
+  --right-inset: max(0.5rem, env(safe-area-inset-right));
+  box-sizing: border-box;
+  position: fixed;
+  inset: var(--top-inset) var(--right-inset) var(--bottom-inset) var(--left-inset);
+  width: min(554px, calc(100% - var(--left-inset) - var(--right-inset)));
+  max-height: calc(100dvh - var(--top-inset) - var(--bottom-inset));
   max-width: none;
   margin: auto;
   padding: 12px;

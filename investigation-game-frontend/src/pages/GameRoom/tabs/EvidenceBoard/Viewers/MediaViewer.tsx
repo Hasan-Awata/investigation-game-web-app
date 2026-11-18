@@ -1,126 +1,70 @@
-import React, { useState, useLayoutEffect, useRef } from 'react';
-import { useTranslation } from 'react-i18next'; 
-import type { Evidence } from '@/types/evidence';
-import ViewersContainer from './ViewersContainer';
+import { useState, type SyntheticEvent } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { MediaEvidence } from '@/types/evidence';
 import { assetUrl } from '@/utils/assetUrl';
-import mediaViewer from './MediaViewer.module.css';
+import ViewersContainer from './ViewersContainer';
+import styles from './MediaViewer.module.css';
 
-type MediaEvidence = Extract<Evidence, { evidence_type: 'image' | 'audio' }>;
+type ImageState =
+  | { status: 'loading' | 'error' }
+  | { status: 'loaded'; width: number; height: number };
 
-interface MediaViewerProps {
-  evidence: MediaEvidence;
-}
-
-const MediaViewer: React.FC<MediaViewerProps> = ({ evidence }) => {
+function EvidenceImage({ src, title }: { src: string; title: string }) {
   const { t } = useTranslation();
-  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
-  const [isImageLoaded, setIsImageLoaded] = useState<boolean>(false);
-  
-  const isAudio = evidence.evidence_type === 'audio';
-  const metadataUrl = (evidence.metadata as Record<string, unknown> | null)?.url;
-  const rawMediaUrl = isAudio
-    ? evidence.audio_url || evidence.img_url || (typeof metadataUrl === 'string' ? metadataUrl : undefined)
-    : evidence.img_url || (typeof metadataUrl === 'string' ? metadataUrl : undefined);
-  const mediaUrl = rawMediaUrl ? assetUrl(rawMediaUrl) : '';
+  const [image, setImage] = useState<ImageState>({ status: 'loading' });
 
-  const prevMediaUrlRef = useRef<string | null>(null);
-
-  useLayoutEffect(() => {
-    if (evidence.evidence_type !== 'image' || !mediaUrl) return;
-    
-    // Only reset state if mediaUrl actually changed
-    if (prevMediaUrlRef.current !== mediaUrl) {
-      prevMediaUrlRef.current = mediaUrl;
-      setIsImageLoaded(false);
-      setDimensions(null);
-    }
-
-    let isMounted = true;
-
-    const img = new Image();
-    img.src = mediaUrl;
-
-    img.onload = () => {
-      if (isMounted) {
-        setDimensions({ width: img.naturalWidth, height: img.naturalHeight });
-      }
-    };
-    img.onerror = () => {
-      if (isMounted) {
-        setDimensions({ width: 16, height: 9 });
-      }
-    };
-
-    return () => {
-      isMounted = false;
-    };
-  }, [mediaUrl, evidence.evidence_type]);
-
-  if (!mediaUrl) {
+  if (!src || image.status === 'error') {
     return (
-      <ViewersContainer>
-        <div style={{ color: 'var(--text-secondary)', padding: '2rem', textAlign: 'center', fontFamily: 'var(--font-mono)' }}>
-          {t('pages.gameRoom.evidence.viewers.media.noMediaFound')}
-        </div>
-      </ViewersContainer>
+      <div className={styles.imageUnavailable} role="status">
+        {t(src
+          ? 'pages.gameRoom.evidence.viewers.media.imageLoadFailed'
+          : 'pages.gameRoom.evidence.viewers.media.noMediaFound')}
+      </div>
     );
   }
 
-  const containerStyle = dimensions 
-    ? { aspectRatio: `${dimensions.width} / ${dimensions.height}` }
-    : { minHeight: '300px' };
+  const handleLoad = ({ currentTarget }: SyntheticEvent<HTMLImageElement>) => {
+    const { naturalWidth, naturalHeight } = currentTarget;
+    if (naturalWidth <= 0 || naturalHeight <= 0) {
+      setImage({ status: 'error' });
+      return;
+    }
+    setImage({ status: 'loaded', width: naturalWidth, height: naturalHeight });
+  };
+
+  return (
+    <div
+      className={styles.imageFrame}
+      aria-busy={image.status === 'loading'}
+      style={{ aspectRatio: image.status === 'loaded' ? image.width + ' / ' + image.height : '16 / 9' }}
+    >
+      {image.status === 'loading' && <div className={styles.imageSkeleton} aria-hidden="true" />}
+      <img
+        className={styles.image}
+        data-loaded={image.status === 'loaded' || undefined}
+        src={src}
+        alt={title || t('pages.gameRoom.evidence.viewers.media.imageAltFallback')}
+        onLoad={handleLoad}
+        onError={() => setImage({ status: 'error' })}
+        draggable={false}
+      />
+    </div>
+  );
+}
+
+export default function MediaViewer({ evidence }: { evidence: MediaEvidence }) {
+  const metadataUrl = evidence.metadata?.url;
+  const src = assetUrl(evidence.img_url || (typeof metadataUrl === 'string' ? metadataUrl : ''));
 
   return (
     <ViewersContainer>
-      <div className={mediaViewer['media-viewer-wrapper']}>
-        {!isAudio ? (
-          <div className={mediaViewer['media-image-container']} style={containerStyle}>
-            {!isImageLoaded && <div className={mediaViewer['media-skeleton-loader']} />}
-
-            <img 
-              src={mediaUrl} 
-              alt={evidence.title || t('pages.gameRoom.evidence.viewers.media.imageAltFallback')} 
-              className={mediaViewer['media-full-image']}
-              onLoad={() => setIsImageLoaded(true)}
-              draggable={false} 
-              style={{
-                opacity: isImageLoaded ? 1 : 0,
-              }}
-            />
-          </div>
-        ) : (
-          <div className={mediaViewer['media-audio-container']}>
-            <div className={mediaViewer['audio-visualizer-mock']}></div>
-            <audio controls className={mediaViewer['media-audio-player']}>
-              <source src={mediaUrl} type={getAudioMimeType(mediaUrl)} />
-              {t('pages.gameRoom.evidence.viewers.media.audioNotSupported')}
-            </audio>
-          </div>
-        )}
-
-        <div className={mediaViewer['media-meta-plaque']}>
-          <h3 className={mediaViewer['media-plaque-title']}>{evidence.title}</h3>
-          {evidence.description && (
-            <p className={mediaViewer['media-plaque-desc']}>{evidence.description}</p>
-          )}
+      <div className={styles.viewer}>
+        <EvidenceImage key={src} src={src} title={evidence.title} />
+        <div className={styles.plaque}>
+          <h3 className={styles.title}><bdi>{evidence.title}</bdi></h3>
+          {evidence.description && <p className={styles.description} dir="auto">{evidence.description}</p>}
         </div>
       </div>
     </ViewersContainer>
   );
-};
-
-export default MediaViewer;
-
-function getAudioMimeType(url: string): string | undefined {
-  let pathname: string;
-  try {
-    pathname = new URL(url, window.location.href).pathname.toLowerCase();
-  } catch {
-    pathname = url.split(/[?#]/, 1)[0].toLowerCase();
-  }
-
-  if (pathname.endsWith('.mp3')) return 'audio/mpeg';
-  if (pathname.endsWith('.wav')) return 'audio/wav';
-  if (pathname.endsWith('.ogg')) return 'audio/ogg';
-  return undefined;
 }

@@ -273,7 +273,7 @@
             "stenoSignature": "كاتب المحكمة / مسؤول التسجيل"
           },
           "media": {
-            "audioNotSupported": "متصفحك لا يدعم تشغيل هذا المقطع الصوتي.",
+            "imageLoadFailed": "تعذّر تحميل صورة هذا الدليل.",
             "imageAltFallback": "صورة دليل مصورة",
             "noMediaFound": "لم يتم العثور على وسائط مرتبطة بهذا الملف."
           },

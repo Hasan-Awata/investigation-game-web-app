@@ -1,15 +1,11 @@
-/* =========================================
-   SLEEK PREMIUM MYSTERY: EVIDENCE BOARD TAB
-   ========================================= */
-
 .evidenceBoardContainer {
   display: flex;
   flex-direction: column;
   gap: 2.5rem;
   max-width: var(--game-room-board-max-width, 1200px);
   /* Safe margin pushes it below the header while centering it horizontally */
-  margin: 6.5rem auto 2rem auto; 
-  padding: 2.5rem;
+  margin: 6.5rem auto 2rem;
+  padding: 2.5rem clamp(1rem, 4vw, 2.5rem);
   background-color: var(--bg-dark, #0a0a0c);
   /* Refined subtle dot matrix */
   background-image: radial-gradient(rgba(255, 255, 255, 0.02) 2px, transparent 2px);
@@ -22,31 +18,14 @@
   box-sizing: border-box;
 }
 
-.boardHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(var(--border-light-rgb, 255, 255, 255), 0.1);
-  padding-bottom: 1rem;
-}
+.emptyState { text-align: center; }
 
-.boardMeta {
-  margin: 0;
-  font-family: var(--font-mono, monospace);
-  font-size: 1.15rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-primary, #ffffff);
-  opacity: 1; 
-}
-
-/* --- THE BOARD (Transparent Layout Wrapper) --- */
 .evidenceWorkspace {
   display: flex;
   flex-direction: column;
   flex: 1;
   width: 100%;
-  padding: 1rem 0; /* Ripped out the gray frosted glass / borders / shadows */
+  padding-block: 1rem;
 }
 
 .evidenceScatterGrid { 
@@ -55,7 +34,6 @@
   gap: 2rem; 
   justify-content: center; 
   align-content: flex-start; 
-  /* Add this line to force wrappers to hug their visual cards tightly */
   align-items: center; 
   min-height: 250px;
 }
@@ -64,16 +42,11 @@
 @media (max-width: 1000px) {
   .evidenceBoardContainer {
     margin-top: 1rem; /* Clears safe top margin on mobile since nav goes relative */
-    padding: 1.5rem;
+    padding: 1.5rem clamp(0.75rem, 4vw, 1.5rem);
     border-radius: 16px;
     min-height: auto;
   }
   .evidenceWorkspace {
     padding: 0.5rem 0;
-  }
-  .boardHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 0.75rem;
   }
 }

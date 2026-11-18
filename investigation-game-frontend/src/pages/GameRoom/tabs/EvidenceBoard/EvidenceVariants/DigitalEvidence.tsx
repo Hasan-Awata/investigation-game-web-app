@@ -1,10 +1,10 @@
-import type { Evidence, DigitalEvidence } from '@/types/evidence';
+import type { Evidence } from '@/types/evidence';
 import { isDigitalEvidence } from '@/types/evidence';
 import digitalEvidence from './DigitalEvidence.module.css';
 
 export default function DigitalEvidence({ evidence }: { evidence: Evidence }) {
-  if (!isDigitalEvidence(evidence)) return null;
-  const terminalTheme = evidence.metadata.terminal?.theme ?? 'terminal';
+  const theme = isDigitalEvidence(evidence) ? evidence.metadata.terminal.theme : undefined;
+  const terminalTheme = typeof theme === 'string' && theme ? theme : 'terminal';
 
   return (
     <div className={`${digitalEvidence['digital-variant']} ${digitalEvidence['terminal-card']} terminal-window`} data-theme={terminalTheme}>
@@ -25,8 +25,8 @@ export default function DigitalEvidence({ evidence }: { evidence: Evidence }) {
           <span className={digitalEvidence['terminal-card__prompt-dir']}>:~</span>
           <span className={digitalEvidence['terminal-card__prompt-char']}>$</span>
         </div>
-        <h4 className={digitalEvidence['terminal-card__evidence-title']}>{evidence.title}</h4>
-        {evidence.description && <p className={digitalEvidence['terminal-card__evidence-desc']}>{evidence.description}</p>}
+        <h4 className={digitalEvidence['terminal-card__evidence-title']}><bdi>{evidence.title}</bdi></h4>
+        {evidence.description && <p className={digitalEvidence['terminal-card__evidence-desc']} dir="auto">{evidence.description}</p>}
       </div>
     </div>
   );

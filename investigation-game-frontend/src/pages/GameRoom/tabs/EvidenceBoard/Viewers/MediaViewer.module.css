@@ -1,140 +1,75 @@
-.media-viewer-wrapper {
-  /* --- STANDALONE RULES --- */
-  --media-font-main: var(--font-primary), sans-serif;
-
+.viewer {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-  
-  /* Explicit boundary dimensions */
-  width: 100%;
-  max-width: 900px;
-  min-height: 100%;
-  box-sizing: border-box; 
-  margin: 0 auto;
-  overflow: hidden; 
-  
-  font-family: var(--media-font-main);
-}
-
-/* Isolated reset */
-.media-viewer-wrapper *,
-.media-viewer-wrapper *::before,
-.media-viewer-wrapper *::after {
+  inline-size: 100%;
+  max-inline-size: 900px;
   box-sizing: border-box;
+  margin-inline: auto;
 }
 
-.media-viewer-wrapper h1, 
-.media-viewer-wrapper h2, 
-.media-viewer-wrapper h3, 
-.media-viewer-wrapper p {
-  font-family: inherit;
-  margin-top: 0;
-}
-
-/* --- IMAGE STYLES --- */
-.media-image-container {
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: var(--radius-md);
-  overflow: hidden;
-  border: var(--border-thin);
+.imageFrame {
   position: relative;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Skeleton Loader Style (Added to prevent collapse) */
-.media-skeleton-loader {
-  position: absolute;
-  inset: 0;
-  background-color: var(--bg-skeleton, #e0e0e0);
-  animation: pulse 1.5s infinite ease-in-out;
-  z-index: 1;
-}
-
-.media-full-image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-  transition: opacity 0.4s ease-in-out;
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-}
-
-/* --- AUDIO STYLES --- */
-.media-audio-container {
-  background: rgba(0, 0, 0, 0.5);
-  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-sizing: border-box;
+  background: rgba(var(--bg-dark-rgb), 0.5);
   border: var(--border-thin);
+  border-radius: var(--radius-md);
+}
+
+.imageSkeleton {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-panel);
+  animation: imagePulse 1.5s infinite alternate ease-in-out;
+}
+
+.image {
+  position: absolute;
+  inset: 0;
+  display: block;
+  inline-size: 100%;
+  block-size: 100%;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 400ms ease-in-out;
+}
+
+.image[data-loaded] { opacity: 1; }
+
+.imageUnavailable {
   padding: 2rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.5rem;
+  text-align: center;
+  color: var(--text-secondary);
 }
 
-.audio-visualizer-mock {
-  height: 60px;
-  width: 100%;
-  background: repeating-linear-gradient(
-    90deg, 
-    var(--accent-cyan), 
-    var(--accent-cyan) 3px, 
-    transparent 3px, 
-    transparent 8px
-  );
-  opacity: 0.4;
-  border-radius: 2px;
-}
-
-/* RTL Override: Reverse the gradient animation direction for audio waves */
-[dir="rtl"] .audio-visualizer-mock {
-  background: repeating-linear-gradient(
-    -90deg, 
-    var(--accent-cyan), 
-    var(--accent-cyan) 3px, 
-    transparent 3px, 
-    transparent 8px
-  );
-}
-
-.media-audio-player {
-  width: 100%;
-  outline: none;
-}
-
-/* --- THE PLAQUE (TITLE & DESC) --- */
-.media-meta-plaque {
+.plaque {
   padding: 1.5rem;
-  width: 100%;
-  background: rgba(20, 21, 24, 0.95);
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  /* Use flex to handle alignment logically */
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  background: var(--bg-panel);
+  border-block-start: var(--border-thin);
+  overflow-wrap: anywhere;
+}
+
+.title {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: 1.5rem;
   text-align: center;
 }
 
-.media-plaque-title {
-  margin: 0;
-  color: var(--text-primary);
-  font-family: var(--media-font-main);
-  font-size: 1.5rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+.description {
+  margin: 0.5rem 0 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  text-align: start;
 }
 
-.media-plaque-desc {
-  margin: 0.5rem 0 0 0;
-  color: var(--text-secondary);
-  font-size: 1rem;
-  line-height: 1.5;
-  /* Allow long descriptions to read naturally in the respective language direction */
-  text-align: start; 
-  max-width: 800px;
+@keyframes imagePulse {
+  from { opacity: 0.5; }
+  to { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imageSkeleton { animation: none; }
+  .image { transition: none; }
 }

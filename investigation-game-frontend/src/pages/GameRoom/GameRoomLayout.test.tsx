@@ -325,13 +325,13 @@ it('opens the procedural tray during a drag and sends evidence and characters to
   expect(button('gameRoom.expandPanel')).toHaveAttribute('aria-expanded', 'false');
   vi.spyOn(collapsedDragEdge(), 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 64, 900));
 
-  const title = screen.getByText(evidence.title);
-  const card = title.closest<HTMLElement>('[aria-roledescription="draggable"]')!;
+  const card = screen.getByRole('button', { name: evidence.title });
+  expect(card).toHaveAttribute('aria-roledescription', 'draggable');
   const measure = vi.spyOn(card, 'getBoundingClientRect').mockImplementation(() => {
     expect(button('gameRoom.expandPanel')).toHaveAttribute('aria-expanded', 'false');
     return new DOMRect(10, 20, 80, 40);
   });
-  const evidenceDrag = startDrag(title, evidence.id, { type: 'EVIDENCE' });
+  const evidenceDrag = startDrag(card, evidence.id, { type: 'EVIDENCE' });
   const dragLayout = (handle: HTMLElement) => handle.closest('[data-sidebar-drop-available]');
   expect(dragLayout(button('gameRoom.expandPanel'))).toHaveAttribute('data-sidebar-drop-available', 'true');
   expect(measure).toHaveBeenCalledOnce();
@@ -413,12 +413,27 @@ it('reveals the collapsed top sidebar only for the touch that is dragging', () =
   expect(handlers.addCharacterToTray).not.toHaveBeenCalled();
 });
 
+it('routes a touch-dragged evidence card to the tray using its numeric ID', () => {
+  renderLayout();
+  fireEvent.click(button('pages.gameRoom.layout.tabs.evidences'));
+  fireEvent.click(button('gameRoom.collapsePanel'));
+  vi.spyOn(collapsedDragEdge(), 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 390, 56));
+
+  const card = screen.getByRole('button', { name: evidence.title });
+  const active = startDrag(card, evidence.id, { type: 'EVIDENCE' }, touchEvent('touchstart', 1, 200, 200));
+  fireEvent(document, touchEvent('touchmove', 1, 200, 20));
+  expect(trayButton()).toHaveAttribute('aria-pressed', 'true');
+
+  dropOn(active, 'procedural-tray');
+  expect(handlers.addEvidenceToTray).toHaveBeenCalledExactlyOnceWith(evidence.id);
+});
+
 it('handles a pointer move that reaches the sidebar as the drag activates', () => {
   renderLayout();
   fireEvent.click(button('pages.gameRoom.layout.tabs.evidences'));
   fireEvent.click(button('gameRoom.collapsePanel'));
   vi.spyOn(collapsedDragEdge(), 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 64, 900));
-  const source = screen.getByText(evidence.title);
+  const source = screen.getByRole('button', { name: evidence.title });
   const down = new PointerEvent('pointerdown', { bubbles: true, isPrimary: true, pointerId: 1, clientX: 100, clientY: 100 });
   fireEvent(source, down);
   movePointer(32, 100);

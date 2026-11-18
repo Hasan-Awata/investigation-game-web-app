@@ -1,4 +1,3 @@
-import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import type { Evidence } from '@/types';
 import DocumentEvidence from './EvidenceVariants/DocumentEvidence';
@@ -10,78 +9,72 @@ import DigitalEvidence from './EvidenceVariants/DigitalEvidence';
 import styles from './EvidenceCard.module.css';
 import { useTranslation } from 'react-i18next';
 
-const EvidenceComponents: Record<string, React.FC<{ evidence: Evidence }>> = {
-  document: DocumentEvidence,
-  forensic: ForensicEvidence,
-  testimony: TestimonyEvidence,
-  audio: AudioEvidence,
-  image: ImageEvidence,
-  digital: DigitalEvidence,
-};
+function EvidenceCardContent({ evidence }: { evidence: Evidence }) {
+  const { t } = useTranslation();
+  const { title, description } = evidence;
+  switch (evidence.evidence_type) {
+    case 'document': return <DocumentEvidence evidence={evidence} />;
+    case 'forensic': return <ForensicEvidence evidence={evidence} />;
+    case 'testimony': return <TestimonyEvidence evidence={evidence} />;
+    case 'audio': return <AudioEvidence evidence={evidence} />;
+    case 'image': return <ImageEvidence evidence={evidence} />;
+    case 'digital': return <DigitalEvidence evidence={evidence} />;
+    default:
+      return (
+        <div className={styles.unclassifiedEvidence}>
+          <span className={styles.unclassifiedBadge}>{t('pages.gameRoom.evidence.board.unclassified', 'Unclassified Evidence')}</span>
+          <h4 className={styles.unclassifiedTitle} dir="auto">{title}</h4>
+          {description && <p className={styles.unclassifiedDescription} dir="auto">{description}</p>}
+        </div>
+      );
+  }
+}
 
 interface EvidenceCardProps {
   evidence: Evidence;
-  index: number;
   isNew: boolean;
   onInspect: (evidence: Evidence) => void;
 }
 
-export default function EvidenceCard({ evidence, index, isNew, onInspect }: EvidenceCardProps) {
+export default function EvidenceCard({ evidence, isNew, onInspect }: EvidenceCardProps) {
   const { t } = useTranslation();
-  const SpecificEvidenceComponent = EvidenceComponents[evidence.evidence_type];
-
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: evidence.id, // Keep this as the raw ID so addEvidenceToTray(active.id) still works in the layout
-    data: { 
-      type: 'EVIDENCE' // <--- This tells the layout router what is being dragged
-    }
+    id: evidence.id,
+    data: { type: 'EVIDENCE' },
   });
-
-  if (!SpecificEvidenceComponent) {
-    console.warn(`System Error: Unknown evidence type encountered -> ${evidence.evidence_type}`);
-  }
+  const unreadLabel = isNew ? t('pages.gameRoom.layout.tabs.unreadIntel') : undefined;
 
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`${styles.evidenceCardWrapper} ${styles[`item${index % 5}`]} ${isDragging ? styles.isDragging : ''}`}
-      onClick={() => onInspect(evidence)}
-      onKeyDown={(event) => {
-        if (evidence.evidence_type === 'audio' && (event.key === 'Enter' || event.key === ' ')) {
-          event.preventDefault();
-          if (!event.repeat) onInspect(evidence);
+      aria-label={evidence.title || t('pages.gameRoom.evidence.modal.title')}
+      aria-description={unreadLabel}
+      data-unread={isNew || undefined}
+      data-dragging={isDragging || undefined}
+      className={styles.evidenceCardWrapper}
+      onClick={() => {
+        if (!isDragging) onInspect(evidence);
+      }}
+      onKeyDown={event => {
+        if (event.key !== 'Enter' && event.key !== ' ') {
+          listeners?.onKeyDown?.(event);
           return;
         }
-        listeners?.onKeyDown?.(event);
+        event.preventDefault();
+        if (!event.repeat && !isDragging) onInspect(evidence);
       }}
     >
-      {isNew && <div className={styles.unreadIndicator} title={t('pages.gameRoom.layout.tabs.unreadIntel')} />}
-      {SpecificEvidenceComponent ? (
-        <SpecificEvidenceComponent evidence={evidence} />
-      ) : (
-        <div className={styles.unclassifiedEvidence}>
-          <span className={styles.unclassifiedBadge}>{t('pages.gameRoom.evidence.board.unclassified', 'Unclassified Evidence')}</span>
-          <h4 className="evidence-title">{evidence.title}</h4>
-          {evidence.description && <p className="evidence-desc">{evidence.description}</p>}
-        </div>
-      )}
+      <EvidenceCardContent evidence={evidence} />
     </div>
   );
 }
 
-// ----------------------------------------------------------------------
-// OVERLAY CLONE: Used exclusively by <DragOverlay> to provide visual feedback.
-// Keeps the component pure and prevents hook-duplication errors in dnd-kit.
-// ----------------------------------------------------------------------
 export function EvidenceCardOverlay({ evidence }: { evidence: Evidence }) {
-  const SpecificEvidenceComponent = EvidenceComponents[evidence.evidence_type];
-  if (!SpecificEvidenceComponent) return null;
-
   return (
-    <div className={`${styles.evidenceCardWrapper} ${styles.overlayClone}`}>
-      <SpecificEvidenceComponent evidence={evidence} />
+    <div className={styles.overlayClone} aria-hidden="true" inert>
+      <EvidenceCardContent evidence={evidence} />
     </div>
   );
 }

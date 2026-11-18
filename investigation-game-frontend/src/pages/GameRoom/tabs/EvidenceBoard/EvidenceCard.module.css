@@ -1,14 +1,65 @@
 .evidenceCardWrapper {
-  position: relative; 
-  cursor: pointer; 
-  /* Add a 0.2s delay to the z-index transition so the card stays on top while shrinking back down */
-  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), z-index 0s 0.2s; 
-  z-index: 1; 
+  position: relative;
+  cursor: pointer;
+  min-inline-size: 0;
+  max-inline-size: 100%;
   touch-action: none;
-  
-  /* Forces a strict stacking context so internal high z-indexes (like pins/tabs) never bleed outside the card */
   isolation: isolate;
-  will-change: transform; /* Hardware acceleration for smoother scaling */
+  z-index: 1;
+  transition: transform 200ms ease-out, z-index 0s 200ms;
+}
+
+.evidenceCardWrapper > * {
+  box-sizing: border-box;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+}
+
+.evidenceCardWrapper:focus-visible {
+  outline: 2px solid var(--accent-cyan);
+  outline-offset: 3px;
+  z-index: 10;
+}
+
+.evidenceCardWrapper[data-dragging] { opacity: 0.3; }
+.evidenceCardWrapper[data-unread] {
+  filter: drop-shadow(0 0 5px rgba(var(--accent-amber-rgb), 0.65));
+  animation: evidenceShine 1.5s infinite alternate ease-in-out;
+  z-index: 5;
+}
+.evidenceCardWrapper[data-unread]:focus-visible { z-index: 10; }
+
+@keyframes evidenceShine {
+  from { filter: drop-shadow(0 0 2px rgba(var(--accent-amber-rgb), 0.3)); }
+  to { filter: drop-shadow(0 0 14px rgba(var(--accent-amber-rgb), 1)); }
+}
+
+@media (min-width: 601px) {
+  .evidenceCardWrapper:nth-child(5n + 1) { --rotation: -3deg; }
+  .evidenceCardWrapper:nth-child(5n + 2) { --rotation: 2deg; margin-block-start: 2rem; }
+  .evidenceCardWrapper:nth-child(5n + 3) { --rotation: -1deg; }
+  .evidenceCardWrapper:nth-child(5n + 4) { --rotation: 4deg; margin-block-start: 1rem; }
+  .evidenceCardWrapper:nth-child(5n + 5) { --rotation: -2deg; margin-block-start: -1rem; }
+  .evidenceCardWrapper { transform: rotate(var(--rotation)); }
+}
+
+@media (min-width: 601px) and (hover: hover) and (pointer: fine) {
+  .evidenceCardWrapper:hover {
+    transform: scale(1.05);
+    z-index: 10;
+    transition-delay: 0s;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .evidenceCardWrapper { transition: none; }
+  .evidenceCardWrapper[data-unread] { animation: none; }
+}
+
+.overlayClone {
+  pointer-events: none;
+  transform: scale(1.05);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
 }
 
 .unclassifiedEvidence {
@@ -32,76 +83,16 @@
   letter-spacing: 0.06em;
 }
 
-.evidenceCardWrapper:hover { 
-  transform: scale(1.05) rotate(0deg) !important; 
-  z-index: 10; 
-  /* Instantly pop the z-index to the front when the hover starts (0s delay) */
-  transition: transform 0.2s cubic-bezier(0.25, 0.8, 0.25, 1), z-index 0s 0s;
+
+.unclassifiedTitle {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  color: var(--text-primary);
 }
 
-.isDragging {
-  opacity: 0.3;
-}
-
-/* Pseudo-random scatter rotation */
-.item0 { transform: rotate(-3deg); }
-.item1 { transform: rotate(2deg); margin-top: 2rem; }
-.item2 { transform: rotate(-1deg); }
-.item3 { transform: rotate(4deg); margin-top: 1rem; }
-.item4 { transform: rotate(-2deg); margin-top: -1rem; }
-
-/* 
-  Global wraps ensure the Typography classes still work perfectly 
-  when injected inside Evidence Variants (Document, Image, etc.)
-*/
-:global(.evidence-title) { 
-  margin: 0 0 0.5rem 0; 
-  font-size: 1.1rem; 
-  color: var(--text-primary); 
-}
-
-:global(.evidence-id) { 
-  font-family: var(--font-mono); 
-  font-size: 0.75rem; 
-  color: var(--text-secondary); 
-  display: block; 
-}
-
-:global(.evidence-desc) { 
-  font-size: 0.9rem; 
-  color: var(--text-secondary); 
-  margin-top: 1rem; 
-  line-height: 1.4; 
-}
-
-:global(.digital-pin) { 
-  position: absolute; top: 12px; left: 50%; transform: translateX(-50%); 
-  width: 10px; height: 10px; border-radius: 50%; 
-  border: 1px solid rgba(255,255,255,0.3);
-  box-shadow: 1px 2px 3px rgba(0,0,0,0.8), inset -2px -2px 4px rgba(0,0,0,0.5); 
-  z-index: 20;
-}
-:global(.digital-pin.amber) { color: var(--accent-amber); background: var(--accent-amber); }
-:global(.digital-pin.cyan) { color: var(--accent-cyan); background: var(--accent-cyan); }
-:global(.digital-pin.crimson) { color: var(--accent-crimson); background: var(--accent-crimson); }
-
-/* --- UNREAD SHINE MECHANIC --- */
-.unreadIndicator {
-  display: none;
-}
-
-.evidenceCardWrapper:has(.unreadIndicator) {
-  animation: evidenceShine 1.5s infinite alternate ease-in-out;
-  z-index: 5;
-}
-
-@keyframes evidenceShine {
-  0% { filter: drop-shadow(0 0 2px rgba(var(--accent-amber-rgb), 0.3)); }
-  100% { filter: drop-shadow(0 0 14px rgba(var(--accent-amber-rgb), 1)); }
-}
-
-.overlayClone {
-  cursor: grabbing !important;
-  transform: scale(1.05) !important;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.4) !important;
+.unclassifiedDescription {
+  margin-block-start: 1rem;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--text-secondary);
 }
