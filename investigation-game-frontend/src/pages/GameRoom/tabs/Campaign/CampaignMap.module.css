@@ -1,5 +1,7 @@
 .campaign-map-container {
   position: relative;
+  /* Keep the vignette in the map's stacking context, below the room navbar. */
+  isolation: isolate;
   width: 100%;
   min-height: 600px;
   height: 100vh;
