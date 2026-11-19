@@ -2,7 +2,6 @@ import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Evidence } from '@/types/evidence';
 import UniversalDocViewer from './DocViewer/UniversalDocViewer';
-import TerminalViewer from './TerminalViewer/TerminalViewer';
 import TestimonyViewer from './Viewers/TestimonyViewer';
 import MediaViewer from './Viewers/MediaViewer';
 import EvidenceDialog from './EvidenceDialog';
@@ -36,8 +35,6 @@ function ActiveEvidenceModal({ evidence, onClose }: { evidence: Evidence; onClos
       case 'document':
       case 'forensic':
         return <UniversalDocViewer evidence={evidence} />;
-      case 'digital':
-        return <TerminalViewer evidence={evidence} />;
       case 'testimony':
         return <TestimonyViewer evidence={evidence} />;
       case 'image':
@@ -56,7 +53,6 @@ function ActiveEvidenceModal({ evidence, onClose }: { evidence: Evidence; onClos
     <EvidenceDialog
       titleId={titleId}
       className={isFullscreen ? styles.evidenceModalContent + ' ' + styles.fullscreenModal : styles.evidenceModalContent}
-      animated
       onClose={onClose}
     >
       {dismiss => <>

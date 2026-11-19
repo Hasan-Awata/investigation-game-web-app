@@ -15,6 +15,12 @@
   grid-template-columns: 0px minmax(0, 1fr);
 }
 
+@media (width > 1000px) {
+  .sidebarCollapsed {
+    --evidence-board-width-gain: var(--sidebar-width);
+  }
+}
+
 .sidebarFrame {
   position: relative;
   display: grid;
@@ -133,6 +139,7 @@
   }
 
   .layoutContainer[data-sidebar-dragging="false"] {
+    --evidence-board-resize-motion: var(--sidebar-motion);
     transition: grid-template-columns var(--sidebar-motion);
   }
 

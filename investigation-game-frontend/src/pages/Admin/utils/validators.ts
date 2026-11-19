@@ -26,7 +26,6 @@ export const validateLevelForm = (data: { order_index: string | number; zone_id?
 };
 
 const isDocEvidenceType = (t: string): boolean => t === 'document' || t === 'forensic';
-const isDigitalEvidenceType = (t: string): boolean => t === 'digital';
 
 const hasBlocks = (v: unknown): boolean => {
   if (!v || typeof v !== 'object') return false;
@@ -38,22 +37,12 @@ const hasBlocks = (v: unknown): boolean => {
  * `document` / `forensic` must carry a non-empty `metadata.doc.blocks` array,
  * since the viewer renders an empty sheet as "contents illegible" -- saving one
  * would produce an evidence row that is silently broken in game.
- * 
- * `digital` must carry a non-empty `metadata.terminal.blocks` array.
  */
 export const validateEvidenceForm = (data: { evidence_type: string; metadata?: Record<string, unknown> }) => {
   if (isDocEvidenceType(data.evidence_type)) {
     const doc = data.metadata?.doc;
     if (!doc || !hasBlocks(doc)) {
       return 'Add at least one block to the document. An empty document renders as illegible.';
-    }
-    return null;
-  }
-
-  if (isDigitalEvidenceType(data.evidence_type)) {
-    const terminal = data.metadata?.terminal;
-    if (!terminal || !hasBlocks(terminal)) {
-      return 'Add at least one block to the terminal session. An empty session renders as empty.';
     }
     return null;
   }

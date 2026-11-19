@@ -8,16 +8,14 @@ use ReflectionClass;
 
 class EvidenceBlockTypeParityTest extends TestCase
 {
-    public function test_backend_block_allowlists_match_frontend_contracts(): void
+    public function test_backend_document_block_allowlist_matches_frontend_contract(): void
     {
         $rule = new ReflectionClass(EvidenceMetadataMatchesType::class);
         $backendDocTypes = $rule->getReflectionConstant('DOC_BLOCK_TYPES')->getValue();
-        $backendTerminalTypes = $rule->getReflectionConstant('TERMINAL_BLOCK_TYPES')->getValue();
 
         $frontendRoot = dirname(__DIR__, 3).'/investigation-game-frontend/src/types/evidence';
 
         $this->assertSame($backendDocTypes, $this->readBlockTypes($frontendRoot.'/doc.ts', 'DOC_BLOCK_TYPES'));
-        $this->assertSame($backendTerminalTypes, $this->readBlockTypes($frontendRoot.'/terminal.ts', 'TERMINAL_BLOCK_TYPES'));
     }
 
     /** @return list<string> */

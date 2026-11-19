@@ -8,8 +8,8 @@ import EvidenceCard, { EvidenceCardOverlay } from './EvidenceCard';
 const evidence = {
   id: 7,
   case_id: 1,
-  title: 'Terminal log',
-  evidence_type: 'digital',
+  title: 'Witness statement',
+  evidence_type: 'testimony',
   is_initial: false,
   is_vital_for_conviction: false,
   metadata: {},
@@ -88,7 +88,7 @@ describe('Evidence cards', () => {
     expect(onInspect).toHaveBeenCalledExactlyOnceWith(documentEvidence);
   });
 
-  it('renders the title of malformed digital evidence in the card and drag preview', () => {
+  it('renders the title of a testimony in the card and drag preview', () => {
     const { container } = render(
       <DndContext>
         <EvidenceCard evidence={evidence} isNew={false} onInspect={vi.fn()} />

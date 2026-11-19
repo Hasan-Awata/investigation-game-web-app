@@ -2,7 +2,6 @@
 
 namespace App\Rules;
 
-use App\Enums\EvidenceSurface;
 use App\Enums\EvidenceType;
 use Closure;
 use Illuminate\Contracts\Validation\DataAwareRule;
@@ -16,10 +15,6 @@ class EvidenceMetadataMatchesType implements DataAwareRule, ValidationRule
         'letterhead', 'meta_grid', 'prose', 'two_column', 'table', 'list',
         'signature_row', 'stamp', 'barcode', 'watermark', 'rule', 'spacer',
         'image', 'annotation', 'redaction', 'diagram',
-    ];
-
-    private const TERMINAL_BLOCK_TYPES = [
-        'prompt_line', 'output_stream', 'status_banner', 'file_tree', 'spacer',
     ];
 
     /** @var array<string, mixed> */
@@ -82,21 +77,12 @@ class EvidenceMetadataMatchesType implements DataAwareRule, ValidationRule
             return;
         }
 
-        $foreignKey = null;
-        foreach (EvidenceSurface::cases() as $s) {
-            if ($s !== $surface && $s->metadataKey() !== null) {
-                $foreignKey = $s->metadataKey();
-                break;
-            }
-        }
-
-        if ($foreignKey && isset($metadata[$foreignKey])) {
-            $fail("A {$evidenceType->value} evidence cannot carry metadata.{$foreignKey}.");
+        $key = $surface->metadataKey();
+        if ($key === null && isset($metadata['doc'])) {
+            $fail("A {$evidenceType->value} evidence cannot carry metadata.doc.");
 
             return;
         }
-
-        $key = $surface->metadataKey();
 
         if ($key !== null) {
             $doc = $metadata[$key] ?? null;
@@ -112,23 +98,17 @@ class EvidenceMetadataMatchesType implements DataAwareRule, ValidationRule
                 return;
             }
 
-            $allowedBlocks = match ($surface) {
-                EvidenceSurface::Paper => self::DOC_BLOCK_TYPES,
-                EvidenceSurface::Terminal => self::TERMINAL_BLOCK_TYPES,
-                default => [],
-            };
-
             if (! is_array($doc['blocks'] ?? null) || empty($doc['blocks']) || ! array_is_list($doc['blocks'])) {
                 $fail("A {$evidenceType->value} evidence needs at least one block.");
 
                 return;
             }
 
-            $this->validateBlocks($doc['blocks'], $allowedBlocks, $fail, "{$key}.blocks");
+            $this->validateBlocks($doc['blocks'], $fail, "{$key}.blocks");
         }
     }
 
-    private function validateBlocks(array $blocks, array $allowedBlocks, Closure $fail, string $path, int $depth = 0): void
+    private function validateBlocks(array $blocks, Closure $fail, string $path, int $depth = 0): void
     {
         if ($depth > 32) {
             $fail("{$path}: Blocks may not be nested more than 32 levels deep.");
@@ -139,7 +119,7 @@ class EvidenceMetadataMatchesType implements DataAwareRule, ValidationRule
         foreach ($blocks as $i => $block) {
             $block = is_object($block) ? (array) $block : $block;
             $blockPath = "{$path}.{$i}";
-            if (! is_array($block) || ! in_array($block['type'] ?? null, $allowedBlocks, true)) {
+            if (! is_array($block) || ! in_array($block['type'] ?? null, self::DOC_BLOCK_TYPES, true)) {
                 $fail("{$blockPath}: Block must have a supported type.");
 
                 continue;
@@ -167,17 +147,6 @@ class EvidenceMetadataMatchesType implements DataAwareRule, ValidationRule
                 'barcode' => ['value' => ['present', 'string']],
                 'diagram' => ['preset' => ['required', 'in:body_outline,fingerprint,electropherogram,mass_spec']],
                 'spacer' => ['height' => ['required', 'numeric', 'min:0']],
-                'prompt_line' => [
-                    'prompt' => ['present', 'string'], 'command' => ['present', 'string'],
-                    'output' => ['present', 'array', 'list'], 'output.*' => ['string'],
-                ],
-                'output_stream' => ['lines' => ['present', 'array', 'list'], 'lines.*' => ['string']],
-                'status_banner' => ['text' => ['present', 'string'], 'tone' => ['required', 'in:info,ok,warn,critical']],
-                'file_tree' => [
-                    'entries' => ['present', 'array', 'list'], 'entries.*' => ['array'],
-                    'entries.*.path' => ['required', 'string'], 'entries.*.kind' => ['required', 'in:file,dir,symlink,deleted'],
-                    'entries.*.size' => ['sometimes', 'string'], 'entries.*.mtime' => ['sometimes', 'string'],
-                ],
                 'letterhead' => array_fill_keys(['agency', 'title', 'sub', 'aside', 'asideLabel'], ['sometimes', 'string']),
                 'redaction' => ['lines' => ['sometimes', 'integer', 'min:0'], 'label' => ['sometimes', 'string']],
                 'rule' => ['variant' => ['sometimes', 'in:solid,dashed,dotted,double']],
@@ -201,7 +170,7 @@ class EvidenceMetadataMatchesType implements DataAwareRule, ValidationRule
 
             if ($block['type'] === 'two_column' && ! $validator->fails()) {
                 foreach (['left', 'right'] as $column) {
-                    $this->validateBlocks($props[$column], $allowedBlocks, $fail, "{$blockPath}.props.{$column}", $depth + 1);
+                    $this->validateBlocks($props[$column], $fail, "{$blockPath}.props.{$column}", $depth + 1);
                 }
             }
         }

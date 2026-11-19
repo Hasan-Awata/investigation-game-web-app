@@ -26,7 +26,7 @@
 }
 .evidenceCardWrapper[data-unread]:focus-visible { z-index: 10; }
 
-.evidenceCardWrapper[data-unread]::before {
+.evidenceCardWrapper[data-unread]:not(:has(> :global(.folder-root)))::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -48,6 +48,38 @@
 
 .evidenceCardWrapper:has(> :global(.folder-root)) {
   display: grid;
+}
+
+.evidenceCardWrapper[data-unread] :global(.folder-back-glow) {
+  display: block;
+  color: rgba(var(--accent-amber-rgb), 0.9);
+  filter: blur(6px);
+}
+
+.evidenceCardWrapper[data-unread] :global(.folder-item) {
+  overflow: visible;
+}
+
+.evidenceCardWrapper[data-unread] :global(.folder-front)::before,
+.evidenceCardWrapper[data-unread] :global(.folder-item)::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 12px 1px rgba(var(--accent-amber-rgb), 0.65);
+}
+
+.evidenceCardWrapper[data-unread] :global(.folder-front)::before {
+  border-radius: var(--folder-front-radius);
+}
+
+.evidenceCardWrapper[data-unread] :global(.folder-back-glow),
+.evidenceCardWrapper[data-unread] :global(.folder-front)::before,
+.evidenceCardWrapper[data-unread] :global(.folder-item)::before {
+  opacity: 0.55;
+  animation: evidenceShine 1.5s infinite alternate ease-in-out;
 }
 
 @keyframes evidenceShine {
@@ -72,7 +104,12 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .evidenceCardWrapper[data-unread]::before { animation: none; }
+  .evidenceCardWrapper[data-unread]:not(:has(> :global(.folder-root)))::before,
+  .evidenceCardWrapper[data-unread] :global(.folder-back-glow),
+  .evidenceCardWrapper[data-unread] :global(.folder-front)::before,
+  .evidenceCardWrapper[data-unread] :global(.folder-item)::before {
+    animation: none;
+  }
 }
 
 .overlayClone {

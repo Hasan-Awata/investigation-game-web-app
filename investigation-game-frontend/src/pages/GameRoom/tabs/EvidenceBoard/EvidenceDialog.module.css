@@ -1,0 +1,25 @@
+.dialog[open],
+.dialog::backdrop {
+  animation: modalFadeIn 200ms ease-out;
+}
+
+.dialog::backdrop {
+  background: rgba(var(--bg-dark-rgb), 0.85);
+}
+
+.dialog[open][data-closing],
+.dialog[data-closing]::backdrop {
+  animation: modalFadeOut 160ms ease-in forwards;
+}
+
+@keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalFadeOut { to { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .dialog[open],
+  .dialog::backdrop,
+  .dialog[open][data-closing],
+  .dialog[data-closing]::backdrop {
+    animation: none;
+  }
+}

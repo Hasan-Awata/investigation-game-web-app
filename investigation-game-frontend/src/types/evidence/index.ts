@@ -1,10 +1,8 @@
 import type { BaseEvidence } from './base';
 import type { DocDocument } from './doc';
-import type { TerminalDocument } from './terminal';
 
 export * from './base';
 export * from './doc';
-export * from './terminal';
 
 /**
  * The universal paper-artefact evidence type.
@@ -19,14 +17,6 @@ export * from './terminal';
 export interface DocEvidence extends BaseEvidence {
   evidence_type: 'document' | 'forensic';
   metadata: { doc: DocDocument; [key: string]: unknown };
-}
-
-/**
- * Digital evidence - terminal surface.
- */
-export interface DigitalEvidence extends BaseEvidence {
-  evidence_type: 'digital';
-  metadata: { terminal: TerminalDocument };
 }
 
 // 1. STRICT TESTIMONY TYPE
@@ -60,33 +50,26 @@ export interface MediaEvidence extends BaseEvidence {
 }
 
 // 3. THE MASTER TYPE
-export type Evidence = DocEvidence | DigitalEvidence | TestimonyEvidence | MediaEvidence;
-
-/** True for digital evidence (terminal surface). */
-export const isDigitalEvidence = (e: Evidence): e is DigitalEvidence =>
-  e.evidence_type === 'digital' && hasMetadataEnvelope(e, 'terminal');
+export type Evidence = DocEvidence | TestimonyEvidence | MediaEvidence;
 
 /** True for document / forensic evidence (paper surface). */
 export const isDocEvidence = (e: Evidence): e is DocEvidence =>
-  (e.evidence_type === 'document' || e.evidence_type === 'forensic') && hasMetadataEnvelope(e, 'doc');
+  (e.evidence_type === 'document' || e.evidence_type === 'forensic') && hasDocument(e.metadata);
 
-const hasMetadataEnvelope = (evidence: Evidence, key: 'doc' | 'terminal'): boolean => {
-  const metadata = (evidence as BaseEvidence & { metadata?: unknown }).metadata;
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false;
-  const envelope = (metadata as Record<string, unknown>)[key];
-  return !!envelope && typeof envelope === 'object' && !Array.isArray(envelope);
+const hasDocument = (metadata: unknown): boolean => {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata) || !('doc' in metadata)) return false;
+  const doc = metadata.doc;
+  return !!doc && typeof doc === 'object' && !Array.isArray(doc);
 };
 
 /**
  * Single authority for surface routing. Replaces the ad-hoc `isDocType()`/`isDocEvidenceType()`.
  */
-export const surfaceOf = (t: string): 'paper' | 'terminal' | 'testimony' | 'media' => {
+export const surfaceOf = (t: string): 'paper' | 'testimony' | 'media' => {
   switch (t) {
     case 'document':
     case 'forensic':
       return 'paper';
-    case 'digital':
-      return 'terminal';
     case 'testimony':
       return 'testimony';
     case 'image':

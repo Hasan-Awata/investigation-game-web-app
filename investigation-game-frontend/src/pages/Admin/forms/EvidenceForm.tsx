@@ -6,15 +6,13 @@ import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
 import MediaUploader from '@/pages/Admin/components/MediaUploader';
 import { DocBuilder } from '@/pages/Admin/components/DocBuilder/DocBuilder';
-import { TerminalBuilder } from '@/pages/Admin/components/BlockBuilder/TerminalBuilder';
 import EvidenceMetadataFields from './Shared/EvidenceMetadataFields';
 import { AdminCheckbox, AdminInput } from '@/pages/Admin/components/AdminUI';
 import { validateEvidenceForm } from '../utils/validators';
 import { getEvidenceMetadataTemplate } from '@/pages/Admin/utils/formUtils';
 import { DEFAULT_DOC, DEFAULT_PAGE, DOC_THEMES, normalizeDoc } from '@/types/evidence/doc';
-import { DEFAULT_TERMINAL, normalizeTerminal } from '@/types/evidence/terminal';
 import type { Evidence } from '@/types/evidence';
-import { surfaceOf, isDigitalEvidence, isDocEvidence } from '@/types/evidence';
+import { surfaceOf, isDocEvidence } from '@/types/evidence';
 import adminForms from './Shared/AdminForms.module.css';
 import adminDashboard from '../AdminDashboard.module.css';
 
@@ -33,7 +31,6 @@ const initialFormState = {
 };
 
 const emptyDoc = () => ({ ...DEFAULT_DOC, page: { ...DEFAULT_PAGE }, blocks: [] });
-const emptyTerminal = () => ({ ...DEFAULT_TERMINAL, blocks: [] });
 
 export default function EvidenceForm() {
   const { caseId, selectedCase } = useAdminContext();
@@ -56,19 +53,13 @@ export default function EvidenceForm() {
 
   const surface = surfaceOf(formData.evidence_type);
   const isDocType = surface === 'paper';
-  const isDigitalType = surface === 'terminal';
 
-  // The builder is controlled off `formData.metadata.doc` or `formData.metadata.terminal`, normalized so a hand
+  // The builder is controlled off `formData.metadata.doc`, normalized so a hand
   // written JSON payload (or a legacy row) can never hand it a malformed tree.
   const currentDoc = isDocType ? normalizeDoc(formData.metadata) : emptyDoc();
-  const currentTerminal = isDigitalType ? normalizeTerminal(formData.metadata) : emptyTerminal();
 
   const setDoc = (doc: typeof currentDoc) => {
     setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, doc } }));
-  };
-
-  const setTerminal = (terminal: typeof currentTerminal) => {
-    setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, terminal } }));
   };
 
   const onClear = () => {
@@ -86,12 +77,11 @@ export default function EvidenceForm() {
 
   const onEdit = (ev: Evidence) => {
     const surface = surfaceOf(ev.evidence_type);
-    const source = ev as Evidence & { doc?: unknown; terminal?: unknown };
+    const source = ev as Evidence & { doc?: unknown };
     const rawMetadata = source.metadata && typeof source.metadata === 'object' && !Array.isArray(source.metadata)
       ? source.metadata as Record<string, unknown>
       : {};
     const directDoc = rawMetadata.doc ?? source.doc ?? (Array.isArray(rawMetadata.blocks) ? rawMetadata : undefined);
-    const directTerminal = rawMetadata.terminal ?? source.terminal;
     const existingUrl = ev.img_url || ev.audio_url || '';
     handleEditInit(ev, (ed): typeof initialFormState => ({
       title: ed.title,
@@ -102,8 +92,6 @@ export default function EvidenceForm() {
       // author must fill in. Both land on the same shape.
       metadata: (surface === 'paper'
         ? { ...rawMetadata, doc: normalizeDoc(directDoc ? { doc: directDoc } : rawMetadata) }
-        : surface === 'terminal'
-        ? { ...rawMetadata, terminal: normalizeTerminal(directTerminal ? { terminal: directTerminal } : rawMetadata) }
         : rawMetadata) as Record<string, unknown>,
       is_initial: !!ed.is_initial,
       is_vital_for_conviction: !!ed.is_vital_for_conviction,
@@ -148,7 +136,6 @@ export default function EvidenceForm() {
           {isDocEvidence(ev) && ev.metadata.doc.theme && DOC_THEMES.includes(ev.metadata.doc.theme) && (
             <span className={adminForms['admin-list-badge']}>{ev.metadata.doc.theme.replace('_', ' ')}</span>
           )}
-          {isDigitalEvidence(ev) && ev.metadata.terminal?.theme && <span className={adminForms['admin-list-badge']}>{ev.metadata.terminal.theme}</span>}
         </>
       )}
       contextMissing={contextMissing}
@@ -175,7 +162,6 @@ export default function EvidenceForm() {
           >
             <option value="document">{t.docOption}</option>
             <option value="forensic">{t.forensicOption}</option>
-            <option value="digital">{t.digitalOption}</option>
             <option value="testimony">{t.testimonyOption}</option>
             <option value="audio">{t.audioOption}</option>
             <option value="image">{t.imageOption}</option>
@@ -186,8 +172,6 @@ export default function EvidenceForm() {
 
         {isDocType
           ? <DocBuilder doc={currentDoc} onChange={setDoc} caseId={caseId} storeLocally={!!formData.store_locally} evidenceId={editingId ?? 0} />
-          : isDigitalType
-          ? <TerminalBuilder doc={currentTerminal} onChange={setTerminal} evidenceId={editingId ?? 0} />
           : <EvidenceMetadataFields evidenceType={formData.evidence_type} metadata={formData.metadata} updateMeta={(key, value) => setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: value } }))} />}
 
         {requiresLocalToggle && (

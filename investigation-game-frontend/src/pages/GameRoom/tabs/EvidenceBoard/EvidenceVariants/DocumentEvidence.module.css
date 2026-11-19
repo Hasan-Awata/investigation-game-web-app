@@ -38,6 +38,7 @@
   inline-size: 100%;
   block-size: 100%;
   overflow: hidden;
+  border-radius: inherit;
   pointer-events: none;
 }
 

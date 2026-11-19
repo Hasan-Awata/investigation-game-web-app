@@ -88,7 +88,6 @@ export const translations = {
       masterCategoryLabel: "Master Evidence Category",
       docOption: "Written Document",
       forensicOption: "Forensic Report",
-      digitalOption: "Digital Evidence",
       testimonyOption: "Witness Testimony",
       audioOption: "Audio Recording",
       imageOption: "Photographic Evidence",
@@ -283,25 +282,6 @@ export const translations = {
       alignCenter: "Center",
       alignEnd: "End",
     },
-    terminalBuilder: {
-      template: "Template",
-      templatePlaceholder: "-- start from a template --",
-      theme: "Theme",
-      blocksWord: "blocks",
-      clear: "Clear",
-      clearConfirm: "Clear all blocks? This cannot be undone.",
-      uploadSuccess: "Image uploaded successfully",
-      uploadError: "Failed to upload image",
-      blockPromptLine: "Prompt line",
-      blockOutputStream: "Output stream",
-      blockStatusBanner: "Status banner",
-      blockFileTree: "File tree",
-      blockSpacer: "Spacer",
-      termDiskImaging: "Disk imaging",
-      termDecryptionSession: "Decryption session",
-      termNetworkCapture: "Network capture",
-      termShellHistory: "Shell history",
-    },
     evidenceMetadata: {
       sectionTitle: "[ Structured Metadata Injection ]",
       docCorrespondence: "Correspondence (Email/Letter)",
@@ -395,11 +375,6 @@ export const translations = {
     recipientLabel: "Recipient (TO)",
     subjectLabel: "Subject Line",
     bodyLabel: "Message Body"
-  },
-  digitalForensics: {
-    deviceTypeLabel: "Device Classification",
-    extractionMethodLabel: "Extraction Method",
-    recoveredDataLabel: "Decrypted Data / Payload"
   },
   dna: {
     sampleTypeLabel: "Sample Type (e.g., Blood, Hair)",

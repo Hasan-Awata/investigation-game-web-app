@@ -87,7 +87,12 @@
   opacity: var(--folder-gutter, 0);
 }
 
-.folder-back-rim {
+.folder-back-glow {
+  display: none;
+}
+
+.folder-back-rim,
+.folder-back-glow {
   position: absolute;
   inset: 0;
   overflow: visible;

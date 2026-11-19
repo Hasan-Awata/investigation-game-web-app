@@ -216,7 +216,7 @@
         }
       },
       "evidence": {
-        "modal": {"title": "الدليل", "close": "إغلاق", "fullscreen": "ملء الشاشة", "minimize": "تصغير", "types": {"document": "مستند", "forensic": "دليل جنائي", "digital": "دليل رقمي", "testimony": "شهادة", "image": "صورة", "audio": "تسجيل صوتي"}},
+        "modal": {"title": "الدليل", "close": "إغلاق", "fullscreen": "ملء الشاشة", "minimize": "تصغير", "types": {"document": "مستند", "forensic": "دليل جنائي", "testimony": "شهادة", "image": "صورة", "audio": "تسجيل صوتي"}},
         "board": {
           "removeItem": "إزالة {{title}} من الدرج",
           "trayItemType": { "evidence": "دليل", "character": "شخص" },
@@ -251,7 +251,6 @@
           },
           "forensic": {
             "classified": "سري",
-            "report": "تقرير",
             "chain": "سلسلة الحضانة"
           }
         },
@@ -276,10 +275,6 @@
           },
           "doc": {
             "unsupportedBlock": "[نوع كتلة مستند غير مدعوم: {{type}}]"
-          },
-          "terminal": {
-            "emptySession": "جلسة الطرفية فارغة أو تالفة.",
-            "unsupportedBlock": "[نوع كتلة طرفية غير مدعوم: {{type}}]"
           }
         }
       },

@@ -2178,6 +2178,9 @@ const Folder = ({
         {book && <span ref={castRef} className="folder-layer folder-cast" aria-hidden="true" />}
 
         <div ref={backRef} className="folder-layer folder-back" aria-hidden="true">
+          <svg className="folder-back-glow" width={g.w} height={total} viewBox={`0 0 ${g.w} ${total}`}>
+            <path d={shape} fill="currentColor" />
+          </svg>
           <div className="folder-back-fill" style={{ clipPath: `path('${shape}')` }}>
             {book && <span className="folder-gutter" />}
           </div>

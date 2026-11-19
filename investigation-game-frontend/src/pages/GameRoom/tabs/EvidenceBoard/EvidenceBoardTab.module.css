@@ -2,7 +2,9 @@
   display: flex;
   flex-direction: column;
   gap: 2.5rem;
-  max-width: var(--game-room-board-max-width, 1200px);
+  inline-size: 100%;
+  max-inline-size: calc(1200px + var(--evidence-board-width-gain, 0px));
+  transition: max-inline-size var(--evidence-board-resize-motion, 0s);
   /* Safe margin pushes it below the header while centering it horizontally */
   margin: 6.5rem auto 2rem;
   padding: 2.5rem clamp(1rem, 4vw, 2.5rem);
@@ -30,6 +32,7 @@
 
 .evidenceGrid {
   display: grid;
+  position: relative;
   grid-template-columns: repeat(auto-fit, minmax(0, min(100%, 250px)));
   gap: 2rem;
   justify-content: center;

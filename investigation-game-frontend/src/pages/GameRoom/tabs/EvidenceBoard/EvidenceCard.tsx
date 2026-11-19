@@ -5,7 +5,6 @@ import ForensicEvidence from './EvidenceVariants/ForensicEvidence';
 import TestimonyEvidence from './EvidenceVariants/TestimonyEvidence';
 import AudioEvidence from './EvidenceVariants/AudioEvidence';
 import ImageEvidence from './EvidenceVariants/ImageEvidence';
-import DigitalEvidence from './EvidenceVariants/DigitalEvidence';
 import styles from './EvidenceCard.module.css';
 import { useTranslation } from 'react-i18next';
 
@@ -18,7 +17,6 @@ function EvidenceCardContent({ evidence }: { evidence: Evidence }) {
     case 'testimony': return <TestimonyEvidence evidence={evidence} />;
     case 'audio': return <AudioEvidence evidence={evidence} />;
     case 'image': return <ImageEvidence evidence={evidence} />;
-    case 'digital': return <DigitalEvidence evidence={evidence} />;
     default:
       return (
         <div className={styles.unclassifiedEvidence}>

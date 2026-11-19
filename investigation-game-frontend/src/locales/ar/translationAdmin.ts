@@ -88,7 +88,6 @@ export const translations = {
       masterCategoryLabel: "فئة الدليل الرئيسية",
       docOption: "مستند مكتوب",
       forensicOption: "تقرير جنائي",
-      digitalOption: "دليل رقمي",
       testimonyOption: "شهادة شاهد",
       audioOption: "تسجيل صوتي",
       imageOption: "دليل فوتوغرافي",
@@ -283,25 +282,6 @@ export const translations = {
       alignCenter: "المركز",
       alignEnd: "النهاية",
     },
-    terminalBuilder: {
-      template: "القالب",
-      templatePlaceholder: "-- ابدأ من قالب --",
-      theme: "السمة",
-      blocksWord: "كتلة",
-      clear: "تفريغ",
-      clearConfirm: "تفريغ جميع الكتل؟ لا يمكن التراجع.",
-      uploadSuccess: "تم رفع الصورة بنجاح",
-      uploadError: "فشل رفع الصورة",
-      blockPromptLine: "سطر أمر",
-      blockOutputStream: "دفق إخراج",
-      blockStatusBanner: "شريط حالة",
-      blockFileTree: "شجرة ملفات",
-      blockSpacer: "مسافة",
-      termDiskImaging: "تصوير قرص",
-      termDecryptionSession: "جلسة فك تشفير",
-      termNetworkCapture: "التقاط شبكة",
-      termShellHistory: "سجل شل",
-    },
     evidenceMetadata: {
       sectionTitle: "[ حقن البيانات الوصفية المنظمة ]",
       docCorrespondence: "مراسلات (بريد إلكتروني / خطاب)",
@@ -395,11 +375,6 @@ export const translations = {
         recipientLabel: "المستلم (إلى)",
         subjectLabel: "عنوان الرسالة",
         bodyLabel: "نص الرسالة"
-      },
-      digitalForensics: {
-        deviceTypeLabel: "تصنيف الجهاز",
-        extractionMethodLabel: "طريقة استخراج البيانات",
-        recoveredDataLabel: "البيانات المستعادة / الحمولة المفكوكة"
       },
       dna: {
         sampleTypeLabel: "نوع العينة (مثل: دم، شعر)",

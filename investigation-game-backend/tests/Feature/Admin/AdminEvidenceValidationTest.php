@@ -71,11 +71,12 @@ class AdminEvidenceValidationTest extends TestCase
         ])->assertUnprocessable()->assertInvalid(['audio']);
     }
 
-    public function test_direct_image_upload_is_rejected_for_terminal_evidence(): void
+    public function test_direct_image_upload_is_rejected_for_document_evidence(): void
     {
         $response = $this->put("/api/admin/evidences/{$this->evidence->id}", [
             ...$this->updatePayload(),
-            'evidence_type' => 'digital',
+            'evidence_type' => 'document',
+            'metadata' => json_encode(['doc' => ['blocks' => [['type' => 'prose', 'props' => ['html' => 'Text']]]]]),
             'image' => UploadedFile::fake()->createWithContent('screen.png', base64_decode(
                 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
             )),
@@ -94,11 +95,11 @@ class AdminEvidenceValidationTest extends TestCase
 
     public function test_update_without_evidence_type_validates_metadata_against_existing_type(): void
     {
-        $digitalEvidence = Evidence::create([
+        $document = Evidence::create([
             'case_id' => $this->case->id,
-            'title' => 'Terminal capture',
-            'evidence_type' => 'digital',
-            'metadata' => ['terminal' => ['blocks' => [['type' => 'prompt_line']]]],
+            'title' => 'Activity record',
+            'evidence_type' => 'document',
+            'metadata' => ['doc' => ['blocks' => [['type' => 'prose', 'props' => ['html' => 'Text']]]]],
             'is_initial' => true,
             'is_vital_for_conviction' => false,
         ]);
@@ -106,9 +107,9 @@ class AdminEvidenceValidationTest extends TestCase
         $payload = $this->updatePayload();
         unset($payload['evidence_type']);
 
-        $this->putJson("/api/admin/evidences/{$digitalEvidence->id}", [
+        $this->putJson("/api/admin/evidences/{$document->id}", [
             ...$payload,
-            'metadata' => ['terminal' => ['blocks' => []]],
+            'metadata' => ['doc' => ['blocks' => []]],
         ])->assertUnprocessable()->assertJsonValidationErrors('metadata');
     }
 

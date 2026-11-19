@@ -138,8 +138,8 @@
         "returnToHq": "Return to headquarters"
       },
       "evidence": {
-        "modal": {"title": "Evidence", "close": "Close file", "fullscreen": "Fullscreen", "minimize": "Exit fullscreen", "types": {"document": "Document", "forensic": "Forensic", "digital": "Digital", "testimony": "Testimony", "image": "Image", "audio": "Audio"}},
-        "modal": {"title": "Evidence", "close": "Close file", "fullscreen": "Fullscreen", "minimize": "Exit fullscreen", "types": {"document": "Document", "forensic": "Forensic", "digital": "Digital", "testimony": "Testimony", "image": "Image", "audio": "Audio"}},
+        "modal": {"title": "Evidence", "close": "Close file", "fullscreen": "Fullscreen", "minimize": "Exit fullscreen", "types": {"document": "Document", "forensic": "Forensic", "testimony": "Testimony", "image": "Image", "audio": "Audio"}},
+        "modal": {"title": "Evidence", "close": "Close file", "fullscreen": "Fullscreen", "minimize": "Exit fullscreen", "types": {"document": "Document", "forensic": "Forensic", "testimony": "Testimony", "image": "Image", "audio": "Audio"}},
         "board": {
           "proceduralTrayTitle": "Procedural Requests",
           "dragAndDrop": "Drag evidence and characters here",
@@ -173,7 +173,6 @@
           },
           "forensic": {
             "classified": "CLASSIFIED",
-            "report": "REPORT",
             "chain": "CHAIN OF CUSTODY"
           }
         },
@@ -198,10 +197,6 @@
           },
           "doc": {
             "unsupportedBlock": "[Unsupported document block type: {{type}}]"
-          },
-          "terminal": {
-            "emptySession": "Terminal session is empty or corrupted.",
-            "unsupportedBlock": "[Unsupported terminal block type: {{type}}]"
           }
         }
       },

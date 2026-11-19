@@ -6,7 +6,6 @@ import EvidenceModal from './EvidenceModal';
 import { useEvidenceContext } from './EvidenceContext';
 
 vi.mock('./DocViewer/UniversalDocViewer', () => ({ default: function MockDocViewer() { const { isFullscreen } = useEvidenceContext(); return <div data-testid="paper">{String(isFullscreen)}</div>; } }));
-vi.mock('./TerminalViewer/TerminalViewer', () => ({ default: () => <div>terminal viewer</div> }));
 vi.mock('./Viewers/TestimonyViewer', () => ({ default: () => <div>testimony viewer</div> }));
 vi.mock('./Viewers/MediaViewer', () => ({ default: () => <audio controls data-testid="media" /> }));
 const evidence = { id: 1, title: 'Case report', evidence_type: 'document' } as Evidence;
@@ -71,16 +70,16 @@ describe('Evidence modal', () => {
     act(() => vi.advanceTimersByTime(160));
     expect(onClose).toHaveBeenCalledOnce();
   });
-  it.each(['document', 'forensic', 'digital', 'testimony', 'image'])('renders %s evidence', type => {
+  it.each(['document', 'forensic', 'testimony', 'image'])('renders %s evidence', type => {
     render(<EvidenceModal evidence={{ ...evidence, evidence_type: type } as Evidence} onClose={vi.fn()} />);
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     if (type === 'document' || type === 'forensic') expect(screen.getByTestId('paper')).toBeInTheDocument();
-    else if (type === 'digital') expect(screen.getByText('terminal viewer')).toBeInTheDocument();
     else if (type === 'testimony') expect(screen.getByText('testimony viewer')).toBeInTheDocument();
     else expect(screen.getByTestId('media')).toBeInTheDocument();
   });
 
-  it.each(['button', 'escape'])('opens the cassette dialog and closes it by %s', method => {
+  it.each(['button', 'escape'])('opens the cassette dialog and fades out when closed by %s', method => {
+    vi.useFakeTimers();
     const onClose = vi.fn();
     const recording = { ...evidence, title: 'Emergency call', evidence_type: 'audio', audio_url: '/emergency.wav' } as Evidence;
     const { unmount } = render(<EvidenceModal evidence={recording} onClose={onClose} />);
@@ -92,6 +91,9 @@ describe('Evidence modal', () => {
     expect(within(dialog).queryByRole('button', { name: /fullscreen|ملء الشاشة/i })).toBeNull();
     if (method === 'escape') fireEvent(dialog, new Event('cancel', { cancelable: true }));
     else fireEvent.click(within(dialog).getByRole('button', { name: /close file|إغلاق/i }));
+    expect(dialog).toHaveAttribute('data-closing');
+    expect(onClose).not.toHaveBeenCalled();
+    act(() => vi.advanceTimersByTime(160));
     expect(onClose).toHaveBeenCalledOnce();
     unmount();
   });

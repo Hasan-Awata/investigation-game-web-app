@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import styles from './EvidenceDialog.module.css';
 
 const EXIT_DURATION_MS = 160;
 
@@ -8,12 +9,11 @@ interface EvidenceDialogProps {
   className: string;
   titleId: string;
   descriptionId?: string;
-  animated?: boolean;
   onClose: () => void;
 }
 
 export default function EvidenceDialog({
-  children, className, titleId, descriptionId, animated = false, onClose,
+  children, className, titleId, descriptionId, onClose,
 }: EvidenceDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const backdropPressed = useRef(false);
@@ -45,7 +45,7 @@ export default function EvidenceDialog({
 
   const dismiss = () => {
     if (closing) return;
-    if (!animated || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
       onClose();
       return;
     }
@@ -55,7 +55,7 @@ export default function EvidenceDialog({
   return createPortal(
     <dialog
       ref={dialogRef}
-      className={className}
+      className={`${styles.dialog} ${className}`}
       aria-labelledby={titleId}
       aria-describedby={descriptionId}
       data-closing={closing || undefined}

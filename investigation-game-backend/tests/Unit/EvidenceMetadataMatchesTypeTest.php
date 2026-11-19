@@ -12,8 +12,7 @@ class EvidenceMetadataMatchesTypeTest extends TestCase
     #[DataProvider('supportedBlocks')]
     public function test_supported_block_props_are_accepted(string $type, array $block): void
     {
-        $key = $type === 'digital' ? 'terminal' : 'doc';
-        $this->assertMetadataValid($type, [$key => ['blocks' => [$block]]]);
+        $this->assertMetadataValid($type, ['doc' => ['blocks' => [$block]]]);
     }
 
     public static function supportedBlocks(): iterable
@@ -29,20 +28,12 @@ class EvidenceMetadataMatchesTypeTest extends TestCase
         ] as $block => $props) {
             yield $block => ['document', ['type' => $block, 'props' => $props]];
         }
-        foreach ([
-            'prompt_line' => ['prompt' => '$', 'command' => '', 'output' => []],
-            'output_stream' => ['lines' => ['OK']], 'status_banner' => ['text' => 'Done', 'tone' => 'ok'],
-            'file_tree' => ['entries' => [['path' => 'a/b', 'kind' => 'file']]], 'spacer' => ['height' => 8],
-        ] as $block => $props) {
-            yield 'terminal '.$block => ['digital', ['type' => $block, 'props' => $props]];
-        }
     }
 
     #[DataProvider('malformedBlocks')]
     public function test_malformed_block_props_and_nested_children_are_rejected(string $type, array $block): void
     {
-        $key = $type === 'digital' ? 'terminal' : 'doc';
-        $this->assertMetadataInvalid($type, [$key => ['blocks' => [$block]]]);
+        $this->assertMetadataInvalid($type, ['doc' => ['blocks' => [$block]]]);
     }
 
     public static function malformedBlocks(): iterable
@@ -60,7 +51,7 @@ class EvidenceMetadataMatchesTypeTest extends TestCase
             }
         }
         foreach (['left', 'right'] as $column) {
-            foreach ([['type' => 'prose'], ['type' => 'prompt_line', 'props' => []], ['type' => 'image', 'props' => ['url' => '']]] as $index => $child) {
+            foreach ([['type' => 'prose'], ['type' => 'unsupported_block', 'props' => []], ['type' => 'image', 'props' => ['url' => '']]] as $index => $child) {
                 $props = ['left' => [], 'right' => []];
                 $props[$column] = [$child];
                 yield $column.' child '.$index => ['document', ['type' => 'two_column', 'props' => $props]];
@@ -68,7 +59,6 @@ class EvidenceMetadataMatchesTypeTest extends TestCase
         }
         yield 'invalid list item' => ['document', ['type' => 'list', 'props' => ['items' => [['invalid']]]]];
         yield 'invalid table column' => ['document', ['type' => 'table', 'props' => ['columns' => [null], 'rows' => []]]];
-        yield 'invalid file path' => ['digital', ['type' => 'file_tree', 'props' => ['entries' => [['path' => [], 'kind' => 'file']]]]];
     }
 
     public function test_document_metadata_requires_non_empty_doc_blocks(): void
@@ -77,16 +67,10 @@ class EvidenceMetadataMatchesTypeTest extends TestCase
         $this->assertMetadataValid('document', ['doc' => ['blocks' => [['type' => 'prose', 'props' => ['html' => 'Text']]]]]);
     }
 
-    public function test_digital_metadata_requires_non_empty_terminal_blocks(): void
-    {
-        $this->assertMetadataInvalid('digital', ['terminal' => ['blocks' => []]]);
-        $this->assertMetadataValid('digital', ['terminal' => ['blocks' => [['type' => 'prompt_line', 'props' => ['prompt' => '$', 'command' => 'ls', 'output' => []]]]]]);
-    }
-
     public function test_malformed_json_and_disallowed_blocks_are_rejected(): void
     {
         $this->assertMetadataInvalid('document', '{bad json');
-        $this->assertMetadataInvalid('document', ['doc' => ['blocks' => [['type' => 'prompt_line']]]]);
+        $this->assertMetadataInvalid('document', ['doc' => ['blocks' => [['type' => 'unsupported_block']]]]);
     }
 
     public function test_rule_requires_type_context(): void

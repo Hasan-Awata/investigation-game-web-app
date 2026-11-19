@@ -593,88 +593,57 @@
             "ref_id": "ev_130",
             "title": "07 · رقمي — تصوير محطة العمل المُصادَرة",
             "description": "تصوير جنائي لمحطة عمل الخزنة المسترَدة بموجب الأمر القضائي.",
-            "evidence_type": "digital",
+            "evidence_type": "document",
             "metadata": {
-                "terminal": {
+                "doc": {
                     "v": 1,
-                    "theme": "terminal",
+                    "theme": "dossier",
+                    "page": {
+                        "w": 800,
+                        "minH": 1131,
+                        "pad": 64
+                    },
                     "blocks": [
                         {
-                            "id": "ds_sb1",
-                            "type": "status_banner",
+                            "type": "letterhead",
                             "span": 12,
                             "props": {
-                                "text": "جلسة تصوير — محطة عمل 4",
-                                "tone": "info",
-                                "caption": "قضية CR-2026-0417 · استلام دليل 8842"
+                                "title": "07 · رقمي — تصوير محطة العمل المُصادَرة"
                             }
                         },
                         {
-                            "id": "ds_pl1",
-                            "type": "prompt_line",
+                            "type": "prose",
                             "span": 12,
                             "props": {
-                                "prompt": "root@forensic-workstation:~#",
-                                "command": "lsblk -f",
-                                "output": [
-                                    "NAME   FSTYPE  LABEL",
-                                    "sda    ext4    OS",
-                                    "sdb    ntfs    الخزنة (غير مُركَّبة)"
-                                ],
-                                "tone": "stdout"
+                                "html": "<p>جلسة تصوير — محطة عمل 4<br>\nقضية CR-2026-0417 · استلام دليل 8842</p>",
+                                "tone": "mono"
                             }
                         },
                         {
-                            "id": "ds_os1",
-                            "type": "output_stream",
+                            "type": "prose",
                             "span": 12,
                             "props": {
-                                "label": "سجل المهمة",
-                                "lines": [
-                                    "[02:00] تصوير sdb إلى /evidence/vault_image.dd",
-                                    "[02:41] اكتمل 98٪",
-                                    "[02:41] استُعيد تدفق واحد محذوف: /archive/copyfour.log"
-                                ],
-                                "tone": "info"
+                                "html": "<p>root@forensic-workstation:~# lsblk -f<br>\nNAME   FSTYPE  LABEL<br>\nsda    ext4    OS<br>\nsdb    ntfs    الخزنة (غير مُركَّبة)</p>",
+                                "tone": "mono"
                             }
                         },
                         {
-                            "id": "ds_ft",
-                            "type": "file_tree",
+                            "type": "prose",
                             "span": 12,
                             "props": {
-                                "indent": 2,
-                                "entries": [
-                                    {
-                                        "path": "/evidence/vault_image.dd",
-                                        "size": "1.0 GB",
-                                        "kind": "file",
-                                        "state": "intact"
-                                    },
-                                    {
-                                        "path": "/archive/copyfour.log",
-                                        "size": "9 KB",
-                                        "mtime": "2026-09-30 23:52",
-                                        "kind": "file",
-                                        "state": "recovered"
-                                    },
-                                    {
-                                        "path": "/archive/vault_delegate.enc",
-                                        "size": "212 MB",
-                                        "kind": "file",
-                                        "state": "encrypted"
-                                    },
-                                    {
-                                        "path": "/tmp/wipescript.sh",
-                                        "size": "2 KB",
-                                        "kind": "deleted",
-                                        "state": "corrupted"
-                                    }
-                                ]
+                                "html": "<p>سجل المهمة<br>\n[02:00] تصوير sdb إلى /evidence/vault_image.dd<br>\n[02:41] اكتمل 98٪<br>\n[02:41] استُعيد تدفق واحد محذوف: /archive/copyfour.log</p>",
+                                "tone": "mono"
                             }
                         },
                         {
-                            "id": "ds_sp",
+                            "type": "prose",
+                            "span": 12,
+                            "props": {
+                                "html": "<p>/evidence/vault_image.dd  1.0 GB  file  intact<br>\n/archive/copyfour.log  9 KB  2026-09-30 23:52  file  recovered<br>\n/archive/vault_delegate.enc  212 MB  file  encrypted<br>\n/tmp/wipescript.sh  2 KB  deleted  corrupted</p>",
+                                "tone": "mono"
+                            }
+                        },
+                        {
                             "type": "spacer",
                             "span": 12,
                             "props": {
@@ -682,26 +651,19 @@
                             }
                         },
                         {
-                            "id": "ds_pl2",
-                            "type": "prompt_line",
+                            "type": "prose",
                             "span": 12,
                             "props": {
-                                "prompt": "root@forensic-workstation:~#",
-                                "command": "mount /evidence/vault_image.dd",
-                                "output": [
-                                    "مواد المفتاح مفقودة: كلمة مرور المفوَّض مطلوبة"
-                                ],
-                                "tone": "stderr"
+                                "html": "<p>root@forensic-workstation:~# mount /evidence/vault_image.dd<br>\nمواد المفتاح مفقودة: كلمة مرور المفوَّض مطلوبة</p>",
+                                "tone": "mono"
                             }
                         },
                         {
-                            "id": "ds_sb2",
-                            "type": "status_banner",
+                            "type": "prose",
                             "span": 12,
                             "props": {
-                                "text": "توقفت الجلسة — القرص يرفض إعادة التركيب",
-                                "tone": "warn",
-                                "caption": "قُرئ تدفق مستعاد واحد؛ الدفتر الذي يسمّيه هو غرفة الحوالات"
+                                "html": "<p>توقفت الجلسة — القرص يرفض إعادة التركيب<br>\nقُرئ تدفق مستعاد واحد؛ الدفتر الذي يسمّيه هو غرفة الحوالات</p>",
+                                "tone": "mono"
                             }
                         }
                     ]

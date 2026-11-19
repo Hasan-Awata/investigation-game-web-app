@@ -1,5 +1,4 @@
 import { DEFAULT_PAGE, DEFAULT_DOC } from '@/types/evidence/doc';
-import { DEFAULT_TERMINAL } from '@/types/evidence/terminal';
 
 /**
  * Builds the `metadata` skeleton for a new evidence row.
@@ -30,12 +29,6 @@ export const getEvidenceMetadataTemplate = (evidenceType: string): Record<string
   if (evidenceType === 'document' || evidenceType === 'forensic') {
     return {
       doc: { ...DEFAULT_DOC, page: { ...DEFAULT_PAGE }, blocks: [] },
-    };
-  }
-
-  if (evidenceType === 'digital') {
-    return {
-      terminal: { ...DEFAULT_TERMINAL, blocks: [] },
     };
   }
 

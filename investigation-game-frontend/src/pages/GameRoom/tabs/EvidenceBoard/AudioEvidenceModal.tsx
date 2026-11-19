@@ -29,7 +29,7 @@ export default function AudioEvidenceModal({ evidence, onClose }: AudioEvidenceM
       {dismiss => (
         <div className={styles.content} data-cassette-player>
           <div className={styles.header}>
-            <h2 id={titleId} className={modalStyles.modalTitle}><bdi>{title}</bdi></h2>
+            <h2 id={titleId} className={`${modalStyles.modalTitle} ${styles.title}`}><bdi>{title}</bdi></h2>
             <button className={modalStyles.modalCloseBtn} onClick={dismiss} data-evidence-close type="button" aria-label={closeLabel} title={closeLabel}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m6 6 12 12M18 6 6 18" />

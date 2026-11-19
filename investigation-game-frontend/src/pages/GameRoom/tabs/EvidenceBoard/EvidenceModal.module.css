@@ -22,11 +22,7 @@
   font-family: var(--font-primary), sans-serif;
   outline: none;
 }
-.evidenceModalContent[open] { display: flex; animation: modalFadeIn 200ms ease-out; }
-.evidenceModalContent::backdrop { background: rgba(var(--bg-dark-rgb), 0.85); animation: modalFadeIn 200ms ease-out; }
-.evidenceModalContent[data-closing], .evidenceModalContent[data-closing]::backdrop {
-  animation: modalFadeOut 160ms ease-in forwards;
-}
+.evidenceModalContent[open] { display: flex; }
 .modalHeader {
   flex-shrink: 0;
   display: flex;
@@ -75,9 +71,6 @@
   padding-right: env(safe-area-inset-right);
   padding-block-end: env(safe-area-inset-bottom);
 }
-@keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
-@keyframes modalFadeOut { to { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) {
-  .evidenceModalContent[open], .evidenceModalContent::backdrop, .evidenceModalContent[data-closing]::backdrop { animation: none; }
   .modalFullscreenBtn, .modalCloseBtn { transition: none; }
 }
