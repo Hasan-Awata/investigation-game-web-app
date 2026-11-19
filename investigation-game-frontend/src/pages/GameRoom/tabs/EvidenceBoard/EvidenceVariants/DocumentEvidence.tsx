@@ -3,13 +3,17 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import Folder from '@/components/react-bits/Folder';
 import { normalizeDoc, type DocEvidence } from '@/types/evidence';
 import DocSheet from '../DocViewer/DocSheet';
+import TemplateRenderer, { PAPER_HEIGHT, PAPER_WIDTH } from '@/features/evidence/presentation/TemplateRenderer';
+import { readTemplate } from '@/features/evidence/presentation/catalog';
 import styles from './DocumentEvidence.module.css';
 
 const MAX_PREVIEW_PAGES = 3;
 
 export default function DocumentEvidence({ evidence }: { evidence: DocEvidence }) {
   const doc = useMemo(() => normalizeDoc(evidence.metadata), [evidence.metadata]);
-  const { w: pageWidth, minH: pageHeight } = doc.page;
+  const hasTemplate = Boolean(evidence.metadata && typeof evidence.metadata === 'object' && 'template' in evidence.metadata);
+  const pageWidth = hasTemplate ? PAPER_WIDTH : doc.page.w;
+  const pageHeight = hasTemplate ? PAPER_HEIGHT : doc.page.minH;
   const firstPreview = useRef<HTMLDivElement>(null);
   const firstSheet = useRef<HTMLElement>(null);
   const [{ count, scale }, setPreview] = useState({ count: 1, scale: 0 });
@@ -35,7 +39,7 @@ export default function DocumentEvidence({ evidence }: { evidence: DocEvidence }
     observer.observe(preview);
     observer.observe(sheet);
     return () => observer.disconnect();
-  }, [doc, pageWidth, pageHeight]);
+  }, [doc, hasTemplate, pageWidth, pageHeight]);
 
   return (
     <Folder
@@ -67,7 +71,9 @@ export default function DocumentEvidence({ evidence }: { evidence: DocEvidence }
           >
             <div className={styles.sheet} style={{ top: -index * pageHeight }}>
               <ErrorBoundary key={evidence.updated_at} fallback={null}>
-                <DocSheet doc={doc} evidenceId={evidence.id} sheetRef={index === 0 ? firstSheet : undefined} />
+                {hasTemplate
+                  ? <div ref={index === 0 ? node => { firstSheet.current = node; } : undefined}><TemplateRenderer template={readTemplate(evidence.metadata)} pageLimit={MAX_PREVIEW_PAGES} /></div>
+                  : <DocSheet doc={doc} evidenceId={evidence.id} sheetRef={index === 0 ? firstSheet : undefined} />}
               </ErrorBoundary>
             </div>
           </div>

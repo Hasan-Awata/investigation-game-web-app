@@ -1,5 +1,5 @@
 {
-    "format_version": 2,
+    "format_version": 3,
     "case": {
         "title": "ملفات غلاسهاوس",
         "story": "سقط إيليا برانت، مدقّق بيانات جنائية متعاقد مع المدينة، من منصة الطابق الرئاسي في برج غلاسهاوس الساعة 03:14 يوم 1 أكتوبر. صفّت المدينة الأمر حادثةً. لكن ملاحظاته تقول غير ذلك: مجموعة بيانات حيوية تُباع مرتين، شركة تابعة صورية تدفع بالحوالات، أرشيفي ليل مات بصمت، ورجل أمن لا يوقّع في الدفتر قط. ستة أشخاص لمسوا هذا الأمر. فريقكم هو آخر تفويضٍ لم يتكبّدَ أحدٌ عناء شرائه. ابحثوا عن كل زوج أيدي، وضعوا كل صفحة حيوية أمام الادعاء العام قبل أن تنطقوا باسم.",
@@ -27,134 +27,16 @@
             "description": "تقرير الاستجابة الأولى لسقوط برانت، صُنِّف حادثةً.",
             "evidence_type": "document",
             "metadata": {
-                "doc": {
-                    "v": 1,
-                    "theme": "case_file",
-                    "page": {
-                        "w": 800,
-                        "minH": 1131,
-                        "pad": 64
-                    },
-                    "blocks": [
-                        {
-                            "id": "inc_wm",
-                            "type": "watermark",
-                            "span": 12,
-                            "props": {
-                                "text": "نسخة",
-                                "rotate": -25
-                            }
-                        },
-                        {
-                            "id": "inc_lh",
-                            "type": "letterhead",
-                            "span": 12,
-                            "props": {
-                                "agency": "شرطة مدينة المرفأ — الدائرة 19",
-                                "title": "تقرير حادثة",
-                                "sub": "وفاة مفاجئة — تصنيف أولي",
-                                "aside": "CR-2026-0417",
-                                "asideLabel": "رقم القضية",
-                                "rule": true
-                            }
-                        },
-                        {
-                            "id": "inc_mg",
-                            "type": "meta_grid",
-                            "span": 12,
-                            "props": {
-                                "columns": 2,
-                                "tone": "boxed",
-                                "rows": [
-                                    {
-                                        "label": "المتوفى",
-                                        "value": "إ. برانت، مدقّق ميداني"
-                                    },
-                                    {
-                                        "label": "الموقع",
-                                        "value": "برج غلاسهاوس، منصة الطابق 41"
-                                    },
-                                    {
-                                        "label": "التاريخ / الوقت",
-                                        "value": "2026-10-01، 03:14"
-                                    },
-                                    {
-                                        "label": "الضابط المبلِّغ",
-                                        "value": "الرقيب ب. هالوران"
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "inc_rl1",
-                            "type": "rule",
-                            "span": 12,
-                            "props": {
-                                "variant": "solid"
-                            }
-                        },
-                        {
-                            "id": "inc_p1",
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "tone": "serif",
-                                "html": "<p dir=\"rtl\">في حوالي الساعة 03:14، شهد متصلٌ من الردهة المتوفى وهو يسقط سقوطًا حرًّا خلف الواجهة الزجاجية الشمالية. وجدت فرق الاستجابة الجثة على منصة الخدمة. لم يُستردّ أي رسالة.</p><p dir=\"rtl\">التصنيف وقت الكتابة: <span class=\"highlighted\">سقوط حادثي — لم يُثبَت وجود طرف ثالث</span>.</p>"
-                            }
-                        },
-                        {
-                            "id": "inc_p2",
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "tone": "typed",
-                                "html": "<p dir=\"rtl\">سجّل باب درج الخدمة 41-S <span class=\"redacted\">لا حدَثَ بطاقة</span> خلال الساعة المعنيّة، مع أن إطار الباب يُظهر كشطًّا حديثًا يوافق اقتحامًا قسريًا.</p>"
-                            }
-                        },
-                        {
-                            "id": "inc_sp",
-                            "type": "spacer",
-                            "span": 12,
-                            "props": {
-                                "height": 24
-                            }
-                        },
-                        {
-                            "id": "inc_sg",
-                            "type": "signature_row",
-                            "span": 12,
-                            "props": {
-                                "columns": [
-                                    {
-                                        "caption": "الضابط المبلِّغ"
-                                    },
-                                    {
-                                        "caption": "قائد المناوبة"
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "inc_st",
-                            "type": "stamp",
-                            "span": 4,
-                            "style": {
-                                "align": "end"
-                            },
-                            "props": {
-                                "text": "مُعالَج",
-                                "tone": "official"
-                            }
-                        },
-                        {
-                            "id": "inc_bc",
-                            "type": "barcode",
-                            "span": 6,
-                            "props": {
-                                "value": "MET-PH-1130"
-                            }
-                        }
-                    ]
+                "template": {
+                    "id": "background_check",
+                    "version": 1,
+                    "values": {
+                        "reference": "CR-2026-0417",
+                        "subject": "إ. برانت",
+                        "check_date": "2026-10-01",
+                        "reviewer": "الرقيب ب. هالوران",
+                        "notes": "عند 03:14 شاهد متصل من الردهة برانت يسقط خلف الواجهة الزجاجية الشمالية. عثرت الاستجابة الأولى على الجثة على منصة الخدمة في الطابق 41، ولم تسترد أي رسالة. صُنّف السقوط أولًا حادثيًا لعدم ثبوت وجود طرف ثالث.\n\nلم يسجّل باب درج الخدمة 41-S أي حدث بطاقة وقت الحادثة، مع أن إطاره يحمل كشطًا حديثًا يوافق اقتحامًا قسريًا."
+                    }
                 }
             },
             "is_initial": true,
@@ -261,150 +143,14 @@
             "description": "سجلات الهاتف لمدخل البرج حول مكالمة 03:07.",
             "evidence_type": "document",
             "metadata": {
-                "doc": {
-                    "v": 1,
-                    "theme": "ledger",
-                    "page": {
-                        "w": 800,
-                        "minH": 1131,
-                        "pad": 64
-                    },
-                    "blocks": [
-                        {
-                            "id": "cl_lh",
-                            "type": "letterhead",
-                            "span": 12,
-                            "props": {
-                                "agency": "مدخل خط المرفأ",
-                                "title": "سجل المكالمات",
-                                "sub": "برج غلاسهاوس — الخط الرئيسي 4",
-                                "aside": "2026-10-01",
-                                "asideLabel": "الليلة",
-                                "rule": true
-                            }
-                        },
-                        {
-                            "id": "cl_mg",
-                            "type": "meta_grid",
-                            "span": 12,
-                            "props": {
-                                "columns": 2,
-                                "tone": "rows",
-                                "rows": [
-                                    {
-                                        "label": "الخط الرئيسي",
-                                        "value": "4 / جناح الردهة"
-                                    },
-                                    {
-                                        "label": "النافذة الزمنية",
-                                        "value": "02:45 - 03:20"
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "cl_rl",
-                            "type": "rule",
-                            "span": 12,
-                            "props": {
-                                "variant": "dashed"
-                            }
-                        },
-                        {
-                            "id": "cl_tb",
-                            "type": "table",
-                            "span": 12,
-                            "props": {
-                                "tone": "log",
-                                "caption": "مدخل البرج 02:45 - 03:20",
-                                "columns": [
-                                    {
-                                        "key": "time",
-                                        "label": "الوقت"
-                                    },
-                                    {
-                                        "key": "dir",
-                                        "label": "الاتجاه",
-                                        "type": "badge",
-                                        "tones": {
-                                            "in": "وارد",
-                                            "out": "صادر"
-                                        }
-                                    },
-                                    {
-                                        "key": "number",
-                                        "label": "الرقم",
-                                        "type": "mono"
-                                    },
-                                    {
-                                        "key": "sec",
-                                        "label": "الثانية",
-                                        "type": "number"
-                                    }
-                                ],
-                                "rows": [
-                                    {
-                                        "time": "00:52",
-                                        "dir": "out",
-                                        "number": "حراسة — مجلس المراقبة",
-                                        "sec": 211
-                                    },
-                                    {
-                                        "time": "02:47",
-                                        "dir": "in",
-                                        "number": "مجهول — هاتف دفع مسبق",
-                                        "sec": 42
-                                    },
-                                    {
-                                        "time": "03:07",
-                                        "dir": "in",
-                                        "number": "LOOP 0992-C",
-                                        "sec": 12
-                                    },
-                                    {
-                                        "time": "03:11",
-                                        "dir": "out",
-                                        "number": "ميرديان هولدنغز — داخلي 3313",
-                                        "sec": 96
-                                    }
-                                ],
-                                "emptyMessage": "لا نشاط ضمن النافذة المطلوبة."
-                            }
-                        },
-                        {
-                            "id": "cl_sp",
-                            "type": "spacer",
-                            "span": 12,
-                            "props": {
-                                "height": 20
-                            }
-                        },
-                        {
-                            "id": "cl_an",
-                            "type": "annotation",
-                            "span": 8,
-                            "props": {
-                                "text": "قارن الداخلي 03:11 مع سجلات الرحلات — تلك هي غرفة الدفع.",
-                                "rotate": -2
-                            }
-                        },
-                        {
-                            "id": "cl_rl2",
-                            "type": "rule",
-                            "span": 12,
-                            "props": {
-                                "variant": "dotted"
-                            }
-                        },
-                        {
-                            "id": "cl_bc",
-                            "type": "barcode",
-                            "span": 6,
-                            "props": {
-                                "value": "EXCH-T4-0930"
-                            }
-                        }
-                    ]
+                "template": {
+                    "id": "background_check",
+                    "version": 1,
+                    "values": {
+                        "reference": "CR-2026-0417",
+                        "subject": "مدخل برج غلاسهاوس — الجناح 4",
+                        "notes": "نافذة المراجعة: 02:45–03:20. عند 02:47 ورد اتصال من هاتف دفع مسبق مجهول واستمر 42 ثانية. عند 03:07 ورد اتصال من LOOP 0992-C واستمر 12 ثانية. عند 03:11 خرج اتصال إلى ميرديان هولدنغز، داخلي 3313، واستمر 96 ثانية.\n\nقارن الداخلي 3313 بسجلات الرحلات لتحديد غرفة الدفع."
+                    }
                 }
             },
             "is_initial": false,
@@ -418,170 +164,14 @@
             "description": "السجلات المالية للشركة التابعة لميرديان حول فترة التدقيق.",
             "evidence_type": "document",
             "metadata": {
-                "doc": {
-                    "v": 1,
-                    "theme": "ledger",
-                    "page": {
-                        "w": 800,
-                        "minH": 1131,
-                        "pad": 64
-                    },
-                    "blocks": [
-                        {
-                            "id": "bs_wm",
-                            "type": "watermark",
-                            "span": 12,
-                            "props": {
-                                "text": "نسخة",
-                                "rotate": -28
-                            }
-                        },
-                        {
-                            "id": "bs_lh",
-                            "type": "letterhead",
-                            "span": 12,
-                            "props": {
-                                "agency": "بنك المرفأ التجاري",
-                                "title": "كشف الحركة",
-                                "sub": "حساب تجاري — عن طريق الشركة التابعة",
-                                "aside": "ACCT-8842",
-                                "asideLabel": "الحساب",
-                                "rule": true
-                            }
-                        },
-                        {
-                            "id": "bs_mg",
-                            "type": "meta_grid",
-                            "span": 12,
-                            "props": {
-                                "columns": 3,
-                                "tone": "boxed",
-                                "rows": [
-                                    {
-                                        "label": "الحساب",
-                                        "value": "ستاندرد بيرر المحدودة"
-                                    },
-                                    {
-                                        "label": "الموقِّع",
-                                        "value": "ن. رينس"
-                                    },
-                                    {
-                                        "label": "الفترة",
-                                        "value": "15 سبتمبر - 5 أكتوبر"
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "bs_rl",
-                            "type": "rule",
-                            "span": 12,
-                            "props": {
-                                "variant": "double"
-                            }
-                        },
-                        {
-                            "id": "bs_tb",
-                            "type": "table",
-                            "span": 12,
-                            "props": {
-                                "tone": "ledger",
-                                "caption": "كشف حركة الحساب",
-                                "columns": [
-                                    {
-                                        "key": "date",
-                                        "label": "التاريخ"
-                                    },
-                                    {
-                                        "key": "memo",
-                                        "label": "الوصف"
-                                    },
-                                    {
-                                        "key": "amount",
-                                        "label": "المبلغ",
-                                        "align": "end",
-                                        "type": "number"
-                                    }
-                                ],
-                                "rows": [
-                                    {
-                                        "date": "2026-09-18",
-                                        "memo": "أتعاب استشاريين",
-                                        "amount": 4800
-                                    },
-                                    {
-                                        "date": "2026-09-30",
-                                        "memo": "حوالة — كيان صوري",
-                                        "amount": -412500
-                                    },
-                                    {
-                                        "date": "2026-10-02",
-                                        "memo": "أتعاب قانونية — بعد الحادثة",
-                                        "amount": 25000
-                                    }
-                                ],
-                                "emptyMessage": "لا حركة مُسجّلة."
-                            }
-                        },
-                        {
-                            "id": "bs_tb2",
-                            "type": "table",
-                            "span": 12,
-                            "props": {
-                                "tone": "ledger",
-                                "caption": "مصروفات المدقّق",
-                                "columns": [
-                                    {
-                                        "key": "date",
-                                        "label": "التاريخ"
-                                    },
-                                    {
-                                        "key": "memo",
-                                        "label": "الوصف"
-                                    }
-                                ],
-                                "rows": [],
-                                "emptyMessage": "لم يُدفع لهذا الحساب أي أتعاب تدقيق إطلاقًا."
-                            }
-                        },
-                        {
-                            "id": "bs_p1",
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "tone": "typed",
-                                "html": "<p dir=\"rtl\">نقلت حوالة 09/30 مبلغ <span class=\"highlighted\">412,500</span> من الحساب بعد ساعات من تسليم المدقّق ملاحظاته الأولية. لا سند للحوالة في الملف.</p>"
-                            }
-                        },
-                        {
-                            "id": "bs_sp",
-                            "type": "spacer",
-                            "span": 12,
-                            "props": {
-                                "height": 18
-                            }
-                        },
-                        {
-                            "id": "bs_st",
-                            "type": "stamp",
-                            "span": 4,
-                            "style": {
-                                "align": "end"
-                            },
-                            "props": {
-                                "text": "سِرّي",
-                                "tone": "confidential"
-                            }
-                        },
-                        {
-                            "id": "bs_bc",
-                            "type": "barcode",
-                            "span": 6,
-                            "props": {
-                                "value": "ACCT 8842-B"
-                            }
-                        }
-                    ]
+                "template": {
+                    "id": "background_check",
+                    "version": 1,
+                    "values": {
+                        "reference": "CR-2026-0417",
+                        "subject": "ستاندرد بيرر المحدودة",
+                        "notes": "الموقّع على الحساب: ن. رينس. فترة المراجعة: 15 سبتمبر–5 أكتوبر. خرجت حوالة بقيمة 412,500 إلى كيان صوري في 30 سبتمبر، بعد ساعات من تسليم المدقق ملاحظاته الأولية. لا سند للحوالة في الملف، ولم يُدفع للحساب أي أتعاب تدقيق. سُجلت أيضًا أتعاب استشاريين بقيمة 4,800 في 18 سبتمبر وأتعاب قانونية بقيمة 25,000 في 2 أكتوبر."
+                    }
                 }
             },
             "is_initial": false,
@@ -595,78 +185,14 @@
             "description": "تصوير جنائي لمحطة عمل الخزنة المسترَدة بموجب الأمر القضائي.",
             "evidence_type": "document",
             "metadata": {
-                "doc": {
-                    "v": 1,
-                    "theme": "dossier",
-                    "page": {
-                        "w": 800,
-                        "minH": 1131,
-                        "pad": 64
-                    },
-                    "blocks": [
-                        {
-                            "type": "letterhead",
-                            "span": 12,
-                            "props": {
-                                "title": "07 · رقمي — تصوير محطة العمل المُصادَرة"
-                            }
-                        },
-                        {
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "html": "<p>جلسة تصوير — محطة عمل 4<br>\nقضية CR-2026-0417 · استلام دليل 8842</p>",
-                                "tone": "mono"
-                            }
-                        },
-                        {
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "html": "<p>root@forensic-workstation:~# lsblk -f<br>\nNAME   FSTYPE  LABEL<br>\nsda    ext4    OS<br>\nsdb    ntfs    الخزنة (غير مُركَّبة)</p>",
-                                "tone": "mono"
-                            }
-                        },
-                        {
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "html": "<p>سجل المهمة<br>\n[02:00] تصوير sdb إلى /evidence/vault_image.dd<br>\n[02:41] اكتمل 98٪<br>\n[02:41] استُعيد تدفق واحد محذوف: /archive/copyfour.log</p>",
-                                "tone": "mono"
-                            }
-                        },
-                        {
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "html": "<p>/evidence/vault_image.dd  1.0 GB  file  intact<br>\n/archive/copyfour.log  9 KB  2026-09-30 23:52  file  recovered<br>\n/archive/vault_delegate.enc  212 MB  file  encrypted<br>\n/tmp/wipescript.sh  2 KB  deleted  corrupted</p>",
-                                "tone": "mono"
-                            }
-                        },
-                        {
-                            "type": "spacer",
-                            "span": 12,
-                            "props": {
-                                "height": 16
-                            }
-                        },
-                        {
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "html": "<p>root@forensic-workstation:~# mount /evidence/vault_image.dd<br>\nمواد المفتاح مفقودة: كلمة مرور المفوَّض مطلوبة</p>",
-                                "tone": "mono"
-                            }
-                        },
-                        {
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "html": "<p>توقفت الجلسة — القرص يرفض إعادة التركيب<br>\nقُرئ تدفق مستعاد واحد؛ الدفتر الذي يسمّيه هو غرفة الحوالات</p>",
-                                "tone": "mono"
-                            }
-                        }
-                    ]
+                "template": {
+                    "id": "background_check",
+                    "version": 1,
+                    "values": {
+                        "reference": "CR-2026-0417",
+                        "subject": "محطة عمل الخزنة 4",
+                        "notes": "أُخذت صورة جنائية من القرص وتحُفّظ عليها في /evidence/vault_image.dd. توقفت العملية عند 98٪. الملف المحذوف المستعاد /archive/copyfour.log مؤرّخ في 30 سبتمبر عند 23:52. ويشير إلى دفتر غرفة الحوالات. الملف /archive/vault_delegate.enc مشفّر، وتعذّرت متابعة الجلسة من دون كلمة مرور المفوَّض."
+                    }
                 }
             },
             "is_initial": false,
@@ -680,184 +206,16 @@
             "description": "تقرير ما بعد الوفاة لرئيس الفاحصين الطبيين، موقَّع تحت الاحتجاج.",
             "evidence_type": "forensic",
             "metadata": {
-                "doc": {
-                    "v": 1,
-                    "theme": "lab",
-                    "page": {
-                        "w": 800,
-                        "minH": 1131,
-                        "pad": 64
-                    },
-                    "blocks": [
-                        {
-                            "id": "au_lh",
-                            "type": "letterhead",
-                            "span": 12,
-                            "props": {
-                                "agency": "الطب الجنائي",
-                                "title": "تقرير التشريح",
-                                "sub": "مكتب رئيس الفاحصين الطبيين",
-                                "aside": "ME-4471",
-                                "asideLabel": "القضية",
-                                "rule": true
-                            }
-                        },
-                        {
-                            "id": "au_mg",
-                            "type": "meta_grid",
-                            "span": 12,
-                            "props": {
-                                "columns": 4,
-                                "tone": "boxed",
-                                "rows": [
-                                    {
-                                        "label": "القضية",
-                                        "value": "CR-2026-0417"
-                                    },
-                                    {
-                                        "label": "المتوفى",
-                                        "value": "إ. برانت"
-                                    },
-                                    {
-                                        "label": "تاريخ الفحص",
-                                        "value": "2026-10-02"
-                                    },
-                                    {
-                                        "label": "الفاحص",
-                                        "value": "د. أو. فالِك"
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "au_tc",
-                            "type": "two_column",
-                            "span": 12,
-                            "props": {
-                                "gap": 28,
-                                "rightWidth": 170,
-                                "left": [
-                                    {
-                                        "id": "au_tf",
-                                        "type": "table",
-                                        "span": 12,
-                                        "props": {
-                                            "tone": "ledger",
-                                            "caption": "النتائج",
-                                            "columns": [
-                                                {
-                                                    "key": "finding",
-                                                    "label": "النتيجة"
-                                                },
-                                                {
-                                                    "key": "note",
-                                                    "label": "ملاحظة"
-                                                }
-                                            ],
-                                            "rows": [
-                                                {
-                                                    "finding": "رضّ قوي، قفا",
-                                                    "note": "إصابة قبل نهاية الحياة"
-                                                },
-                                                {
-                                                    "finding": "كسر التاج، أيسر",
-                                                    "note": "يطابق حافة الدرابزين"
-                                                },
-                                                {
-                                                    "finding": "كشطات، معصم أيمن",
-                                                    "note": "نمط تقييد، قبل الوفاة"
-                                                }
-                                            ],
-                                            "emptyMessage": "لا نتائج مُسجّلة."
-                                        }
-                                    }
-                                ],
-                                "right": [
-                                    {
-                                        "id": "au_dg",
-                                        "type": "diagram",
-                                        "span": 12,
-                                        "props": {
-                                            "preset": "body_outline",
-                                            "caption": "خريطة الإصابات — للاسترشاد فقط"
-                                        }
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "au_rl",
-                            "type": "rule",
-                            "span": 12,
-                            "props": {
-                                "variant": "solid"
-                            }
-                        },
-                        {
-                            "id": "au_p1",
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "tone": "mono",
-                                "html": "<p dir=\"rtl\"><strong>سبب الوفاة</strong></p><p dir=\"rtl\">رضّ وقع قبل السقوط. لا تدعم أدلة جهاز التوازن فقدَانَ توازن سببُه ذاتيًا: <span class=\"highlighted\">لا يحمل مزلاج النافذة أيَّ إصابة على الزجاج</span>.</p>"
-                            }
-                        },
-                        {
-                            "id": "au_im",
-                            "type": "image",
-                            "span": 6,
-                            "props": {
-                                "url": "media/evidences/ev_126.img.jpg",
-                                "caption": "كشط مزلاج النافذة، 40x",
-                                "filter": "micrograph",
-                                "width": 320
-                            }
-                        },
-                        {
-                            "id": "au_an",
-                            "type": "annotation",
-                            "span": 6,
-                            "props": {
-                                "text": "وقّع الفاحص مرتين. اسأل لماذا.",
-                                "rotate": -3
-                            }
-                        },
-                        {
-                            "id": "au_sp",
-                            "type": "spacer",
-                            "span": 12,
-                            "props": {
-                                "height": 20
-                            }
-                        },
-                        {
-                            "id": "au_sg",
-                            "type": "signature_row",
-                            "span": 12,
-                            "props": {
-                                "columns": [
-                                    {
-                                        "caption": "الفاحص"
-                                    },
-                                    {
-                                        "caption": "المراجع"
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "au_st",
-                            "type": "stamp",
-                            "span": 4,
-                            "style": {
-                                "align": "end"
-                            },
-                            "props": {
-                                "text": "أولي",
-                                "tone": "crimson"
-                            }
-                        }
-                    ]
+                "template": {
+                    "id": "background_check",
+                    "version": 1,
+                    "values": {
+                        "reference": "CR-2026-0417",
+                        "subject": "إ. برانت",
+                        "check_date": "2026-10-02",
+                        "reviewer": "د. أو. فالِك",
+                        "notes": "أثبت التشريح وجود رضّ قوي في القفا وقع قبل السقوط، وكسر أيسر يطابق حافة الدرابزين، وكشطات في المعصم الأيمن بنمط تقييد سابق للوفاة. لا تدعم أدلة جهاز التوازن فرضية فقدان التوازن ذاتيًا، ولا يحمل مزلاج النافذة أثر إصابة على الزجاج.\n\nالصورة المكبرة لكشط المزلاج محفوظة ضمن الأدلة. وقّع الفاحص التقرير مرتين."
+                    }
                 }
             },
             "is_initial": false,
@@ -871,131 +229,15 @@
             "description": "مقارنة مخبرية لمسحة المنصة مع السجلات المرجعية.",
             "evidence_type": "forensic",
             "metadata": {
-                "doc": {
-                    "v": 1,
-                    "theme": "lab",
-                    "page": {
-                        "w": 800,
-                        "minH": 1131,
-                        "pad": 64
-                    },
-                    "blocks": [
-                        {
-                            "id": "dn_lh",
-                            "type": "letterhead",
-                            "span": 12,
-                            "props": {
-                                "agency": "علم الأحياء الجنائي",
-                                "title": "تقرير تحليل STR",
-                                "sub": "مفَرَّد مقارِن",
-                                "aside": "STR-0992",
-                                "asideLabel": "الملف",
-                                "rule": true
-                            }
-                        },
-                        {
-                            "id": "dn_mg",
-                            "type": "meta_grid",
-                            "span": 12,
-                            "props": {
-                                "columns": 3,
-                                "tone": "boxed",
-                                "rows": [
-                                    {
-                                        "label": "العينة",
-                                        "value": "مسحة — مزلاج النافذة"
-                                    },
-                                    {
-                                        "label": "المرجع",
-                                        "value": "سجلات جدول الخدمة"
-                                    },
-                                    {
-                                        "label": "المحلل",
-                                        "value": "ك. إيبارا"
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "dn_dg",
-                            "type": "diagram",
-                            "span": 12,
-                            "props": {
-                                "preset": "electropherogram",
-                                "caption": "مسحة جلدية مقابل السجل المرجعي — قممٌ مطابقة"
-                            }
-                        },
-                        {
-                            "id": "dn_tb",
-                            "type": "table",
-                            "span": 12,
-                            "props": {
-                                "tone": "ledger",
-                                "caption": "ملخص المقارنة",
-                                "columns": [
-                                    {
-                                        "key": "locus",
-                                        "label": "الموقع الجيني",
-                                        "type": "mono"
-                                    },
-                                    {
-                                        "key": "result",
-                                        "label": "النتيجة",
-                                        "type": "badge",
-                                        "tones": {
-                                            "match": "مطابق",
-                                            "nomatch": "غير مطابق",
-                                            "partial": "جزئي"
-                                        }
-                                    }
-                                ],
-                                "rows": [
-                                    {
-                                        "locus": "D3S1358",
-                                        "result": "match"
-                                    },
-                                    {
-                                        "locus": "FGA",
-                                        "result": "match"
-                                    },
-                                    {
-                                        "locus": "TH01",
-                                        "result": "partial"
-                                    },
-                                    {
-                                        "locus": "WAJ",
-                                        "result": "match"
-                                    }
-                                ],
-                                "emptyMessage": "لم تُقارَن مواقع جينية."
-                            }
-                        },
-                        {
-                            "id": "dn_rl",
-                            "type": "rule",
-                            "span": 12,
-                            "props": {
-                                "variant": "solid"
-                            }
-                        },
-                        {
-                            "id": "dn_p1",
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "tone": "mono",
-                                "html": "<p dir=\"rtl\">الخلاصة: أمسَكَ المزلاجَ يدُ حيّة <span class=\"highlighted\">لمُدّة لا تقل عن عدة ثوانٍ</span>. الشدّ، لا الانزلاق، سبَق السقوط.</p>"
-                            }
-                        },
-                        {
-                            "id": "dn_bc",
-                            "type": "barcode",
-                            "span": 6,
-                            "props": {
-                                "value": "STR 0992-C"
-                            }
-                        }
-                    ]
+                "template": {
+                    "id": "background_check",
+                    "version": 1,
+                    "values": {
+                        "reference": "CR-2026-0417",
+                        "subject": "مسحة مزلاج النافذة",
+                        "reviewer": "ك. إيبارا",
+                        "notes": "قورنت المسحة بسجلات جدول الخدمة. ظهرت نتائج مطابقة في D3S1358 وFGA وWAJ، ومطابقة جزئية في TH01. خلص التحليل إلى أن يدًا حية أمسكت المزلاج عدة ثوانٍ على الأقل. الشدّ سبق السقوط، لا الانزلاق."
+                    }
                 }
             },
             "is_initial": false,
@@ -1009,123 +251,15 @@
             "description": "طيف الكتل للراسب على ندوبة الدرابزين.",
             "evidence_type": "forensic",
             "metadata": {
-                "doc": {
-                    "v": 1,
-                    "theme": "lab",
-                    "page": {
-                        "w": 800,
-                        "minH": 1131,
-                        "pad": 64
-                    },
-                    "blocks": [
-                        {
-                            "id": "tr_lh",
-                            "type": "letterhead",
-                            "span": 12,
-                            "props": {
-                                "agency": "وحدة المواد والأثر",
-                                "title": "تحليل أثري",
-                                "sub": "طيف الكتل — دليل 41-B",
-                                "aside": "MS-2210",
-                                "asideLabel": "الملف",
-                                "rule": true
-                            }
-                        },
-                        {
-                            "id": "tr_mg",
-                            "type": "meta_grid",
-                            "span": 12,
-                            "props": {
-                                "columns": 3,
-                                "tone": "boxed",
-                                "rows": [
-                                    {
-                                        "label": "الدليل",
-                                        "value": "مسحة ندوبة الدرابزين"
-                                    },
-                                    {
-                                        "label": "الطريقة",
-                                        "value": "طيف كتلي / كروماتوغرافيا غازية"
-                                    },
-                                    {
-                                        "label": "المحلل",
-                                        "value": "ف. أدييمي"
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "tr_dg",
-                            "type": "diagram",
-                            "span": 12,
-                            "props": {
-                                "preset": "mass_spec",
-                                "caption": "بصمة الرَّسَب — حافة الندوبة"
-                            }
-                        },
-                        {
-                            "id": "tr_ls",
-                            "type": "list",
-                            "span": 12,
-                            "props": {
-                                "ordered": true,
-                                "items": [
-                                    "استلام العينة والتحقق من الخَتْم",
-                                    "غسيل بمذيب وتركيز",
-                                    "تشغيل طيف الكتل، ثلاث مرات",
-                                    "مقارنة مع بيانات توريد المقاول"
-                                ]
-                            }
-                        },
-                        {
-                            "id": "tr_mg2",
-                            "type": "meta_grid",
-                            "span": 12,
-                            "props": {
-                                "columns": 2,
-                                "tone": "rows",
-                                "rows": [
-                                    {
-                                        "label": "المادة",
-                                        "value": "معجون قطع صناعي، حبيبات تنغستن"
-                                    },
-                                    {
-                                        "label": "المصدر المطابق",
-                                        "value": "مخزون مقاول صيانة البناية"
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "tr_p1",
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "tone": "mono",
-                                "html": "<p dir=\"rtl\">يطابق معجون مخزون الدرج <span class=\"highlighted\">ندوبة الدرابزين</span> ضمن هامش السماح. صُعِدت الأداة من درج الخدمة، وعادت يدُها بجسد.</p>"
-                            }
-                        },
-                        {
-                            "id": "tr_sp",
-                            "type": "spacer",
-                            "span": 12,
-                            "props": {
-                                "height": 22
-                            }
-                        },
-                        {
-                            "id": "tr_st",
-                            "type": "stamp",
-                            "span": 4,
-                            "style": {
-                                "align": "end"
-                            },
-                            "props": {
-                                "text": "تم التحقق",
-                                "tone": "official"
-                            }
-                        }
-                    ]
+                "template": {
+                    "id": "background_check",
+                    "version": 1,
+                    "values": {
+                        "reference": "CR-2026-0417",
+                        "subject": "ندوب درابزين درج الخدمة",
+                        "reviewer": "ف. أدييمي",
+                        "notes": "كشف تحليل راسب الندوب عن معجون قطع صناعي يحوي حبيبات تنغستن. تطابق المعجون مع مخزون مقاول صيانة البناية ضمن هامش السماح، وهو ما يربط الأداة المستخدمة بدرج الخدمة."
+                    }
                 }
             },
             "is_initial": false,
@@ -1139,118 +273,14 @@
             "description": "ملف استخباري عن رئيس أمن البرج، مشطوب جزئيًا.",
             "evidence_type": "document",
             "metadata": {
-                "doc": {
-                    "v": 1,
-                    "theme": "dossier",
-                    "page": {
-                        "w": 800,
-                        "minH": 1131,
-                        "pad": 64
-                    },
-                    "blocks": [
-                        {
-                            "id": "bg_lh",
-                            "type": "letterhead",
-                            "span": 12,
-                            "props": {
-                                "agency": "ملف استخباري — داخلي",
-                                "title": "فحص سيرة",
-                                "sub": "متعاقد أمن رفيع",
-                                "aside": "GB-0114",
-                                "asideLabel": "البطاقة",
-                                "rule": true
-                            }
-                        },
-                        {
-                            "id": "bg_mg",
-                            "type": "meta_grid",
-                            "span": 12,
-                            "props": {
-                                "columns": 2,
-                                "tone": "plain",
-                                "rows": [
-                                    {
-                                        "label": "الموضوع",
-                                        "value": "جان-لوك غريف"
-                                    },
-                                    {
-                                        "label": "الدور",
-                                        "value": "مدير أمن البرج (متعاقد منذ 2019)"
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "bg_rl",
-                            "type": "rule",
-                            "span": 12,
-                            "props": {
-                                "variant": "solid"
-                            }
-                        },
-                        {
-                            "id": "bg_p1",
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "tone": "typed",
-                                "html": "<p dir=\"rtl\">دخل غريف إلى خدمة البرج عام 2019 بموجب عقد من جهة ميرديان. تصف ملاحظات المُقيِّم رجلًا <span class=\"highlighted\">ينجذب إلى الدفاع عن البنايات لا الأشخاص</span>. العمل السابق: <span class=\"redacted\">جهات مرفأيّة معينة، 2009-2018، تسريحٌ موضع نزاع</span>.</p>"
-                            }
-                        },
-                        {
-                            "id": "bg_rd",
-                            "type": "redaction",
-                            "span": 12,
-                            "props": {
-                                "lines": 4,
-                                "label": "مشطوب بقرار من الشؤون القانونية بميرديان"
-                            }
-                        },
-                        {
-                            "id": "bg_dg",
-                            "type": "diagram",
-                            "span": 12,
-                            "props": {
-                                "preset": "fingerprint",
-                                "caption": "بصمة كامنة — درابزين درج الخدمة"
-                            }
-                        },
-                        {
-                            "id": "bg_sp",
-                            "type": "spacer",
-                            "span": 12,
-                            "props": {
-                                "height": 24
-                            }
-                        },
-                        {
-                            "id": "bg_sg",
-                            "type": "signature_row",
-                            "span": 12,
-                            "props": {
-                                "columns": [
-                                    {
-                                        "caption": "المُقيِّم"
-                                    },
-                                    {
-                                        "caption": "الأمين"
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "bg_st",
-                            "type": "stamp",
-                            "span": 4,
-                            "style": {
-                                "align": "end"
-                            },
-                            "props": {
-                                "text": "تم التصديق",
-                                "tone": "forged"
-                            }
-                        }
-                    ]
+                "template": {
+                    "id": "background_check",
+                    "version": 1,
+                    "values": {
+                        "reference": "CR-2026-0417",
+                        "subject": "جان-لوك غريف",
+                        "notes": "مدير أمن البرج، دخل الخدمة عام 2019 بموجب عقد من جهة ميرديان. وصفه المقيّم بأنه يميل إلى الدفاع عن المباني قبل الأشخاص. حُجبت بعض تفاصيل تاريخه المهني. سجل الأدلة يشير إلى بصمة كامنة على درابزين درج الخدمة."
+                    }
                 }
             },
             "is_initial": false,
@@ -1264,97 +294,15 @@
             "description": "دفتر عمل جولز واتس، مسترَد من حظيرة المستندات.",
             "evidence_type": "document",
             "metadata": {
-                "doc": {
-                    "v": 1,
-                    "theme": "notebook",
-                    "page": {
-                        "w": 800,
-                        "minH": 1131,
-                        "pad": 64
-                    },
-                    "blocks": [
-                        {
-                            "id": "jn_lh",
-                            "type": "letterhead",
-                            "span": 12,
-                            "props": {
-                                "agency": "دفتر شخصي",
-                                "title": "ج. واتس — وردية الليل",
-                                "rule": true
-                            }
-                        },
-                        {
-                            "id": "jn_mg",
-                            "type": "meta_grid",
-                            "span": 12,
-                            "props": {
-                                "columns": 2,
-                                "tone": "plain",
-                                "rows": [
-                                    {
-                                        "label": "المدوِّن",
-                                        "value": "جولز واتس"
-                                    },
-                                    {
-                                        "label": "آخر تدوين",
-                                        "value": "2026-09-30"
-                                    }
-                                ]
-                            }
-                        },
-                        {
-                            "id": "jn_rl",
-                            "type": "rule",
-                            "span": 12,
-                            "props": {
-                                "variant": "dotted"
-                            }
-                        },
-                        {
-                            "id": "jn_p1",
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "tone": "handwritten",
-                                "html": "<p dir=\"rtl\">تسع شحنات من غرفة النسخ الرابعة منذ يوليو. تُباع البيانات مرتين، والورقة تتظاهر أنها وُلدت مرة واحدة.</p>"
-                            }
-                        },
-                        {
-                            "id": "jn_p2",
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "tone": "handwritten",
-                                "html": "<p dir=\"rtl\">المشتري في 09/22 دفع بحوالة، <span class=\"highlighted\">ثم دفع مرة أخرى لينسى التاريخ</span>. أبقيتُ الشريط الذي يحمل التاريخ. سيبقى الشريط أطول عمرًا من كُل من في هذه البناية إن اضطرّ إلى ذلك.</p>"
-                            }
-                        },
-                        {
-                            "id": "jn_p3",
-                            "type": "prose",
-                            "span": 12,
-                            "props": {
-                                "tone": "handwritten",
-                                "html": "<p dir=\"rtl\">تقول ف.: كن في صمت، وقبل الترسِال إلى الخارج. هي ليست مخطئة، وأنا لست شجاعًا. التقارير نسخ من نسخة. لن ينظر أحدٌ إلى مكتب رجل ميت مرتين.</p>"
-                            }
-                        },
-                        {
-                            "id": "jn_sp",
-                            "type": "spacer",
-                            "span": 12,
-                            "props": {
-                                "height": 26
-                            }
-                        },
-                        {
-                            "id": "jn_an",
-                            "type": "annotation",
-                            "span": 8,
-                            "props": {
-                                "text": "إن حدث شيء، فالشريط هو التاريخ",
-                                "rotate": -4
-                            }
-                        }
-                    ]
+                "template": {
+                    "id": "background_check",
+                    "version": 1,
+                    "values": {
+                        "reference": "CR-2026-0417",
+                        "subject": "جولز واتس",
+                        "check_date": "2026-09-30",
+                        "notes": "سجل واتس تسع شحنات من غرفة النسخ الرابعة منذ يوليو، وذكر أن البيانات تُباع مرتين. دفع مشتري 22 سبتمبر بحوالة ثم دفع مرة أخرى لإخفاء التاريخ. احتفظ واتس بالشريط الذي يحمل التاريخ. وكتب: «إن حدث شيء، فالشريط هو التاريخ»."
+                    }
                 }
             },
             "is_initial": false,

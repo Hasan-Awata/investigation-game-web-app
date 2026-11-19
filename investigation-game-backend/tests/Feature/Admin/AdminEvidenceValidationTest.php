@@ -4,6 +4,7 @@ namespace Tests\Feature\Admin;
 
 use App\Models\Evidence;
 use App\Models\GameCase;
+use App\Services\Case\PaperEvidenceConversion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Tests\Feature\Admin\Concerns\ActsAsAdmin;
@@ -111,6 +112,72 @@ class AdminEvidenceValidationTest extends TestCase
             ...$payload,
             'metadata' => ['doc' => ['blocks' => []]],
         ])->assertUnprocessable()->assertJsonValidationErrors('metadata');
+    }
+
+    public function test_template_save_snapshots_values_and_rejects_legacy_overwrites(): void
+    {
+        $template = ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'ناصر حداد', 'arrests' => [['description' => 'File 41-S']]]];
+        $payload = [...$this->updatePayload(), 'evidence_type' => 'forensic', 'metadata' => ['template' => $template]];
+
+        $id = $this->postJson('/api/admin/evidences', $payload)->assertCreated()->json('evidence.id');
+        $this->assertSame($template, Evidence::findOrFail($id)->metadata['template']);
+
+        $legacy = ['doc' => ['blocks' => [['type' => 'prose', 'props' => ['html' => 'Old report']]]]];
+        $this->putJson("/api/admin/evidences/{$id}", [...$payload, 'metadata' => $legacy])
+            ->assertUnprocessable()->assertJsonValidationErrors('metadata.template');
+        $this->assertSame($template, Evidence::findOrFail($id)->metadata['template']);
+    }
+
+    public function test_template_validation_reports_nested_fields_and_unmanaged_images(): void
+    {
+        $payload = [...$this->updatePayload(), 'evidence_type' => 'document'];
+        $template = ['id' => 'background_check', 'version' => 1, 'values' => ['birth_date' => '2025-02-29', 'arrests' => [['extra' => 'X']]]];
+        $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => ['template' => $template]])
+            ->assertUnprocessable()->assertJsonValidationErrors([
+                'metadata.template.values.subject', 'metadata.template.values.birth_date',
+                'metadata.template.values.arrests.0.description', 'metadata.template.values.arrests.0.extra',
+            ]);
+
+        $template['values'] = ['subject' => 'Case subject', 'portrait' => 'https://example.test/portrait.png'];
+        $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => ['template' => $template]])
+            ->assertUnprocessable()->assertJsonValidationErrors('metadata.template.values.portrait');
+
+        $template['values'] = ['subject' => 'Case subject', 'arrests' => 'not a list'];
+        $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => ['template' => $template]])
+            ->assertUnprocessable()->assertJsonValidationErrors('metadata.template.values.arrests');
+    }
+
+    public function test_reviewed_conversion_dry_runs_and_preserves_evidence_identity(): void
+    {
+        $document = Evidence::create([
+            'case_id' => $this->case->id, 'title' => 'Legacy report', 'evidence_type' => 'document',
+            'metadata' => ['doc' => ['blocks' => [['type' => 'prose', 'props' => ['html' => 'Service door 41-S']]]]],
+            'is_initial' => true, 'is_vital_for_conviction' => true,
+        ]);
+        $template = ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'Case subject', 'notes' => 'Service door 41-S']];
+        $options = ['--case' => (string) $this->case->id, '--reviews' => tempnam(sys_get_temp_dir(), 'review-')];
+        $review = ['expected_sha256' => 'stale', 'template' => $template];
+        try {
+            file_put_contents($options['--reviews'], json_encode([$document->id => $review]));
+            $this->artisan('case:convert-paper', [...$options, '--apply' => true])->assertFailed();
+            $this->assertArrayHasKey('doc', $document->fresh()->metadata);
+
+            $review['expected_sha256'] = PaperEvidenceConversion::fingerprint($document->metadata);
+            file_put_contents($options['--reviews'], json_encode([$document->id => $review]));
+            $this->artisan('case:convert-paper', $options)->assertSuccessful();
+            $this->assertArrayHasKey('doc', $document->fresh()->metadata);
+            $this->artisan('case:convert-paper', [...$options, '--apply' => true])->assertSuccessful();
+            $this->artisan('case:convert-paper', [...$options, '--apply' => true])->assertSuccessful();
+
+            $document->refresh();
+            $this->assertSame('Legacy report', $document->title);
+            $this->assertSame('document', $document->evidence_type->value);
+            $this->assertTrue($document->is_initial);
+            $this->assertTrue($document->is_vital_for_conviction);
+            $this->assertSame(['template' => $template], $document->metadata);
+        } finally {
+            unlink($options['--reviews']);
+        }
     }
 
     /** @return array<string, mixed> */

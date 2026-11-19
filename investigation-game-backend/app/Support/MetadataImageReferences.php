@@ -13,6 +13,7 @@ class MetadataImageReferences
             yield 'url' => $metadata['url'];
         }
 
+        yield from EvidenceTemplateCatalog::imagePaths($metadata['template'] ?? null);
         yield from self::blockPaths($metadata['doc']['blocks'] ?? [], 'doc.blocks', 0);
     }
 

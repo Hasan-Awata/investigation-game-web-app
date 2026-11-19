@@ -237,12 +237,12 @@ class DocumentBundleImagesTest extends TestCase
     public function test_cleanup_preserves_nested_references_until_the_last_image_is_removed(): void
     {
         config(['app.url' => 'https://game.test']);
-        $url = '/assets/cases/test/Evidences/Blocks/shared.png';
-        $unused = '/assets/cases/test/Evidences/Blocks/unused.png';
+        $case = GameCase::create(['title' => 'Shared images', 'story' => 'Story', 'XP_on_solve' => 10]);
+        $url = "/assets/cases/{$case->id}-shared-images/Evidences/Blocks/shared.png";
+        $unused = "/assets/cases/{$case->id}-shared-images/Evidences/Blocks/unused.png";
         File::ensureDirectoryExists(dirname(public_path($url)));
         file_put_contents(public_path($url), base64_decode(self::IMAGE));
         file_put_contents(public_path($unused), base64_decode(self::IMAGE));
-        $case = GameCase::create(['title' => 'Shared images', 'story' => 'Story', 'XP_on_solve' => 10]);
         $first = Evidence::create(['case_id' => $case->id, 'title' => 'Cover', 'evidence_type' => 'image', 'img_url' => $url]);
         $document = Evidence::create([
             'case_id' => $case->id, 'title' => 'Document', 'evidence_type' => 'document',
@@ -256,7 +256,7 @@ class DocumentBundleImagesTest extends TestCase
         $this->putJson("/api/admin/evidences/{$document->id}", [
             'case_id' => $case->id, 'title' => 'Document', 'evidence_type' => 'document',
             'is_initial' => false, 'is_vital_for_conviction' => false, 'store_locally' => true,
-            'metadata' => ['doc' => ['blocks' => [['type' => 'prose', 'props' => ['html' => 'No images']]]]],
+            'metadata' => ['template' => ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'No images']]],
         ])->assertOk();
         $this->assertFileExists(public_path($url));
         $this->assertFileExists(public_path($unused));
@@ -264,7 +264,7 @@ class DocumentBundleImagesTest extends TestCase
         $this->putJson("/api/admin/evidences/{$retained->id}", [
             'case_id' => $case->id, 'title' => 'Document', 'evidence_type' => 'document',
             'is_initial' => false, 'is_vital_for_conviction' => false, 'store_locally' => true,
-            'metadata' => ['doc' => ['blocks' => [['type' => 'image', 'props' => ['url' => $unused]]]]],
+            'metadata' => ['template' => ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'With portrait', 'portrait' => $unused]]],
         ])->assertOk();
         $this->assertFileDoesNotExist(public_path($url));
         $this->assertFileExists(public_path($unused));

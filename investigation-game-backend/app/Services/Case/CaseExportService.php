@@ -121,8 +121,14 @@ class CaseExportService
 
     private function buildManifest(GameCase $case, ZipArchive $archive): array
     {
+        $paper = $case->evidences->filter(fn ($evidence) => in_array($evidence->evidence_type->value, ['document', 'forensic'], true));
+        $templates = $paper->filter(fn ($evidence) => isset($evidence->metadata['template']));
+        if ($templates->count() !== $paper->count() && ($templates->isNotEmpty() || !config('case_bundles.allow_legacy_paper'))) {
+            throw ValidationException::withMessages(['evidences' => 'Convert the remaining legacy paper evidence before exporting this case.']);
+        }
+
         $manifest = [
-            'format_version' => 2,
+            'format_version' => $templates->isEmpty() ? 2 : 3,
             'case' => [
                 'title' => $case->title,
                 'story' => $case->story,
@@ -149,7 +155,8 @@ class CaseExportService
             $metadata = $evidence->metadata;
             $imageIndex = 0;
             foreach (MetadataImageReferences::paths($metadata) as $path => $url) {
-                Arr::set($metadata, $path, $this->addMedia($archive, $url, "media/evidences/{$ref}.blocks.".$imageIndex++, "evidences.{$index}.metadata.{$path}"));
+                $kind = str_starts_with($path, 'template.') ? 'template' : 'blocks';
+                Arr::set($metadata, $path, $this->addMedia($archive, $url, "media/evidences/{$ref}.{$kind}.".$imageIndex++, "evidences.{$index}.metadata.{$path}"));
             }
 
             $manifest['evidences'][] = [

@@ -7,13 +7,16 @@ use App\Http\Requests\Admin\StoreEvidenceRequest;
 use App\Http\Requests\Admin\UpdateEvidenceRequest;
 use App\Models\Evidence;
 use App\Models\GameCase;
+use App\Services\Case\EvidenceTemplateMedia;
 use App\Services\MediaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class AdminEvidenceController extends Controller
 {
-    public function __construct(private readonly MediaService $mediaService) {}
+    public function __construct(private readonly MediaService $mediaService, private readonly EvidenceTemplateMedia $templateMedia) {}
 
     public function store(StoreEvidenceRequest $request): JsonResponse
     {
@@ -29,7 +32,7 @@ class AdminEvidenceController extends Controller
             ? $this->mediaService->store($request->file('audio'), $caseTitle, 'Evidences', $storeLocally, $gameCase?->id)
             : ($request->filled('audio_url') ? $request->input('audio_url') : null);
 
-        $evidence = DB::transaction(fn () => Evidence::create([
+        $evidence = $this->saveWithTemplateMedia([
             'case_id' => $validated['case_id'],
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
@@ -39,7 +42,7 @@ class AdminEvidenceController extends Controller
             'is_vital_for_conviction' => $request->boolean('is_vital_for_conviction'),
             'img_url' => $imageUrl,
             'audio_url' => $audioUrl,
-        ]));
+        ], $gameCase, $request->file('template_images', []), $storeLocally);
 
         return response()->json(['message' => 'Evidence added successfully.', 'evidence' => $evidence], 201);
     }
@@ -52,7 +55,7 @@ class AdminEvidenceController extends Controller
         $caseTitle = $gameCase?->title ?? 'General';
         $oldImage = $evidence->getRawOriginal('img_url');
         $oldAudio = $evidence->getRawOriginal('audio_url');
-        $oldMetadata = $evidence->metadata;
+        $oldMetadata = null;
 
         $updateData = [
             'case_id' => $validated['case_id'],
@@ -70,7 +73,7 @@ class AdminEvidenceController extends Controller
         $this->resolveMediaField($request, 'image', 'img_url', 'clear_img', $oldImage, $caseTitle, $gameCase?->id, $storeLocally, $updateData);
         $this->resolveMediaField($request, 'audio', 'audio_url', 'clear_audio', $oldAudio, $caseTitle, $gameCase?->id, $storeLocally, $updateData);
 
-        DB::transaction(fn () => $evidence->update($updateData));
+        $evidence = $this->saveWithTemplateMedia($updateData, $gameCase, $request->file('template_images', []), $storeLocally, $evidence, $oldMetadata);
 
         foreach (['img_url' => $oldImage, 'audio_url' => $oldAudio] as $column => $oldUrl) {
             if (array_key_exists($column, $updateData) && $updateData[$column] !== $oldUrl) {
@@ -99,6 +102,37 @@ class AdminEvidenceController extends Controller
         $this->mediaService->cleanupOrphanedBlockImages($metadata, null);
 
         return response()->json(['message' => 'Evidence deleted.'], 200);
+    }
+
+    private function saveWithTemplateMedia(array $data, GameCase $case, array $uploads, bool $local, ?Evidence $evidence = null, ?array &$oldMetadata = null): Evidence
+    {
+        $created = [];
+        try {
+            return DB::transaction(function () use ($data, $case, $uploads, $local, $evidence, &$created, &$oldMetadata) {
+                if ($evidence !== null) {
+                    $evidence = Evidence::query()->lockForUpdate()->findOrFail($evidence->id);
+                    $oldMetadata = $evidence->metadata;
+                    if (array_key_exists('metadata', $data) && isset($oldMetadata['template']) &&
+                        in_array($data['evidence_type'], ['document', 'forensic'], true) && !isset($data['metadata']['template'])) {
+                        throw ValidationException::withMessages(['metadata.template' => 'This evidence now uses a template. Reopen it to continue editing.']);
+                    }
+                }
+                if (isset($data['metadata']['template'])) {
+                    $data['metadata'] = $this->templateMedia->resolve($data['metadata'], $case, $uploads, $local, $created);
+                }
+                if ($evidence === null) {
+                    return Evidence::create($data);
+                }
+                $evidence->update($data);
+
+                return $evidence;
+            });
+        } catch (Throwable $exception) {
+            foreach ($created as $url) {
+                $this->mediaService->delete($url);
+            }
+            throw $exception;
+        }
     }
 
     private function resolveMediaField(

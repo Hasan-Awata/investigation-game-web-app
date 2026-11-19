@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Enums\EvidenceType;
 use App\Rules\EvidenceMetadataMatchesType;
+use App\Support\EvidenceTemplateCatalog;
 use App\Support\MediaValidationRules;
 use Illuminate\Validation\Validator;
 use Illuminate\Validation\Rules\Enum;
@@ -37,6 +38,33 @@ trait EvidenceRequestTrait
             if (!is_string($type)) {
                 $evidence = $this->route('evidence');
                 $type = is_object($evidence) ? $evidence->evidence_type : null;
+            }
+            $type = $type instanceof EvidenceType ? $type->value : $type;
+            $paper = in_array($type, ['document', 'forensic'], true);
+            $metadata = $this->input('metadata');
+            $uploads = $this->file('template_images', []);
+            $existing = $this->route('evidence');
+            if (!$this->exists('metadata') && isset($existing->metadata['template']) &&
+                ($type !== $existing->evidence_type->value || (int) $this->input('case_id') !== $existing->case_id)) {
+                $validator->errors()->add('metadata.template', 'Include evidence metadata when moving a template record.');
+            }
+            if (is_array($metadata) && array_key_exists('template', $metadata)) {
+                foreach (EvidenceTemplateCatalog::errors($metadata['template'], (string) $type, is_array($uploads) ? $uploads : []) as $path => $messages) {
+                    foreach ($messages as $message) {
+                        $validator->errors()->add($path, $message);
+                    }
+                }
+                if (array_key_exists('doc', $metadata)) {
+                    $validator->errors()->add('metadata.doc', 'A template record cannot also contain a block document.');
+                }
+            } else {
+                if ($uploads) {
+                    $validator->errors()->add('template_images', 'Select a template before attaching images.');
+                }
+                if ($paper && (($existing?->evidence_type?->value ?? null) !== $type
+                    || ($this->exists('metadata') && (!isset($existing->metadata['doc']) || $metadata !== $existing->metadata)))) {
+                    $validator->errors()->add('metadata.template', 'Select an evidence template for this document.');
+                }
             }
 
             if ($this->hasFile('audio') && $type !== 'audio') {
@@ -78,12 +106,15 @@ trait EvidenceRequestTrait
                         $fail('The metadata field must be a valid JSON object.');
                     }
                 },
-                new EvidenceMetadataMatchesType($fallbackType),
+                ...(is_array($this->input('metadata')) && array_key_exists('template', $this->input('metadata'))
+                    ? [] : [new EvidenceMetadataMatchesType($fallbackType)]),
             ],
             'is_initial' => ['required', 'boolean'],
             'is_vital_for_conviction' => ['required', 'boolean'],
             'image' => ['nullable', ...MediaValidationRules::IMAGE],
             'audio' => ['nullable', ...MediaValidationRules::AUDIO],
+            'template_images' => ['sometimes', 'array', 'max:20'],
+            'template_images.*' => ['required', ...MediaValidationRules::IMAGE],
             'img_url' => ['nullable', 'string', 'max:2048'],
             'audio_url' => ['nullable', 'string', 'max:2048'],
             'clear_img' => ['nullable', 'boolean'],

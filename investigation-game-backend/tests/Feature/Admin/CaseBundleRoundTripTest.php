@@ -93,6 +93,37 @@ class CaseBundleRoundTripTest extends TestCase
         $this->assertSame($original, $this->graphSnapshot($reimported));
     }
 
+    public function test_reviewed_legacy_bundle_conversion_leaves_the_source_and_imports_with_legacy_disabled(): void
+    {
+        $this->actingAsAdmin();
+        config(['case_bundles.allow_legacy_paper' => false]);
+        $manifest = CaseBundleFactory::minimalManifest();
+        $manifest['evidences'] = [[
+            'ref_id' => 'ev_report', 'title' => 'Legacy report', 'evidence_type' => 'document',
+            'metadata' => ['doc' => ['blocks' => [['type' => 'prose', 'props' => ['html' => 'Clue 41-S']]]]],
+        ]];
+        $original = CaseBundleFactory::build($manifest);
+        $converted = $original.'.converted.zip';
+        try {
+            $this->importBundle($original)->assertUnprocessable()->assertJsonValidationErrors('evidences.0.metadata.template');
+            $before = hash_file('sha256', $original);
+            $converter = app(\App\Services\Case\CaseImportService::class);
+            $inventory = $converter->convertPaperBundle($original, null, null);
+            $reviews = ['ev_report' => [
+                'expected_sha256' => $inventory['ev_report']['expected_sha256'],
+                'template' => ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'Report subject', 'notes' => 'Clue 41-S']],
+            ]];
+            $converter->convertPaperBundle($original, $reviews, $converted);
+            $this->assertSame($before, hash_file('sha256', $original));
+            $response = $this->importBundle($converted)->assertCreated();
+            $case = GameCase::findOrFail($response->json('case_id'));
+            $this->assertSame('Clue 41-S', $case->evidences()->sole()->metadata['template']['values']['notes']);
+        } finally {
+            @unlink($original);
+            @unlink($converted);
+        }
+    }
+
     public function test_minimal_bundle_imports_without_media(): void
     {
         $this->actingAsAdmin();
@@ -174,6 +205,13 @@ class CaseBundleRoundTripTest extends TestCase
         $normalizeMediaPath = fn (?string $path) => $path === null
             ? null
             : preg_replace('#/assets/cases/[^/]+/#', '/assets/cases/{case}/', $path);
+        $normalizeMetadata = function (?array $metadata) use ($normalizeMediaPath): ?array {
+            if (isset($metadata['template']['values']['portrait'])) {
+                $metadata['template']['values']['portrait'] = $normalizeMediaPath($metadata['template']['values']['portrait']);
+            }
+
+            return $metadata;
+        };
 
         return [
             'case' => [
@@ -198,7 +236,7 @@ class CaseBundleRoundTripTest extends TestCase
                 'audio' => $normalizeMediaPath($e->getRawOriginal('audio_url')),
                 'is_initial' => (bool) $e->is_initial,
                 'vital' => (bool) $e->is_vital_for_conviction,
-                'metadata' => $e->metadata,
+                'metadata' => $normalizeMetadata($e->metadata),
             ])->values()->all(),
             'characters' => $case->characters->sortBy('name')->map(fn ($c) => [
                 'name' => $c->name,

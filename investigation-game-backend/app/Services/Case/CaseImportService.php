@@ -112,6 +112,97 @@ class CaseImportService
         }
     }
 
+    public function convertPaperBundle(string $source, ?array $reviews, ?string $destination): array
+    {
+        $this->ensureZipExtension();
+        $directory = 'tmp/case-bundle-conversion-'.Str::uuid();
+        $disk = Storage::disk('local');
+        try {
+            if (!$disk->makeDirectory($directory)) {
+                throw new \RuntimeException('Could not allocate a case bundle conversion directory.');
+            }
+            $extractDir = $disk->path($directory);
+            $this->extract(new UploadedFile($source, basename($source), null, null, true), $extractDir);
+            $manifest = $this->readManifest($extractDir);
+            if (!in_array($manifest['format_version'] ?? null, [2, 3, '2', '3'], true)) {
+                throw ValidationException::withMessages(['format_version' => 'Paper conversion requires a version 2 or 3 bundle.']);
+            }
+            $inventory = [];
+            foreach ($manifest['evidences'] ?? [] as $index => $evidence) {
+                if (!is_array($evidence) || !in_array($evidence['evidence_type'] ?? null, ['document', 'forensic'], true)) {
+                    continue;
+                }
+                $metadata = $evidence['metadata'] ?? null;
+                $decoded = is_string($metadata) ? json_decode($metadata, true, flags: JSON_THROW_ON_ERROR) : $metadata;
+                if (isset($decoded['template'])) {
+                    continue;
+                }
+                $ref = $evidence['ref_id'] ?? "index:{$index}";
+                if (!is_string($ref) || $ref === '' || array_key_exists($ref, $inventory)) {
+                    throw ValidationException::withMessages(["evidences.{$index}.ref_id" => 'Each legacy document needs a unique evidence reference.']);
+                }
+                $inventory[$ref] = ['title' => $evidence['title'] ?? '', 'expected_sha256' => PaperEvidenceConversion::fingerprint($decoded)];
+                if ($reviews !== null) {
+                    $manifest['evidences'][$index]['metadata'] = PaperEvidenceConversion::replacement($ref, $evidence['evidence_type'], $decoded, $reviews[$ref] ?? null);
+                }
+            }
+            if ($reviews !== null) {
+                $manifest['format_version'] = 3;
+                $this->validator->validate($manifest, $extractDir);
+                if ($destination !== null) {
+                    $this->writeConvertedBundle($source, $destination, $manifest);
+                }
+            }
+
+            return $inventory;
+        } finally {
+            $disk->deleteDirectory($directory);
+        }
+    }
+
+    private function writeConvertedBundle(string $source, string $destination, array $manifest): void
+    {
+        $output = fopen($destination, 'xb');
+        if ($output === false) {
+            throw new \RuntimeException('Choose a new output ZIP path.');
+        }
+        $completed = false;
+        try {
+            try {
+                $input = fopen($source, 'rb');
+                if ($input === false) {
+                    throw new \RuntimeException('Could not reopen the source ZIP.');
+                }
+                try {
+                    if (stream_copy_to_stream($input, $output) !== filesize($source)) {
+                        throw new \RuntimeException('Could not copy the source ZIP.');
+                    }
+                } finally {
+                    fclose($input);
+                }
+            } finally {
+                fclose($output);
+            }
+            $archive = new ZipArchive;
+            if ($archive->open($destination) !== true) {
+                throw new \RuntimeException('Could not open the output ZIP.');
+            }
+            try {
+                $written = $archive->addFromString('case.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+            } finally {
+                $closed = $archive->close();
+            }
+            if (!$written || !$closed) {
+                throw new \RuntimeException('Could not write the converted manifest.');
+            }
+            $completed = true;
+        } finally {
+            if (!$completed) {
+                unlink($destination);
+            }
+        }
+    }
+
     private function extract(UploadedFile $zip, string $extractDir): void
     {
         $archive = new ZipArchive;
@@ -348,7 +439,8 @@ class CaseImportService
                 $metadata = json_decode($metadata, true);
             }
             foreach (MetadataImageReferences::paths($metadata) as $path => $url) {
-                Arr::set($metadata, $path, $this->resolve($extractDir, $url, $caseData['title'], 'Evidences/Blocks', $storeLocally, $case->id));
+                $folder = str_starts_with($path, 'template.') ? 'Evidences' : 'Evidences/Blocks';
+                Arr::set($metadata, $path, $this->resolve($extractDir, $url, $caseData['title'], $folder, $storeLocally, $case->id));
             }
 
             $evidence = Evidence::create([

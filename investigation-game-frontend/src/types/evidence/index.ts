@@ -1,5 +1,6 @@
 import type { BaseEvidence } from './base';
 import type { DocDocument } from './doc';
+import type { Template } from '@/features/evidence/model';
 
 export * from './base';
 export * from './doc';
@@ -7,16 +8,11 @@ export * from './doc';
 /**
  * The universal paper-artefact evidence type.
  *
- * `document` and `forensic` are no longer distinguishable in the data model:
- * both carry an opaque `metadata.doc` block envelope and are rendered by
- * `UniversalDocViewer`. Any differentiation is a property of the blocks
- * themselves (a ledger table, an electropherogram), not of the evidence row.
- *
- * There is no `sub_type`. See PlansEvidence.md section 4.
+ * Both paper evidence types share the template and legacy document renderers.
  */
 export interface DocEvidence extends BaseEvidence {
   evidence_type: 'document' | 'forensic';
-  metadata: { doc: DocDocument; [key: string]: unknown };
+  metadata: ({ doc: DocDocument } | { template: Template }) & Record<string, unknown>;
 }
 
 // 1. STRICT TESTIMONY TYPE
@@ -57,8 +53,8 @@ export const isDocEvidence = (e: Evidence): e is DocEvidence =>
   (e.evidence_type === 'document' || e.evidence_type === 'forensic') && hasDocument(e.metadata);
 
 const hasDocument = (metadata: unknown): boolean => {
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata) || !('doc' in metadata)) return false;
-  const doc = metadata.doc;
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false;
+  const doc = 'template' in metadata ? metadata.template : 'doc' in metadata ? metadata.doc : null;
   return !!doc && typeof doc === 'object' && !Array.isArray(doc);
 };
 

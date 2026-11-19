@@ -1,0 +1,27 @@
+.report { position: relative; overflow: clip; font-size: 16px; line-height: 1.45; }
+.page { box-sizing: border-box; height: 1131px; position: relative; padding: 62px 56px 48px; border-block-end: 1px solid #9a9384; }
+.page footer { position: absolute; inset-block-end: 20px; inset-inline-end: 56px; color: #4d5554; font-variant-numeric: tabular-nums; }
+.measure { position: absolute; inset-inline-start: 56px; inline-size: 688px; visibility: hidden; pointer-events: none; height: auto; contain: layout; clip-path: inset(100%); }
+.continuation { position: absolute; inset-block-start: 20px; inset-inline: 56px; border-block-end: 1px solid #8c8e85; padding-block-end: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0.25rem 1rem; align-items: baseline; border-block-start: 7px solid #26383c; border-block-end: 1px solid #26383c; padding-block: 12px; margin-block-end: 20px; }
+.heading h1, .heading span { margin: 0; }
+.heading h1 { font-size: 34px; line-height: 1.2; }
+.heading span { font-size: 18px; font-weight: 600; }
+.identity { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 24px; }
+.identity figure, .fingerprints { margin: 0; border: 1px solid #8c8e85; background: #e3dfd2; display: grid; place-items: center; text-align: center; }
+.identity figure { height: 172px; }
+.fingerprints { height: 94px; }
+.report img { width: 100%; height: 100%; object-fit: contain; min-height: 0; }
+.report dl, .report dd { margin: 0; }
+.report dl > div { border-block-end: 1px solid #9a9d91; padding-block: 4px; }
+.report dt { font-size: 13px; color: #414b4a; }
+.report dd, .row > *, .note { overflow-wrap: anywhere; }
+.report h2 { font-size: 18px; margin: 0 0 6px; color: #26383c; }
+.item { padding-block-end: 12px; }
+.item:has(.row) { padding-block-end: 0; }
+.groupHeading { padding-block-start: 8px; }
+.row { display: grid; grid-template-columns: 112px minmax(0, 1fr) minmax(0, 180px); align-items: start; gap: 14px; border-block-end: 1px solid #a0a094; padding: 6px 10px; font-variant-numeric: tabular-nums; }
+.groupHeading .row { background: #dcded1; border-block-start: 1px solid #969a8c; }
+.note, .empty { margin: 0; }
+.note { white-space: pre-wrap; }
+.signoff { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }

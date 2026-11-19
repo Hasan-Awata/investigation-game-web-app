@@ -2,6 +2,8 @@ import { useMemo } from 'react';
 import { normalizeDoc } from '@/types/evidence/doc';
 import ViewersContainer from '../Viewers/ViewersContainer';
 import DocSheet from './DocSheet';
+import TemplateRenderer from '@/features/evidence/presentation/TemplateRenderer';
+import { readTemplate } from '@/features/evidence/presentation/catalog';
 
 interface UniversalDocViewerProps {
   evidence: { id: number; metadata?: unknown };
@@ -22,10 +24,12 @@ interface UniversalDocViewerProps {
  */
 export default function UniversalDocViewer({ evidence, doc }: UniversalDocViewerProps) {
   const resolved = useMemo(() => normalizeDoc(doc ?? evidence.metadata), [doc, evidence.metadata]);
+  const source = doc ?? evidence.metadata;
+  const hasTemplate = source && typeof source === 'object' && 'template' in source;
 
   return (
     <ViewersContainer>
-      <DocSheet doc={resolved} evidenceId={evidence.id} />
+      {hasTemplate ? <TemplateRenderer template={readTemplate(source)} /> : <DocSheet doc={resolved} evidenceId={evidence.id} />}
     </ViewersContainer>
   );
 }

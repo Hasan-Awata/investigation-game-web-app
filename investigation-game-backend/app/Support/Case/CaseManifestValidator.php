@@ -10,6 +10,7 @@ use App\Rules\EvidenceMetadataMatchesType;
 use App\Services\Case\CaseBundleMediaResolver;
 use App\Services\MediaService;
 use App\Support\MetadataImageReferences;
+use App\Support\EvidenceTemplateCatalog;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
@@ -40,7 +41,7 @@ class CaseManifestValidator
     public function validate(array $manifest, string $extractDir): void
     {
         Validator::make($manifest, $this->rules(), [
-            'format_version.in' => 'Case bundles must use format version 2. Export the case again from a release that can open your bundle.',
+            'format_version.in' => 'Case bundles must use format version 2 or 3. Export the case again from a release that can open your bundle.',
             'zones.*.levels.*.nodes.*.audio.prohibited' => 'Node audio is not supported. Use audio evidence instead.',
         ])->validate();
 
@@ -94,7 +95,7 @@ class CaseManifestValidator
     private function rules(): array
     {
         return [
-            'format_version' => ['required', 'integer', 'in:2'],
+            'format_version' => ['required', 'integer', 'in:2,3'],
 
             'case' => ['required', 'array:title,story,map,map_url,cover,min_player_XP,XP_on_solve,rating_stars,age_rating,estimated_playtime,difficulty,tags,author_name,is_published'],
             'case.title' => ['required', 'string', 'max:255'],
@@ -235,10 +236,27 @@ class CaseManifestValidator
                 continue;
             }
 
+            $metadata = $evidence['metadata'] ?? null;
+            $decoded = is_string($metadata) ? json_decode($metadata, true) : $metadata;
+            $paper = in_array($type, ['document', 'forensic'], true);
+            $version = (int) $manifest['format_version'];
+            if (is_array($decoded) && array_key_exists('template', $decoded)) {
+                if ($version !== 3 || array_key_exists('doc', $decoded)) {
+                    $errors["evidences.{$i}.metadata.template"][] = 'Template evidence requires a version 3 bundle and a single template payload.';
+                }
+                foreach (EvidenceTemplateCatalog::errors($decoded['template'], $type) as $path => $messages) {
+                    $errors["evidences.{$i}.{$path}"] = $messages;
+                }
+                continue;
+            }
+            if ($paper && ($version === 3 || !config('case_bundles.allow_legacy_paper'))) {
+                $errors["evidences.{$i}.metadata.template"][] = 'Convert the legacy paper evidence with case:convert-paper before importing this bundle.';
+                continue;
+            }
             $rule = new EvidenceMetadataMatchesType($type);
 
             $validator = Validator::make(
-                ['metadata' => $evidence['metadata'] ?? null],
+                ['metadata' => $metadata],
                 ['metadata' => ['nullable', $rule]]
             );
 

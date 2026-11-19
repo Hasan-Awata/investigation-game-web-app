@@ -5,14 +5,17 @@ import { useObjectUrl } from '@/pages/Admin/hooks/useObjectUrl';
 import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
 import MediaUploader from '@/pages/Admin/components/MediaUploader';
-import { DocBuilder } from '@/pages/Admin/components/DocBuilder/DocBuilder';
+import TemplateEditor from './Shared/TemplateEditor';
+import DocSheet from '@/pages/GameRoom/tabs/EvidenceBoard/DocViewer/DocSheet';
+import { readTemplate, templateDefinition } from '@/features/evidence/presentation/catalog';
+import { useTranslation } from 'react-i18next';
 import EvidenceMetadataFields from './Shared/EvidenceMetadataFields';
 import { AdminCheckbox, AdminInput } from '@/pages/Admin/components/AdminUI';
-import { validateEvidenceForm } from '../utils/validators';
 import { getEvidenceMetadataTemplate } from '@/pages/Admin/utils/formUtils';
-import { DEFAULT_DOC, DEFAULT_PAGE, DOC_THEMES, normalizeDoc } from '@/types/evidence/doc';
+import { normalizeDoc } from '@/types/evidence/doc';
 import type { Evidence } from '@/types/evidence';
-import { surfaceOf, isDocEvidence } from '@/types/evidence';
+import { surfaceOf } from '@/types/evidence';
+import type { ValidationErrors } from '@/utils/Result';
 import adminForms from './Shared/AdminForms.module.css';
 import adminDashboard from '../AdminDashboard.module.css';
 
@@ -30,15 +33,17 @@ const initialFormState = {
   clear_audio: false,
 };
 
-const emptyDoc = () => ({ ...DEFAULT_DOC, page: { ...DEFAULT_PAGE }, blocks: [] });
-
 export default function EvidenceForm() {
   const { caseId, selectedCase } = useAdminContext();
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.evidenceForm;
+  const { i18n } = useTranslation();
+  const locale = i18n.language?.startsWith('ar') ? 'ar' : 'en';
 
   const [image, setImage] = useState<File | null>(null);
   const [audio, setAudio] = useState<File | null>(null);
+  const [templateFiles, setTemplateFiles] = useState<Record<string, File>>({});
+  const [templateErrors, setTemplateErrors] = useState<ValidationErrors>({});
   const imagePreviewUrl = useObjectUrl(image);
   const audioPreviewUrl = useObjectUrl(audio);
 
@@ -48,30 +53,35 @@ export default function EvidenceForm() {
     entityType: 'evidence',
     initialState: initialFormState,
     basePayload: { case_id: caseId },
-    validator: validateEvidenceForm
+    onValidationErrors: setTemplateErrors,
+    validator: data => {
+      if (surfaceOf(data.evidence_type) !== 'paper') return null;
+      const selected = readTemplate(data.metadata);
+      return selected && templateDefinition(selected.id, selected.version) ? null :
+        locale === 'ar' ? 'اختر قالبًا للدليل.' : 'Choose an evidence template.';
+    }
   });
 
   const surface = surfaceOf(formData.evidence_type);
   const isDocType = surface === 'paper';
 
-  // The builder is controlled off `formData.metadata.doc`, normalized so a hand
-  // written JSON payload (or a legacy row) can never hand it a malformed tree.
-  const currentDoc = isDocType ? normalizeDoc(formData.metadata) : emptyDoc();
-
-  const setDoc = (doc: typeof currentDoc) => {
-    setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, doc } }));
-  };
+  const template = readTemplate(formData.metadata);
+  const legacy = Boolean(isDocType && !template && formData.metadata.doc);
 
   const onClear = () => {
     clearForm();
     setImage(null);
     setAudio(null);
+    setTemplateFiles({});
   };
 
   const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     const files: Record<string, File | null> = {};
     if (formData.evidence_type === 'image' && image) files.image = image;
     if (formData.evidence_type === 'audio' && audio) files.audio = audio;
+    if (isDocType && template) Object.entries(templateFiles).forEach(([key, file]) => {
+      files[`template_images[${key}]`] = file;
+    });
     handleSubmit(e, files);
   };
 
@@ -87,12 +97,7 @@ export default function EvidenceForm() {
       title: ed.title,
       description: ed.description || '',
       evidence_type: ed.evidence_type,
-      // A stored doc row keeps its block tree verbatim; a pre-cutover row with
-      // only a flat sub_type metadata object normalizes to an empty sheet the
-      // author must fill in. Both land on the same shape.
-      metadata: (surface === 'paper'
-        ? { ...rawMetadata, doc: normalizeDoc(directDoc ? { doc: directDoc } : rawMetadata) }
-        : rawMetadata) as Record<string, unknown>,
+      metadata: surface === 'paper' && directDoc && !readTemplate(rawMetadata) ? { ...rawMetadata, doc: directDoc } : rawMetadata,
       is_initial: !!ed.is_initial,
       is_vital_for_conviction: !!ed.is_vital_for_conviction,
       store_locally: existingUrl ? !existingUrl.includes('res.cloudinary.com') : true,
@@ -103,10 +108,9 @@ export default function EvidenceForm() {
     }));
     setImage(null);
     setAudio(null);
+    setTemplateFiles({});
   };
 
-  // Block images upload through their own endpoint, so `store_locally` has to
-  // be available before the evidence is saved -- it rides along with the file.
   const requiresImage = formData.evidence_type === 'image';
   const requiresLocalToggle = requiresImage || formData.evidence_type === 'audio' || isDocType;
 
@@ -133,9 +137,6 @@ export default function EvidenceForm() {
           <span className={adminForms['admin-list-id']}>EX-{ev.id.toString().padStart(3, '0')}</span>
           <strong>{ev.title}</strong>
           <span className={adminForms['admin-list-badge']}>{ev.evidence_type}</span>
-          {isDocEvidence(ev) && ev.metadata.doc.theme && DOC_THEMES.includes(ev.metadata.doc.theme) && (
-            <span className={adminForms['admin-list-badge']}>{ev.metadata.doc.theme.replace('_', ' ')}</span>
-          )}
         </>
       )}
       contextMissing={contextMissing}
@@ -151,11 +152,14 @@ export default function EvidenceForm() {
             value={formData.evidence_type}
             onChange={(e) => {
               const type = e.target.value;
+              if (isDocType && surfaceOf(type) === 'paper' && templateDefinition(template?.id ?? '', template?.version ?? 0)?.types.some(entry => entry === type)) {
+                updateField('evidence_type', type);
+                return;
+              }
+              setTemplateFiles({});
+              updateField('evidence_type', type);
               setFormData(prev => ({
                 ...prev,
-                evidence_type: type,
-                // Metadata is type-specific; carrying a doc envelope into a
-                // testimony row (or vice versa) would ship dead payload.
                 metadata: getEvidenceMetadataTemplate(type),
               }));
             }}
@@ -171,7 +175,14 @@ export default function EvidenceForm() {
         <AdminInput label={t.evidenceDescLabel} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
 
         {isDocType
-          ? <DocBuilder doc={currentDoc} onChange={setDoc} caseId={caseId} storeLocally={!!formData.store_locally} evidenceId={editingId ?? 0} />
+          ? <TemplateEditor key={`${caseId}:${editingId ?? 'new'}`} type={formData.evidence_type} template={template} legacy={legacy}
+              legacyPreview={legacy ? <DocSheet doc={normalizeDoc(formData.metadata)} evidenceId={editingId ?? 0} /> : undefined}
+              files={templateFiles} errors={templateErrors} characters={selectedCase?.characters ?? []} onChange={(next, files) => {
+                const metadata = { ...formData.metadata, template: next };
+                delete (metadata as Record<string, unknown>).doc;
+                updateField('metadata', metadata);
+                setTemplateFiles(files);
+              }} />
           : <EvidenceMetadataFields evidenceType={formData.evidence_type} metadata={formData.metadata} updateMeta={(key, value) => setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: value } }))} />}
 
         {requiresLocalToggle && (

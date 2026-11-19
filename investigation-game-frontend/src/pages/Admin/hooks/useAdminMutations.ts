@@ -61,7 +61,7 @@ export function useAdminMutations(entityType: AdminEntityType) {
   const createMutation = useMutation({
     mutationFn: async (formData: FormData) => {
       const result = await methods.create(formData);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
+      if (!result.isSuccess) throw Object.assign(new Error(result.errorMessage), { errors: result.errors });
       return result.value;
     },
     onSuccess: () => handleSuccess('created'),
@@ -71,7 +71,7 @@ export function useAdminMutations(entityType: AdminEntityType) {
   const updateMutation = useMutation({
     mutationFn: async ({ id, formData }: { id: number, formData: FormData }) => {
       const result = await methods.update(id, formData);
-      if (!result.isSuccess) throw new Error(result.errorMessage);
+      if (!result.isSuccess) throw Object.assign(new Error(result.errorMessage), { errors: result.errors });
       return result.value;
     },
     onSuccess: () => handleSuccess('updated'),

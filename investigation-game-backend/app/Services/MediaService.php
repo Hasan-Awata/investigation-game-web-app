@@ -15,11 +15,11 @@ use Illuminate\Validation\ValidationException;
 
 class MediaService
 {
-    public function store(?UploadedFile $file, string $caseTitle, string $subfolder, bool $storeLocally, ?int $caseId = null): ?string
+    public function store(?UploadedFile $file, string $caseTitle, string $subfolder, bool $storeLocally, ?int $caseId = null, array &$createdMedia = []): ?string
     {
         if (!$file) return null;
 
-        return $this->storeFile($file, $caseTitle, $subfolder, $storeLocally, $caseId);
+        return $this->storeFile($file, $caseTitle, $subfolder, $storeLocally, $caseId, $createdMedia);
     }
 
     /**
@@ -175,6 +175,21 @@ class MediaService
     public function ownsCloudinaryAsset(string $url): bool
     {
         return $this->cloudinaryAsset($url) !== null;
+    }
+
+    public function caseImageReference(string $url, int $caseId): ?string
+    {
+        if ($this->localPath($url) !== null) {
+            $path = parse_url($url, PHP_URL_PATH);
+            $path = '/'.ltrim((string) $path, '/');
+
+            return preg_match('#^/assets/cases/'.$caseId.'-[^/]+/(?:Characters|Evidences(?:/Blocks)?)/[a-zA-Z0-9_.-]+\.(?:jpe?g|png|webp)$#iD', $path) ? $path : null;
+        }
+
+        $cloud = $this->cloudinaryAsset($url);
+
+        return $cloud && $cloud['resource_type'] === 'image'
+            && preg_match('#^cases/'.$caseId.'-[^/]+/(?:Characters|Evidences(?:/Blocks)?)/#D', $cloud['public_id']) ? $url : null;
     }
 
     private function cloudinaryAsset(string $url): ?array

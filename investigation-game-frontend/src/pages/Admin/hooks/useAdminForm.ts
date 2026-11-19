@@ -9,6 +9,7 @@ import { useConfirm } from '@/pages/Admin/components/AdminUI/ConfirmContext';
 import type { Question, Choice } from '@/types';
 import type { DraftChoice } from '@/pages/Admin/forms/Shared/ChoiceEditorCard';
 import toast from 'react-hot-toast';
+import type { ValidationErrors } from '@/utils/Result';
 
 interface UseAdminFormProps<T> {
   entityType: AdminEntityType;
@@ -16,10 +17,11 @@ interface UseAdminFormProps<T> {
   basePayload?: Record<string, unknown>;
   validator?: (data: T) => string | null; // Returns error message or null if valid
   buildFormData?: (payloadData: Record<string, unknown>, files: Record<string, File | null>) => FormData;
+  onValidationErrors?: (errors: ValidationErrors) => void;
 }
 
 export function useAdminForm<T extends Record<string, unknown>>({
-  entityType, initialState, basePayload = {}, validator, buildFormData
+  entityType, initialState, basePayload = {}, validator, buildFormData, onValidationErrors
 }: UseAdminFormProps<T>) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<T>(initialState);
@@ -36,6 +38,7 @@ export function useAdminForm<T extends Record<string, unknown>>({
   };
 
   const clearForm = () => {
+    onValidationErrors?.({});
     setEditingId(null);
     setFormData(initialState);
     setIsDirty(false);
@@ -48,6 +51,7 @@ export function useAdminForm<T extends Record<string, unknown>>({
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>, files: Record<string, File | null> = {}) => {
     e.preventDefault();
+    onValidationErrors?.({});
 
     if (validator) {
       const error = validator(formData);
@@ -69,14 +73,19 @@ export function useAdminForm<T extends Record<string, unknown>>({
       });
     }
 
+    const callbacks = {
+      onSuccess: clearForm,
+      onError: (error: Error & { errors?: ValidationErrors }) => onValidationErrors?.(error.errors ?? {}),
+    };
     if (editingId) {
-      updateEntity({ id: editingId, formData: payload }, { onSuccess: clearForm });
+      updateEntity({ id: editingId, formData: payload }, callbacks);
     } else {
-      createEntity(payload, { onSuccess: clearForm });
+      createEntity(payload, callbacks);
     }
   };
 
   const handleEditInit = <E extends { id: number }>(entity: E, mappingFn?: (e: E) => T) => {
+    onValidationErrors?.({});
     setEditingId(entity.id);
     setFormData(mappingFn ? mappingFn(entity) : { ...initialState, ...entity } as T);
     setIsDirty(false);

@@ -6,7 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "lint": "eslint .",
+    "lint": "npm run evidence:catalog:check && eslint .",
+    "evidence:catalog": "node scripts/evidence-catalog.mjs",
+    "evidence:catalog:check": "node scripts/evidence-catalog.mjs --check",
     "test": "vitest run",
     "test:watch": "vitest",
     "deadcode": "knip",
