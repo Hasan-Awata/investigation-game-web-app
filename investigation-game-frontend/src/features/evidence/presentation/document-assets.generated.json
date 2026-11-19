@@ -1,0 +1,178 @@
+{
+  "signature": {
+    "signature_01": {
+      "path": "/assets/documents/signatures/signature_01.svg",
+      "label": {
+        "en": "Signature 1",
+        "ar": "التوقيع 1"
+      }
+    },
+    "signature_02": {
+      "path": "/assets/documents/signatures/signature_02.svg",
+      "label": {
+        "en": "Signature 2",
+        "ar": "التوقيع 2"
+      }
+    },
+    "signature_03": {
+      "path": "/assets/documents/signatures/signature_03.svg",
+      "label": {
+        "en": "Signature 3",
+        "ar": "التوقيع 3"
+      }
+    },
+    "signature_04": {
+      "path": "/assets/documents/signatures/signature_04.svg",
+      "label": {
+        "en": "Signature 4",
+        "ar": "التوقيع 4"
+      }
+    },
+    "signature_05": {
+      "path": "/assets/documents/signatures/signature_05.svg",
+      "label": {
+        "en": "Signature 5",
+        "ar": "التوقيع 5"
+      }
+    },
+    "signature_06": {
+      "path": "/assets/documents/signatures/signature_06.svg",
+      "label": {
+        "en": "Signature 6",
+        "ar": "التوقيع 6"
+      }
+    },
+    "signature_07": {
+      "path": "/assets/documents/signatures/signature_07.svg",
+      "label": {
+        "en": "Signature 7",
+        "ar": "التوقيع 7"
+      }
+    },
+    "signature_08": {
+      "path": "/assets/documents/signatures/signature_08.svg",
+      "label": {
+        "en": "Signature 8",
+        "ar": "التوقيع 8"
+      }
+    },
+    "signature_09": {
+      "path": "/assets/documents/signatures/signature_09.svg",
+      "label": {
+        "en": "Signature 9",
+        "ar": "التوقيع 9"
+      }
+    },
+    "signature_10": {
+      "path": "/assets/documents/signatures/signature_10.svg",
+      "label": {
+        "en": "Signature 10",
+        "ar": "التوقيع 10"
+      }
+    },
+    "signature_11": {
+      "path": "/assets/documents/signatures/signature_11.svg",
+      "label": {
+        "en": "Signature 11",
+        "ar": "التوقيع 11"
+      }
+    },
+    "signature_12": {
+      "path": "/assets/documents/signatures/signature_12.svg",
+      "label": {
+        "en": "Signature 12",
+        "ar": "التوقيع 12"
+      }
+    },
+    "signature_13": {
+      "path": "/assets/documents/signatures/signature_13.svg",
+      "label": {
+        "en": "Signature 13",
+        "ar": "التوقيع 13"
+      }
+    },
+    "signature_14": {
+      "path": "/assets/documents/signatures/signature_14.svg",
+      "label": {
+        "en": "Signature 14",
+        "ar": "التوقيع 14"
+      }
+    },
+    "signature_15": {
+      "path": "/assets/documents/signatures/signature_15.svg",
+      "label": {
+        "en": "Signature 15",
+        "ar": "التوقيع 15"
+      }
+    },
+    "signature_16": {
+      "path": "/assets/documents/signatures/signature_16.svg",
+      "label": {
+        "en": "Signature 16",
+        "ar": "التوقيع 16"
+      }
+    },
+    "signature_17": {
+      "path": "/assets/documents/signatures/signature_17.svg",
+      "label": {
+        "en": "Signature 17",
+        "ar": "التوقيع 17"
+      }
+    },
+    "signature_18": {
+      "path": "/assets/documents/signatures/signature_18.svg",
+      "label": {
+        "en": "Signature 18",
+        "ar": "التوقيع 18"
+      }
+    },
+    "signature_19": {
+      "path": "/assets/documents/signatures/signature_19.svg",
+      "label": {
+        "en": "Signature 19",
+        "ar": "التوقيع 19"
+      }
+    }
+  },
+  "fingerprint": {
+    "arch": {
+      "path": "/assets/documents/fingerprints/arch.svg",
+      "label": {
+        "en": "Arch",
+        "ar": "قوسي"
+      }
+    },
+    "loop": {
+      "path": "/assets/documents/fingerprints/loop.svg",
+      "label": {
+        "en": "Loop",
+        "ar": "حلقي"
+      }
+    },
+    "whorl": {
+      "path": "/assets/documents/fingerprints/whorl.svg",
+      "label": {
+        "en": "Whorl",
+        "ar": "دوّامي"
+      }
+    }
+  },
+  "stamp": {
+    "filed": {
+      "path": "/assets/documents/stamps/filed.svg",
+      "label": {
+        "en": "Filed",
+        "ar": "مؤرشف"
+      },
+      "frame": true
+    },
+    "reviewed": {
+      "path": "/assets/documents/stamps/reviewed.svg",
+      "label": {
+        "en": "Reviewed",
+        "ar": "تمت المراجعة"
+      },
+      "frame": true
+    }
+  }
+}

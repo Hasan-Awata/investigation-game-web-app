@@ -22,42 +22,31 @@ it('lets an admin replace an unavailable version with the current layout of the 
   expect(onChange).not.toHaveBeenCalled();
 
   fireEvent.change(picker, { target: { value: 'background_check' } });
-  await waitFor(() => expect(onChange).toHaveBeenCalledWith({ id: 'background_check', version: 2, values: {} }, {}));
+  await waitFor(() => expect(onChange).toHaveBeenCalledWith({ id: 'background_check', version: 3, values: {} }, {}));
 });
 
-it('retains saved values and pending uploads when upgrading a Background Check', () => {
+it('edits the shared fingerprint choice without affecting the portrait', () => {
   const onChange = vi.fn();
   const values = {
     subject: 'Saved subject',
     reference: 'BC-772',
-    fingerprints: '/assets/cases/1-sample/strip.png',
+    fingerprint_asset: 'loop',
+    portrait: '/assets/cases/1-sample/Evidences/portrait.png',
     arrests: [{ description: 'File 41-S', disposition: 'Released' }],
   };
-  const files = { portrait: new File(['portrait'], 'portrait.png', { type: 'image/png' }) };
-  vi.stubGlobal('URL', Object.assign(class extends URL {}, {
-    createObjectURL: () => 'blob:portrait',
-    revokeObjectURL: vi.fn(),
-  }));
-
-  try {
-    const view = render(
-      <ConfirmContext.Provider value={vi.fn()}>
-        <TemplateEditor type="document" template={{ id: 'background_check', version: 1, values }}
-          files={files} errors={{}} characters={[]} onChange={onChange} />
-      </ConfirmContext.Provider>,
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Review template upgrade' }));
-    expect(onChange).toHaveBeenCalledWith({ id: 'background_check', version: 2, values }, files);
-    view.rerender(
-      <ConfirmContext.Provider value={vi.fn()}>
-        <TemplateEditor type="document" template={{ id: 'background_check', version: 2, values }}
-          files={files} errors={{}} characters={[]} onChange={onChange} />
-      </ConfirmContext.Provider>,
-    );
-    expect(screen.getByLabelText('Right thumb')).toHaveAttribute('type', 'file');
-    expect(screen.getByLabelText('Reviewing officer’s signature')).toHaveAttribute('type', 'file');
-    view.unmount();
-  } finally {
-    vi.unstubAllGlobals();
-  }
+  const template = { id: 'background_check', version: 3, values };
+  render(
+    <ConfirmContext.Provider value={vi.fn()}>
+      <TemplateEditor type="document" template={template}
+        files={{}} errors={{}} characters={[]} onChange={onChange} />
+    </ConfirmContext.Provider>,
+  );
+  const picker = screen.getByRole('combobox', { name: 'Fingerprint pattern' });
+  expect(picker).toHaveValue('loop');
+  expect(screen.queryByLabelText('Right thumb')).not.toBeInTheDocument();
+  expect(screen.getByLabelText('Subject photograph')).toHaveAttribute('type', 'file');
+  fireEvent.change(picker, { target: { value: 'arch' } });
+  expect(onChange).toHaveBeenLastCalledWith({
+    ...template, values: { ...values, fingerprint_asset: 'arch' },
+  }, {});
 });

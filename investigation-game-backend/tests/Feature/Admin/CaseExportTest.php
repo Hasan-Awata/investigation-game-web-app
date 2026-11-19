@@ -149,7 +149,7 @@ class CaseExportTest extends TestCase
             'id' => 'background_check', 'version' => 999, 'values' => ['subject' => 'Case subject'],
         ]]]);
         Evidence::create([...$record, 'metadata' => ['template' => [
-            'id' => 'background_check', 'version' => 1, 'values' => [],
+            'id' => 'background_check', 'version' => 3, 'values' => [],
         ]]]);
         Evidence::create([...$record, 'metadata' => ['doc' => ['blocks' => []]]]);
 
@@ -166,8 +166,8 @@ class CaseExportTest extends TestCase
         $case = GameCase::create(['title' => 'Missing document images', 'story' => 'Story', 'XP_on_solve' => 10]);
         $missing = '/assets/cases/missing/image.png';
         $metadata = ['url' => $missing, 'template' => [
-            'id' => 'background_check', 'version' => 1,
-            'values' => ['subject' => 'Case subject', 'portrait' => $missing, 'fingerprints' => $missing],
+            'id' => 'background_check', 'version' => 3,
+            'values' => ['subject' => 'Case subject', 'portrait' => $missing],
         ]];
         Evidence::create(['case_id' => $case->id, 'title' => 'Document', 'evidence_type' => 'document', 'metadata' => $metadata]);
         $archives = glob(sys_get_temp_dir().'/case-bundle-*');
@@ -175,7 +175,6 @@ class CaseExportTest extends TestCase
         $this->getJson("/api/admin/cases/{$case->id}/export")->assertUnprocessable()
             ->assertJsonValidationErrors([
                 'evidences.0.metadata.url', 'evidences.0.metadata.template.values.portrait',
-                'evidences.0.metadata.template.values.fingerprints',
             ]);
         $this->assertSame($archives, glob(sys_get_temp_dir().'/case-bundle-*'));
     }

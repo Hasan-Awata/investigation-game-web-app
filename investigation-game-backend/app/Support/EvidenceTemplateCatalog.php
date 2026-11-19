@@ -83,6 +83,8 @@ final class EvidenceTemplateCatalog
             }
             if (! is_string($value)) {
                 $errors[$path][] = 'Provide a text value.';
+            } elseif ($field['kind'] === 'asset' && ! in_array($value, $field['assetIds'], true)) {
+                $errors[$path][] = 'Choose an asset from the available options.';
             } elseif ($field['kind'] === 'date' && ! self::isDate($value)) {
                 $errors[$path][] = 'Provide a valid date in YYYY-MM-DD format.';
             } elseif (mb_strlen($value) > ($field['max'] ?? 2048)) {

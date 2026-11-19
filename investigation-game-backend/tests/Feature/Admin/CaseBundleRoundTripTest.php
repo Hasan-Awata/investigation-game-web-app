@@ -110,7 +110,7 @@ class CaseBundleRoundTripTest extends TestCase
             $inventory = $converter->convertPaperBundle($original, null, null);
             $reviews = ['ev_report' => [
                 'expected_sha256' => $inventory['ev_report']['expected_sha256'],
-                'template' => ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'Report subject', 'notes' => 'Clue 41-S']],
+                'template' => ['id' => 'background_check', 'version' => 3, 'values' => ['subject' => 'Report subject', 'notes' => 'Clue 41-S']],
             ]];
             $converter->convertPaperBundle($original, $reviews, $converted);
             $this->assertSame($before, hash_file('sha256', $original));

@@ -1,4 +1,4 @@
-import { assetUrl } from '@/utils/assetUrl';
+import { documentAsset } from '@/features/evidence/presentation/documentAssets';
 
-export const signatureUrl = (index: number): string =>
-  assetUrl(`/assets/signatures/${index === 0 ? 'signature.svg' : `signature-${index}.svg`}`);
+export const signatureUrl = (index: number): string | undefined =>
+  documentAsset('signature', `signature_${String(index + 1).padStart(2, '0')}`)?.url;

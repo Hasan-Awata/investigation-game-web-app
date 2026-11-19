@@ -1,153 +1,7 @@
 [
   {
     "id": "background_check",
-    "version": 1,
-    "name": {
-      "en": "Background Check",
-      "ar": "التحقق من الخلفية"
-    },
-    "category": {
-      "en": "Records bureau",
-      "ar": "مكتب السجلات"
-    },
-    "types": [
-      "document",
-      "forensic"
-    ],
-    "characterPrefill": {
-      "name": "subject",
-      "portrait": "portrait"
-    },
-    "fields": [
-      {
-        "key": "subject",
-        "kind": "text",
-        "required": true,
-        "max": 255,
-        "label": {
-          "en": "Subject",
-          "ar": "الشخص المعني"
-        }
-      },
-      {
-        "key": "reference",
-        "kind": "text",
-        "max": 100,
-        "label": {
-          "en": "Report reference",
-          "ar": "مرجع التقرير"
-        }
-      },
-      {
-        "key": "birth_date",
-        "kind": "date",
-        "label": {
-          "en": "Date of birth",
-          "ar": "تاريخ الميلاد"
-        }
-      },
-      {
-        "key": "address",
-        "kind": "text",
-        "max": 500,
-        "label": {
-          "en": "Address on record",
-          "ar": "العنوان المسجل"
-        }
-      },
-      {
-        "key": "check_date",
-        "kind": "date",
-        "label": {
-          "en": "Check date",
-          "ar": "تاريخ التحقق"
-        }
-      },
-      {
-        "key": "portrait",
-        "kind": "image",
-        "label": {
-          "en": "Subject photograph",
-          "ar": "صورة الشخص المعني"
-        }
-      },
-      {
-        "key": "arrests",
-        "kind": "rows",
-        "max": 100,
-        "label": {
-          "en": "Arrest history",
-          "ar": "سجل التوقيف"
-        },
-        "fields": [
-          {
-            "key": "date",
-            "kind": "date",
-            "label": {
-              "en": "Date",
-              "ar": "التاريخ"
-            }
-          },
-          {
-            "key": "description",
-            "kind": "text",
-            "required": true,
-            "max": 255,
-            "label": {
-              "en": "Description",
-              "ar": "الوصف"
-            }
-          },
-          {
-            "key": "disposition",
-            "kind": "text",
-            "max": 120,
-            "label": {
-              "en": "Disposition",
-              "ar": "النتيجة"
-            }
-          }
-        ]
-      },
-      {
-        "key": "fingerprints",
-        "kind": "image",
-        "label": {
-          "en": "Fingerprint strip",
-          "ar": "شريط البصمات"
-        }
-      },
-      {
-        "key": "notes",
-        "kind": "textarea",
-        "max": 16000,
-        "label": {
-          "en": "Findings and case notes",
-          "ar": "النتائج وملاحظات القضية"
-        }
-      },
-      {
-        "key": "reviewer",
-        "kind": "text",
-        "max": 200,
-        "label": {
-          "en": "Reviewing officer",
-          "ar": "الضابط المراجع"
-        }
-      },
-      {
-        "key": "signed_date",
-        "kind": "date",
-        "label": {
-          "en": "Sign-off date",
-          "ar": "تاريخ الاعتماد"
-        }
-      }
-    ]
-  },
-  {
-    "id": "background_check",
-    "version": 2,
+    "version": 3,
     "name": {
       "en": "Background Check",
       "ar": "التحقق من الخلفية"
@@ -444,100 +298,61 @@
         }
       },
       {
-        "key": "signature",
-        "kind": "image",
+        "key": "signature_asset",
+        "kind": "asset",
+        "group": "signature",
         "label": {
           "en": "Reviewing officer’s signature",
           "ar": "توقيع الضابط المراجع"
-        }
+        },
+        "assetIds": [
+          "signature_01",
+          "signature_02",
+          "signature_03",
+          "signature_04",
+          "signature_05",
+          "signature_06",
+          "signature_07",
+          "signature_08",
+          "signature_09",
+          "signature_10",
+          "signature_11",
+          "signature_12",
+          "signature_13",
+          "signature_14",
+          "signature_15",
+          "signature_16",
+          "signature_17",
+          "signature_18",
+          "signature_19"
+        ]
       },
       {
-        "key": "fingerprints",
-        "kind": "image",
+        "key": "fingerprint_asset",
+        "kind": "asset",
+        "group": "fingerprint",
         "label": {
-          "en": "Complete fingerprint strip",
-          "ar": "شريط البصمات الكامل"
-        }
+          "en": "Fingerprint pattern",
+          "ar": "نمط البصمات"
+        },
+        "assetIds": [
+          "arch",
+          "loop",
+          "whorl"
+        ]
       },
       {
-        "key": "right_thumb",
-        "kind": "image",
+        "key": "stamp_asset",
+        "kind": "asset",
+        "group": "stamp",
         "label": {
-          "en": "Right thumb",
-          "ar": "الإبهام الأيمن"
-        }
-      },
-      {
-        "key": "right_index",
-        "kind": "image",
-        "label": {
-          "en": "Right index",
-          "ar": "السبابة اليمنى"
-        }
-      },
-      {
-        "key": "right_middle",
-        "kind": "image",
-        "label": {
-          "en": "Right middle",
-          "ar": "الوسطى اليمنى"
-        }
-      },
-      {
-        "key": "right_ring",
-        "kind": "image",
-        "label": {
-          "en": "Right ring",
-          "ar": "البنصر الأيمن"
-        }
-      },
-      {
-        "key": "right_little",
-        "kind": "image",
-        "label": {
-          "en": "Right little",
-          "ar": "الخنصر الأيمن"
-        }
-      },
-      {
-        "key": "left_thumb",
-        "kind": "image",
-        "label": {
-          "en": "Left thumb",
-          "ar": "الإبهام الأيسر"
-        }
-      },
-      {
-        "key": "left_index",
-        "kind": "image",
-        "label": {
-          "en": "Left index",
-          "ar": "السبابة اليسرى"
-        }
-      },
-      {
-        "key": "left_middle",
-        "kind": "image",
-        "label": {
-          "en": "Left middle",
-          "ar": "الوسطى اليسرى"
-        }
-      },
-      {
-        "key": "left_ring",
-        "kind": "image",
-        "label": {
-          "en": "Left ring",
-          "ar": "البنصر الأيسر"
-        }
-      },
-      {
-        "key": "left_little",
-        "kind": "image",
-        "label": {
-          "en": "Left little",
-          "ar": "الخنصر الأيسر"
-        }
+          "en": "Stamp",
+          "ar": "الختم"
+        },
+        "assetIds": [
+          "filed",
+          "reviewed"
+        ]
       },
       {
         "key": "notes",

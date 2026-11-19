@@ -211,7 +211,7 @@ class CaseImportValidationTest extends TestCase
 
     public static function invalidPaperMetadata(): array
     {
-        $valid = ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'Case subject']];
+        $valid = ['id' => 'background_check', 'version' => 3, 'values' => ['subject' => 'Case subject']];
 
         return [
             'missing template' => [3, [], 'template'],

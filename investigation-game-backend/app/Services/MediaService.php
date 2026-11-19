@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Support\MediaValidationRules;
 use App\Support\MetadataImageReferences;
+use App\Support\SharedDocumentAssets;
 use Cloudinary\Cloudinary;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -150,10 +151,18 @@ class MediaService
 
         $root = 'assets/cases/';
         if (!str_starts_with($path, '/' . $root)) {
-            if (!$allowShipped || !preg_match('#^/assets/signatures/signature(?:-(?:[1-9]|1[0-8]))?\.svg$#D', $path)) {
+            if (!$allowShipped) {
                 return null;
             }
-            $root = 'assets/signatures/';
+
+            if (str_starts_with($path, '/assets/signatures/')) {
+                $path = SharedDocumentAssets::legacySignaturePath(substr($path, strlen('/assets/signatures/'))) ?? '';
+            }
+            if (!str_starts_with($path, SharedDocumentAssets::SIGNATURES)
+                || !preg_match('/^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*\.(?:svg|png)$/iD', substr($path, strlen(SharedDocumentAssets::SIGNATURES)))) {
+                return null;
+            }
+            $root = ltrim(SharedDocumentAssets::SIGNATURES, '/');
         }
 
         $public = realpath(public_path());

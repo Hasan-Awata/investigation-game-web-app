@@ -120,12 +120,17 @@ class MediaOwnershipTest extends TestCase
     public function test_shipped_signatures_are_readable_but_never_deleted(): void
     {
         $url = '/assets/signatures/signature-18.svg';
-        File::ensureDirectoryExists(dirname(public_path($url)));
-        file_put_contents(public_path($url), '<svg/>');
-
-        $this->assertSame(realpath(public_path($url)), app(CaseBundleMediaResolver::class)->archiveLocal($url));
+        $canonical = '/assets/documents/signatures/signature_19.svg';
+        $path = public_path($canonical);
+        File::ensureDirectoryExists(dirname($path));
+        file_put_contents($path, '<svg/>');
+        $this->get($url)->assertStatus(301)->assertRedirect($canonical);
+        $this->get('/assets/signatures/signature-19.svg')->assertNotFound();
+        $this->assertSame(realpath($path), app(CaseBundleMediaResolver::class)->archiveLocal($url));
+        $this->assertSame(realpath($path), app(CaseBundleMediaResolver::class)->archiveLocal($canonical));
         app(MediaService::class)->delete($url);
-        $this->assertFileExists(public_path($url));
+        app(MediaService::class)->delete($canonical);
+        $this->assertFileExists($path);
     }
 
     public function test_invalid_same_server_media_does_not_fall_back_to_http(): void
@@ -209,7 +214,7 @@ class MediaOwnershipTest extends TestCase
         $this->assertFileExists(public_path($url));
 
         $retained->update(['img_url' => null, 'evidence_type' => 'document', 'metadata' => ['template' => [
-            'id' => 'background_check', 'version' => 1,
+            'id' => 'background_check', 'version' => 3,
             'values' => ['subject' => 'Case subject', 'portrait' => 'https://game.test'.$url],
         ]]]);
         $this->deleteJson("/api/admin/evidences/{$evidence->id}")->assertOk();

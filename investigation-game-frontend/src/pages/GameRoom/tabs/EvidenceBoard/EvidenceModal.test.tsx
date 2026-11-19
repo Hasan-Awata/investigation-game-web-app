@@ -68,7 +68,7 @@ describe('Evidence modal', () => {
   it('paginates only in fullscreen and restores the stacked view on exit', () => {
     const document: Evidence = {
       id: 1, case_id: 1, title: 'Paged report', is_initial: false, is_vital_for_conviction: false,
-      evidence_type: 'document', metadata: { template: { id: 'background_check', version: 2, values: {} } },
+      evidence_type: 'document', metadata: { template: { id: 'background_check', version: 3, values: {} } },
     };
     const { rerender } = render(<EvidenceModal evidence={document} onClose={vi.fn()} />);
     const paper = screen.getByTestId('paper');

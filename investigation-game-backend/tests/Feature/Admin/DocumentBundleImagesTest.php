@@ -32,7 +32,7 @@ class DocumentBundleImagesTest extends TestCase
 
     private const PORTRAIT = 'template.values.portrait';
 
-    private const FINGERPRINTS = 'template.values.fingerprints';
+    private const DOCUMENT_URL = 'url';
 
     protected function setUp(): void
     {
@@ -60,7 +60,7 @@ class DocumentBundleImagesTest extends TestCase
             'is_initial' => '0',
             'is_vital_for_conviction' => '0',
             'store_locally' => $encoded,
-            'metadata' => json_encode(['template' => ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'Case subject']]]),
+            'metadata' => json_encode(['template' => ['id' => 'background_check', 'version' => 3, 'values' => ['subject' => 'Case subject']]]),
             'template_images' => ['portrait' => UploadedFile::fake()->createWithContent('image.png', base64_decode(self::IMAGE))],
         ])->assertCreated()->assertJsonPath('evidence.metadata.template.values.portrait', $url);
     }
@@ -73,8 +73,7 @@ class DocumentBundleImagesTest extends TestCase
     #[DataProvider('metadataFormats')]
     public function test_document_images_round_trip_without_the_source_files(bool $encoded): void
     {
-        $metadata = $this->metadata('media/top.png', 'media/nested.png');
-        $metadata['url'] = 'media/top.png';
+        $metadata = $this->metadata('media/nested.png', 'media/top.png');
         $manifest = CaseBundleFactory::minimalManifest([
             'format_version' => 3,
             'case' => ['cover' => 'media/top.png'],
@@ -88,7 +87,7 @@ class DocumentBundleImagesTest extends TestCase
             $source = GameCase::findOrFail($response->json('case_id'));
             $evidence = $source->evidences()->firstOrFail();
             $this->assertSame($source->getRawOriginal('img_url'), $evidence->metadata['url']);
-            $this->assertSame($evidence->metadata['url'], Arr::get($evidence->metadata, self::PORTRAIT));
+            $this->assertNotSame($evidence->metadata['url'], Arr::get($evidence->metadata, self::PORTRAIT));
             $this->assertSame([], Storage::disk('local')->allDirectories('tmp'));
             $this->putJson("/api/admin/evidences/{$evidence->id}", [
                 'case_id' => $source->id, 'title' => $evidence->title, 'evidence_type' => 'document',
@@ -101,10 +100,10 @@ class DocumentBundleImagesTest extends TestCase
                 $this->assertTrue($zip->open($export));
                 $exported = json_decode($zip->getFromName('case.json'), true);
                 $this->assertSame(3, $zip->numFiles);
-                foreach (['url', self::PORTRAIT, self::FINGERPRINTS] as $path) {
+                foreach ([self::DOCUMENT_URL, self::PORTRAIT] as $path) {
                     $entry = Arr::get($exported['evidences'][0]['metadata'], $path);
                     $this->assertStringStartsWith('media/', $entry);
-                    $this->assertSame($path === self::FINGERPRINTS ? $nestedImage : base64_decode(self::IMAGE), $zip->getFromName($entry));
+                    $this->assertSame($path === self::PORTRAIT ? $nestedImage : base64_decode(self::IMAGE), $zip->getFromName($entry));
                 }
                 $this->assertSame($exported['case']['cover'], $exported['evidences'][0]['metadata']['url']);
                 $zip->close();
@@ -115,11 +114,11 @@ class DocumentBundleImagesTest extends TestCase
                 $source->update(['title' => 'Source unavailable']);
                 $response = $this->importBundle($export)->assertCreated();
                 $copy = GameCase::findOrFail($response->json('case_id'))->evidences()->firstOrFail();
-                foreach (['url', self::PORTRAIT, self::FINGERPRINTS] as $path) {
+                foreach ([self::DOCUMENT_URL, self::PORTRAIT] as $path) {
                     $url = Arr::get($copy->metadata, $path);
-                    $this->assertSame($path === self::FINGERPRINTS ? $nestedImage : base64_decode(self::IMAGE), file_get_contents(public_path($url)));
+                    $this->assertSame($path === self::PORTRAIT ? $nestedImage : base64_decode(self::IMAGE), file_get_contents(public_path($url)));
                 }
-                $this->assertSame($copy->metadata['url'], Arr::get($copy->metadata, self::PORTRAIT));
+                $this->assertNotSame($copy->metadata['url'], Arr::get($copy->metadata, self::PORTRAIT));
                 $this->assertSame($evidence->metadata, $evidence->fresh()->metadata);
             } finally {
                 unlink($export);
@@ -139,7 +138,7 @@ class DocumentBundleImagesTest extends TestCase
     {
         $manifest = CaseBundleFactory::minimalManifest([
             'format_version' => 3,
-            'evidences' => [['title' => 'Document', 'evidence_type' => 'document', 'metadata' => $this->metadata('media/top.png', $url)]],
+            'evidences' => [['title' => 'Document', 'evidence_type' => 'document', 'metadata' => $this->metadata($url, 'media/top.png')]],
         ]);
         $files = ['media/top.png' => base64_decode(self::IMAGE)];
         if ($bytes !== null) {
@@ -148,7 +147,7 @@ class DocumentBundleImagesTest extends TestCase
         $bundle = CaseBundleFactory::build($manifest, $files);
         try {
             $this->importBundle($bundle)->assertUnprocessable()
-                ->assertJsonValidationErrors('evidences.0.metadata.'.self::FINGERPRINTS);
+                ->assertJsonValidationErrors('evidences.0.metadata.'.self::PORTRAIT);
             $this->assertDatabaseCount('cases', 0);
             $this->assertSame([], Storage::disk('local')->allDirectories('tmp'));
             $this->assertDirectoryDoesNotExist(public_path('assets/cases'));
@@ -209,7 +208,7 @@ class DocumentBundleImagesTest extends TestCase
                 $evidence = Evidence::firstOrFail();
                 $stored = $evidence->getRawOriginal('img_url');
                 $this->assertSame($stored, Arr::get($evidence->metadata, self::PORTRAIT));
-                $this->assertSame($stored, Arr::get($evidence->metadata, self::FINGERPRINTS));
+                $this->assertSame($stored, Arr::get($evidence->metadata, self::DOCUMENT_URL));
                 if ($local) {
                     $this->assertSame(base64_decode(self::IMAGE), file_get_contents(public_path($stored)));
                     $this->assertCount(1, File::allFiles(public_path('assets/cases')));
@@ -250,7 +249,7 @@ class DocumentBundleImagesTest extends TestCase
         $this->putJson("/api/admin/evidences/{$document->id}", [
             'case_id' => $case->id, 'title' => 'Document', 'evidence_type' => 'document',
             'is_initial' => false, 'is_vital_for_conviction' => false, 'store_locally' => true,
-            'metadata' => ['template' => ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'No images']]],
+            'metadata' => ['template' => ['id' => 'background_check', 'version' => 3, 'values' => ['subject' => 'No images']]],
         ])->assertOk();
         $this->assertFileExists(public_path($url));
         $this->assertFileExists(public_path($unused));
@@ -258,7 +257,7 @@ class DocumentBundleImagesTest extends TestCase
         $this->putJson("/api/admin/evidences/{$retained->id}", [
             'case_id' => $case->id, 'title' => 'Document', 'evidence_type' => 'document',
             'is_initial' => false, 'is_vital_for_conviction' => false, 'store_locally' => true,
-            'metadata' => ['template' => ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'With portrait', 'portrait' => $unused]]],
+            'metadata' => ['template' => ['id' => 'background_check', 'version' => 3, 'values' => ['subject' => 'With portrait', 'portrait' => $unused]]],
         ])->assertOk();
         $this->assertFileDoesNotExist(public_path($url));
         $this->assertFileExists(public_path($unused));
@@ -298,7 +297,7 @@ class DocumentBundleImagesTest extends TestCase
                 $manifest = json_decode($zip->getFromName('case.json'), true);
                 $this->assertSame(2, $zip->numFiles);
                 $entry = Arr::get($manifest['evidences'][0]['metadata'], self::PORTRAIT);
-                $this->assertSame($entry, Arr::get($manifest['evidences'][0]['metadata'], self::FINGERPRINTS));
+                $this->assertSame($entry, Arr::get($manifest['evidences'][0]['metadata'], self::DOCUMENT_URL));
                 $this->assertSame(base64_decode(self::IMAGE), $zip->getFromName($entry));
                 $zip->close();
             } finally {
@@ -306,7 +305,7 @@ class DocumentBundleImagesTest extends TestCase
             }
         } else {
             $this->getJson("/api/admin/cases/{$case->id}/export")->assertUnprocessable()
-                ->assertJsonValidationErrors('evidences.0.metadata.'.self::PORTRAIT);
+                ->assertJsonValidationErrors('evidences.0.metadata.'.self::DOCUMENT_URL);
         }
         Http::assertSentCount($cloud === 'owned-cloud' ? 1 : 0);
         foreach ($downloads as $download) {
@@ -325,12 +324,12 @@ class DocumentBundleImagesTest extends TestCase
         ];
     }
 
-    private function metadata(string $portrait, mixed $fingerprints): array
+    private function metadata(mixed $portrait, string $url): array
     {
-        return ['template' => [
+        return ['url' => $url, 'template' => [
             'id' => 'background_check',
-            'version' => 1,
-            'values' => ['subject' => 'Case subject', 'portrait' => $portrait, 'fingerprints' => $fingerprints],
+            'version' => 3,
+            'values' => ['subject' => 'Case subject', 'portrait' => $portrait],
         ]];
     }
 }

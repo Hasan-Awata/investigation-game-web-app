@@ -1,13 +1,13 @@
 export type Locale = 'en' | 'ar';
 export type Label = Record<Locale, string>;
 export type PaperType = 'document' | 'forensic';
+export type AssetGroup = 'signature' | 'fingerprint' | 'stamp';
 export type ScalarField = {
   key: string;
-  kind: 'text' | 'textarea' | 'date' | 'image';
   label: Label;
   required?: boolean;
   max?: number;
-};
+} & ({ kind: 'text' | 'textarea' | 'date' | 'image' } | { kind: 'asset'; group: AssetGroup });
 export type Field = ScalarField | {
   key: string;
   kind: 'rows';

@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TemplateRenderer, { PAPER_WIDTH } from '@/features/evidence/presentation/TemplateRenderer';
 import { latestTemplates, templateDefinition, upgradeValues } from '@/features/evidence/presentation/catalog';
+import { documentAssetOptions } from '@/features/evidence/presentation/documentAssets';
 import type { ScalarField, Template } from '@/features/evidence/model';
 import { useConfirm } from '@/pages/Admin/components/AdminUI/ConfirmContext';
 import MediaUploader from '@/pages/Admin/components/MediaUploader';
@@ -91,7 +92,12 @@ export default function TemplateEditor({ type, template, files, errors, characte
     const errorId = `${id}-error`;
     const invalid = Boolean(errors[path]?.length);
     const accessibility = { 'aria-invalid': invalid, 'aria-describedby': invalid ? errorId : undefined };
-    const editor = field.kind === 'textarea'
+    const editor = field.kind === 'asset'
+      ? <select id={id} className={admin['admin-input']} {...accessibility} required={field.required} value={value} onChange={event => change(event.target.value)}>
+          <option value="">{tr('None', 'بدون')}</option>
+          {documentAssetOptions(field.group).map(([key, asset]) => <option key={key} value={key}>{asset.label[locale]}</option>)}
+        </select>
+      : field.kind === 'textarea'
       ? <textarea id={id} className={admin['admin-input']} dir="auto" {...accessibility} required={field.required} maxLength={field.max} rows={5} value={value} onChange={event => change(event.target.value)} />
       : <input id={id} className={admin['admin-input']} dir={field.kind === 'date' ? 'ltr' : 'auto'} {...accessibility} required={field.required} maxLength={field.max} type={field.kind === 'date' ? 'date' : 'text'} value={value} onChange={event => change(event.target.value)} />;
     return <label key={field.key} htmlFor={id}>{field.label[locale]}{field.required && ' *'}{editor}{issue(path, errorId)}</label>;
@@ -112,7 +118,14 @@ export default function TemplateEditor({ type, template, files, errors, characte
       {['metadata.template', 'metadata.template.id', 'metadata.template.version'].map(path => <div key={path} hidden={!errors[path]?.length}>{issue(path)}</div>)}
       {!filtered.length && <p role="status">{tr('No templates match your search.', 'لا توجد قوالب تطابق البحث.')}</p>}
       {template && definition && <>
-        {latest && latest.version > template.version && <button type="button" onClick={() => {
+        {latest && latest.version > template.version && <button type="button" onClick={async () => {
+          const removedArtwork = definition.fields.some(field => field.kind === 'image' &&
+            !latest.fields.some(next => next.key === field.key && next.kind === 'image') &&
+            (template.values[field.key] || files[field.key]));
+          if (removedArtwork && !await confirm({ message: tr(
+            'This upgrade replaces uploaded signatures and fingerprints with shared choices. You can select replacements in the preview before saving.',
+            'تستبدل هذه الترقية صور التوقيعات والبصمات المرفوعة بخيارات مشتركة. يمكنك اختيار البدائل في المعاينة قبل الحفظ.',
+          ) })) return;
           const retainedFiles = Object.fromEntries(Object.entries(files).filter(([key]) => latest.fields.some(field => field.key === key && field.kind === 'image')));
           onChange({ id: latest.id, version: latest.version, values: upgradeValues(definition, latest, template.values) }, retainedFiles);
         }}>{tr('Review template upgrade', 'مراجعة ترقية القالب')}</button>}

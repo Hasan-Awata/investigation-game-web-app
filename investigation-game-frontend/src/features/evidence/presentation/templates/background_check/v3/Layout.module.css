@@ -223,6 +223,8 @@
   transform: rotate(-8deg);
 }
 .stamp:lang(ar) { transform: rotate(8deg); }
+.sharedStamp { border: 0; padding: 6px 10px; background-size: 100% 100%; }
+.signoff img.stampArtwork { grid-column: 2; grid-row: 1 / span 2; inline-size: 105px; block-size: 48px; }
 
 .findings {
   display: grid;
@@ -246,11 +248,9 @@
   border-inline-end: 1px solid var(--rule);
 }
 
-.printGrid figure > div, .strip { position: relative; display: grid; place-items: center; min-block-size: 0; }
-.printGrid img, .strip img, .signature img { position: absolute; inset: 0; padding: 4px; }
+.printGrid figure > div { position: relative; display: grid; place-items: center; min-block-size: 0; }
+.printGrid img, .signature img { position: absolute; inset: 0; padding: 4px; }
 .printGrid figcaption { padding: 3px 4px; border-block-start: 1px solid var(--light-rule); font-size: 11px; line-height: 1.2; text-align: center; }
-.strip { block-size: 108px; border: 1px solid var(--rule); }
-.printGrid + .strip { margin-block-start: 6px; }
 .notes { padding-block-start: 12px; }
 .note, .empty {
   padding-inline: 4px;

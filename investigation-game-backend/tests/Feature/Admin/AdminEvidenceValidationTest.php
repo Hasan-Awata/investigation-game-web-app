@@ -78,7 +78,7 @@ class AdminEvidenceValidationTest extends TestCase
             ...$this->updatePayload(),
             'evidence_type' => 'document',
             'metadata' => json_encode(['template' => [
-                'id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'Case subject'],
+                'id' => 'background_check', 'version' => 3, 'values' => ['subject' => 'Case subject'],
             ]]),
             'image' => UploadedFile::fake()->createWithContent('screen.png', base64_decode(
                 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
@@ -118,7 +118,7 @@ class AdminEvidenceValidationTest extends TestCase
 
     public function test_template_save_snapshots_values_and_rejects_legacy_overwrites(): void
     {
-        $template = ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'ناصر حداد', 'arrests' => [['description' => 'File 41-S']]]];
+        $template = ['id' => 'background_check', 'version' => 3, 'values' => ['subject' => 'ناصر حداد', 'arrests' => [['description' => 'File 41-S']]]];
         $payload = [...$this->updatePayload(), 'evidence_type' => 'forensic', 'metadata' => ['template' => $template]];
 
         $id = $this->postJson('/api/admin/evidences', $payload)->assertCreated()->json('evidence.id');
@@ -135,7 +135,7 @@ class AdminEvidenceValidationTest extends TestCase
     public function test_template_validation_reports_nested_fields_and_unmanaged_images(): void
     {
         $payload = [...$this->updatePayload(), 'evidence_type' => 'document'];
-        $template = ['id' => 'background_check', 'version' => 1, 'values' => ['birth_date' => '2025-02-29', 'arrests' => [['extra' => 'X']]]];
+        $template = ['id' => 'background_check', 'version' => 3, 'values' => ['birth_date' => '2025-02-29', 'arrests' => [['extra' => 'X']]]];
         $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => ['template' => $template]])
             ->assertUnprocessable()->assertJsonValidationErrors([
                 'metadata.template.values.subject', 'metadata.template.values.birth_date',
@@ -151,11 +151,11 @@ class AdminEvidenceValidationTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('metadata.template.values.arrests');
     }
 
-    public function test_background_check_version_two_saves_expanded_fields_and_validates_fingerprint_media(): void
+    public function test_background_check_saves_expanded_fields_and_validates_portrait_media(): void
     {
         $template = [
             'id' => 'background_check',
-            'version' => 2,
+            'version' => 3,
             'values' => [
                 'subject' => 'ناصر حداد',
                 'aliases' => 'أبو نائل',
@@ -175,10 +175,42 @@ class AdminEvidenceValidationTest extends TestCase
             ->assertCreated()->json('evidence.id');
         $this->assertSame($template, Evidence::findOrFail($id)->metadata['template']);
 
-        $template['values']['right_thumb'] = 'https://example.test/thumb.png';
+        $template['values']['portrait'] = 'https://example.test/portrait.png';
         $this->putJson("/api/admin/evidences/{$id}", [...$payload, 'metadata' => ['template' => $template]])
             ->assertUnprocessable()
-            ->assertJsonValidationErrors('metadata.template.values.right_thumb');
+            ->assertJsonValidationErrors('metadata.template.values.portrait');
+    }
+
+    public function test_background_check_saves_shared_assets_and_rejects_invalid_choices_and_uploads(): void
+    {
+        $template = ['id' => 'background_check', 'version' => 3, 'values' => [
+            'subject' => 'Case subject',
+            'signature_asset' => 'signature_07',
+            'fingerprint_asset' => 'loop',
+            'stamp_asset' => 'filed',
+        ]];
+        $payload = [...$this->updatePayload(), 'evidence_type' => 'document'];
+        $metadata = ['template' => $template];
+        $id = $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => $metadata])
+            ->assertCreated()->json('evidence.id');
+        $this->assertSame($template, Evidence::findOrFail($id)->metadata['template']);
+
+        $template['values']['signature_asset'] = 'filed';
+        $template['values']['fingerprint_asset'] = 'unknown';
+        $template['values']['stamp_asset'] = 'https://example.test/stamp.svg';
+        $this->putJson("/api/admin/evidences/{$id}", [...$payload, 'metadata' => ['template' => $template]])
+            ->assertUnprocessable()->assertJsonValidationErrors([
+                'metadata.template.values.signature_asset',
+                'metadata.template.values.fingerprint_asset',
+                'metadata.template.values.stamp_asset',
+            ]);
+
+        $this->post('/api/admin/evidences', [
+            ...$payload, 'metadata' => $metadata,
+            'template_images' => ['fingerprint_asset' => UploadedFile::fake()->createWithContent('print.png', base64_decode(
+                'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQ0AAAAASUVORK5CYII=',
+            ))],
+        ], ['Accept' => 'application/json'])->assertUnprocessable()->assertJsonValidationErrors('template_images.fingerprint_asset');
     }
 
     public function test_changing_legacy_paper_to_another_type_requires_explicit_metadata(): void
@@ -211,7 +243,7 @@ class AdminEvidenceValidationTest extends TestCase
             'metadata' => ['doc' => ['blocks' => [['type' => 'prose', 'props' => ['html' => 'Service door 41-S']]]]],
             'is_initial' => true, 'is_vital_for_conviction' => true,
         ]);
-        $template = ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'Case subject', 'notes' => 'Service door 41-S']];
+        $template = ['id' => 'background_check', 'version' => 3, 'values' => ['subject' => 'Case subject', 'notes' => 'Service door 41-S']];
         $options = ['--case' => (string) $this->case->id, '--reviews' => tempnam(sys_get_temp_dir(), 'review-')];
         $review = ['expected_sha256' => 'stale', 'template' => $template];
         try {

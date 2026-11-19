@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import TemplateRenderer from './TemplateRenderer';
-import { latestTemplates, readTemplate } from './catalog';
+import { latestTemplates, readTemplate, templateDefinition } from './catalog';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ i18n: { language: 'ar' } }) }));
 
@@ -10,8 +10,10 @@ describe('paper evidence templates', () => {
     expect(latestTemplates('document').map(entry => entry.id)).toContain('background_check');
     expect(latestTemplates('forensic').map(entry => entry.id)).toContain('background_check');
     expect(latestTemplates('audio')).toEqual([]);
+    expect(templateDefinition('background_check', 1)).toBeUndefined();
+    expect(templateDefinition('background_check', 2)).toBeUndefined();
 
-    render(<TemplateRenderer template={{ id: 'background_check', version: 1, values: {
+    render(<TemplateRenderer template={{ id: 'background_check', version: 3, values: {
       subject: 'ناصر حداد — Nasser Haddad', arrests: [{ description: '41-S' }],
     } }} />);
 
@@ -23,14 +25,14 @@ describe('paper evidence templates', () => {
   });
 
   it('renders the expanded identity, sentence and fingerprint fields on the mirrored sheet', async () => {
-    expect(latestTemplates('document').find(entry => entry.id === 'background_check')?.version).toBe(2);
+    expect(latestTemplates('document').find(entry => entry.id === 'background_check')?.version).toBe(3);
 
-    render(<TemplateRenderer template={{ id: 'background_check', version: 2, values: {
+    render(<TemplateRenderer template={{ id: 'background_check', version: 3, values: {
       subject: 'ناصر حداد',
       record_id: '051H42',
       aliases: 'أبو نائل',
       arrests: [{ description: 'Charge 41-S', offense_code: '41-S', institution: 'Central Court', term: '6 months' }],
-      right_thumb: 'blob:thumb',
+      fingerprint_asset: 'loop',
       notes: 'ملاحظة من الملف',
     } }} />);
 
@@ -42,8 +44,22 @@ describe('paper evidence templates', () => {
     expect(sheet.getByRole('columnheader', { name: 'رمز الجريمة' })).toBeInTheDocument();
     expect(sheet.getByRole('cell', { name: 'Central Court' })).toBeInTheDocument();
     expect(sheet.getByRole('cell', { name: '6 months' })).toBeInTheDocument();
-    expect(sheet.getByRole('img', { name: 'الإبهام الأيمن' })).toHaveAttribute('src', 'blob:thumb');
+    expect(sheet.getByText('الإبهام الأيمن').closest('figure')?.querySelector('img')).toHaveAttribute('src', expect.stringContaining('/fingerprints/loop.svg'));
     expect(sheet.getByText('ملاحظة من الملف')).toBeInTheDocument();
+  });
+
+  it('reuses a single shared fingerprint in ten slots and renders the localized stamp', async () => {
+    render(<TemplateRenderer template={{ id: 'background_check', version: 3, values: {
+      subject: 'Test subject', fingerprint_asset: 'loop', stamp_asset: 'reviewed', signature_asset: 'signature_07',
+    } }} />);
+    const heading = await screen.findByRole('heading', { name: 'التحقق من الخلفية' });
+    const sheet = heading.closest('article')!;
+    const marks = [...sheet.querySelectorAll('figure img')];
+    expect(marks).toHaveLength(10);
+    expect(new Set(marks.map(image => image.getAttribute('src'))).size).toBe(1);
+    expect(new Set(marks.map(image => (image as HTMLImageElement).style.transform)).size).toBe(10);
+    expect(within(sheet).getByText('تمت المراجعة')).toBeVisible();
+    expect(within(sheet).getByRole('img', { name: 'توقيع الضابط المراجع' })).toHaveAttribute('src', expect.stringContaining('/assets/documents/signatures/signature_07.svg'));
   });
 
   it('shows the localized fallback for an unavailable saved version', () => {
@@ -52,7 +68,7 @@ describe('paper evidence templates', () => {
   });
 
   it('reads empty field maps from the API and rejects a list of field values', () => {
-    const template = { id: 'background_check', version: 1 };
+    const template = { id: 'background_check', version: 3 };
     expect(readTemplate({ template: { ...template, values: [] } })).toEqual({ ...template, values: {} });
     expect(readTemplate({ template: { ...template, values: ['Unexpected field'] } })).toBeUndefined();
   });

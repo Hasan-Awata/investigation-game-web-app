@@ -2,8 +2,13 @@ import { defineConfig } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import { fileURLToPath, URL } from 'url'
-import { relative, sep } from 'node:path'
-import { definitionsRoot, syncEvidenceCatalog } from './scripts/evidence-catalog.mjs'
+import { basename, isAbsolute, relative, sep } from 'node:path'
+import { definitionsRoot, documentAssetsRoot, isDocumentAssetFile, syncEvidenceCatalog } from './scripts/evidence-catalog.mjs'
+
+const isInside = (directory: string, path: string) => {
+  const child = relative(directory, path)
+  return child !== '' && child !== '..' && !child.startsWith(`..${sep}`) && !isAbsolute(child)
+}
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -12,9 +17,11 @@ export default defineConfig({
       name: 'evidence-template-catalog',
       buildStart() { syncEvidenceCatalog() },
       configureServer(server) {
+        server.watcher.add(documentAssetsRoot)
         server.watcher.on('all', (_event, path) => {
-          const template = relative(definitionsRoot, path);
-          if (!template || template.startsWith(`..${sep}`) || !/[/\\](definition\.json|Layout\.tsx|Layout\.module\.css)$/.test(template)) return;
+          const templateChanged = isInside(definitionsRoot, path) && /^(definition\.json|Layout\.tsx|Layout\.module\.css)$/.test(basename(path))
+          const assetChanged = isInside(documentAssetsRoot, path) && isDocumentAssetFile(basename(path))
+          if (!templateChanged && !assetChanged) return
           try { syncEvidenceCatalog() } catch (error) { server.config.logger.error(String(error)) }
         });
       },

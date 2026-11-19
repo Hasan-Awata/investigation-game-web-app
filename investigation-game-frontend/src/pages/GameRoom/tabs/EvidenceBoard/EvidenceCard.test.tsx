@@ -34,7 +34,7 @@ describe('Evidence cards', () => {
       title: 'Chain of custody',
       description: 'Collected at the scene',
       metadata: {
-        template: { id: 'background_check', version: 1, values: { subject: 'Evidence inventory' } },
+        template: { id: 'background_check', version: 3, values: { subject: 'Evidence inventory' } },
       },
     };
     const onInspect = vi.fn();

@@ -1,0 +1,12 @@
+{
+  "filed": {
+    "en": "Filed",
+    "ar": "مؤرشف",
+    "frame": true
+  },
+  "reviewed": {
+    "en": "Reviewed",
+    "ar": "تمت المراجعة",
+    "frame": true
+  }
+}

@@ -1,15 +1,24 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { ShieldStarIcon } from '@phosphor-icons/react/dist/icons/ShieldStar';
 import { assetUrl } from '@/utils/assetUrl';
+import { documentAsset } from '../../../documentAssets';
 import type { LayoutProps } from '../../../catalog';
 import definition from './definition.json';
 import styles from './Layout.module.css';
 
 const fields = new Map(definition.fields.map(field => [field.key, field]));
 const arrestColumns = definition.fields.find(field => field.key === 'arrests')?.fields ?? [];
-const prints = [
-  'right_thumb', 'right_index', 'right_middle', 'right_ring', 'right_little',
-  'left_thumb', 'left_index', 'left_middle', 'left_ring', 'left_little',
+const printImpressions = [
+  { label: {en: "Right thumb", ar: "الإبهام الأيمن"}, x: -2, y: 1, angle: -12, contrast: 1.18, opacity: 0.84 },
+  { label: {en: "Right index", ar: "السبابة اليمنى"}, x: 3, y: -2, angle: 9, contrast: 0.90, opacity: 0.69 },
+  { label: {en: "Right middle", ar: "الوسطى اليمنى"}, x: 0, y: 2, angle: -5, contrast: 1.35, opacity: 0.93 },
+  { label: {en: "Right ring", ar: "البنصر الأيمن"}, x: -3, y: -1, angle: 15, contrast: 1.05, opacity: 0.77 },
+  { label: {en: "Right little", ar: "الخنصر الأيمن"}, x: 2, y: 3, angle: 22, contrast: 0.83, opacity: 0.65 },
+  { label: {en: "Left thumb", ar: "الإبهام الأيسر"}, x: 2, y: 0, angle: 12, contrast: 1.27, opacity: 0.89 },
+  { label: {en: "Left index", ar: "السبابة اليسرى"}, x: -1, y: -3, angle: -16, contrast: 0.94, opacity: 0.73 },
+  { label: {en: "Left middle", ar: "الوسطى اليسرى"}, x: 1, y: 1, angle: 4, contrast: 1.42, opacity: 0.96 },
+  { label: {en: "Left ring", ar: "البنصر الأيسر"}, x: -2, y: 3, angle: -10, contrast: 1.12, opacity: 0.82 },
+  { label: {en: "Left little", ar: "الخنصر الأيسر"}, x: 3, y: -1, angle: -23, contrast: 0.79, opacity: 0.62 },
 ];
 const traits = [
   'nationality', 'citizen', 'gender', 'race_ethnicity', 'height', 'weight', 'eye_color', 'hair_color',
@@ -47,11 +56,11 @@ function splitNotes(text: string): string[] {
   return segments;
 }
 
-function ExhibitImage({ path, label, missing }: { path: string; label: string; missing: string }) {
+function ExhibitImage({ path, label, missing, style, resolved = false }: { path: string; label: string; missing: string; style?: React.CSSProperties; resolved?: boolean }) {
   const [failed, setFailed] = useState('');
-  const url = path.startsWith('blob:') ? path : assetUrl(path);
+  const url = resolved || path.startsWith('blob:') ? path : assetUrl(path);
   if (!url || failed === url) return <span className={styles.imageFallback}>{missing}</span>;
-  return <img src={url} alt={label} onError={() => setFailed(url)} draggable={false} />;
+  return <img src={url} alt={label} style={style} onError={() => setFailed(url)} draggable={false} />;
 }
 
 function BureauSeal({ watermark = false }: { watermark?: boolean }) {
@@ -83,8 +92,9 @@ export default function Layout({ values, locale, pageLimit, pageSelection }: Lay
   const recordId = value('record_id');
   const recordCharacters = Array.from(recordId);
   const useRecordBoxes = /^[A-Za-z0-9٠-٩۰-۹-]{0,12}$/u.test(recordId);
-  const hasIndividualPrints = prints.some(key => value(key));
-  const hasStrip = Boolean(value('fingerprints'));
+  const fingerprint = documentAsset('fingerprint', value('fingerprint_asset'));
+  const signature = documentAsset('signature', value('signature_asset'));
+  const stamp = documentAsset('stamp', value('stamp_asset'));
   const renderNotes = (note?: string) => note
     ? <p className={styles.note} dir="auto">{note}</p>
     : <p className={styles.empty}>{tr('No notes recorded.', 'لا توجد ملاحظات مسجلة.')}</p>;
@@ -161,9 +171,13 @@ export default function Layout({ values, locale, pageLimit, pageSelection }: Lay
       <section className={styles.signoff} aria-label={tr('Report sign-off', 'اعتماد التقرير')}>
         <dl>{['transfer_number', 'corrections_number', 'reviewer', 'signed_date'].map(key => field(key))}</dl>
         <div className={styles.validation}>
-          <div className={styles.signature}>{value('signature') && image('signature', tr('Signature unavailable', 'التوقيع غير متوفر'))}</div>
-          <span>{label('signature')}</span>
-          <strong className={styles.stamp}>{tr('Filed', 'مؤرشف')}</strong>
+          <div className={styles.signature}>
+            {signature && <ExhibitImage path={signature.url} label={label('signature_asset')} missing={tr('Signature unavailable', 'التوقيع غير متوفر')} resolved />}
+          </div>
+          <span>{label('signature_asset')}</span>
+          {stamp && (stamp.frame
+            ? <strong className={`${styles.stamp} ${styles.sharedStamp}`} style={{ backgroundImage: `url("${stamp.url}")` }}>{stamp.label[locale]}</strong>
+            : <img className={styles.stampArtwork} src={stamp.url} alt={stamp.label[locale]} />)}
         </div>
       </section>,
     },
@@ -171,15 +185,20 @@ export default function Layout({ values, locale, pageLimit, pageSelection }: Lay
       <div className={styles.findings}>
         <section>
           <h2 className={styles.sectionTitle}>{tr('Fingerprints', 'البصمات')}</h2>
-          {(!hasStrip || hasIndividualPrints) && <div className={styles.printGrid}>
-            {prints.map(key => <figure key={key}>
-              <div>{image(key, '—')}</div>
-              <figcaption>{label(key)}</figcaption>
-            </figure>)}
+          {fingerprint && <div className={styles.printGrid}>
+            {printImpressions.map(({ label, x, y, angle, contrast, opacity }) => (
+              <figure key={label.en}>
+                <div>
+                  <ExhibitImage path={fingerprint.url} label="" missing="—" resolved style={{
+                    transform: `translate(${x}px, ${y}px) rotate(${angle}deg)`,
+                    filter: `contrast(${contrast})`,
+                    opacity,
+                  }} />
+                </div>
+                <figcaption>{label[locale]}</figcaption>
+              </figure>
+            ))}
           </div>}
-          {hasStrip && <figure className={styles.strip}>
-            {image('fingerprints', tr('Prints unavailable', 'البصمات غير متوفرة'))}
-          </figure>}
         </section>
         <section className={styles.findingsNotes}>
           <h2 className={styles.sectionTitle}>{label('notes')}</h2>
