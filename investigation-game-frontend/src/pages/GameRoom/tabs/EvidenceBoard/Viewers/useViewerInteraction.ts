@@ -4,7 +4,7 @@ import type { ViewerGeometry } from './viewerGeometry';
 
 const INTERACTIVE = 'audio, video, button, a, input, select, textarea, [contenteditable]:not([contenteditable="false"]), [role="button"], [role="slider"]';
 
-export function useViewerInteraction(fullscreen: boolean) {
+export function useViewerInteraction(fullscreen: boolean, pageIndex?: number) {
   const viewportRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -121,7 +121,7 @@ export function useViewerInteraction(fullscreen: boolean) {
       viewport.style.cursor = '';
       stage.style.height = '';
     };
-  }, [fullscreen]);
+  }, [fullscreen, pageIndex]);
 
   return { viewportRef, contentRef, stageRef };
 }

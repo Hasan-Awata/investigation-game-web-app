@@ -1,11 +1,14 @@
 .paper {
   margin-inline: auto;
+  flex-shrink: 0;
   background: #eeeadf;
   color: #20272b;
   font-family: var(--font-primary), sans-serif;
 }
 
 .paper > p { margin: 0; padding: 3rem; }
+.stackedPaper { background: transparent; }
+.stackedPaper > p { background: #eeeadf; }
 .loading::before { content: ''; display: inline-block; width: 1em; height: 1em; margin-inline-end: 0.6em; vertical-align: middle; border: 2px solid #9a9384; border-block-start-color: #26383c; border-radius: 50%; animation: reading 0.9s linear infinite; }
 @keyframes reading { to { transform: rotate(1turn); } }
 @media (prefers-reduced-motion: reduce) { .loading::before { animation: none; } }

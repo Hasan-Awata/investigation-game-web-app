@@ -216,7 +216,11 @@
         }
       },
       "evidence": {
-        "modal": {"title": "الدليل", "close": "إغلاق", "fullscreen": "ملء الشاشة", "minimize": "تصغير", "types": {"document": "مستند", "forensic": "دليل جنائي", "testimony": "شهادة", "image": "صورة", "audio": "تسجيل صوتي"}},
+        "modal": {
+          "title": "الدليل", "close": "إغلاق", "fullscreen": "ملء الشاشة", "minimize": "تصغير",
+          "pageNavigation": "صفحات المستند", "previousPage": "الصفحة السابقة", "nextPage": "الصفحة التالية", "pageStatus": "الصفحة {{currentPage}} من {{totalPages}}",
+          "types": {"document": "مستند", "forensic": "دليل جنائي", "testimony": "شهادة", "image": "صورة", "audio": "تسجيل صوتي"}
+        },
         "board": {
           "removeItem": "إزالة {{title}} من الدرج",
           "trayItemType": { "evidence": "دليل", "character": "شخص" },

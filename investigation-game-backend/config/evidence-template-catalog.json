@@ -144,5 +144,410 @@
         }
       }
     ]
+  },
+  {
+    "id": "background_check",
+    "version": 2,
+    "name": {
+      "en": "Background Check",
+      "ar": "التحقق من الخلفية"
+    },
+    "category": {
+      "en": "Records bureau",
+      "ar": "مكتب السجلات"
+    },
+    "types": [
+      "document",
+      "forensic"
+    ],
+    "characterPrefill": {
+      "name": "subject",
+      "portrait": "portrait"
+    },
+    "fields": [
+      {
+        "key": "reference",
+        "kind": "text",
+        "max": 100,
+        "label": {
+          "en": "File number",
+          "ar": "رقم الملف"
+        }
+      },
+      {
+        "key": "purpose_code",
+        "kind": "text",
+        "max": 48,
+        "label": {
+          "en": "Purpose code",
+          "ar": "رمز الغرض"
+        }
+      },
+      {
+        "key": "state_id",
+        "kind": "text",
+        "max": 48,
+        "label": {
+          "en": "State ID",
+          "ar": "رقم الهوية الحكومية"
+        }
+      },
+      {
+        "key": "subject",
+        "kind": "text",
+        "required": true,
+        "max": 255,
+        "label": {
+          "en": "Subject",
+          "ar": "الشخص المعني"
+        }
+      },
+      {
+        "key": "aliases",
+        "kind": "text",
+        "max": 180,
+        "label": {
+          "en": "Aliases",
+          "ar": "الأسماء المستعارة"
+        }
+      },
+      {
+        "key": "record_id",
+        "kind": "text",
+        "max": 48,
+        "label": {
+          "en": "Record ID",
+          "ar": "معرّف السجل"
+        }
+      },
+      {
+        "key": "nationality",
+        "kind": "text",
+        "max": 60,
+        "label": {
+          "en": "Nationality",
+          "ar": "الجنسية"
+        }
+      },
+      {
+        "key": "citizen",
+        "kind": "text",
+        "max": 40,
+        "label": {
+          "en": "Citizen",
+          "ar": "المواطنة"
+        }
+      },
+      {
+        "key": "gender",
+        "kind": "text",
+        "max": 40,
+        "label": {
+          "en": "Gender",
+          "ar": "الجنس"
+        }
+      },
+      {
+        "key": "race_ethnicity",
+        "kind": "text",
+        "max": 80,
+        "label": {
+          "en": "Race / ethnicity",
+          "ar": "العرق أو الإثنية"
+        }
+      },
+      {
+        "key": "height",
+        "kind": "text",
+        "max": 24,
+        "label": {
+          "en": "Height",
+          "ar": "الطول"
+        }
+      },
+      {
+        "key": "weight",
+        "kind": "text",
+        "max": 24,
+        "label": {
+          "en": "Weight",
+          "ar": "الوزن"
+        }
+      },
+      {
+        "key": "eye_color",
+        "kind": "text",
+        "max": 48,
+        "label": {
+          "en": "Eye color",
+          "ar": "لون العينين"
+        }
+      },
+      {
+        "key": "hair_color",
+        "kind": "text",
+        "max": 48,
+        "label": {
+          "en": "Hair color",
+          "ar": "لون الشعر"
+        }
+      },
+      {
+        "key": "birth_date",
+        "kind": "date",
+        "label": {
+          "en": "Date of birth",
+          "ar": "تاريخ الميلاد"
+        }
+      },
+      {
+        "key": "age",
+        "kind": "text",
+        "max": 12,
+        "label": {
+          "en": "Age",
+          "ar": "العمر"
+        }
+      },
+      {
+        "key": "tracking_number",
+        "kind": "text",
+        "max": 48,
+        "label": {
+          "en": "Record tracking number",
+          "ar": "رقم تتبّع السجل"
+        }
+      },
+      {
+        "key": "portrait",
+        "kind": "image",
+        "label": {
+          "en": "Subject photograph",
+          "ar": "صورة الشخص المعني"
+        }
+      },
+      {
+        "key": "address",
+        "kind": "text",
+        "max": 500,
+        "label": {
+          "en": "Address on record",
+          "ar": "العنوان المسجل"
+        }
+      },
+      {
+        "key": "check_date",
+        "kind": "date",
+        "label": {
+          "en": "Check date",
+          "ar": "تاريخ التحقق"
+        }
+      },
+      {
+        "key": "arrests",
+        "kind": "rows",
+        "max": 100,
+        "label": {
+          "en": "Arrest and sentencing history",
+          "ar": "سجل التوقيف والأحكام"
+        },
+        "fields": [
+          {
+            "key": "date",
+            "kind": "date",
+            "label": {
+              "en": "Date",
+              "ar": "التاريخ"
+            }
+          },
+          {
+            "key": "offense_code",
+            "kind": "text",
+            "max": 48,
+            "label": {
+              "en": "Offense code",
+              "ar": "رمز الجريمة"
+            }
+          },
+          {
+            "key": "institution",
+            "kind": "text",
+            "max": 160,
+            "label": {
+              "en": "Institution",
+              "ar": "المؤسسة"
+            }
+          },
+          {
+            "key": "description",
+            "kind": "text",
+            "required": true,
+            "max": 255,
+            "label": {
+              "en": "Charge and description",
+              "ar": "التهمة ووصفها"
+            }
+          },
+          {
+            "key": "term",
+            "kind": "text",
+            "max": 80,
+            "label": {
+              "en": "Term",
+              "ar": "مدة العقوبة"
+            }
+          },
+          {
+            "key": "disposition",
+            "kind": "text",
+            "max": 120,
+            "label": {
+              "en": "Disposition",
+              "ar": "النتيجة"
+            }
+          }
+        ]
+      },
+      {
+        "key": "transfer_number",
+        "kind": "text",
+        "max": 64,
+        "label": {
+          "en": "Transfer number",
+          "ar": "رقم التحويل"
+        }
+      },
+      {
+        "key": "corrections_number",
+        "kind": "text",
+        "max": 64,
+        "label": {
+          "en": "Corrections number",
+          "ar": "رقم إدارة السجون"
+        }
+      },
+      {
+        "key": "reviewer",
+        "kind": "text",
+        "max": 200,
+        "label": {
+          "en": "Reviewing officer",
+          "ar": "الضابط المراجع"
+        }
+      },
+      {
+        "key": "signed_date",
+        "kind": "date",
+        "label": {
+          "en": "Sign-off date",
+          "ar": "تاريخ الاعتماد"
+        }
+      },
+      {
+        "key": "signature",
+        "kind": "image",
+        "label": {
+          "en": "Reviewing officer’s signature",
+          "ar": "توقيع الضابط المراجع"
+        }
+      },
+      {
+        "key": "fingerprints",
+        "kind": "image",
+        "label": {
+          "en": "Complete fingerprint strip",
+          "ar": "شريط البصمات الكامل"
+        }
+      },
+      {
+        "key": "right_thumb",
+        "kind": "image",
+        "label": {
+          "en": "Right thumb",
+          "ar": "الإبهام الأيمن"
+        }
+      },
+      {
+        "key": "right_index",
+        "kind": "image",
+        "label": {
+          "en": "Right index",
+          "ar": "السبابة اليمنى"
+        }
+      },
+      {
+        "key": "right_middle",
+        "kind": "image",
+        "label": {
+          "en": "Right middle",
+          "ar": "الوسطى اليمنى"
+        }
+      },
+      {
+        "key": "right_ring",
+        "kind": "image",
+        "label": {
+          "en": "Right ring",
+          "ar": "البنصر الأيمن"
+        }
+      },
+      {
+        "key": "right_little",
+        "kind": "image",
+        "label": {
+          "en": "Right little",
+          "ar": "الخنصر الأيمن"
+        }
+      },
+      {
+        "key": "left_thumb",
+        "kind": "image",
+        "label": {
+          "en": "Left thumb",
+          "ar": "الإبهام الأيسر"
+        }
+      },
+      {
+        "key": "left_index",
+        "kind": "image",
+        "label": {
+          "en": "Left index",
+          "ar": "السبابة اليسرى"
+        }
+      },
+      {
+        "key": "left_middle",
+        "kind": "image",
+        "label": {
+          "en": "Left middle",
+          "ar": "الوسطى اليسرى"
+        }
+      },
+      {
+        "key": "left_ring",
+        "kind": "image",
+        "label": {
+          "en": "Left ring",
+          "ar": "البنصر الأيسر"
+        }
+      },
+      {
+        "key": "left_little",
+        "kind": "image",
+        "label": {
+          "en": "Left little",
+          "ar": "الخنصر الأيسر"
+        }
+      },
+      {
+        "key": "notes",
+        "kind": "textarea",
+        "max": 16000,
+        "label": {
+          "en": "Findings and case notes",
+          "ar": "النتائج وملاحظات القضية"
+        }
+      }
+    ]
   }
 ]

@@ -1,4 +1,4 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useId } from 'react';
 import adminDashboard from '../../AdminDashboard.module.css';
 import adminForms from '../../forms/Shared/AdminForms.module.css';
 
@@ -56,13 +56,17 @@ export const AdminCheckbox = ({ labelTitle, description, accentColor, bgColor, c
 );
 
 interface FileInputProps extends React.InputHTMLAttributes<HTMLInputElement> { label: string; hint?: string; }
-export const AdminFileInput = forwardRef<HTMLInputElement, FileInputProps>(({ label, hint, ...props }, ref) => (
-  <div className={adminDashboard['form-group']}>
-    <label>{label}</label>
-    {hint && <p className={adminForms['admin-field-hint']}>{hint}</p>}
-    <input type="file" className={adminDashboard['admin-file-input']} ref={ref} {...props} />
-  </div>
-));
+export const AdminFileInput = forwardRef<HTMLInputElement, FileInputProps>(({ label, hint, id, ...props }, ref) => {
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  return (
+    <div className={adminDashboard['form-group']}>
+      <label htmlFor={inputId}>{label}</label>
+      {hint && <p className={adminForms['admin-field-hint']}>{hint}</p>}
+      <input type="file" className={adminDashboard['admin-file-input']} ref={ref} id={inputId} {...props} />
+    </div>
+  );
+});
 AdminFileInput.displayName = 'AdminFileInput';
 
 export const FormattingGuide = () => (

@@ -43,7 +43,7 @@ export function syncEvidenceCatalog({ check = false } = {}) {
       version !== `v${definition.version}` || !translated(definition.name) || !translated(definition.category) ||
       !Array.isArray(definition.types) || definition.types.length === 0 ||
       !definition.types.every(type => ['document', 'forensic'].includes(type)) || new Set(definition.types).size !== definition.types.length ||
-      !validFields(definition.fields) || !validPrefill(definition) || !existsSync(join(dirname(path), 'Layout.tsx')) || !existsSync(join(dirname(path), 'Layout.module.css'))) {
+      !validFields(definition.fields) || !validPrefill(definition) || !existsSync(join(dirname(path), 'Layout.tsx'))) {
       throw new Error(`Invalid evidence template: ${path}`);
     }
     const key = `${id}:${definition.version}`;

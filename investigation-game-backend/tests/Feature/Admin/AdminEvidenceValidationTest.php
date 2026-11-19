@@ -151,6 +151,36 @@ class AdminEvidenceValidationTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('metadata.template.values.arrests');
     }
 
+    public function test_background_check_version_two_saves_expanded_fields_and_validates_fingerprint_media(): void
+    {
+        $template = [
+            'id' => 'background_check',
+            'version' => 2,
+            'values' => [
+                'subject' => 'ناصر حداد',
+                'aliases' => 'أبو نائل',
+                'record_id' => '051H42',
+                'arrests' => [[
+                    'description' => 'Charge 41-S',
+                    'offense_code' => '41-S',
+                    'institution' => 'Central Court',
+                    'term' => '6 months',
+                    'disposition' => 'Released',
+                ]],
+                'transfer_number' => 'T-791',
+            ],
+        ];
+        $payload = [...$this->updatePayload(), 'evidence_type' => 'document'];
+        $id = $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => ['template' => $template]])
+            ->assertCreated()->json('evidence.id');
+        $this->assertSame($template, Evidence::findOrFail($id)->metadata['template']);
+
+        $template['values']['right_thumb'] = 'https://example.test/thumb.png';
+        $this->putJson("/api/admin/evidences/{$id}", [...$payload, 'metadata' => ['template' => $template]])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('metadata.template.values.right_thumb');
+    }
+
     public function test_changing_legacy_paper_to_another_type_requires_explicit_metadata(): void
     {
         $metadata = ['doc' => ['blocks' => []]];

@@ -1,6 +1,10 @@
 import { lazy, type ComponentType } from 'react';
 import type { Definition, Locale, Template, Values } from '../model';
-export type LayoutProps = { values: Values; locale: Locale; pageLimit?: number };
+export type PageSelection = {
+  index?: number;
+  onPageCountChange: (count: number) => void;
+};
+export type LayoutProps = { values: Values; locale: Locale; pageLimit?: number; pageSelection?: PageSelection };
 
 const definitions = import.meta.glob<Definition>('./templates/*/v*/definition.json', { eager: true, import: 'default' });
 const layouts = import.meta.glob<{ default: ComponentType<LayoutProps> }>('./templates/*/v*/Layout.tsx');
