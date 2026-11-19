@@ -219,7 +219,7 @@
         "modal": {
           "title": "الدليل", "close": "إغلاق", "fullscreen": "ملء الشاشة", "minimize": "تصغير",
           "pageNavigation": "صفحات المستند", "previousPage": "الصفحة السابقة", "nextPage": "الصفحة التالية", "pageStatus": "الصفحة {{currentPage}} من {{totalPages}}",
-          "types": {"document": "مستند", "forensic": "دليل جنائي", "testimony": "شهادة", "image": "صورة", "audio": "تسجيل صوتي"}
+          "types": {"audio": "تسجيل صوتي"}
         },
         "board": {
           "removeItem": "إزالة {{title}} من الدرج",
@@ -252,10 +252,6 @@
           },
           "testimony": {
             "transcript": "نسخة طبق الأصل"
-          },
-          "forensic": {
-            "classified": "سري",
-            "chain": "سلسلة الحضانة"
           }
         },
         "viewers": {

@@ -4,7 +4,7 @@ export interface ViewerGeometry {
   viewportWidth: number;
   viewportHeight: number;
 }
-export interface ViewerPosition { x: number; y: number }
+interface ViewerPosition { x: number; y: number }
 export function fitScale(g: ViewerGeometry, fullscreen: boolean): number {
   if (Math.min(g.width, g.height, g.viewportWidth, g.viewportHeight) <= 0) return 1;
   return Math.min(1, g.viewportWidth / g.width, fullscreen ? g.viewportHeight / g.height : 1);

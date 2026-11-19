@@ -35,6 +35,10 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
 
   const [activeTab, setActiveTab] = useState<WorkspaceTab>('details');
   const [campaignRoomId, setCampaignRoomId] = useState<typeof room.id | null>(null);
+  const [evidenceRoomId, setEvidenceRoomId] = useState<typeof room.id | null>(null);
+  if (activeTab === 'evidences' && evidenceRoomId !== room.id) {
+    setEvidenceRoomId(room.id);
+  }
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('agents');
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [requestDisclosure, setRequestDisclosure] = useState({ roomId: room.id, expanded: false });
@@ -189,6 +193,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
           }}
           roomId={room.id}
           campaignRoomId={campaignRoomId}
+          evidenceRoomId={evidenceRoomId}
           managementTrust={room.management_trust}
           navigation={{ activeTab, hasUnreadEvidence, hasUnreadCharacters, onSelectTab: selectWorkspaceTab }}
           verdict={{

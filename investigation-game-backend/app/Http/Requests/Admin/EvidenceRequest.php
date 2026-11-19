@@ -5,11 +5,17 @@ namespace App\Http\Requests\Admin;
 use App\Enums\EvidenceType;
 use App\Support\EvidenceTemplateCatalog;
 use App\Support\MediaValidationRules;
+use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rules\Enum;
 use Illuminate\Validation\Validator;
 
-trait EvidenceRequestTrait
+class EvidenceRequest extends FormRequest
 {
+    public function authorize(): bool
+    {
+        return true;
+    }
+
     protected function prepareForValidation(): void
     {
         $metadata = $this->input('metadata');
@@ -24,9 +30,8 @@ trait EvidenceRequestTrait
             return;
         }
 
-        $decodedObject = json_decode($raw);
-        if (json_last_error() === JSON_ERROR_NONE && is_object($decodedObject)) {
-            $this->merge(['metadata' => json_decode($raw, true)]);
+        if ($raw[0] === '{' && is_array($decoded = json_decode($raw, true))) {
+            $this->merge(['metadata' => $decoded]);
         }
     }
 
@@ -69,7 +74,7 @@ trait EvidenceRequestTrait
         });
     }
 
-    protected function evidenceRules(): array
+    public function rules(): array
     {
         return [
             'case_id' => ['required', 'exists:cases,id'],

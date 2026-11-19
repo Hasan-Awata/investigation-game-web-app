@@ -141,7 +141,7 @@
         "modal": {
           "title": "Evidence", "close": "Close file", "fullscreen": "Fullscreen", "minimize": "Exit fullscreen",
           "pageNavigation": "Document pages", "previousPage": "Previous page", "nextPage": "Next page", "pageStatus": "Page {{currentPage}} of {{totalPages}}",
-          "types": {"document": "Document", "forensic": "Forensic", "testimony": "Testimony", "image": "Image", "audio": "Audio"}
+          "types": {"audio": "Audio"}
         },
         "board": {
           "proceduralTrayTitle": "Procedural Requests",
@@ -173,10 +173,6 @@
           },
           "testimony": {
             "transcript": "Transcript"
-          },
-          "forensic": {
-            "classified": "CLASSIFIED",
-            "chain": "CHAIN OF CUSTODY"
           }
         },
         "viewers": {

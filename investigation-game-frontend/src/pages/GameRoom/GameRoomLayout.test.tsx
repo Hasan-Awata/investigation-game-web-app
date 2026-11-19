@@ -461,3 +461,26 @@ it('shows unread indicators and preserves Campaign state when switching workspac
   fireEvent.click(button('pages.gameRoom.layout.tabs.campaign'));
   expect(button('Lead visits: 1')).toBeVisible();
 });
+
+it('keeps evidence previews mounted between tab visits in the same room', () => {
+  const view = renderLayout();
+  const card = () => button(evidence.title);
+  expect(screen.queryByText(evidence.title)).not.toBeInTheDocument();
+
+  fireEvent.click(button('pages.gameRoom.layout.tabs.evidences'));
+  const original = card();
+  fireEvent.click(button('pages.gameRoom.layout.tabs.caseDetails'));
+  expect(original).toBeInTheDocument();
+  expect(original).not.toBeVisible();
+
+  fireEvent.click(button('pages.gameRoom.layout.tabs.evidences'));
+  expect(card()).toBe(original);
+  expect(card()).toBeVisible();
+
+  view.rerender(roomLayout({ ...room, id: 2 }));
+  const nextRoomCard = card();
+  expect(nextRoomCard).not.toBe(original);
+  fireEvent.click(button('pages.gameRoom.layout.tabs.caseDetails'));
+  fireEvent.click(button('pages.gameRoom.layout.tabs.evidences'));
+  expect(card()).toBe(nextRoomCard);
+});

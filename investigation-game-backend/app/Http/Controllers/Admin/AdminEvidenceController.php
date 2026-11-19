@@ -3,8 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Admin\StoreEvidenceRequest;
-use App\Http\Requests\Admin\UpdateEvidenceRequest;
+use App\Http\Requests\Admin\EvidenceRequest;
 use App\Models\Evidence;
 use App\Models\GameCase;
 use App\Services\Case\EvidenceTemplateMedia;
@@ -18,7 +17,7 @@ class AdminEvidenceController extends Controller
 {
     public function __construct(private readonly MediaService $mediaService, private readonly EvidenceTemplateMedia $templateMedia) {}
 
-    public function store(StoreEvidenceRequest $request): JsonResponse
+    public function store(EvidenceRequest $request): JsonResponse
     {
         $validated = $request->validated();
         $storeLocally = $request->boolean('store_locally');
@@ -37,7 +36,7 @@ class AdminEvidenceController extends Controller
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'evidence_type' => $validated['evidence_type'],
-            'metadata' => $this->normalizeMetadata($validated['metadata'] ?? null),
+            'metadata' => ($validated['metadata'] ?? []) ?: null,
             'is_initial' => $request->boolean('is_initial'),
             'is_vital_for_conviction' => $request->boolean('is_vital_for_conviction'),
             'img_url' => $imageUrl,
@@ -47,7 +46,7 @@ class AdminEvidenceController extends Controller
         return response()->json(['message' => 'Evidence added successfully.', 'evidence' => $evidence], 201);
     }
 
-    public function update(UpdateEvidenceRequest $request, Evidence $evidence): JsonResponse
+    public function update(EvidenceRequest $request, Evidence $evidence): JsonResponse
     {
         $validated = $request->validated();
         $storeLocally = $request->boolean('store_locally');
@@ -66,8 +65,8 @@ class AdminEvidenceController extends Controller
             'is_vital_for_conviction' => $request->boolean('is_vital_for_conviction'),
         ];
 
-        if ($request->exists('metadata')) {
-            $updateData['metadata'] = $this->normalizeMetadata($request->input('metadata'));
+        if (array_key_exists('metadata', $validated)) {
+            $updateData['metadata'] = $validated['metadata'] ?: null;
         }
 
         $this->resolveMediaField($request, 'image', 'img_url', 'clear_img', $oldImage, $caseTitle, $gameCase?->id, $storeLocally, $updateData);
@@ -81,12 +80,12 @@ class AdminEvidenceController extends Controller
             }
         }
 
-        $newMetadata = $evidence->fresh()?->metadata;
-        if (array_key_exists('metadata', $validated)) {
-            $this->mediaService->cleanupOrphanedMetadataImages($oldMetadata, $newMetadata);
+        $evidence->refresh();
+        if (array_key_exists('metadata', $updateData)) {
+            $this->mediaService->cleanupOrphanedMetadataImages($oldMetadata, $evidence->metadata);
         }
 
-        return response()->json(['message' => 'Evidence updated successfully.', 'evidence' => $evidence->refresh()], 200);
+        return response()->json(['message' => 'Evidence updated successfully.', 'evidence' => $evidence], 200);
     }
 
     public function destroy(Evidence $evidence): JsonResponse
@@ -136,7 +135,7 @@ class AdminEvidenceController extends Controller
     }
 
     private function resolveMediaField(
-        UpdateEvidenceRequest $request,
+        EvidenceRequest $request,
         string $fileField,
         string $urlField,
         string $clearField,
@@ -194,20 +193,5 @@ class AdminEvidenceController extends Controller
         }
 
         return is_string($firstPath) && is_string($secondPath) && $firstPath === $secondPath;
-    }
-
-    /** @return array<string, mixed>|null */
-    private function normalizeMetadata(mixed $metadata): ?array
-    {
-        if (empty($metadata)) {
-            return null;
-        }
-
-        if (is_string($metadata)) {
-            $decoded = json_decode($metadata, true);
-            return is_array($decoded) ? $decoded : null;
-        }
-
-        return is_array($metadata) ? $metadata : null;
     }
 }

@@ -1,16 +1,11 @@
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { sanitizeHtml } from '@/utils/sanitize';
 import type { TestimonyEvidence } from '@/types/evidence'; 
 import ViewersContainer from './ViewersContainer';
-import { signatureUrl } from './signatureAsset';
+import { documentAsset } from '@/features/evidence/presentation/documentAssets';
 import testimonyViewer from './TestimonyViewer.module.css';
 
-interface TestimonyViewerProps {
-  evidence: TestimonyEvidence;
-}
-
-const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
+export default function TestimonyViewer({ evidence }: { evidence: TestimonyEvidence }) {
   const { t } = useTranslation();
   
   const {
@@ -98,7 +93,7 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
             <div className={testimonyViewer['signature-area']}>
               <div className={testimonyViewer['steno-signature']}>
                 <img 
-                  src={signatureUrl(evidence.id % 19)} 
+                  src={documentAsset('signature', `signature_${String((evidence.id % 19) + 1).padStart(2, '0')}`)?.url}
                   alt="Stenographer Signature" 
                   className={testimonyViewer['steno-signature-img']} 
                 />
@@ -113,6 +108,4 @@ const TestimonyViewer: React.FC<TestimonyViewerProps> = ({ evidence }) => {
       </div>
     </ViewersContainer>
   );
-};
-
-export default TestimonyViewer;
+}

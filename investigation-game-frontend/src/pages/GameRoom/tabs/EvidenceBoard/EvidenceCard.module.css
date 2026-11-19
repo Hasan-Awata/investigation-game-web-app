@@ -34,8 +34,6 @@
   border-radius: var(--radius-lg);
   pointer-events: none;
   box-shadow: 0 0 14px 2px rgba(var(--accent-amber-rgb), 0.9);
-  opacity: 0.55;
-  animation: evidenceShine 1.5s infinite alternate ease-in-out;
 }
 
 .evidenceCardWrapper[data-unread]:has(> :global(.image-variant))::before {
@@ -75,6 +73,7 @@
   border-radius: var(--folder-front-radius);
 }
 
+.evidenceCardWrapper[data-unread]:not(:has(> :global(.folder-root)))::before,
 .evidenceCardWrapper[data-unread] :global(.folder-back-glow),
 .evidenceCardWrapper[data-unread] :global(.folder-front)::before,
 .evidenceCardWrapper[data-unread] :global(.folder-item)::before {

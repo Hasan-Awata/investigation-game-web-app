@@ -30,19 +30,3 @@ export function readTemplate(metadata: unknown): Template | undefined {
   }
   return { id: entry.id, version: entry.version, values: entry.values as Values };
 }
-
-export function upgradeValues(source: Definition, target: Definition, values: Values): Values {
-  const upgraded: Values = {};
-  for (const field of target.fields) {
-    const old = source.fields.find(candidate => candidate.key === field.key);
-    const value = values[field.key];
-    if (old?.kind !== field.kind || value === undefined) continue;
-    if (field.kind === 'rows' && old.kind === 'rows' && Array.isArray(value)) {
-      upgraded[field.key] = value.map(row => Object.fromEntries(field.fields.flatMap(column =>
-        old.fields.some(previous => previous.key === column.key && previous.kind === column.kind) && row[column.key] !== undefined
-          ? [[column.key, row[column.key]]]
-          : [])));
-    } else if (typeof value === 'string') upgraded[field.key] = value;
-  }
-  return upgraded;
-}

@@ -10,12 +10,29 @@ import { readTemplate, templateDefinition } from '@/features/evidence/presentati
 import { useTranslation } from 'react-i18next';
 import EvidenceMetadataFields from './Shared/EvidenceMetadataFields';
 import { AdminCheckbox, AdminInput } from '@/pages/Admin/components/AdminUI';
-import { getEvidenceMetadataTemplate } from '@/pages/Admin/utils/formUtils';
 import type { Evidence } from '@/types/evidence';
-import { surfaceOf } from '@/types/evidence';
 import type { ValidationErrors } from '@/utils/Result';
 import adminForms from './Shared/AdminForms.module.css';
 import adminDashboard from '../AdminDashboard.module.css';
+
+const isPaper = (type: string) => type === 'document' || type === 'forensic';
+
+const getEvidenceMetadataTemplate = (evidenceType: string): Record<string, unknown> => {
+  if (evidenceType === 'testimony') {
+    return {
+      agency: "",
+      title: "",
+      date: "",
+      case_number: "",
+      subject_name: "",
+      interviewer: "",
+      context: "",
+      transcript: ""
+    };
+  }
+
+  return {};
+};
 
 const initialFormState = {
   title: '',
@@ -53,15 +70,14 @@ export default function EvidenceForm() {
     basePayload: { case_id: caseId },
     onValidationErrors: setTemplateErrors,
     validator: data => {
-      if (surfaceOf(data.evidence_type) !== 'paper') return null;
+      if (!isPaper(data.evidence_type)) return null;
       const selected = readTemplate(data.metadata);
       return selected && templateDefinition(selected.id, selected.version) ? null :
         locale === 'ar' ? 'اختر قالبًا للدليل.' : 'Choose an evidence template.';
     }
   });
 
-  const surface = surfaceOf(formData.evidence_type);
-  const isDocType = surface === 'paper';
+  const isDocType = isPaper(formData.evidence_type);
 
   const template = readTemplate(formData.metadata);
 
@@ -144,12 +160,11 @@ export default function EvidenceForm() {
             value={formData.evidence_type}
             onChange={(e) => {
               const type = e.target.value;
-              if (isDocType && surfaceOf(type) === 'paper' && templateDefinition(template?.id ?? '', template?.version ?? 0)?.types.some(entry => entry === type)) {
-                updateField('evidence_type', type);
+              updateField('evidence_type', type);
+              if (isDocType && template && templateDefinition(template.id, template.version)?.types.some(entry => entry === type)) {
                 return;
               }
               setTemplateFiles({});
-              updateField('evidence_type', type);
               setFormData(prev => ({
                 ...prev,
                 metadata: getEvidenceMetadataTemplate(type),
@@ -172,7 +187,7 @@ export default function EvidenceForm() {
                 updateField('metadata', { ...formData.metadata, template: next });
                 setTemplateFiles(files);
               }} />
-          : <EvidenceMetadataFields evidenceType={formData.evidence_type} metadata={formData.metadata} updateMeta={(key, value) => setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: value } }))} />}
+          : formData.evidence_type === 'testimony' && <EvidenceMetadataFields metadata={formData.metadata} updateMeta={(key, value) => setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: value } }))} />}
 
         {requiresLocalToggle && (
           <AdminCheckbox

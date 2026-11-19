@@ -8,6 +8,6 @@
 .viewers-content-area { width: 100%; box-sizing: border-box; }
 .fullscreen-mode { background: var(--bg-dark); }
 .zoom-enabled { overflow-anchor: none; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.zoom-enabled .viewers-stage { width: 100%; display: flex; justify-content: center; align-items: center; }
+.zoom-enabled .viewers-stage { display: flex; justify-content: center; align-items: center; }
 .fullscreen-scaled { flex-shrink: 0; display: inline-flex; justify-content: center; align-items: center; width: 100%; height: auto; transform-origin: center; touch-action: none; }
 @media (prefers-reduced-motion: reduce) { .fullscreen-scaled { transition: none !important; } }

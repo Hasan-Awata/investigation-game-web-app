@@ -29,8 +29,9 @@
             "metadata": {
                 "template": {
                     "id": "background_check",
-                    "version": 1,
+                    "version": 3,
                     "values": {
+                        "stamp_asset": "filed",
                         "reference": "CR-2026-0417",
                         "subject": "إ. برانت",
                         "check_date": "2026-10-01",
@@ -145,8 +146,9 @@
             "metadata": {
                 "template": {
                     "id": "background_check",
-                    "version": 1,
+                    "version": 3,
                     "values": {
+                        "stamp_asset": "filed",
                         "reference": "CR-2026-0417",
                         "subject": "مدخل برج غلاسهاوس — الجناح 4",
                         "notes": "نافذة المراجعة: 02:45–03:20. عند 02:47 ورد اتصال من هاتف دفع مسبق مجهول واستمر 42 ثانية. عند 03:07 ورد اتصال من LOOP 0992-C واستمر 12 ثانية. عند 03:11 خرج اتصال إلى ميرديان هولدنغز، داخلي 3313، واستمر 96 ثانية.\n\nقارن الداخلي 3313 بسجلات الرحلات لتحديد غرفة الدفع."
@@ -166,8 +168,9 @@
             "metadata": {
                 "template": {
                     "id": "background_check",
-                    "version": 1,
+                    "version": 3,
                     "values": {
+                        "stamp_asset": "filed",
                         "reference": "CR-2026-0417",
                         "subject": "ستاندرد بيرر المحدودة",
                         "notes": "الموقّع على الحساب: ن. رينس. فترة المراجعة: 15 سبتمبر–5 أكتوبر. خرجت حوالة بقيمة 412,500 إلى كيان صوري في 30 سبتمبر، بعد ساعات من تسليم المدقق ملاحظاته الأولية. لا سند للحوالة في الملف، ولم يُدفع للحساب أي أتعاب تدقيق. سُجلت أيضًا أتعاب استشاريين بقيمة 4,800 في 18 سبتمبر وأتعاب قانونية بقيمة 25,000 في 2 أكتوبر."
@@ -187,8 +190,9 @@
             "metadata": {
                 "template": {
                     "id": "background_check",
-                    "version": 1,
+                    "version": 3,
                     "values": {
+                        "stamp_asset": "filed",
                         "reference": "CR-2026-0417",
                         "subject": "محطة عمل الخزنة 4",
                         "notes": "أُخذت صورة جنائية من القرص وتحُفّظ عليها في /evidence/vault_image.dd. توقفت العملية عند 98٪. الملف المحذوف المستعاد /archive/copyfour.log مؤرّخ في 30 سبتمبر عند 23:52. ويشير إلى دفتر غرفة الحوالات. الملف /archive/vault_delegate.enc مشفّر، وتعذّرت متابعة الجلسة من دون كلمة مرور المفوَّض."
@@ -208,8 +212,9 @@
             "metadata": {
                 "template": {
                     "id": "background_check",
-                    "version": 1,
+                    "version": 3,
                     "values": {
+                        "stamp_asset": "filed",
                         "reference": "CR-2026-0417",
                         "subject": "إ. برانت",
                         "check_date": "2026-10-02",
@@ -231,8 +236,9 @@
             "metadata": {
                 "template": {
                     "id": "background_check",
-                    "version": 1,
+                    "version": 3,
                     "values": {
+                        "stamp_asset": "filed",
                         "reference": "CR-2026-0417",
                         "subject": "مسحة مزلاج النافذة",
                         "reviewer": "ك. إيبارا",
@@ -253,8 +259,9 @@
             "metadata": {
                 "template": {
                     "id": "background_check",
-                    "version": 1,
+                    "version": 3,
                     "values": {
+                        "stamp_asset": "filed",
                         "reference": "CR-2026-0417",
                         "subject": "ندوب درابزين درج الخدمة",
                         "reviewer": "ف. أدييمي",
@@ -275,8 +282,9 @@
             "metadata": {
                 "template": {
                     "id": "background_check",
-                    "version": 1,
+                    "version": 3,
                     "values": {
+                        "stamp_asset": "filed",
                         "reference": "CR-2026-0417",
                         "subject": "جان-لوك غريف",
                         "notes": "مدير أمن البرج، دخل الخدمة عام 2019 بموجب عقد من جهة ميرديان. وصفه المقيّم بأنه يميل إلى الدفاع عن المباني قبل الأشخاص. حُجبت بعض تفاصيل تاريخه المهني. سجل الأدلة يشير إلى بصمة كامنة على درابزين درج الخدمة."
@@ -296,8 +304,9 @@
             "metadata": {
                 "template": {
                     "id": "background_check",
-                    "version": 1,
+                    "version": 3,
                     "values": {
+                        "stamp_asset": "filed",
                         "reference": "CR-2026-0417",
                         "subject": "جولز واتس",
                         "check_date": "2026-09-30",

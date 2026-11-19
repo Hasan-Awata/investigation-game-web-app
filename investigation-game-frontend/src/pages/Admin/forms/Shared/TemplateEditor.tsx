@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TemplateRenderer, { PAPER_WIDTH } from '@/features/evidence/presentation/TemplateRenderer';
-import { latestTemplates, templateDefinition, upgradeValues } from '@/features/evidence/presentation/catalog';
+import { latestTemplates, templateDefinition } from '@/features/evidence/presentation/catalog';
 import { documentAssetOptions } from '@/features/evidence/presentation/documentAssets';
 import type { ScalarField, Template } from '@/features/evidence/model';
 import { useConfirm } from '@/pages/Admin/components/AdminUI/ConfirmContext';
@@ -33,7 +33,6 @@ export default function TemplateEditor({ type, template, files, errors, characte
   const imageInputs = useRef<Record<string, HTMLInputElement | null>>({});
   const choices = latestTemplates(type);
   const definition = template && templateDefinition(template.id, template.version);
-  const latest = choices.find(entry => entry.id === template?.id);
   const filtered = choices.filter(entry => [entry.name.en, entry.name.ar, entry.category.en, entry.category.ar].some(text => text.toLowerCase().includes(query.trim().toLowerCase())));
 
   useEffect(() => {
@@ -118,17 +117,6 @@ export default function TemplateEditor({ type, template, files, errors, characte
       {['metadata.template', 'metadata.template.id', 'metadata.template.version'].map(path => <div key={path} hidden={!errors[path]?.length}>{issue(path)}</div>)}
       {!filtered.length && <p role="status">{tr('No templates match your search.', 'لا توجد قوالب تطابق البحث.')}</p>}
       {template && definition && <>
-        {latest && latest.version > template.version && <button type="button" onClick={async () => {
-          const removedArtwork = definition.fields.some(field => field.kind === 'image' &&
-            !latest.fields.some(next => next.key === field.key && next.kind === 'image') &&
-            (template.values[field.key] || files[field.key]));
-          if (removedArtwork && !await confirm({ message: tr(
-            'This upgrade replaces uploaded signatures and fingerprints with shared choices. You can select replacements in the preview before saving.',
-            'تستبدل هذه الترقية صور التوقيعات والبصمات المرفوعة بخيارات مشتركة. يمكنك اختيار البدائل في المعاينة قبل الحفظ.',
-          ) })) return;
-          const retainedFiles = Object.fromEntries(Object.entries(files).filter(([key]) => latest.fields.some(field => field.key === key && field.kind === 'image')));
-          onChange({ id: latest.id, version: latest.version, values: upgradeValues(definition, latest, template.values) }, retainedFiles);
-        }}>{tr('Review template upgrade', 'مراجعة ترقية القالب')}</button>}
         {characters.length > 0 && definition.characterPrefill && <label>{tr('Copy from a case character', 'نسخ معلومات شخصية من القضية')}
           <select className={admin['admin-input']} value="" onChange={e => void prefill(e.target.value)}>
             <option value="">{tr('Choose a character', 'اختر شخصية')}</option>

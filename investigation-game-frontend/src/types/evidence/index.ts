@@ -1,7 +1,17 @@
-import type { BaseEvidence } from './base';
 import type { Template } from '@/features/evidence/model';
 
-export * from './base';
+interface BaseEvidence {
+  id: number;
+  case_id: number;
+  title: string;
+  description?: string | null;
+  img_url?: string | null;
+  audio_url?: string | null;
+  is_initial: boolean;
+  is_vital_for_conviction: boolean;
+  created_at?: string;
+  updated_at?: string;
+}
 
 /**
  * The universal paper-artefact evidence type.
@@ -13,7 +23,6 @@ export interface DocEvidence extends BaseEvidence {
   metadata: { template: Template; [key: string]: unknown };
 }
 
-// 1. STRICT TESTIMONY TYPE
 export interface TranscriptLine {
   type: 'q' | 'a';
   speaker: string;
@@ -37,29 +46,9 @@ export interface TestimonyEvidence extends BaseEvidence {
   metadata: TestimonyMetadata;
 }
 
-// 2. STRICT MEDIA TYPE (For Audio & Images)
 export interface MediaEvidence extends BaseEvidence {
   evidence_type: 'image' | 'audio';
   metadata?: Record<string, unknown> | null;
 }
 
-// 3. THE MASTER TYPE
 export type Evidence = DocEvidence | TestimonyEvidence | MediaEvidence;
-
-/**
- * Single authority for surface routing. Replaces the ad-hoc `isDocType()`/`isDocEvidenceType()`.
- */
-export const surfaceOf = (t: string): 'paper' | 'testimony' | 'media' => {
-  switch (t) {
-    case 'document':
-    case 'forensic':
-      return 'paper';
-    case 'testimony':
-      return 'testimony';
-    case 'image':
-    case 'audio':
-      return 'media';
-    default:
-      return 'paper';
-  }
-};

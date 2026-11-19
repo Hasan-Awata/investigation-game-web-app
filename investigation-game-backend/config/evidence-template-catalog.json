@@ -337,6 +337,7 @@
         },
         "assetIds": [
           "arch",
+          "default",
           "loop",
           "whorl"
         ]

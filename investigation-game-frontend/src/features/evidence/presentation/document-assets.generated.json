@@ -142,6 +142,13 @@
         "ar": "قوسي"
       }
     },
+    "default": {
+      "path": "/assets/documents/fingerprints/default.svg",
+      "label": {
+        "en": "Default",
+        "ar": "Default"
+      }
+    },
     "loop": {
       "path": "/assets/documents/fingerprints/loop.svg",
       "label": {
