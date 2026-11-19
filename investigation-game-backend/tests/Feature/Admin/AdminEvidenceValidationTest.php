@@ -77,7 +77,9 @@ class AdminEvidenceValidationTest extends TestCase
         $response = $this->put("/api/admin/evidences/{$this->evidence->id}", [
             ...$this->updatePayload(),
             'evidence_type' => 'document',
-            'metadata' => json_encode(['doc' => ['blocks' => [['type' => 'prose', 'props' => ['html' => 'Text']]]]]),
+            'metadata' => json_encode(['template' => [
+                'id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'Case subject'],
+            ]]),
             'image' => UploadedFile::fake()->createWithContent('screen.png', base64_decode(
                 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=',
             )),
@@ -85,7 +87,7 @@ class AdminEvidenceValidationTest extends TestCase
 
         $response->assertUnprocessable()->assertInvalid(['image']);
         $this->assertSame(
-            'Direct image uploads are only supported for image, testimony, or physical evidence types.',
+            'Direct image uploads are only supported for image and testimony evidence types.',
             $response->json('errors.image.0'),
         );
         $this->assertSame([$response->json('errors.image.0')], $response->json('errors.image'));
@@ -111,7 +113,7 @@ class AdminEvidenceValidationTest extends TestCase
         $this->putJson("/api/admin/evidences/{$document->id}", [
             ...$payload,
             'metadata' => ['doc' => ['blocks' => []]],
-        ])->assertUnprocessable()->assertJsonValidationErrors('metadata');
+        ])->assertUnprocessable()->assertJsonValidationErrors(['metadata.template', 'metadata.doc']);
     }
 
     public function test_template_save_snapshots_values_and_rejects_legacy_overwrites(): void
@@ -120,6 +122,8 @@ class AdminEvidenceValidationTest extends TestCase
         $payload = [...$this->updatePayload(), 'evidence_type' => 'forensic', 'metadata' => ['template' => $template]];
 
         $id = $this->postJson('/api/admin/evidences', $payload)->assertCreated()->json('evidence.id');
+        $this->assertSame($template, Evidence::findOrFail($id)->metadata['template']);
+        $this->putJson("/api/admin/evidences/{$id}", [...$this->updatePayload(), 'evidence_type' => 'forensic'])->assertOk();
         $this->assertSame($template, Evidence::findOrFail($id)->metadata['template']);
 
         $legacy = ['doc' => ['blocks' => [['type' => 'prose', 'props' => ['html' => 'Old report']]]]];
@@ -145,6 +149,29 @@ class AdminEvidenceValidationTest extends TestCase
         $template['values'] = ['subject' => 'Case subject', 'arrests' => 'not a list'];
         $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => ['template' => $template]])
             ->assertUnprocessable()->assertJsonValidationErrors('metadata.template.values.arrests');
+    }
+
+    public function test_changing_legacy_paper_to_another_type_requires_explicit_metadata(): void
+    {
+        $metadata = ['doc' => ['blocks' => []]];
+        $paper = Evidence::create([
+            'case_id' => $this->case->id,
+            'title' => 'Legacy report',
+            'evidence_type' => 'document',
+            'metadata' => $metadata,
+            'is_initial' => true,
+        ]);
+
+        $this->putJson("/api/admin/evidences/{$paper->id}", $this->updatePayload())
+            ->assertUnprocessable()->assertJsonValidationErrors('metadata.template');
+        $this->assertSame('document', $paper->fresh()->evidence_type->value);
+        $this->assertSame($metadata, $paper->fresh()->metadata);
+
+        $this->putJson("/api/admin/evidences/{$paper->id}", [
+            ...$this->updatePayload(), 'metadata' => ['transcript' => 'Reviewed text'],
+        ])->assertOk();
+        $this->assertSame('testimony', $paper->fresh()->evidence_type->value);
+        $this->assertSame(['transcript' => 'Reviewed text'], $paper->fresh()->metadata);
     }
 
     public function test_reviewed_conversion_dry_runs_and_preserves_evidence_identity(): void

@@ -1,18 +1,16 @@
 import type { BaseEvidence } from './base';
-import type { DocDocument } from './doc';
 import type { Template } from '@/features/evidence/model';
 
 export * from './base';
-export * from './doc';
 
 /**
  * The universal paper-artefact evidence type.
  *
- * Both paper evidence types share the template and legacy document renderers.
+ * Both paper evidence types use versioned templates.
  */
 export interface DocEvidence extends BaseEvidence {
   evidence_type: 'document' | 'forensic';
-  metadata: ({ doc: DocDocument } | { template: Template }) & Record<string, unknown>;
+  metadata: { template: Template; [key: string]: unknown };
 }
 
 // 1. STRICT TESTIMONY TYPE
@@ -47,16 +45,6 @@ export interface MediaEvidence extends BaseEvidence {
 
 // 3. THE MASTER TYPE
 export type Evidence = DocEvidence | TestimonyEvidence | MediaEvidence;
-
-/** True for document / forensic evidence (paper surface). */
-export const isDocEvidence = (e: Evidence): e is DocEvidence =>
-  (e.evidence_type === 'document' || e.evidence_type === 'forensic') && hasDocument(e.metadata);
-
-const hasDocument = (metadata: unknown): boolean => {
-  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return false;
-  const doc = 'template' in metadata ? metadata.template : 'doc' in metadata ? metadata.doc : null;
-  return !!doc && typeof doc === 'object' && !Array.isArray(doc);
-};
 
 /**
  * Single authority for surface routing. Replaces the ad-hoc `isDocType()`/`isDocEvidenceType()`.

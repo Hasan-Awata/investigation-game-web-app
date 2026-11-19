@@ -208,9 +208,10 @@ class MediaOwnershipTest extends TestCase
         ])->assertOk();
         $this->assertFileExists(public_path($url));
 
-        $retained->update(['img_url' => null, 'metadata' => ['doc' => ['blocks' => [
-            ['type' => 'image', 'props' => ['url' => 'https://game.test' . $url]],
-        ]]]]);
+        $retained->update(['img_url' => null, 'evidence_type' => 'document', 'metadata' => ['template' => [
+            'id' => 'background_check', 'version' => 1,
+            'values' => ['subject' => 'Case subject', 'portrait' => 'https://game.test'.$url],
+        ]]]);
         $this->deleteJson("/api/admin/evidences/{$evidence->id}")->assertOk();
         app(MediaService::class)->delete($url);
         $this->assertFileExists(public_path($url));

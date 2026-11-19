@@ -16,7 +16,7 @@ it('shows server field errors through the real API and mutation, then retries su
       errors: {
         'case.title': ['Title is required.'],
         'zones.0.levels.0.nodes.0.audio': ['Node audio is not supported.'],
-        'evidences.0.metadata.doc.blocks.0.props.url': ['Image is missing.'],
+        'evidences.0.metadata.template.values.portrait': ['Image is missing.'],
       },
     }, { status: 422 }))
     .mockResolvedValueOnce(Response.json({ message: 'Imported.', case_id: 1 }));
@@ -32,7 +32,7 @@ it('shows server field errors through the real API and mutation, then retries su
   const alert = await screen.findByRole('alert');
   expect(alert).toHaveTextContent('case.title: Title is required.');
   expect(alert).toHaveTextContent('zones.0.levels.0.nodes.0.audio: Node audio is not supported.');
-  expect(alert).toHaveTextContent('evidences.0.metadata.doc.blocks.0.props.url: Image is missing.');
+  expect(alert).toHaveTextContent('evidences.0.metadata.template.values.portrait: Image is missing.');
   expect(toast.error).toHaveBeenCalledWith('Invalid bundle.');
   expect(screen.getByText('bundle.zip')).toBeInTheDocument();
   expect(invalidate).not.toHaveBeenCalled();

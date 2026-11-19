@@ -194,9 +194,6 @@
             "imageLoadFailed": "This evidence image could not be loaded.",
             "imageAltFallback": "Evidence photograph",
             "noMediaFound": "No media is attached to this evidence file."
-          },
-          "doc": {
-            "unsupportedBlock": "[Unsupported document block type: {{type}}]"
           }
         }
       },

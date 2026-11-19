@@ -6,13 +6,11 @@ import { useAdminTranslation } from '@/pages/Admin/hooks/useAdminTranslation';
 import EntityDashboard from '@/pages/Admin/components/EntityDashboard';
 import MediaUploader from '@/pages/Admin/components/MediaUploader';
 import TemplateEditor from './Shared/TemplateEditor';
-import DocSheet from '@/pages/GameRoom/tabs/EvidenceBoard/DocViewer/DocSheet';
 import { readTemplate, templateDefinition } from '@/features/evidence/presentation/catalog';
 import { useTranslation } from 'react-i18next';
 import EvidenceMetadataFields from './Shared/EvidenceMetadataFields';
 import { AdminCheckbox, AdminInput } from '@/pages/Admin/components/AdminUI';
 import { getEvidenceMetadataTemplate } from '@/pages/Admin/utils/formUtils';
-import { normalizeDoc } from '@/types/evidence/doc';
 import type { Evidence } from '@/types/evidence';
 import { surfaceOf } from '@/types/evidence';
 import type { ValidationErrors } from '@/utils/Result';
@@ -66,7 +64,6 @@ export default function EvidenceForm() {
   const isDocType = surface === 'paper';
 
   const template = readTemplate(formData.metadata);
-  const legacy = Boolean(isDocType && !template && formData.metadata.doc);
 
   const onClear = () => {
     clearForm();
@@ -86,18 +83,13 @@ export default function EvidenceForm() {
   };
 
   const onEdit = (ev: Evidence) => {
-    const surface = surfaceOf(ev.evidence_type);
-    const source = ev as Evidence & { doc?: unknown };
-    const rawMetadata = source.metadata && typeof source.metadata === 'object' && !Array.isArray(source.metadata)
-      ? source.metadata as Record<string, unknown>
-      : {};
-    const directDoc = rawMetadata.doc ?? source.doc ?? (Array.isArray(rawMetadata.blocks) ? rawMetadata : undefined);
+    const rawMetadata = ev.metadata && { ...ev.metadata };
     const existingUrl = ev.img_url || ev.audio_url || '';
     handleEditInit(ev, (ed): typeof initialFormState => ({
       title: ed.title,
       description: ed.description || '',
       evidence_type: ed.evidence_type,
-      metadata: surface === 'paper' && directDoc && !readTemplate(rawMetadata) ? { ...rawMetadata, doc: directDoc } : rawMetadata,
+      metadata: rawMetadata ?? {},
       is_initial: !!ed.is_initial,
       is_vital_for_conviction: !!ed.is_vital_for_conviction,
       store_locally: existingUrl ? !existingUrl.includes('res.cloudinary.com') : true,
@@ -175,12 +167,9 @@ export default function EvidenceForm() {
         <AdminInput label={t.evidenceDescLabel} value={formData.description} onChange={(e) => updateField('description', e.target.value)} />
 
         {isDocType
-          ? <TemplateEditor key={`${caseId}:${editingId ?? 'new'}`} type={formData.evidence_type} template={template} legacy={legacy}
-              legacyPreview={legacy ? <DocSheet doc={normalizeDoc(formData.metadata)} evidenceId={editingId ?? 0} /> : undefined}
+          ? <TemplateEditor key={`${caseId}:${editingId ?? 'new'}`} type={formData.evidence_type} template={template}
               files={templateFiles} errors={templateErrors} characters={selectedCase?.characters ?? []} onChange={(next, files) => {
-                const metadata = { ...formData.metadata, template: next };
-                delete (metadata as Record<string, unknown>).doc;
-                updateField('metadata', metadata);
+                updateField('metadata', { ...formData.metadata, template: next });
                 setTemplateFiles(files);
               }} />
           : <EvidenceMetadataFields evidenceType={formData.evidence_type} metadata={formData.metadata} updateMeta={(key, value) => setFormData(prev => ({ ...prev, metadata: { ...prev.metadata, [key]: value } }))} />}

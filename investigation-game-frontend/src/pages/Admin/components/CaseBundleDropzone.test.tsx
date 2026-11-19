@@ -162,7 +162,7 @@ describe('CaseBundleDropzone', () => {
       errors: {
         'case.title': ['The title is required.', 'The title must be a string.'],
         'zones.0.levels.0.nodes.1.audio': ['Node audio is not supported.'],
-        'evidences.0.metadata.doc.blocks.0.props.left.0.props.url': ['Image media is missing.'],
+        'evidences.0.metadata.template.values.fingerprints': ['Image media is missing.'],
       },
     })));
 
@@ -171,7 +171,7 @@ describe('CaseBundleDropzone', () => {
     expect(alert).toHaveTextContent('case.title: The title is required.');
     expect(alert).toHaveTextContent('case.title: The title must be a string.');
     expect(alert).toHaveTextContent('zones.0.levels.0.nodes.1.audio: Node audio is not supported.');
-    expect(alert).toHaveTextContent('evidences.0.metadata.doc.blocks.0.props.left.0.props.url: Image media is missing.');
+    expect(alert).toHaveTextContent('evidences.0.metadata.template.values.fingerprints: Image media is missing.');
     expect(screen.getByText('bundle.zip')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Import bundle' }));

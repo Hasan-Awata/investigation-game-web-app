@@ -19,7 +19,7 @@ describe.each([
     const errors = {
       'case.title': ['Title is required.', 'Title must be a string.'],
       'zones.0.levels.0.nodes.0.audio': ['Node audio is not supported.'],
-      'evidences.0.metadata.doc.blocks.0.props.url': ['Image is missing.'],
+      'evidences.0.metadata.template.values.portrait': ['Image is missing.'],
     };
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(Response.json({ message: 'Invalid bundle.', errors }, { status: 422 })));
 

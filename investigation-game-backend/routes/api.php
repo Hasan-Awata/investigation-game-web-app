@@ -15,7 +15,6 @@ use App\Http\Controllers\Admin\AdminEvidenceController;
 use App\Http\Controllers\Admin\AdminQuestionController;
 use App\Http\Controllers\Admin\AdminCharacterController;
 use App\Http\Controllers\Admin\AdminInvestigationRequestController;
-use App\Http\Controllers\Admin\AdminMediaController;
 use App\Http\Middleware\IsAdmin;
 use App\Http\Middleware\EnsureRoomParticipant;
 
@@ -80,7 +79,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/investigation-requests', [AdminInvestigationRequestController::class, 'store']);
 
         // Media assets owned by a document block rather than an evidence column
-        Route::post('/media/block-image', [AdminMediaController::class, 'storeBlockImage']);
 
         // PUT (Update)
         Route::put('/cases/{case}', [AdminCaseController::class, 'update']);

@@ -24,13 +24,13 @@ class ResetGameData extends Command
 
         $cases = GameCase::query()->with(['evidences', 'zones.levels.questions', 'characters'])->get();
         $mediaUrls = [];
-        $blockMetadata = [];
+        $evidenceMetadata = [];
         foreach ($cases as $case) {
             $mediaUrls[] = $case->getRawOriginal('img_url');
             foreach ($case->evidences as $evidence) {
                 $mediaUrls[] = $evidence->getRawOriginal('img_url');
                 $mediaUrls[] = $evidence->getRawOriginal('audio_url');
-                $blockMetadata[] = $evidence->metadata;
+                $evidenceMetadata[] = $evidence->metadata;
             }
             foreach ($case->zones->flatMap->levels as $level) {
                 $mediaUrls[] = $level->getRawOriginal('img_url');
@@ -49,7 +49,7 @@ class ResetGameData extends Command
         });
 
         foreach ($mediaUrls as $url) $mediaService->delete(is_string($url) ? $url : null);
-        foreach ($blockMetadata as $metadata) $mediaService->cleanupOrphanedBlockImages($metadata, null);
+        foreach ($evidenceMetadata as $metadata) $mediaService->cleanupOrphanedMetadataImages($metadata, null);
 
         $this->info('Game data, non-admin accounts, sessions, and tokens were cleared. Admin accounts were retained.');
         return self::SUCCESS;

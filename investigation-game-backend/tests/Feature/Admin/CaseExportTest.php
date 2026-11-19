@@ -141,25 +141,41 @@ class CaseExportTest extends TestCase
         Http::assertNothingSent();
     }
 
+    public function test_export_rejects_reports_that_the_importer_cannot_open(): void
+    {
+        $case = GameCase::create(['title' => 'Invalid reports', 'story' => 'Story', 'XP_on_solve' => 10]);
+        $record = ['case_id' => $case->id, 'title' => 'Report', 'evidence_type' => 'document'];
+        Evidence::create([...$record, 'metadata' => ['template' => [
+            'id' => 'background_check', 'version' => 999, 'values' => ['subject' => 'Case subject'],
+        ]]]);
+        Evidence::create([...$record, 'metadata' => ['template' => [
+            'id' => 'background_check', 'version' => 1, 'values' => [],
+        ]]]);
+        Evidence::create([...$record, 'metadata' => ['doc' => ['blocks' => []]]]);
+
+        $this->getJson("/api/admin/cases/{$case->id}/export")->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'evidences.0.metadata.template.version',
+                'evidences.1.metadata.template.values.subject',
+                'evidences.2.metadata.template',
+            ]);
+    }
+
     public function test_missing_metadata_images_report_their_full_paths(): void
     {
         $case = GameCase::create(['title' => 'Missing document images', 'story' => 'Story', 'XP_on_solve' => 10]);
-        $metadata = ['url' => '/assets/cases/missing/image.png', 'doc' => ['blocks' => [
-            ['type' => 'two_column', 'props' => ['left' => [
-                ['type' => 'image', 'props' => ['url' => '/assets/cases/missing/image.png']],
-            ], 'right' => [
-                ['type' => 'two_column', 'props' => ['left' => [], 'right' => [
-                    ['type' => 'image', 'props' => ['url' => '/assets/cases/missing/image.png']],
-                ]]],
-            ]]],
-        ]]];
+        $missing = '/assets/cases/missing/image.png';
+        $metadata = ['url' => $missing, 'template' => [
+            'id' => 'background_check', 'version' => 1,
+            'values' => ['subject' => 'Case subject', 'portrait' => $missing, 'fingerprints' => $missing],
+        ]];
         Evidence::create(['case_id' => $case->id, 'title' => 'Document', 'evidence_type' => 'document', 'metadata' => $metadata]);
         $archives = glob(sys_get_temp_dir().'/case-bundle-*');
 
         $this->getJson("/api/admin/cases/{$case->id}/export")->assertUnprocessable()
             ->assertJsonValidationErrors([
-                'evidences.0.metadata.url', 'evidences.0.metadata.doc.blocks.0.props.left.0.props.url',
-                'evidences.0.metadata.doc.blocks.0.props.right.0.props.right.0.props.url',
+                'evidences.0.metadata.url', 'evidences.0.metadata.template.values.portrait',
+                'evidences.0.metadata.template.values.fingerprints',
             ]);
         $this->assertSame($archives, glob(sys_get_temp_dir().'/case-bundle-*'));
     }

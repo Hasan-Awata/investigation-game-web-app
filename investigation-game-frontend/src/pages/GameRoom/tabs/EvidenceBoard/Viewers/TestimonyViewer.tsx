@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { sanitizeHtml } from '@/utils/sanitize';
 import type { TestimonyEvidence } from '@/types/evidence'; 
 import ViewersContainer from './ViewersContainer';
-import { signatureUrl } from '@/pages/GameRoom/tabs/EvidenceBoard/DocViewer/blocks/signatureAsset';
+import { signatureUrl } from './signatureAsset';
 import testimonyViewer from './TestimonyViewer.module.css';
 
 interface TestimonyViewerProps {

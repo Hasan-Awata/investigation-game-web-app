@@ -8,13 +8,6 @@ interface EvidenceMetadataFieldsProps {
   updateMeta: (key: string, value: unknown) => void;
 }
 
-/**
- * Metadata panel for the non-document evidence types.
- *
- * `document` and `forensic` no longer route through here at all -- EvidenceForm
- * mounts the DocBuilder for those, because the block model is a layout surface,
- * not a form. What remains is testimony's flat transcript field.
- */
 export default function EvidenceMetadataFields({ evidenceType, metadata, updateMeta }: EvidenceMetadataFieldsProps) {
   const { adminT } = useAdminTranslation();
   const t = adminT.forms.evidenceMetadata;

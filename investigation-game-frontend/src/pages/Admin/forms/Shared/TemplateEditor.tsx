@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import TemplateRenderer, { PAPER_WIDTH } from '@/features/evidence/presentation/TemplateRenderer';
 import { latestTemplates, templateDefinition, upgradeValues } from '@/features/evidence/presentation/catalog';
@@ -12,15 +12,13 @@ import styles from './TemplateEditor.module.css';
 interface Props {
   type: string;
   template?: Template;
-  legacy: boolean;
-  legacyPreview?: ReactNode;
   files: Record<string, File>;
   errors: ValidationErrors;
   characters: { id: number; name: string; img_url?: string | null }[];
   onChange: (template: Template, files: Record<string, File>) => void;
 }
 
-export default function TemplateEditor({ type, template, legacy, legacyPreview, files, errors, characters, onChange }: Props) {
+export default function TemplateEditor({ type, template, files, errors, characters, onChange }: Props) {
   const { i18n } = useTranslation();
   const locale = i18n.language?.startsWith('ar') ? 'ar' : 'en';
   const tr = (en: string, ar: string) => locale === 'ar' ? ar : en;
@@ -53,7 +51,7 @@ export default function TemplateEditor({ type, template, legacy, legacyPreview, 
     const observer = new ResizeObserver(([entry]) => setZoom(Math.min(1, entry.contentRect.width / PAPER_WIDTH)));
     observer.observe(element);
     return () => observer.disconnect();
-  }, [definition, legacy]);
+  }, [definition]);
 
   const update = (key: string, value: Template['values'][string]) => {
     if (template) onChange({ ...template, values: { ...template.values, [key]: value } }, files);
@@ -61,8 +59,8 @@ export default function TemplateEditor({ type, template, legacy, legacyPreview, 
 
   const select = async (id: string) => {
     const target = choices.find(entry => entry.id === id);
-    if (!target || target.id === template?.id) return;
-    if ((template || legacy) && !await confirm({ message: tr('Replace this document with the selected template?', 'هل تريد استبدال هذا المستند بالقالب المحدد؟') })) return;
+    if (!target || target.id === definition?.id) return;
+    if (template && !await confirm({ message: tr('Replace this document with the selected template?', 'هل تريد استبدال هذا المستند بالقالب المحدد؟') })) return;
     setNotice('');
     onChange({ id: target.id, version: target.version, values: {} }, {});
   };
@@ -103,7 +101,7 @@ export default function TemplateEditor({ type, template, legacy, legacyPreview, 
     <div className={styles.fields}>
       <label>{tr('Find a template', 'البحث عن قالب')}<input className={admin['admin-input']} type="search" value={query} onChange={e => setQuery(e.target.value)} /></label>
       <label>{tr('Evidence template', 'قالب الدليل')}
-        <select className={admin['admin-input']} value={template?.id ?? ''} onChange={e => void select(e.target.value)}>
+        <select className={admin['admin-input']} value={definition?.id ?? ''} onChange={e => void select(e.target.value)}>
           <option value="" disabled>{tr('Choose a template', 'اختر قالبًا')}</option>
           {Array.from(new Set(filtered.map(entry => entry.category[locale]))).sort().map(category => <optgroup key={category} label={category}>
             {filtered.filter(entry => entry.category[locale] === category).sort((a, b) => a.name[locale].localeCompare(b.name[locale], locale)).map(entry => <option key={entry.id} value={entry.id}>{entry.name[locale]}</option>)}
@@ -113,7 +111,6 @@ export default function TemplateEditor({ type, template, legacy, legacyPreview, 
       </label>
       {['metadata.template', 'metadata.template.id', 'metadata.template.version'].map(path => <div key={path} hidden={!errors[path]?.length}>{issue(path)}</div>)}
       {!filtered.length && <p role="status">{tr('No templates match your search.', 'لا توجد قوالب تطابق البحث.')}</p>}
-      {legacy && <p role="status">{tr('This evidence uses the old layout. Review it in the preview before choosing a replacement.', 'يستخدم هذا الدليل التنسيق السابق. راجع المعاينة قبل اختيار بديل.')}</p>}
       {template && definition && <>
         {latest && latest.version > template.version && <button type="button" onClick={() => {
           const retainedFiles = Object.fromEntries(Object.entries(files).filter(([key]) => latest.fields.some(field => field.key === key && field.kind === 'image')));
@@ -163,8 +160,8 @@ export default function TemplateEditor({ type, template, legacy, legacyPreview, 
         })}
       </>}
     </div>
-    {(template || legacy) && <section className={styles.preview} ref={preview} aria-label={tr('Evidence preview', 'معاينة الدليل')}>
-      <div style={{ zoom: zoom || 0.5 }}>{template ? <TemplateRenderer template={{ ...template, values: { ...template.values, ...Object.fromEntries(Object.entries(urls).filter(([key]) => files[key])) } }} /> : legacyPreview}</div>
+    {template && <section className={styles.preview} ref={preview} aria-label={tr('Evidence preview', 'معاينة الدليل')}>
+      <div style={{ zoom: zoom || 0.5 }}><TemplateRenderer template={{ ...template, values: { ...template.values, ...Object.fromEntries(Object.entries(urls).filter(([key]) => files[key])) } }} /></div>
     </section>}
   </div>;
 }

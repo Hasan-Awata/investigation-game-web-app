@@ -11,12 +11,8 @@
  * - `File`/`Blob` values are appended verbatim
  * - everything else is appended as `String(value)`
  *
- * `metadata` is the sole exception and travels as one raw JSON string:
- * multipart fields are always strings, so bracket-encoding the evidence
- * doc/terminal tree would turn nested booleans (`ordered: false`) into the
- * truthy string `'0'` and corrupt every list/letterhead flag on read-back.
- * The backend accepts both shapes (`EvidenceMetadataMatchesType` +
- * `AdminEvidenceController::normalizeMetadata`).
+ * `metadata` travels as raw JSON to preserve template versions, arrays, and
+ * other typed values across multipart requests.
  */
 
 const RAW_JSON_KEYS = new Set(['metadata']);

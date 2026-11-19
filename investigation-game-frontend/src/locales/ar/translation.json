@@ -272,9 +272,6 @@
             "imageLoadFailed": "تعذّر تحميل صورة هذا الدليل.",
             "imageAltFallback": "صورة دليل مصورة",
             "noMediaFound": "لم يتم العثور على وسائط مرتبطة بهذا الملف."
-          },
-          "doc": {
-            "unsupportedBlock": "[نوع كتلة مستند غير مدعوم: {{type}}]"
           }
         }
       },

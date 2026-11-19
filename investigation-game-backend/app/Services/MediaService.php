@@ -183,13 +183,13 @@ class MediaService
             $path = parse_url($url, PHP_URL_PATH);
             $path = '/'.ltrim((string) $path, '/');
 
-            return preg_match('#^/assets/cases/'.$caseId.'-[^/]+/(?:Characters|Evidences(?:/Blocks)?)/[a-zA-Z0-9_.-]+\.(?:jpe?g|png|webp)$#iD', $path) ? $path : null;
+            return preg_match('#^/assets/cases/'.$caseId.'-[^/]+/(?:Cover|Map|Characters|Evidences(?:/Blocks)?|Levels(?:/Questions)?)/[a-zA-Z0-9_.-]+\.(?:jpe?g|png|webp)$#iD', $path) ? $path : null;
         }
 
         $cloud = $this->cloudinaryAsset($url);
 
         return $cloud && $cloud['resource_type'] === 'image'
-            && preg_match('#^cases/'.$caseId.'-[^/]+/(?:Characters|Evidences(?:/Blocks)?)/#D', $cloud['public_id']) ? $url : null;
+            && preg_match('#^cases/'.$caseId.'-[^/]+/#D', $cloud['public_id']) ? $url : null;
     }
 
     private function cloudinaryAsset(string $url): ?array
@@ -254,7 +254,7 @@ class MediaService
         return array_values(array_unique($urls));
     }
 
-    public function cleanupOrphanedBlockImages(?array $oldMetadata, ?array $newMetadata): void
+    public function cleanupOrphanedMetadataImages(?array $oldMetadata, ?array $newMetadata): void
     {
         $removedUrls = array_diff(
             $this->extractMetadataImageUrls($oldMetadata),

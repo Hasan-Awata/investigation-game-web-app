@@ -192,32 +192,33 @@ class CaseImportValidationTest extends TestCase
         }
     }
 
-    #[DataProvider('malformedDocumentBlocks')]
-    public function test_malformed_documents_return_422_before_persistence(array $blocks): void
+    #[DataProvider('invalidPaperMetadata')]
+    public function test_invalid_paper_metadata_returns_422_before_persistence(int $format, array $metadata, string $field): void
     {
         $manifest = CaseBundleFactory::minimalManifest([
-            'evidences' => [['title' => 'Document', 'evidence_type' => 'document', 'metadata' => ['doc' => ['blocks' => $blocks]]]],
+            'format_version' => $format,
+            'evidences' => [['title' => 'Document', 'evidence_type' => 'document', 'metadata' => $metadata]],
         ]);
         GameCase::creating(fn () => $this->fail('Malformed metadata must not reach persistence.'));
         $path = CaseBundleFactory::build($manifest);
         try {
-            $this->importBundle($path)->assertUnprocessable()->assertJsonValidationErrors('evidences.0.metadata');
+            $this->importBundle($path)->assertUnprocessable()->assertJsonValidationErrors('evidences.0.metadata.'.$field);
             $this->assertDatabaseCount('cases', 0);
         } finally {
             unlink($path);
         }
     }
 
-    public static function malformedDocumentBlocks(): array
+    public static function invalidPaperMetadata(): array
     {
+        $valid = ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'Case subject']];
+
         return [
-            [[['type' => 'prose']]],
-            [[['type' => 'prose', 'props' => ['html' => ['invalid']]]]],
-            [[['type' => 'image', 'props' => []]]],
-            [[['type' => 'image', 'props' => ['url' => '']]]],
-            [[['type' => 'two_column', 'props' => ['left' => 'invalid', 'right' => []]]]],
-            [[['type' => 'two_column', 'props' => ['left' => [['type' => 'image', 'props' => ['url' => null]]], 'right' => []]]]],
-            [[['type' => 'two_column', 'props' => ['left' => [], 'right' => [['type' => 'unknown', 'props' => []]]]]]],
+            'missing template' => [3, [], 'template'],
+            'both payloads' => [3, ['template' => $valid, 'doc' => ['blocks' => []]], 'template'],
+            'template in format 2' => [2, ['template' => $valid], 'template'],
+            'unknown version' => [3, ['template' => [...$valid, 'version' => 999]], 'template.version'],
+            'missing subject' => [3, ['template' => [...$valid, 'values' => []]], 'template.values.subject'],
         ];
     }
 
@@ -443,6 +444,7 @@ class CaseImportValidationTest extends TestCase
     public function test_all_errors_across_entities_report_together_in_a_single_422(): void
     {
         $manifest = CaseBundleFactory::minimalManifest([
+            'format_version' => 3,
             'evidences' => [
                 ['ref_id' => 'ev_bad', 'title' => 'Bogus', 'evidence_type' => 'document', 'metadata' => []],
             ],
@@ -463,7 +465,7 @@ class CaseImportValidationTest extends TestCase
         $this->importBundle(CaseBundleFactory::build($manifest))
             ->assertStatus(422)
             ->assertJsonValidationErrors([
-                'evidences.0.metadata',
+                'evidences.0.metadata.template',
                 'characters.1.ref_id',
                 'investigation_requests.0.unlocks_evidence_ref',
                 'zones.0.levels.0.nodes.0.choices.0.outcomes.unlock_levels_refs.0',

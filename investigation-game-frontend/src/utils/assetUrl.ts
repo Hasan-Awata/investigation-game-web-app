@@ -1,12 +1,11 @@
 /**
  * Resolves backend-served static asset paths to absolute URLs.
  *
- * Block images and procedural signature faces are served by the Laravel app out
+ * Case images and testimony signatures are served by the Laravel app out
  * of `public/assets/`, but the frontend runs on a different origin in dev
  * (Vite on :5173, API on :8000). A relative path like `/assets/x.png` inside
- * `metadata.doc` would therefore resolve against the Vite origin and 404, and
- * `Evidence::imgUrl()`'s `config('app.url')` prefixing does not apply to the doc
- * envelope -- that accessor is bound to the `img_url` column only.
+ * template fields would otherwise resolve against the Vite origin. The model's
+ * URL accessor applies to the `img_url` column only.
  *
  * Absolute URLs and data URIs are passed through untouched, so a document may
  * legitimately point at a CDN.

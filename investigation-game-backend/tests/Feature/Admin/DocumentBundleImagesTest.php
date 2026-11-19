@@ -30,7 +30,9 @@ class DocumentBundleImagesTest extends TestCase
 
     private const IMAGE = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=';
 
-    private const NESTED_URL = 'doc.blocks.1.props.right.0.props.left.0.props.url';
+    private const PORTRAIT = 'template.values.portrait';
+
+    private const FINGERPRINTS = 'template.values.fingerprints';
 
     protected function setUp(): void
     {
@@ -40,27 +42,30 @@ class DocumentBundleImagesTest extends TestCase
         Http::preventStrayRequests();
     }
 
-    #[DataProvider('blockImageStorageModes')]
-    public function test_block_image_upload_accepts_serialized_boolean_storage_modes(string $encoded, bool $storeLocally): void
+    #[DataProvider('templateImageStorageModes')]
+    public function test_template_image_upload_accepts_serialized_boolean_storage_modes(string $encoded, bool $storeLocally): void
     {
-        $case = GameCase::create(['title' => 'Block upload', 'story' => 'Story', 'XP_on_solve' => 100]);
-        $url = '/assets/cases/test/Evidences/Blocks/image.png';
+        $case = GameCase::create(['title' => 'Template upload', 'story' => 'Story', 'XP_on_solve' => 100]);
+        $url = '/assets/cases/test/Evidences/image.png';
         $this->mock(MediaService::class, function (Mockery\MockInterface $mock) use ($case, $storeLocally, $url): void {
             $mock->shouldReceive('store')->once()
-                ->with(Mockery::type(UploadedFile::class), $case->title, 'Evidences/Blocks', $storeLocally, $case->id)
+                ->with(Mockery::type(UploadedFile::class), $case->title, 'Evidences', $storeLocally, $case->id, [])
                 ->andReturn($url);
         });
 
-        $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/media/block-image', [
+        $this->withHeaders(['Accept' => 'application/json'])->post('/api/admin/evidences', [
             'case_id' => (string) $case->id,
+            'title' => 'Background check',
+            'evidence_type' => 'document',
+            'is_initial' => '0',
+            'is_vital_for_conviction' => '0',
             'store_locally' => $encoded,
-            'image' => UploadedFile::fake()->createWithContent('image.png', base64_decode(self::IMAGE)),
-        ])->assertCreated()
-            ->assertJsonPath('url', rtrim((string) config('app.url'), '/').$url)
-            ->assertJsonPath('relative_path', $url);
+            'metadata' => json_encode(['template' => ['id' => 'background_check', 'version' => 1, 'values' => ['subject' => 'Case subject']]]),
+            'template_images' => ['portrait' => UploadedFile::fake()->createWithContent('image.png', base64_decode(self::IMAGE))],
+        ])->assertCreated()->assertJsonPath('evidence.metadata.template.values.portrait', $url);
     }
 
-    public static function blockImageStorageModes(): array
+    public static function templateImageStorageModes(): array
     {
         return ['local' => ['1', true], 'provider' => ['0', false]];
     }
@@ -71,6 +76,7 @@ class DocumentBundleImagesTest extends TestCase
         $metadata = $this->metadata('media/top.png', 'media/nested.png');
         $metadata['url'] = 'media/top.png';
         $manifest = CaseBundleFactory::minimalManifest([
+            'format_version' => 3,
             'case' => ['cover' => 'media/top.png'],
             'evidences' => [['title' => 'Document', 'evidence_type' => 'document', 'metadata' => $encoded ? json_encode($metadata) : $metadata]],
         ]);
@@ -82,8 +88,12 @@ class DocumentBundleImagesTest extends TestCase
             $source = GameCase::findOrFail($response->json('case_id'));
             $evidence = $source->evidences()->firstOrFail();
             $this->assertSame($source->getRawOriginal('img_url'), $evidence->metadata['url']);
-            $this->assertSame($evidence->metadata['url'], $evidence->metadata['doc']['blocks'][0]['props']['url']);
+            $this->assertSame($evidence->metadata['url'], Arr::get($evidence->metadata, self::PORTRAIT));
             $this->assertSame([], Storage::disk('local')->allDirectories('tmp'));
+            $this->putJson("/api/admin/evidences/{$evidence->id}", [
+                'case_id' => $source->id, 'title' => $evidence->title, 'evidence_type' => 'document',
+                'metadata' => $evidence->metadata, 'is_initial' => false, 'is_vital_for_conviction' => false, 'store_locally' => true,
+            ])->assertOk();
 
             $export = app(CaseExportService::class)->export($source);
             try {
@@ -91,10 +101,10 @@ class DocumentBundleImagesTest extends TestCase
                 $this->assertTrue($zip->open($export));
                 $exported = json_decode($zip->getFromName('case.json'), true);
                 $this->assertSame(3, $zip->numFiles);
-                foreach (['url', 'doc.blocks.0.props.url', self::NESTED_URL] as $path) {
+                foreach (['url', self::PORTRAIT, self::FINGERPRINTS] as $path) {
                     $entry = Arr::get($exported['evidences'][0]['metadata'], $path);
                     $this->assertStringStartsWith('media/', $entry);
-                    $this->assertSame($path === self::NESTED_URL ? $nestedImage : base64_decode(self::IMAGE), $zip->getFromName($entry));
+                    $this->assertSame($path === self::FINGERPRINTS ? $nestedImage : base64_decode(self::IMAGE), $zip->getFromName($entry));
                 }
                 $this->assertSame($exported['case']['cover'], $exported['evidences'][0]['metadata']['url']);
                 $zip->close();
@@ -105,11 +115,11 @@ class DocumentBundleImagesTest extends TestCase
                 $source->update(['title' => 'Source unavailable']);
                 $response = $this->importBundle($export)->assertCreated();
                 $copy = GameCase::findOrFail($response->json('case_id'))->evidences()->firstOrFail();
-                foreach (['url', 'doc.blocks.0.props.url', self::NESTED_URL] as $path) {
+                foreach (['url', self::PORTRAIT, self::FINGERPRINTS] as $path) {
                     $url = Arr::get($copy->metadata, $path);
-                    $this->assertSame($path === self::NESTED_URL ? $nestedImage : base64_decode(self::IMAGE), file_get_contents(public_path($url)));
+                    $this->assertSame($path === self::FINGERPRINTS ? $nestedImage : base64_decode(self::IMAGE), file_get_contents(public_path($url)));
                 }
-                $this->assertSame($copy->metadata['url'], $copy->metadata['doc']['blocks'][0]['props']['url']);
+                $this->assertSame($copy->metadata['url'], Arr::get($copy->metadata, self::PORTRAIT));
                 $this->assertSame($evidence->metadata, $evidence->fresh()->metadata);
             } finally {
                 unlink($export);
@@ -128,6 +138,7 @@ class DocumentBundleImagesTest extends TestCase
     public function test_embedded_images_are_validated_before_persistence(mixed $url, ?string $bytes): void
     {
         $manifest = CaseBundleFactory::minimalManifest([
+            'format_version' => 3,
             'evidences' => [['title' => 'Document', 'evidence_type' => 'document', 'metadata' => $this->metadata('media/top.png', $url)]],
         ]);
         $files = ['media/top.png' => base64_decode(self::IMAGE)];
@@ -137,7 +148,7 @@ class DocumentBundleImagesTest extends TestCase
         $bundle = CaseBundleFactory::build($manifest, $files);
         try {
             $this->importBundle($bundle)->assertUnprocessable()
-                ->assertJsonValidationErrors('evidences.0.metadata.'.self::NESTED_URL);
+                ->assertJsonValidationErrors('evidences.0.metadata.'.self::FINGERPRINTS);
             $this->assertDatabaseCount('cases', 0);
             $this->assertSame([], Storage::disk('local')->allDirectories('tmp'));
             $this->assertDirectoryDoesNotExist(public_path('assets/cases'));
@@ -158,34 +169,16 @@ class DocumentBundleImagesTest extends TestCase
         ];
     }
 
-    public function test_document_nesting_is_bounded(): void
-    {
-        $blocks = [['type' => 'image', 'props' => ['url' => 'media/image.png']]];
-        for ($depth = 0; $depth < 34; $depth++) {
-            $blocks = [['type' => 'two_column', 'props' => ['left' => $blocks, 'right' => []]]];
-        }
-        $manifest = CaseBundleFactory::minimalManifest([
-            'evidences' => [['title' => 'Deep document', 'evidence_type' => 'document', 'metadata' => ['doc' => ['blocks' => $blocks]]]],
-        ]);
-        $bundle = CaseBundleFactory::build($manifest, ['media/image.png' => base64_decode(self::IMAGE)]);
-        try {
-            $this->importBundle($bundle)->assertUnprocessable()->assertJsonStructure(['errors']);
-            $this->assertDatabaseCount('cases', 0);
-        } finally {
-            unlink($bundle);
-        }
-    }
-
     #[DataProvider('storageModes')]
     public function test_shared_embedded_images_use_the_import_cache_and_failure_cleanup(bool $local, bool $fail): void
     {
-        $url = 'https://res.cloudinary.com/owned-cloud/image/upload/cases/test/Evidences/Blocks/image.png';
+        $url = 'https://res.cloudinary.com/owned-cloud/image/upload/cases/test/Evidences/image.png';
         if (! $local) {
             config(['filesystems.disks.cloudinary.cloud' => 'owned-cloud']);
             $api = Mockery::mock(UploadApi::class);
             $api->shouldReceive('upload')->once()->andReturn(new ApiResponse(['secure_url' => $url], []));
             if ($fail) {
-                $api->shouldReceive('destroy')->once()->with('cases/test/Evidences/Blocks/image', ['resource_type' => 'image'])->andReturn(['result' => 'ok']);
+                $api->shouldReceive('destroy')->once()->with('cases/test/Evidences/image', ['resource_type' => 'image'])->andReturn(['result' => 'ok']);
             }
             $cloudinary = Mockery::mock(Cloudinary::class);
             $cloudinary->shouldReceive('uploadApi')->times($fail ? 2 : 1)->andReturn($api);
@@ -195,6 +188,7 @@ class DocumentBundleImagesTest extends TestCase
             Choice::creating(fn () => throw new \RuntimeException('Injected late graph failure'));
         }
         $manifest = CaseBundleFactory::minimalManifest([
+            'format_version' => 3,
             'evidences' => [[
                 'title' => 'Document', 'evidence_type' => 'document', 'img' => 'media/shared.png',
                 'metadata' => $this->metadata('media/shared.png', 'media/shared.png'),
@@ -214,8 +208,8 @@ class DocumentBundleImagesTest extends TestCase
                 $response->assertCreated();
                 $evidence = Evidence::firstOrFail();
                 $stored = $evidence->getRawOriginal('img_url');
-                $this->assertSame($stored, $evidence->metadata['doc']['blocks'][0]['props']['url']);
-                $this->assertSame($stored, Arr::get($evidence->metadata, self::NESTED_URL));
+                $this->assertSame($stored, Arr::get($evidence->metadata, self::PORTRAIT));
+                $this->assertSame($stored, Arr::get($evidence->metadata, self::FINGERPRINTS));
                 if ($local) {
                     $this->assertSame(base64_decode(self::IMAGE), file_get_contents(public_path($stored)));
                     $this->assertCount(1, File::allFiles(public_path('assets/cases')));
@@ -234,12 +228,12 @@ class DocumentBundleImagesTest extends TestCase
         return [[true, false], [false, false], [true, true], [false, true]];
     }
 
-    public function test_cleanup_preserves_nested_references_until_the_last_image_is_removed(): void
+    public function test_cleanup_preserves_template_references_until_the_last_image_is_removed(): void
     {
         config(['app.url' => 'https://game.test']);
         $case = GameCase::create(['title' => 'Shared images', 'story' => 'Story', 'XP_on_solve' => 10]);
-        $url = "/assets/cases/{$case->id}-shared-images/Evidences/Blocks/shared.png";
-        $unused = "/assets/cases/{$case->id}-shared-images/Evidences/Blocks/unused.png";
+        $url = "/assets/cases/{$case->id}-shared-images/Evidences/shared.png";
+        $unused = "/assets/cases/{$case->id}-shared-images/Evidences/unused.png";
         File::ensureDirectoryExists(dirname(public_path($url)));
         file_put_contents(public_path($url), base64_decode(self::IMAGE));
         file_put_contents(public_path($unused), base64_decode(self::IMAGE));
@@ -279,7 +273,7 @@ class DocumentBundleImagesTest extends TestCase
     {
         config(['filesystems.disks.cloudinary.cloud' => 'owned-cloud']);
         config(['case_bundles.max_file_bytes' => $limit]);
-        $url = "https://res.cloudinary.com/{$cloud}/image/upload/cases/test/Evidences/Blocks/image.png";
+        $url = "https://res.cloudinary.com/{$cloud}/image/upload/cases/test/Evidences/image.png";
         $case = GameCase::create(['title' => 'Remote document', 'story' => 'Story', 'XP_on_solve' => 10]);
         Evidence::create([
             'case_id' => $case->id, 'title' => 'Document', 'evidence_type' => 'document',
@@ -303,8 +297,8 @@ class DocumentBundleImagesTest extends TestCase
                 $this->assertTrue($zip->open($path));
                 $manifest = json_decode($zip->getFromName('case.json'), true);
                 $this->assertSame(2, $zip->numFiles);
-                $entry = $manifest['evidences'][0]['metadata']['doc']['blocks'][0]['props']['url'];
-                $this->assertSame($entry, Arr::get($manifest['evidences'][0]['metadata'], self::NESTED_URL));
+                $entry = Arr::get($manifest['evidences'][0]['metadata'], self::PORTRAIT);
+                $this->assertSame($entry, Arr::get($manifest['evidences'][0]['metadata'], self::FINGERPRINTS));
                 $this->assertSame(base64_decode(self::IMAGE), $zip->getFromName($entry));
                 $zip->close();
             } finally {
@@ -312,7 +306,7 @@ class DocumentBundleImagesTest extends TestCase
             }
         } else {
             $this->getJson("/api/admin/cases/{$case->id}/export")->assertUnprocessable()
-                ->assertJsonValidationErrors('evidences.0.metadata.doc.blocks.0.props.url');
+                ->assertJsonValidationErrors('evidences.0.metadata.'.self::PORTRAIT);
         }
         Http::assertSentCount($cloud === 'owned-cloud' ? 1 : 0);
         foreach ($downloads as $download) {
@@ -331,15 +325,12 @@ class DocumentBundleImagesTest extends TestCase
         ];
     }
 
-    private function metadata(string $top, mixed $nested): array
+    private function metadata(string $portrait, mixed $fingerprints): array
     {
-        return ['doc' => ['blocks' => [
-            ['type' => 'image', 'props' => ['url' => $top, 'caption' => 'Preserved caption']],
-            ['type' => 'two_column', 'props' => ['left' => [], 'right' => [
-                ['type' => 'two_column', 'props' => ['left' => [
-                    ['type' => 'image', 'props' => ['url' => $nested]],
-                ], 'right' => []]],
-            ]]],
-        ]]];
+        return ['template' => [
+            'id' => 'background_check',
+            'version' => 1,
+            'values' => ['subject' => 'Case subject', 'portrait' => $portrait, 'fingerprints' => $fingerprints],
+        ]];
     }
 }

@@ -6,11 +6,10 @@ use App\Enums\CharacterCharge;
 use App\Enums\CharacterStatus;
 use App\Enums\EvidenceType;
 use App\Enums\InvestigationRequestType;
-use App\Rules\EvidenceMetadataMatchesType;
 use App\Services\Case\CaseBundleMediaResolver;
 use App\Services\MediaService;
-use App\Support\MetadataImageReferences;
 use App\Support\EvidenceTemplateCatalog;
+use App\Support\MetadataImageReferences;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
@@ -231,37 +230,40 @@ class CaseManifestValidator
                 continue;
             }
 
-            $type = $evidence['evidence_type'] ?? null;
-            if (! $type) {
+            $type = EvidenceType::tryFrom($evidence['evidence_type'] ?? '');
+            if ($type === null) {
                 continue;
             }
 
             $metadata = $evidence['metadata'] ?? null;
-            $decoded = is_string($metadata) ? json_decode($metadata, true) : $metadata;
-            $paper = in_array($type, ['document', 'forensic'], true);
+            if (is_string($metadata)) {
+                $object = json_decode($metadata);
+                if (! is_object($object)) {
+                    $errors["evidences.{$i}.metadata"][] = 'The metadata field must be a valid JSON object.';
+
+                    continue;
+                }
+                $metadata = json_decode($metadata, true);
+            }
+            if ($metadata !== null && ! is_array($metadata)) {
+                $errors["evidences.{$i}.metadata"][] = 'The metadata field must be a valid JSON object.';
+
+                continue;
+            }
+
+            $metadata ??= [];
             $version = (int) $manifest['format_version'];
-            if (is_array($decoded) && array_key_exists('template', $decoded)) {
-                if ($version !== 3 || array_key_exists('doc', $decoded)) {
+            if (array_key_exists('template', $metadata)) {
+                if ($version !== 3 || array_key_exists('doc', $metadata)) {
                     $errors["evidences.{$i}.metadata.template"][] = 'Template evidence requires a version 3 bundle and a single template payload.';
                 }
-                foreach (EvidenceTemplateCatalog::errors($decoded['template'], $type) as $path => $messages) {
-                    $errors["evidences.{$i}.{$path}"] = $messages;
+                foreach (EvidenceTemplateCatalog::errors($metadata['template'], $type->value) as $path => $messages) {
+                    foreach ($messages as $message) {
+                        $errors["evidences.{$i}.{$path}"][] = $message;
+                    }
                 }
-                continue;
-            }
-            if ($paper && ($version === 3 || !config('case_bundles.allow_legacy_paper'))) {
+            } elseif ($type->isPaper() || array_key_exists('doc', $metadata)) {
                 $errors["evidences.{$i}.metadata.template"][] = 'Convert the legacy paper evidence with case:convert-paper before importing this bundle.';
-                continue;
-            }
-            $rule = new EvidenceMetadataMatchesType($type);
-
-            $validator = Validator::make(
-                ['metadata' => $metadata],
-                ['metadata' => ['nullable', $rule]]
-            );
-
-            foreach ($validator->errors()->get('metadata') as $message) {
-                $errors["evidences.{$i}.metadata"][] = $message;
             }
         }
 
@@ -312,14 +314,8 @@ class CaseManifestValidator
                 $metadata = json_decode($metadata, true);
             }
             if (is_array($metadata)) {
-                try {
-                    foreach (MetadataImageReferences::paths($metadata) as $path => $url) {
-                        $check("evidences.{$i}.metadata.{$path}", $url);
-                    }
-                } catch (ValidationException $exception) {
-                    foreach ($exception->errors() as $path => $messages) {
-                        $errors["evidences.{$i}.metadata.{$path}"] = $messages;
-                    }
+                foreach (MetadataImageReferences::paths($metadata) as $path => $url) {
+                    $check("evidences.{$i}.metadata.{$path}", $url);
                 }
             }
         }

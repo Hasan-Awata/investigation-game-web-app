@@ -10,12 +10,8 @@ enum EvidenceType: string
     case Image = 'image';
     case Forensic = 'forensic';
 
-    public function surface(): EvidenceSurface
+    public function isPaper(): bool
     {
-        return match ($this) {
-            self::Document, self::Forensic => EvidenceSurface::Paper,
-            self::Testimony => EvidenceSurface::Testimony,
-            self::Audio, self::Image => EvidenceSurface::Media,
-        };
+        return $this === self::Document || $this === self::Forensic;
     }
 }

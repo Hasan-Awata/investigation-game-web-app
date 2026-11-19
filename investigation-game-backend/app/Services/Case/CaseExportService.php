@@ -5,6 +5,7 @@ namespace App\Services\Case;
 use App\Models\Choice;
 use App\Models\GameCase;
 use App\Models\Level;
+use App\Support\EvidenceTemplateCatalog;
 use App\Support\MetadataImageReferences;
 use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
@@ -121,14 +122,8 @@ class CaseExportService
 
     private function buildManifest(GameCase $case, ZipArchive $archive): array
     {
-        $paper = $case->evidences->filter(fn ($evidence) => in_array($evidence->evidence_type->value, ['document', 'forensic'], true));
-        $templates = $paper->filter(fn ($evidence) => isset($evidence->metadata['template']));
-        if ($templates->count() !== $paper->count() && ($templates->isNotEmpty() || !config('case_bundles.allow_legacy_paper'))) {
-            throw ValidationException::withMessages(['evidences' => 'Convert the remaining legacy paper evidence before exporting this case.']);
-        }
-
         $manifest = [
-            'format_version' => $templates->isEmpty() ? 2 : 3,
+            'format_version' => $this->evidenceFormatVersion($case),
             'case' => [
                 'title' => $case->title,
                 'story' => $case->story,
@@ -155,8 +150,7 @@ class CaseExportService
             $metadata = $evidence->metadata;
             $imageIndex = 0;
             foreach (MetadataImageReferences::paths($metadata) as $path => $url) {
-                $kind = str_starts_with($path, 'template.') ? 'template' : 'blocks';
-                Arr::set($metadata, $path, $this->addMedia($archive, $url, "media/evidences/{$ref}.{$kind}.".$imageIndex++, "evidences.{$index}.metadata.{$path}"));
+                Arr::set($metadata, $path, $this->addMedia($archive, $url, "media/evidences/{$ref}.metadata.".$imageIndex++, "evidences.{$index}.metadata.{$path}"));
             }
 
             $manifest['evidences'][] = [
@@ -216,6 +210,36 @@ class CaseExportService
         }
 
         return $manifest;
+    }
+
+    private function evidenceFormatVersion(GameCase $case): int
+    {
+        $version = 2;
+        $errors = [];
+
+        foreach ($case->evidences as $index => $evidence) {
+            $metadata = $evidence->metadata ?? [];
+            $type = $evidence->evidence_type;
+            $hasTemplate = array_key_exists('template', $metadata);
+
+            if (array_key_exists('doc', $metadata) || ($type->isPaper() && ! $hasTemplate)) {
+                $errors["evidences.{$index}.metadata.template"] = ['Convert this paper evidence before exporting the case.'];
+
+                continue;
+            }
+            if ($hasTemplate) {
+                $version = 3;
+                foreach (EvidenceTemplateCatalog::errors($metadata['template'], $type->value) as $path => $messages) {
+                    $errors["evidences.{$index}.{$path}"] = $messages;
+                }
+            }
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        return $version;
     }
 
     private function buildLevel(ZipArchive $archive, Level $level, string $field): array

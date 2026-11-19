@@ -93,10 +93,9 @@ class CaseBundleRoundTripTest extends TestCase
         $this->assertSame($original, $this->graphSnapshot($reimported));
     }
 
-    public function test_reviewed_legacy_bundle_conversion_leaves_the_source_and_imports_with_legacy_disabled(): void
+    public function test_reviewed_legacy_bundle_conversion_preserves_the_source_and_imports(): void
     {
         $this->actingAsAdmin();
-        config(['case_bundles.allow_legacy_paper' => false]);
         $manifest = CaseBundleFactory::minimalManifest();
         $manifest['evidences'] = [[
             'ref_id' => 'ev_report', 'title' => 'Legacy report', 'evidence_type' => 'document',

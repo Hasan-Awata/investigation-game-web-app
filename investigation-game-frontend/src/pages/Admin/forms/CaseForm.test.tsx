@@ -26,7 +26,7 @@ it('shows all export field errors with their literal manifest paths', async () =
     errors: {
       'case.img_url': ['Cover image is missing.'],
       'evidences.0.metadata.url': ['Audio is unreadable.'],
-      'evidences.1.metadata.doc.blocks.0.props.right.0.props.url': ['Image is missing.'],
+      'evidences.1.metadata.template.values.portrait': ['Image is missing.'],
     },
   }, { status: 422 })));
   render(<CaseForm />);
@@ -38,7 +38,7 @@ it('shows all export field errors with their literal manifest paths', async () =
   expect(screen.getAllByRole('listitem')).toHaveLength(3);
   expect(screen.getAllByRole('listitem')[0]).toHaveTextContent('case.img_url: Cover image is missing.');
   expect(screen.getAllByRole('listitem')[1]).toHaveTextContent('evidences.0.metadata.url: Audio is unreadable.');
-  expect(screen.getAllByRole('listitem')[2]).toHaveTextContent('evidences.1.metadata.doc.blocks.0.props.right.0.props.url: Image is missing.');
+  expect(screen.getAllByRole('listitem')[2]).toHaveTextContent('evidences.1.metadata.template.values.portrait: Image is missing.');
   expect(toast.success).not.toHaveBeenCalled();
 });
 

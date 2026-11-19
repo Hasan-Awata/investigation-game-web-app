@@ -18,7 +18,12 @@ export function readTemplate(metadata: unknown): Template | undefined {
   const entry = metadata.template;
   if (!entry || typeof entry !== 'object' || !('id' in entry) || typeof entry.id !== 'string' ||
     !('version' in entry) || typeof entry.version !== 'number' || !('values' in entry) ||
-    !entry.values || typeof entry.values !== 'object' || Array.isArray(entry.values)) return;
+    !entry.values || typeof entry.values !== 'object') return;
+  // Laravel's array cast serializes an empty field map as an empty JSON array.
+  if (Array.isArray(entry.values)) {
+    if (entry.values.length === 0) return { id: entry.id, version: entry.version, values: {} };
+    return;
+  }
   return { id: entry.id, version: entry.version, values: entry.values as Values };
 }
 

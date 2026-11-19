@@ -1,7 +1,7 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import TemplateRenderer from './TemplateRenderer';
-import { latestTemplates } from './catalog';
+import { latestTemplates, readTemplate } from './catalog';
 
 vi.mock('react-i18next', () => ({ useTranslation: () => ({ i18n: { language: 'ar' } }) }));
 
@@ -25,5 +25,11 @@ describe('paper evidence templates', () => {
   it('shows the localized fallback for an unavailable saved version', () => {
     render(<TemplateRenderer template={{ id: 'background_check', version: 999, values: { subject: 'Saved subject' } }} />);
     expect(screen.getByRole('status')).toHaveTextContent('تعذّر فتح هذا المستند.');
+  });
+
+  it('reads empty field maps from the API and rejects a list of field values', () => {
+    const template = { id: 'background_check', version: 1 };
+    expect(readTemplate({ template: { ...template, values: [] } })).toEqual({ ...template, values: {} });
+    expect(readTemplate({ template: { ...template, values: ['Unexpected field'] } })).toBeUndefined();
   });
 });

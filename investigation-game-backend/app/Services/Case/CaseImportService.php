@@ -439,8 +439,7 @@ class CaseImportService
                 $metadata = json_decode($metadata, true);
             }
             foreach (MetadataImageReferences::paths($metadata) as $path => $url) {
-                $folder = str_starts_with($path, 'template.') ? 'Evidences' : 'Evidences/Blocks';
-                Arr::set($metadata, $path, $this->resolve($extractDir, $url, $caseData['title'], $folder, $storeLocally, $case->id));
+                Arr::set($metadata, $path, $this->resolve($extractDir, $url, $caseData['title'], 'Evidences', $storeLocally, $case->id));
             }
 
             $evidence = Evidence::create([

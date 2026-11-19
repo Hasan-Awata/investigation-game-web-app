@@ -1,8 +1,7 @@
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import Folder from '@/components/react-bits/Folder';
-import { normalizeDoc, type DocEvidence } from '@/types/evidence';
-import DocSheet from '../DocViewer/DocSheet';
+import type { DocEvidence } from '@/types/evidence';
 import TemplateRenderer, { PAPER_HEIGHT, PAPER_WIDTH } from '@/features/evidence/presentation/TemplateRenderer';
 import { readTemplate } from '@/features/evidence/presentation/catalog';
 import styles from './DocumentEvidence.module.css';
@@ -10,12 +9,9 @@ import styles from './DocumentEvidence.module.css';
 const MAX_PREVIEW_PAGES = 3;
 
 export default function DocumentEvidence({ evidence }: { evidence: DocEvidence }) {
-  const doc = useMemo(() => normalizeDoc(evidence.metadata), [evidence.metadata]);
-  const hasTemplate = Boolean(evidence.metadata && typeof evidence.metadata === 'object' && 'template' in evidence.metadata);
-  const pageWidth = hasTemplate ? PAPER_WIDTH : doc.page.w;
-  const pageHeight = hasTemplate ? PAPER_HEIGHT : doc.page.minH;
+  const template = readTemplate(evidence.metadata);
   const firstPreview = useRef<HTMLDivElement>(null);
-  const firstSheet = useRef<HTMLElement>(null);
+  const firstSheet = useRef<HTMLDivElement>(null);
   const [{ count, scale }, setPreview] = useState({ count: 1, scale: 0 });
 
   useLayoutEffect(() => {
@@ -24,12 +20,9 @@ export default function DocumentEvidence({ evidence }: { evidence: DocEvidence }
     if (!preview || !sheet) return;
 
     const measure = () => {
-      // The viewer uses one continuous sheet. Each thumbnail shows one page-height slice.
-      const bottomPadding = Number.parseFloat(getComputedStyle(sheet).paddingBottom) || 0;
-      const contentHeight = sheet.scrollHeight - bottomPadding;
-      const count = Math.max(1, Math.min(MAX_PREVIEW_PAGES, Math.ceil(contentHeight / pageHeight)));
+      const count = Math.max(1, Math.min(MAX_PREVIEW_PAGES, Math.ceil(sheet.scrollHeight / PAPER_HEIGHT)));
       const { width, height } = getComputedStyle(preview);
-      const scale = Math.min((Number.parseFloat(width) || 0) / pageWidth, (Number.parseFloat(height) || 0) / pageHeight);
+      const scale = Math.min((Number.parseFloat(width) || 0) / PAPER_WIDTH, (Number.parseFloat(height) || 0) / PAPER_HEIGHT);
       setPreview(previous => previous.count === count && previous.scale === scale ? previous : { count, scale });
     };
 
@@ -39,13 +32,13 @@ export default function DocumentEvidence({ evidence }: { evidence: DocEvidence }
     observer.observe(preview);
     observer.observe(sheet);
     return () => observer.disconnect();
-  }, [doc, hasTemplate, pageWidth, pageHeight]);
+  }, []);
 
   return (
     <Folder
       color="#e8d5b7"
       variant="matte"
-      paperAspectRatio={pageWidth / pageHeight}
+      paperAspectRatio={PAPER_WIDTH / PAPER_HEIGHT}
       peekLift={14}
       decorative
       open={false}
@@ -63,18 +56,18 @@ export default function DocumentEvidence({ evidence }: { evidence: DocEvidence }
           <div
             className={styles.slice}
             style={{
-              width: pageWidth,
-              height: pageHeight,
+              width: PAPER_WIDTH,
+              height: PAPER_HEIGHT,
               visibility: scale > 0 ? undefined : 'hidden',
               '--preview-scale': scale,
             } as CSSProperties}
           >
-            <div className={styles.sheet} style={{ top: -index * pageHeight }}>
-              <ErrorBoundary key={evidence.updated_at} fallback={null}>
-                {hasTemplate
-                  ? <div ref={index === 0 ? node => { firstSheet.current = node; } : undefined}><TemplateRenderer template={readTemplate(evidence.metadata)} pageLimit={MAX_PREVIEW_PAGES} /></div>
-                  : <DocSheet doc={doc} evidenceId={evidence.id} sheetRef={index === 0 ? firstSheet : undefined} />}
-              </ErrorBoundary>
+            <div className={styles.sheet} style={{ top: -index * PAPER_HEIGHT }}>
+              <div ref={index === 0 ? firstSheet : undefined}>
+                <ErrorBoundary key={evidence.updated_at} fallback={null}>
+                  <TemplateRenderer template={template} pageLimit={MAX_PREVIEW_PAGES} />
+                </ErrorBoundary>
+              </div>
             </div>
           </div>
         </div>

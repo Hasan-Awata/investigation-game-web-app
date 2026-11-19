@@ -142,7 +142,7 @@ class AdminCaseController extends Controller
         }
 
         foreach ($evidenceMetadata as $metadata) {
-            $this->mediaService->cleanupOrphanedBlockImages($metadata, null);
+            $this->mediaService->cleanupOrphanedMetadataImages($metadata, null);
         }
 
         return response()->json(['message' => 'Case and all associated media completely wiped.'], 200);

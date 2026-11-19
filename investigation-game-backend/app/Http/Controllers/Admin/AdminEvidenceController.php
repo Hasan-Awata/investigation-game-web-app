@@ -83,7 +83,7 @@ class AdminEvidenceController extends Controller
 
         $newMetadata = $evidence->fresh()?->metadata;
         if (array_key_exists('metadata', $validated)) {
-            $this->mediaService->cleanupOrphanedBlockImages($oldMetadata, $newMetadata);
+            $this->mediaService->cleanupOrphanedMetadataImages($oldMetadata, $newMetadata);
         }
 
         return response()->json(['message' => 'Evidence updated successfully.', 'evidence' => $evidence->refresh()], 200);
@@ -99,7 +99,7 @@ class AdminEvidenceController extends Controller
 
         $this->mediaService->delete($image);
         $this->mediaService->delete($audio);
-        $this->mediaService->cleanupOrphanedBlockImages($metadata, null);
+        $this->mediaService->cleanupOrphanedMetadataImages($metadata, null);
 
         return response()->json(['message' => 'Evidence deleted.'], 200);
     }
@@ -111,10 +111,10 @@ class AdminEvidenceController extends Controller
             return DB::transaction(function () use ($data, $case, $uploads, $local, $evidence, &$created, &$oldMetadata) {
                 if ($evidence !== null) {
                     $evidence = Evidence::query()->lockForUpdate()->findOrFail($evidence->id);
-                    $oldMetadata = $evidence->metadata;
-                    if (array_key_exists('metadata', $data) && isset($oldMetadata['template']) &&
-                        in_array($data['evidence_type'], ['document', 'forensic'], true) && !isset($data['metadata']['template'])) {
-                        throw ValidationException::withMessages(['metadata.template' => 'This evidence now uses a template. Reopen it to continue editing.']);
+                    $oldMetadata = $evidence->metadata ?? [];
+                    $scopeChanged = $evidence->case_id !== (int) $data['case_id'] || $evidence->evidence_type->value !== $data['evidence_type'];
+                    if (! array_key_exists('metadata', $data) && $scopeChanged && (array_key_exists('template', $oldMetadata) || array_key_exists('doc', $oldMetadata))) {
+                        throw ValidationException::withMessages(['metadata.template' => 'Include evidence metadata when changing the case or type of a paper record.']);
                     }
                 }
                 if (isset($data['metadata']['template'])) {
