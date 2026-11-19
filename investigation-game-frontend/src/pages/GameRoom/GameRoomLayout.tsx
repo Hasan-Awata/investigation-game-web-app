@@ -41,6 +41,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
   }
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>('agents');
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [animateEvidenceSidebar, setAnimateEvidenceSidebar] = useState(false);
   const [requestDisclosure, setRequestDisclosure] = useState({ roomId: room.id, expanded: false });
   if (requestDisclosure.roomId !== room.id) {
     setRequestDisclosure({ roomId: room.id, expanded: false });
@@ -79,6 +80,7 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
 
   const selectWorkspaceTab = (tab: WorkspaceTab) => {
     if (tab === 'campaign') setCampaignRoomId(room.id);
+    if (tab !== activeTab) setAnimateEvidenceSidebar(false);
     setActiveTab(tab);
   };
 
@@ -100,7 +102,9 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
     <DndContext {...drag.contextProps}>
       <div
         className={`${styles.layoutContainer} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''}`}
+        data-workspace-tab={activeTab}
         data-sidebar-dragging={drag.isDragging}
+        data-evidence-sidebar-motion={animateEvidenceSidebar || undefined}
         data-sidebar-drop-available={isSidebarCollapsed && Boolean(drag.activeEvidence || drag.activeCharacter)
           && room.status === 'active' && !request.isSubmitting}
         onPointerDownCapture={drag.trackPendingPointer}
@@ -138,7 +142,10 @@ export default function GameRoomLayout({ resolutionMessage, finalStats, toasts, 
           <button
             type="button"
             className={styles.sidebarHandle}
-            onClick={() => setSidebarCollapsed(collapsed => !collapsed)}
+            onClick={() => {
+              if (activeTab === 'evidences') setAnimateEvidenceSidebar(true);
+              setSidebarCollapsed(collapsed => !collapsed);
+            }}
             disabled={drag.isDragging}
             aria-expanded={!isSidebarCollapsed}
             aria-controls={sidebarId}

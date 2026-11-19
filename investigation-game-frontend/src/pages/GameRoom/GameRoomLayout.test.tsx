@@ -465,11 +465,27 @@ it('shows unread indicators and preserves Campaign state when switching workspac
 it('keeps evidence previews mounted between tab visits in the same room', () => {
   const view = renderLayout();
   const card = () => button(evidence.title);
+  const handle = button('gameRoom.collapsePanel');
+  const layout = handle.closest('[data-workspace-tab]');
+  expect(layout).toHaveAttribute('data-workspace-tab', 'details');
   expect(screen.queryByText(evidence.title)).not.toBeInTheDocument();
 
   fireEvent.click(button('pages.gameRoom.layout.tabs.evidences'));
+  expect(layout).toHaveAttribute('data-workspace-tab', 'evidences');
+  expect(layout).not.toHaveAttribute('data-evidence-sidebar-motion');
   const original = card();
+  handle.focus();
+  fireEvent.click(handle);
+  expect(handle).toHaveAttribute('aria-expanded', 'false');
+  expect(layout).toHaveAttribute('data-evidence-sidebar-motion');
+  expect(handle).toHaveFocus();
+  expect(card()).toBe(original);
+  fireEvent.click(handle);
+  expect(handle).toHaveAttribute('aria-expanded', 'true');
+  expect(card()).toBe(original);
   fireEvent.click(button('pages.gameRoom.layout.tabs.caseDetails'));
+  expect(layout).toHaveAttribute('data-workspace-tab', 'details');
+  expect(layout).not.toHaveAttribute('data-evidence-sidebar-motion');
   expect(original).toBeInTheDocument();
   expect(original).not.toBeVisible();
 

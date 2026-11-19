@@ -4,7 +4,6 @@
   gap: 2.5rem;
   inline-size: 100%;
   max-inline-size: calc(1200px + var(--evidence-board-width-gain, 0px));
-  transition: max-inline-size var(--evidence-board-resize-motion, 0s);
   /* Safe margin pushes it below the header while centering it horizontally */
   margin: 6.5rem auto 2rem;
   padding: 2.5rem clamp(1rem, 4vw, 2.5rem);

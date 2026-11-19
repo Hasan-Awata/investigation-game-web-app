@@ -49,6 +49,7 @@ export interface FolderProps {
   zoomOnClick?: boolean;
   peek?: boolean;
   peekLift?: number;
+  followPointer?: boolean;
   intro?: boolean;
   tilt?: number;
   bounce?: number;
@@ -241,6 +242,7 @@ interface Settings {
   openOn: string;
   peek: boolean;
   peekLift: number;
+  followPointer: boolean;
   intro: boolean;
   draggable: boolean;
   zoomOnClick: boolean;
@@ -1094,6 +1096,7 @@ const Folder = ({
   zoomOnClick = true,
   peek = true,
   peekLift = 0,
+  followPointer = true,
   intro = true,
   tilt = 0.5,
   bounce = 0.4,
@@ -1178,6 +1181,7 @@ const Folder = ({
     openOn,
     peek,
     peekLift,
+    followPointer,
     intro,
     draggable,
     zoomOnClick,
@@ -1391,7 +1395,7 @@ const Folder = ({
 
     const place = (rank: number, inside: number, phase: Phase, s: Settings) => {
       if (s.g.book) return placeBook(rank, inside, phase, s.layout, s.g);
-      const pointer = state.hovered ? ((state.pointerX + 1) / 2) * s.g.w : null;
+      const pointer = s.followPointer && state.hovered ? ((state.pointerX + 1) / 2) * s.g.w : null;
       return placeFlap(rank, inside, phase, s.layout, s.g, pointer, s.peekLift);
     };
 
@@ -1508,7 +1512,7 @@ const Folder = ({
       if (elapsed < frontDelay) busy = true;
       busy = integrate(state.anchor, staged ? 1 : 0, frontOmega, 1, dt) || busy;
 
-      const engaged = state.hovered && !reduce;
+      const engaged = s.followPointer && state.hovered && !reduce;
       busy = integrate(state.rx, engaged ? -state.pointerY * 8 * s.tilt : 0, soft, 1, dt) || busy;
       busy = integrate(state.ry, engaged ? state.pointerX * 10 * s.tilt : 0, soft, 1, dt) || busy;
       busy = integrate(state.lift, state.hovered && phase !== 'open' ? 1 : 0, soft, 1, dt) || busy;
@@ -1516,7 +1520,7 @@ const Folder = ({
 
       const opening = phase === 'open' && state.previous !== 'open';
       const drag = state.drag?.active ? state.drag : null;
-      const hover = state.hoveredItem;
+      const hover = s.followPointer ? state.hoveredItem : -1;
       const hovering = !drag && hover >= 0 && state.items[hover] ? state.items[hover] : null;
       const lead =
         hovering && hovering.place === 'inside' && phase === 'open' ? place(hovering.rank, inside, 'open', s) : null;
@@ -1912,6 +1916,14 @@ const Folder = ({
         wake();
       }
       if (event.pointerType === 'touch') return;
+      const { followPointer, openOn } = settingsRef.current;
+      if (!followPointer) {
+        if (state.hovered) return;
+        state.hovered = true;
+        if (openOn === 'hover') setOpenRef.current(true);
+        wake();
+        return;
+      }
       const box = root.getBoundingClientRect();
       state.pointerX = clamp(((event.clientX - box.left) / box.width) * 2 - 1, -1.5, 1.5);
       state.pointerY = clamp(((event.clientY - box.top) / box.height) * 2 - 1, -1.5, 1.5);
@@ -1928,7 +1940,7 @@ const Folder = ({
       }
       if (!state.hovered) {
         state.hovered = true;
-        if (settingsRef.current.openOn === 'hover') setOpenRef.current(true);
+        if (openOn === 'hover') setOpenRef.current(true);
       }
       wake();
     };

@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { DndContext } from '@dnd-kit/core';
-import '@/i18n';
+import i18n from '@/i18n';
 import type { Evidence } from '@/types/evidence';
 import EvidenceCard, { EvidenceCardOverlay } from './EvidenceCard';
 
@@ -16,6 +16,22 @@ const evidence = {
 } as Evidence;
 
 describe('Evidence cards', () => {
+  it('clears the unread marker and description when evidence is read', () => {
+    const onInspect = vi.fn();
+    const { rerender } = render(
+      <DndContext><EvidenceCard evidence={evidence} isNew onInspect={onInspect} /></DndContext>,
+    );
+    const card = screen.getByRole('button', { name: evidence.title });
+    expect(card).toHaveAttribute('data-unread');
+    expect(card).toHaveAttribute('aria-description', i18n.t('pages.gameRoom.layout.tabs.unreadIntel'));
+
+    rerender(
+      <DndContext><EvidenceCard evidence={evidence} isNew={false} onInspect={onInspect} /></DndContext>,
+    );
+    expect(card).not.toHaveAttribute('data-unread');
+    expect(card).not.toHaveAttribute('aria-description');
+  });
+
   it.each(['Enter', ' '])('opens non-audio evidence with %j', key => {
     const onInspect = vi.fn();
     render(<DndContext><EvidenceCard evidence={evidence} isNew onInspect={onInspect} /></DndContext>);
@@ -82,6 +98,43 @@ describe('Evidence cards', () => {
     expect(screen.getByText(/This document could not be opened|تعذّر فتح هذا المستند/)).toBeInTheDocument();
     fireEvent.keyDown(screen.getByRole('button', { name: documentEvidence.title }), { key: 'Enter' });
     expect(onInspect).toHaveBeenCalledExactlyOnceWith(documentEvidence);
+  });
+
+  it('reveals document papers on hover without tracking later pointer movement', () => {
+    const documentEvidence: Evidence = {
+      ...evidence,
+      evidence_type: 'document',
+      metadata: { template: { id: 'background_check', version: 3, values: { subject: 'Evidence inventory' } } },
+    };
+    vi.useFakeTimers();
+    const requestFrame = vi.spyOn(window, 'requestAnimationFrame');
+    const { container, unmount } = render(
+      <DndContext><EvidenceCard evidence={documentEvidence} isNew onInspect={vi.fn()} /></DndContext>,
+    );
+    const folder = container.querySelector<HTMLElement>('.folder-root')!;
+    const paper = folder.querySelector<HTMLElement>('.folder-item')!;
+    const settle = () => act(() => { vi.advanceTimersByTime(2000); });
+    try {
+      settle();
+      const rest = paper.style.transform;
+      fireEvent.pointerMove(folder, { pointerType: 'mouse', clientX: 20, clientY: 20 });
+      settle();
+      const revealed = paper.style.transform;
+      expect(revealed).not.toBe(rest);
+
+      requestFrame.mockClear();
+      fireEvent.pointerMove(paper, { pointerType: 'mouse', clientX: 100, clientY: 40 });
+      expect(requestFrame).not.toHaveBeenCalled();
+      expect(paper.style.transform).toBe(revealed);
+
+      fireEvent.pointerLeave(folder, { pointerType: 'mouse' });
+      settle();
+      expect(paper.style.transform).not.toBe(revealed);
+    } finally {
+      unmount();
+      requestFrame.mockRestore();
+      vi.useRealTimers();
+    }
   });
 
   it('renders the title of a testimony in the card and drag preview', () => {

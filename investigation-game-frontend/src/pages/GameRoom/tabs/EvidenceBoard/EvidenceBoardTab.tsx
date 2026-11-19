@@ -4,7 +4,6 @@ import { useRoomData, useRoomUI } from '@/context/RoomContext.shared';
 import type { Evidence } from '@/types';
 import EvidenceCard from './EvidenceCard';
 import EvidenceModal from './EvidenceModal';
-import { useEvidenceGridMotion } from './useEvidenceGridMotion';
 import styles from './EvidenceBoardTab.module.css';
 
 const EvidenceGrid = memo(function EvidenceGrid({
@@ -16,10 +15,8 @@ const EvidenceGrid = memo(function EvidenceGrid({
   viewedEvidences: Set<number>;
   onInspect: (evidence: Evidence) => void;
 }) {
-  const gridRef = useEvidenceGridMotion(evidences);
-
   return (
-    <div ref={gridRef} className={styles.evidenceGrid}>
+    <div className={styles.evidenceGrid}>
       {evidences.map(evidence => (
         <EvidenceCard
           key={evidence.id}

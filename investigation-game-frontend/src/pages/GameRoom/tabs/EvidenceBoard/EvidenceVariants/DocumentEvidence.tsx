@@ -40,6 +40,7 @@ export default function DocumentEvidence({ evidence }: { evidence: DocEvidence }
       variant="matte"
       paperAspectRatio={PAPER_WIDTH / PAPER_HEIGHT}
       peekLift={14}
+      followPointer={false}
       decorative
       open={false}
       draggable={false}
