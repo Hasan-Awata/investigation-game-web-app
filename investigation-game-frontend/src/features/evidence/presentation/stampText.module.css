@@ -1,0 +1,12 @@
+.ink {
+  font-family: 'IBM Plex Sans Arabic', Arial, sans-serif;
+  font-weight: 700;
+  text-align: center;
+  text-transform: uppercase;
+  mask-image: url('@/assets/gameplay/stamps/ink-grain.png');
+  mask-size: 84px 25px;
+}
+
+.ink:lang(ar) {
+  line-height: 1.3;
+}

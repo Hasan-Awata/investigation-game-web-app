@@ -4,7 +4,7 @@
     "version": 3,
     "name": {
       "en": "Background Check",
-      "ar": "التحقق من الخلفية"
+      "ar": "سيرة ذاتية"
     },
     "category": {
       "en": "Records bureau",
@@ -71,7 +71,7 @@
         "max": 48,
         "label": {
           "en": "Record ID",
-          "ar": "معرّف السجل"
+          "ar": "الرقم الوطني"
         }
       },
       {
@@ -169,7 +169,7 @@
         "max": 48,
         "label": {
           "en": "Record tracking number",
-          "ar": "رقم تتبّع السجل"
+          "ar": "رقم الهوية"
         }
       },
       {
@@ -268,7 +268,7 @@
         "max": 64,
         "label": {
           "en": "Transfer number",
-          "ar": "رقم التحويل"
+          "ar": "رقم تتبع السجل"
         }
       },
       {
@@ -336,10 +336,7 @@
           "ar": "نمط البصمات"
         },
         "assetIds": [
-          "arch",
-          "default",
-          "loop",
-          "whorl"
+          "default"
         ]
       },
       {
@@ -352,7 +349,11 @@
         },
         "assetIds": [
           "filed",
-          "reviewed"
+          "officially_certified",
+          "reviewed",
+          "top_secret",
+          "under_investigation",
+          "verified_evidence"
         ]
       },
       {
@@ -361,8 +362,450 @@
         "max": 16000,
         "label": {
           "en": "Findings and case notes",
-          "ar": "النتائج وملاحظات القضية"
+          "ar": "ملاحظات إضافية"
         }
+      }
+    ]
+  },
+  {
+    "id": "financial_records",
+    "version": 1,
+    "types": [
+      "document"
+    ],
+    "name": {
+      "en": "Financial Records",
+      "ar": "السجلات المالية"
+    },
+    "category": {
+      "en": "Financial Records",
+      "ar": "السجلات المالية"
+    },
+    "fields": [
+      {
+        "key": "classification",
+        "kind": "text",
+        "label": {
+          "en": "Header stamp text",
+          "ar": "نص ختم الترويسة"
+        },
+        "max": 32
+      },
+      {
+        "key": "case_number",
+        "kind": "text",
+        "label": {
+          "en": "Case file no.",
+          "ar": "رقم ملف القضية"
+        },
+        "max": 40
+      },
+      {
+        "key": "target",
+        "kind": "text",
+        "label": {
+          "en": "Target",
+          "ar": "الطرف المستهدف"
+        },
+        "max": 90
+      },
+      {
+        "key": "account_opening_date",
+        "kind": "date",
+        "label": {
+          "en": "Account opening date",
+          "ar": "تاريخ فتح الحساب"
+        }
+      },
+      {
+        "key": "subject",
+        "kind": "text",
+        "label": {
+          "en": "Subject",
+          "ar": "الموضوع"
+        },
+        "max": 90
+      },
+      {
+        "key": "depository_institution",
+        "kind": "text",
+        "label": {
+          "en": "Depository Institution",
+          "ar": "المؤسسة المصرفية"
+        },
+        "max": 90
+      },
+      {
+        "key": "case_status",
+        "kind": "text",
+        "label": {
+          "en": "Case status",
+          "ar": "حالة القضية"
+        },
+        "max": 60
+      },
+      {
+        "key": "transactions",
+        "kind": "rows",
+        "label": {
+          "en": "Transactions",
+          "ar": "المعاملات المالية"
+        },
+        "max": 14,
+        "required": true,
+        "fields": [
+          {
+            "key": "date",
+            "kind": "date",
+            "label": {
+              "en": "Transaction date",
+              "ar": "تاريخ المعاملة"
+            },
+            "required": true
+          },
+          {
+            "key": "source",
+            "kind": "text",
+            "label": {
+              "en": "Source / origin",
+              "ar": "المصدر / المنشأ"
+            },
+            "max": 90
+          },
+          {
+            "key": "beneficiary",
+            "kind": "text",
+            "label": {
+              "en": "Beneficiary / destination",
+              "ar": "المستفيد / الوجهة"
+            },
+            "max": 90
+          },
+          {
+            "key": "amount",
+            "kind": "text",
+            "label": {
+              "en": "Amount",
+              "ar": "المبلغ"
+            },
+            "max": 32
+          },
+          {
+            "key": "transaction_id",
+            "kind": "text",
+            "label": {
+              "en": "Transaction ID",
+              "ar": "معرّف المعاملة"
+            },
+            "max": 40
+          },
+          {
+            "key": "status",
+            "kind": "text",
+            "label": {
+              "en": "Flag / status",
+              "ar": "التنبيه / الحالة"
+            },
+            "max": 40
+          }
+        ]
+      },
+      {
+        "key": "prepared_by",
+        "kind": "text",
+        "label": {
+          "en": "Prepared by",
+          "ar": "أعدّه"
+        },
+        "max": 90
+      },
+      {
+        "key": "prepared_signature",
+        "kind": "asset",
+        "group": "signature",
+        "label": {
+          "en": "Preparer’s signature",
+          "ar": "توقيع المُعدّ"
+        },
+        "assetIds": [
+          "signature_01",
+          "signature_02",
+          "signature_03",
+          "signature_04",
+          "signature_05",
+          "signature_06",
+          "signature_07",
+          "signature_08",
+          "signature_09",
+          "signature_10",
+          "signature_11",
+          "signature_12",
+          "signature_13",
+          "signature_14",
+          "signature_15",
+          "signature_16",
+          "signature_17",
+          "signature_18",
+          "signature_19"
+        ]
+      },
+      {
+        "key": "prepared_date",
+        "kind": "date",
+        "label": {
+          "en": "Preparation date",
+          "ar": "تاريخ الإعداد"
+        }
+      },
+      {
+        "key": "approved_by",
+        "kind": "text",
+        "label": {
+          "en": "Approved by",
+          "ar": "اعتمده"
+        },
+        "max": 90
+      },
+      {
+        "key": "approved_signature",
+        "kind": "asset",
+        "group": "signature",
+        "label": {
+          "en": "Approver’s signature",
+          "ar": "توقيع المُعتمِد"
+        },
+        "assetIds": [
+          "signature_01",
+          "signature_02",
+          "signature_03",
+          "signature_04",
+          "signature_05",
+          "signature_06",
+          "signature_07",
+          "signature_08",
+          "signature_09",
+          "signature_10",
+          "signature_11",
+          "signature_12",
+          "signature_13",
+          "signature_14",
+          "signature_15",
+          "signature_16",
+          "signature_17",
+          "signature_18",
+          "signature_19"
+        ]
+      },
+      {
+        "key": "approved_date",
+        "kind": "date",
+        "label": {
+          "en": "Approval date",
+          "ar": "تاريخ الاعتماد"
+        }
+      },
+      {
+        "key": "declassification",
+        "kind": "text",
+        "label": {
+          "en": "Declassify on",
+          "ar": "رفع السرية في"
+        },
+        "max": 40
+      },
+      {
+        "key": "certification",
+        "kind": "text",
+        "label": {
+          "en": "Certification mark",
+          "ar": "عبارة التصديق"
+        },
+        "max": 60
+      },
+      {
+        "key": "stamp_asset",
+        "kind": "asset",
+        "group": "stamp",
+        "label": {
+          "en": "Filing stamp",
+          "ar": "ختم الملف"
+        },
+        "assetIds": [
+          "filed",
+          "officially_certified",
+          "reviewed",
+          "top_secret",
+          "under_investigation",
+          "verified_evidence"
+        ]
+      },
+      {
+        "key": "file_id",
+        "kind": "text",
+        "label": {
+          "en": "File ID",
+          "ar": "معرّف الملف"
+        },
+        "max": 24
+      },
+      {
+        "key": "page_reference",
+        "kind": "text",
+        "label": {
+          "en": "Original page reference",
+          "ar": "مرجع الصفحة الأصلية"
+        },
+        "max": 30
+      }
+    ]
+  },
+  {
+    "id": "phone_records",
+    "version": 1,
+    "types": [
+      "document"
+    ],
+    "name": {
+      "en": "Phone Records",
+      "ar": "سجلات الهاتف"
+    },
+    "category": {
+      "en": "Phone Records",
+      "ar": "سجلات الهاتف"
+    },
+    "fields": [
+      {
+        "key": "case_number",
+        "kind": "text",
+        "label": {
+          "en": "Case number",
+          "ar": "رقم القضية"
+        },
+        "max": 40
+      },
+      {
+        "key": "main_line",
+        "kind": "text",
+        "label": {
+          "en": "Main line",
+          "ar": "الخط الرئيسي"
+        },
+        "max": 60
+      },
+      {
+        "key": "line_owner",
+        "kind": "text",
+        "label": {
+          "en": "Line owner",
+          "ar": "مالك الخط"
+        },
+        "max": 80
+      },
+      {
+        "key": "provider",
+        "kind": "text",
+        "label": {
+          "en": "Service provider",
+          "ar": "مزود الخدمة"
+        },
+        "max": 80
+      },
+      {
+        "key": "calls",
+        "kind": "rows",
+        "label": {
+          "en": "Phone activity",
+          "ar": "سجل المكالمات"
+        },
+        "max": 14,
+        "required": true,
+        "fields": [
+          {
+            "key": "date_time",
+            "kind": "text",
+            "label": {
+              "en": "Date / Time",
+              "ar": "التاريخ / الوقت"
+            },
+            "max": 32,
+            "required": true
+          },
+          {
+            "key": "originating",
+            "kind": "text",
+            "label": {
+              "en": "Originating",
+              "ar": "الرقم المصدر"
+            },
+            "max": 80
+          },
+          {
+            "key": "destination",
+            "kind": "text",
+            "label": {
+              "en": "Destination",
+              "ar": "الرقم الوجهة"
+            },
+            "max": 80
+          },
+          {
+            "key": "duration",
+            "kind": "text",
+            "label": {
+              "en": "Duration",
+              "ar": "المدة"
+            },
+            "max": 10
+          },
+          {
+            "key": "type",
+            "kind": "text",
+            "label": {
+              "en": "Type",
+              "ar": "النوع"
+            },
+            "max": 4
+          }
+        ]
+      },
+      {
+        "key": "approved_by",
+        "kind": "text",
+        "label": {
+          "en": "Approved by",
+          "ar": "اعتمده"
+        },
+        "max": 90
+      },
+      {
+        "key": "signature_asset",
+        "kind": "asset",
+        "group": "signature",
+        "label": {
+          "en": "Approval signature",
+          "ar": "توقيع الاعتماد"
+        },
+        "assetIds": [
+          "signature_01",
+          "signature_02",
+          "signature_03",
+          "signature_04",
+          "signature_05",
+          "signature_06",
+          "signature_07",
+          "signature_08",
+          "signature_09",
+          "signature_10",
+          "signature_11",
+          "signature_12",
+          "signature_13",
+          "signature_14",
+          "signature_15",
+          "signature_16",
+          "signature_17",
+          "signature_18",
+          "signature_19"
+        ]
       }
     ]
   }

@@ -135,32 +135,11 @@
     }
   },
   "fingerprint": {
-    "arch": {
-      "path": "/assets/documents/fingerprints/arch.svg",
-      "label": {
-        "en": "Arch",
-        "ar": "قوسي"
-      }
-    },
     "default": {
       "path": "/assets/documents/fingerprints/default.svg",
       "label": {
         "en": "Default",
-        "ar": "Default"
-      }
-    },
-    "loop": {
-      "path": "/assets/documents/fingerprints/loop.svg",
-      "label": {
-        "en": "Loop",
-        "ar": "حلقي"
-      }
-    },
-    "whorl": {
-      "path": "/assets/documents/fingerprints/whorl.svg",
-      "label": {
-        "en": "Whorl",
-        "ar": "دوّامي"
+        "ar": "افتراضي"
       }
     }
   },
@@ -173,6 +152,16 @@
       },
       "frame": true
     },
+    "officially_certified": {
+      "path": {
+        "ar": "/assets/documents/stamps/officially-certified-ar.png",
+        "en": "/assets/documents/stamps/officially-certified-en.png"
+      },
+      "label": {
+        "en": "Officially Certified",
+        "ar": "معتمد رسميًا"
+      }
+    },
     "reviewed": {
       "path": "/assets/documents/stamps/reviewed.svg",
       "label": {
@@ -180,6 +169,36 @@
         "ar": "تمت المراجعة"
       },
       "frame": true
+    },
+    "top_secret": {
+      "path": {
+        "ar": "/assets/documents/stamps/top-secret-ar.png",
+        "en": "/assets/documents/stamps/top-secret-en.png"
+      },
+      "label": {
+        "en": "Top Secret · Case File",
+        "ar": "سرّي للغاية · ملف قضية"
+      }
+    },
+    "under_investigation": {
+      "path": {
+        "ar": "/assets/documents/stamps/under-investigation-ar.png",
+        "en": "/assets/documents/stamps/under-investigation-en.png"
+      },
+      "label": {
+        "en": "Official Document · Under Investigation",
+        "ar": "وثيقة رسمية · قيد التحقيق"
+      }
+    },
+    "verified_evidence": {
+      "path": {
+        "ar": "/assets/documents/stamps/verified-evidence-ar.png",
+        "en": "/assets/documents/stamps/verified-evidence-en.png"
+      },
+      "label": {
+        "en": "Verified Evidence · Original Copy",
+        "ar": "أدلة معتمدة · نسخة أصلية"
+      }
     }
   }
 }

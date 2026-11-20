@@ -57,8 +57,3 @@
     transform: none;
   }
 }
-
-.sheet {
-  position: absolute;
-  inset-inline: 0;
-}

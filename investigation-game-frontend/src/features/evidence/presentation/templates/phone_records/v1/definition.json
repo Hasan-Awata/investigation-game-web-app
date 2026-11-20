@@ -1,0 +1,22 @@
+{
+  "id": "phone_records",
+  "version": 1,
+  "types": ["document"],
+  "name": { "en": "Phone Records", "ar": "سجلات الهاتف" },
+  "category": { "en": "Phone Records", "ar": "سجلات الهاتف" },
+  "fields": [
+    { "key": "case_number", "kind": "text", "label": { "en": "Case number", "ar": "رقم القضية" }, "max": 40 },
+    { "key": "main_line", "kind": "text", "label": { "en": "Main line", "ar": "الخط الرئيسي" }, "max": 60 },
+    { "key": "line_owner", "kind": "text", "label": { "en": "Line owner", "ar": "مالك الخط" }, "max": 80 },
+    { "key": "provider", "kind": "text", "label": { "en": "Service provider", "ar": "مزود الخدمة" }, "max": 80 },
+    { "key": "calls", "kind": "rows", "label": { "en": "Phone activity", "ar": "سجل المكالمات" }, "max": 14, "required": true, "fields": [
+      { "key": "date_time", "kind": "text", "label": { "en": "Date / Time", "ar": "التاريخ / الوقت" }, "max": 32, "required": true },
+      { "key": "originating", "kind": "text", "label": { "en": "Originating", "ar": "الرقم المصدر" }, "max": 80 },
+      { "key": "destination", "kind": "text", "label": { "en": "Destination", "ar": "الرقم الوجهة" }, "max": 80 },
+      { "key": "duration", "kind": "text", "label": { "en": "Duration", "ar": "المدة" }, "max": 10 },
+      { "key": "type", "kind": "text", "label": { "en": "Type", "ar": "النوع" }, "max": 4 }
+    ] },
+    { "key": "approved_by", "kind": "text", "label": { "en": "Approved by", "ar": "اعتمده" }, "max": 90 },
+    { "key": "signature_asset", "kind": "asset", "group": "signature", "label": { "en": "Approval signature", "ar": "توقيع الاعتماد" } }
+  ]
+}

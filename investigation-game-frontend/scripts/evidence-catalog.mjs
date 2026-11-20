@@ -22,14 +22,17 @@ function discoverDocumentAssets() {
       throw new Error(`Expected a map of document asset labels in ${labelsPath}`);
     }
     const entries = new Map();
+    const localizedStamps = new Map();
     const files = readdirSync(directory, { withFileTypes: true })
       .filter(entry => entry.isFile() && entry.name !== 'labels.json' && isDocumentAssetFile(entry.name))
       .map(entry => entry.name)
       .sort();
     for (const file of files) {
-      const stem = file.slice(0, -extname(file).length);
+      const filenameStem = file.slice(0, -extname(file).length);
+      const localized = group === 'stamp' && /^(.*)-(ar|en)$/.exec(filenameStem);
+      const stem = localized ? localized[1] : filenameStem;
       const id = stem.toLowerCase().replaceAll('-', '_');
-      if (!/^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/i.test(stem) || entries.has(id)) {
+      if (!/^[a-z][a-z0-9]*(?:[-_][a-z0-9]+)*$/i.test(stem)) {
         throw new Error(`Invalid or duplicate document asset name: ${join(directory, file)}`);
       }
       const fallback = stem.replace(/[-_]/g, ' ').replace(/\b[a-z]/g, letter => letter.toUpperCase());
@@ -40,11 +43,25 @@ function discoverDocumentAssets() {
             : !['en', 'ar'].includes(key) || typeof value !== 'string' || !value.trim())) {
         throw new Error(`Invalid document asset labels for ${id} in ${labelsPath}`);
       }
-      entries.set(id, {
-        path: `/assets/documents/${folder}/${file}`,
-        label: { en: override.en ?? fallback, ar: override.ar ?? override.en ?? fallback },
-        ...(override.frame && { frame: true }),
-      });
+      const path = `/assets/documents/${folder}/${file}`;
+      const label = { en: override.en ?? fallback, ar: override.ar ?? override.en ?? fallback };
+      if (localized) {
+        if (!localizedStamps.has(id)) localizedStamps.set(id, {});
+        const variants = localizedStamps.get(id);
+        const locale = localized[2];
+        if (variants[locale]) throw new Error(`Duplicate document asset language: ${file}`);
+        variants[locale] = path;
+        if (variants.ar && variants.en) {
+          if (entries.has(id)) throw new Error(`Duplicate document asset name: ${file}`);
+          entries.set(id, { path: variants, label });
+        }
+      } else {
+        if (entries.has(id)) throw new Error(`Duplicate document asset name: ${file}`);
+        entries.set(id, { path, label, ...(override.frame && { frame: true }) });
+      }
+    }
+    for (const [id, variants] of localizedStamps) {
+      if (!variants.ar || !variants.en) throw new Error(`Missing Arabic or English document stamp: ${id}`);
     }
     return [group, Object.fromEntries(entries)];
   }));

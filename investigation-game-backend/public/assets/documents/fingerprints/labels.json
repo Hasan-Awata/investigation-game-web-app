@@ -1,14 +1,6 @@
 {
-  "loop": {
-    "en": "Loop",
-    "ar": "حلقي"
-  },
-  "whorl": {
-    "en": "Whorl",
-    "ar": "دوّامي"
-  },
-  "arch": {
-    "en": "Arch",
-    "ar": "قوسي"
+  "default": {
+    "en": "Default",
+    "ar": "افتراضي"
   }
 }

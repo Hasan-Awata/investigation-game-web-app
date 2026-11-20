@@ -151,6 +151,69 @@ class AdminEvidenceValidationTest extends TestCase
             ->assertUnprocessable()->assertJsonValidationErrors('metadata.template.values.arrests');
     }
 
+    public function test_phone_records_save_as_document_and_validate_the_call_log(): void
+    {
+        $payload = [...$this->updatePayload(), 'evidence_type' => 'document'];
+        $template = ['id' => 'phone_records', 'version' => 1, 'values' => [
+            'case_number' => 'CR-2026-0417',
+            'calls' => [['date_time' => '2026-10-01 03:07', 'originating' => '+1 202-555-0102', 'destination' => '+1 202-555-0101', 'duration' => '00:00:12', 'type' => 'CALL']],
+            'signature_asset' => 'signature_07',
+        ]];
+        $metadata = ['template' => $template];
+        $id = $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => $metadata])
+            ->assertCreated()->json('evidence.id');
+        $this->assertSame($template, Evidence::findOrFail($id)->metadata['template']);
+
+        $this->postJson('/api/admin/evidences', [...$payload, 'evidence_type' => 'forensic', 'metadata' => $metadata])
+            ->assertUnprocessable()->assertJsonValidationErrors('metadata.template.id');
+
+        $metadata['template']['values']['calls'] = [['destination' => 'Ext. 214']];
+        $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => $metadata])
+            ->assertUnprocessable()->assertJsonValidationErrors('metadata.template.values.calls.0.date_time');
+
+        $metadata['template']['values']['calls'] = array_fill(0, 15, ['date_time' => '2026-10-01 03:07']);
+        $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => $metadata])
+            ->assertUnprocessable()->assertJsonValidationErrors('metadata.template.values.calls');
+    }
+
+    public function test_financial_records_save_as_document_and_validate_transactions(): void
+    {
+        $payload = [...$this->updatePayload(), 'evidence_type' => 'document'];
+        $template = ['id' => 'financial_records', 'version' => 1, 'values' => [
+            'target' => 'Meridian Holdings',
+            'depository_institution' => 'Harbor Bank',
+            'account_opening_date' => '2022-03-14',
+            'approved_by' => 'ليلى منصور',
+            'prepared_signature' => 'signature_07',
+            'approved_signature' => 'signature_12',
+            'stamp_asset' => 'filed',
+            'transactions' => [['date' => '2026-08-03', 'amount' => 'USD 1,920.00', 'status' => 'Unverified']],
+        ]];
+        $metadata = ['template' => $template];
+        $id = $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => $metadata])
+            ->assertCreated()->json('evidence.id');
+        $this->assertSame($template, Evidence::findOrFail($id)->metadata['template']);
+
+        $this->postJson('/api/admin/evidences', [...$payload, 'evidence_type' => 'forensic', 'metadata' => $metadata])
+            ->assertUnprocessable()->assertJsonValidationErrors('metadata.template.id');
+
+        $invalidAsset = $metadata;
+        $invalidAsset['template']['values']['approved_signature'] = 'filed';
+        $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => $invalidAsset])
+            ->assertUnprocessable()->assertJsonValidationErrors('metadata.template.values.approved_signature');
+
+        $metadata['template']['values']['transactions'] = [['date' => '2026-02-30', 'highlight' => 'yes']];
+        $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => $metadata])
+            ->assertUnprocessable()->assertJsonValidationErrors([
+                'metadata.template.values.transactions.0.date',
+                'metadata.template.values.transactions.0.highlight',
+            ]);
+
+        $metadata['template']['values']['transactions'] = array_fill(0, 15, ['date' => '2026-08-03']);
+        $this->postJson('/api/admin/evidences', [...$payload, 'metadata' => $metadata])
+            ->assertUnprocessable()->assertJsonValidationErrors('metadata.template.values.transactions');
+    }
+
     public function test_background_check_saves_expanded_fields_and_validates_portrait_media(): void
     {
         $template = [

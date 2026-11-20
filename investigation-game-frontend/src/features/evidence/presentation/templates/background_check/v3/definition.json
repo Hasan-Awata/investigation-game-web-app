@@ -3,7 +3,7 @@
   "version": 3,
   "name": {
     "en": "Background Check",
-    "ar": "التحقق من الخلفية"
+    "ar": "سيرة ذاتية"
   },
   "category": {
     "en": "Records bureau",
@@ -70,7 +70,7 @@
       "max": 48,
       "label": {
         "en": "Record ID",
-        "ar": "معرّف السجل"
+        "ar": "الرقم الوطني"
       }
     },
     {
@@ -168,7 +168,7 @@
       "max": 48,
       "label": {
         "en": "Record tracking number",
-        "ar": "رقم تتبّع السجل"
+        "ar": "رقم الهوية"
       }
     },
     {
@@ -267,7 +267,7 @@
       "max": 64,
       "label": {
         "en": "Transfer number",
-        "ar": "رقم التحويل"
+        "ar": "رقم تتبع السجل"
       }
     },
     {
@@ -329,7 +329,7 @@
       "max": 16000,
       "label": {
         "en": "Findings and case notes",
-        "ar": "النتائج وملاحظات القضية"
+        "ar": "ملاحظات إضافية"
       }
     }
   ]

@@ -99,13 +99,21 @@ export default function EvidenceForm() {
   };
 
   const onEdit = (ev: Evidence) => {
-    const rawMetadata = ev.metadata && { ...ev.metadata };
+    let rawMetadata = ev.metadata;
+    const savedTemplate = readTemplate(rawMetadata);
+    if (rawMetadata && savedTemplate?.id === 'financial_records' && savedTemplate.version === 1) {
+      const values = { ...savedTemplate.values };
+      delete values.agent;
+      delete values.inquiry_date;
+      delete values.handling;
+      rawMetadata = { ...rawMetadata, template: { ...savedTemplate, values } };
+    }
     const existingUrl = ev.img_url || ev.audio_url || '';
     handleEditInit(ev, (ed): typeof initialFormState => ({
       title: ed.title,
       description: ed.description || '',
       evidence_type: ed.evidence_type,
-      metadata: rawMetadata ?? {},
+      metadata: { ...rawMetadata },
       is_initial: !!ed.is_initial,
       is_vital_for_conviction: !!ed.is_vital_for_conviction,
       store_locally: existingUrl ? !existingUrl.includes('res.cloudinary.com') : true,

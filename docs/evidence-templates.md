@@ -6,6 +6,14 @@ Create a folder under `investigation-game-frontend/src/features/evidence/present
 
 Run `npm run evidence:catalog` from the frontend and commit the generated Laravel catalog alongside the layout. Vite also updates it during development and build. `npm run lint` checks catalog drift. Publish a new version in a new folder and keep earlier definitions and layouts available for their saved reports. Deploy the Laravel catalog before deploying the matching frontend.
 
+### Phone Records
+
+Choose **Phone Records** for a Document evidence item. Enter a case number, main line number, line owner, and service provider. Each activity row has a date and time, originating and destination numbers, a duration in HH:MM:SS, and a type of SMS or CALL. The footer has an approver field, an optional signature from the shared asset library, and a declassification stamp.
+
+### Financial Records
+
+Choose **Financial Records** for a Document evidence item. Fill in the case details, including the depository institution and account opening date, and enter up to 14 transactions with dates, sources, beneficiaries, numeric amounts, IDs, and statuses. Choose optional signatures for the preparer and approver from the shared document asset library. The header stamp defaults to “Archived.” The certification text goes inside the filing stamp, next to the Anti-Corruption Authority stamp. The sheet also supports an optional file ID and original page reference.
+
 ## Convert a case or bundle
 
 Take a database and media backup before converting an installed case. Keep the original bundle before converting an archive. Run these commands from `investigation-game-backend`.

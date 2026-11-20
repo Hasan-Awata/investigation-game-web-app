@@ -1,12 +1,13 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { ShieldStarIcon } from '@phosphor-icons/react/dist/icons/ShieldStar';
 import { assetUrl } from '@/utils/assetUrl';
-import { documentAsset } from '../../../documentAssets';
+import { agencySeal, documentAsset, documentStamp } from '../../../documentAssets';
+import stampText from '../../../stampText.module.css';
 import type { LayoutProps } from '../../../catalog';
 import definition from './definition.json';
 import styles from './Layout.module.css';
 
 const fields = new Map(definition.fields.map(field => [field.key, field]));
+const interiorSeal = agencySeal('interior');
 const arrestColumns = definition.fields.find(field => field.key === 'arrests')?.fields ?? [];
 const printImpressions = [
   { label: {en: "Right thumb", ar: "الإبهام الأيمن"}, x: -2, y: 1, angle: -12, contrast: 1.18, opacity: 0.84 },
@@ -63,12 +64,6 @@ function ExhibitImage({ path, label, missing, style, resolved = false }: { path:
   return <img src={url} alt={label} style={style} onError={() => setFailed(url)} draggable={false} />;
 }
 
-function BureauSeal({ watermark = false }: { watermark?: boolean }) {
-  return <span className={watermark ? styles.watermark : styles.seal} aria-hidden="true">
-    <ShieldStarIcon weight="regular" />
-  </span>;
-}
-
 export default function Layout({ values, locale, pageLimit, pageSelection }: LayoutProps) {
   const measureBody = useRef<HTMLDivElement>(null);
   const measureBlocks = useRef<HTMLDivElement>(null);
@@ -92,9 +87,9 @@ export default function Layout({ values, locale, pageLimit, pageSelection }: Lay
   const recordId = value('record_id');
   const recordCharacters = Array.from(recordId);
   const useRecordBoxes = /^[A-Za-z0-9٠-٩۰-۹-]{0,12}$/u.test(recordId);
-  const fingerprint = documentAsset('fingerprint', value('fingerprint_asset'));
+  const fingerprint = documentAsset('fingerprint', value('fingerprint_asset') || 'default');
   const signature = documentAsset('signature', value('signature_asset'));
-  const stamp = documentAsset('stamp', value('stamp_asset'));
+  const stamp = documentStamp(value('stamp_asset'), locale);
   const renderNotes = (note?: string) => note
     ? <p className={styles.note} dir="auto">{note}</p>
     : <p className={styles.empty}>{tr('No notes recorded.', 'لا توجد ملاحظات مسجلة.')}</p>;
@@ -111,7 +106,7 @@ export default function Layout({ values, locale, pageLimit, pageSelection }: Lay
     { content:
       <header className={styles.header}>
         <div className={styles.masthead}>
-          <BureauSeal />
+          <img className={styles.seal} src={interiorSeal} alt={tr('Ministry of Interior', 'وزارة الداخلية')} draggable={false} />
           <div><h1>{definition.name[locale]}</h1><p>{definition.category[locale]}</p></div>
         </div>
         <div className={styles.fileInfo}>
@@ -176,7 +171,9 @@ export default function Layout({ values, locale, pageLimit, pageSelection }: Lay
           </div>
           <span>{label('signature_asset')}</span>
           {stamp && (stamp.frame
-            ? <strong className={`${styles.stamp} ${styles.sharedStamp}`} style={{ backgroundImage: `url("${stamp.url}")` }}>{stamp.label[locale]}</strong>
+            ? <strong className={`${styles.stamp} ${styles.sharedStamp}`} style={{ backgroundImage: `url("${stamp.url}")` }}>
+                <span className={stampText.ink}>{stamp.label[locale]}</span>
+              </strong>
             : <img className={styles.stampArtwork} src={stamp.url} alt={stamp.label[locale]} />)}
         </div>
       </section>,
@@ -282,7 +279,7 @@ export default function Layout({ values, locale, pageLimit, pageSelection }: Lay
       if (selectedIndex !== undefined && index !== selectedIndex) return null;
       return (
         <article className={styles.page} key={start}>
-          {index === 0 && <BureauSeal watermark />}
+          {index === 0 && <img className={styles.watermark} src={interiorSeal} alt="" draggable={false} />}
           {index > 0 && <div className={styles.continuation}>{definition.name[locale]} / <bdi>{value('reference') || value('subject')}</bdi></div>}
           <div className={styles.frame}>{renderPage(start, breaks[index])}</div>
           <footer className={styles.footer}>

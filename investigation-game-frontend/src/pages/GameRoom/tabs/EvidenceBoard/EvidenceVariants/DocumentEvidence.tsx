@@ -7,30 +7,27 @@ import { readTemplate } from '@/features/evidence/presentation/catalog';
 import styles from './DocumentEvidence.module.css';
 
 const MAX_PREVIEW_PAGES = 3;
+const ignorePageCount = () => {};
 
 export default function DocumentEvidence({ evidence }: { evidence: DocEvidence }) {
   const template = readTemplate(evidence.metadata);
   const firstPreview = useRef<HTMLDivElement>(null);
-  const firstSheet = useRef<HTMLDivElement>(null);
-  const [{ count, scale }, setPreview] = useState({ count: 1, scale: 0 });
+  const [count, setCount] = useState(1);
+  const [scale, setScale] = useState(0);
 
   useLayoutEffect(() => {
     const preview = firstPreview.current;
-    const sheet = firstSheet.current;
-    if (!preview || !sheet) return;
+    if (!preview) return;
 
     const measure = () => {
-      const count = Math.max(1, Math.min(MAX_PREVIEW_PAGES, Math.ceil(sheet.scrollHeight / PAPER_HEIGHT)));
       const { width, height } = getComputedStyle(preview);
-      const scale = Math.min((Number.parseFloat(width) || 0) / PAPER_WIDTH, (Number.parseFloat(height) || 0) / PAPER_HEIGHT);
-      setPreview(previous => previous.count === count && previous.scale === scale ? previous : { count, scale });
+      setScale(Math.min((Number.parseFloat(width) || 0) / PAPER_WIDTH, (Number.parseFloat(height) || 0) / PAPER_HEIGHT));
     };
 
     measure();
     if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(measure);
     observer.observe(preview);
-    observer.observe(sheet);
     return () => observer.disconnect();
   }, []);
 
@@ -63,13 +60,13 @@ export default function DocumentEvidence({ evidence }: { evidence: DocEvidence }
               '--preview-scale': scale,
             } as CSSProperties}
           >
-            <div className={styles.sheet} style={{ top: -index * PAPER_HEIGHT }}>
-              <div ref={index === 0 ? firstSheet : undefined}>
-                <ErrorBoundary key={evidence.updated_at} fallback={null}>
-                  <TemplateRenderer template={template} pageLimit={MAX_PREVIEW_PAGES} />
-                </ErrorBoundary>
-              </div>
-            </div>
+            <ErrorBoundary key={evidence.updated_at} fallback={null}>
+              <TemplateRenderer
+                template={template}
+                pageLimit={MAX_PREVIEW_PAGES}
+                pageSelection={{ index, onPageCountChange: index === 0 ? setCount : ignorePageCount }}
+              />
+            </ErrorBoundary>
           </div>
         </div>
       ))}

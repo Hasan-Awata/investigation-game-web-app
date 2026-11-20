@@ -8,5 +8,21 @@
     "en": "Reviewed",
     "ar": "تمت المراجعة",
     "frame": true
+  },
+  "top_secret": {
+    "en": "Top Secret · Case File",
+    "ar": "سرّي للغاية · ملف قضية"
+  },
+  "under_investigation": {
+    "en": "Official Document · Under Investigation",
+    "ar": "وثيقة رسمية · قيد التحقيق"
+  },
+  "verified_evidence": {
+    "en": "Verified Evidence · Original Copy",
+    "ar": "أدلة معتمدة · نسخة أصلية"
+  },
+  "officially_certified": {
+    "en": "Officially Certified",
+    "ar": "معتمد رسميًا"
   }
 }

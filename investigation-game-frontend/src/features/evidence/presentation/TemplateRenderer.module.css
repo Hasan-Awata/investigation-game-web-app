@@ -1,4 +1,6 @@
 .paper {
+  /* Original procedural grain shared by the document sheets. */
+  --document-paper-grain: url('@/assets/gameplay/paper-grain.png');
   margin-inline: auto;
   flex-shrink: 0;
   background: #eeeadf;

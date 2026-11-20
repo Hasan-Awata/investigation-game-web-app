@@ -38,6 +38,8 @@ auth.json
 # AI
 *.md
 !/docs/evidence-templates.md
+!/investigation-game-backend/public/assets/documents/agency-seals/README.md
+!/investigation-game-backend/public/assets/documents/stamps/README.md
 .agents/
 .claude/
 .gemini/
